@@ -1,0 +1,3682 @@
+﻿<!DOCTYPE html>
+
+<html lang="de">
+
+<head>
+
+  <meta charset="utf-8" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>Plex-Katalog</title>
+
+  <link rel="icon" type="image/png" href="assets/plex-katalog-favicon.png" />
+
+  <style>
+
+    :root{
+
+      color-scheme: dark;
+
+      --bg:#0b0d10;--fg:#e8ecf1;--muted:#9aa7b2;--card:#14181d;--accent:#6aa6ff;--chip:#20262d;--border:#1e242b;
+
+      --hdr-a: rgba(121,168,255,0.38);
+
+      --hdr-b: rgba(255,183,71,0.35);
+
+    }
+
+    *{box-sizing:border-box;margin:0;padding:0}
+
+    body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+
+    a{color:inherit;text-decoration:none}
+
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+header.site-header{
+      position:relative;
+      z-index:3;
+      /* NEU: definierte Hoehe + grosszuegige Polster */
+      min-height: clamp(160px, 28vw, 320px);
+      padding: 28px 16px 26px;
+      background:
+        radial-gradient(circle at 12% 18%, var(--hdr-a) 0%, rgba(121,168,255,0) 52%),
+        radial-gradient(circle at 78% 14%, var(--hdr-b) 0%, rgba(255,183,71,0) 60%),
+        linear-gradient(135deg,#09101c 0%,#0b0d10 38%,#1f2f4a 100%);
+      background-size:220% 220%;
+      background-position:48% 6%, 54% 20%, center;
+      animation:headerDrift 18s ease-in-out infinite alternate;
+      background-blend-mode:screen;
+      border-bottom:1px solid rgba(255,255,255,0.06);
+      overflow:hidden;
+    }
+
+header.site-header::before{
+
+      content:"";
+
+      position:absolute;
+
+      inset:-55% -28%;
+
+      z-index:1;
+
+      background:
+
+        radial-gradient(ellipse at 32% 38%, var(--hdr-b) 0%, rgba(255,214,106,0) 68%),
+
+        radial-gradient(ellipse at 72% 70%, var(--hdr-a) 0%, rgba(106,166,255,0) 70%);
+
+      background-size:160% 160%;
+
+      opacity:0.92;
+
+      pointer-events:none;
+
+      mix-blend-mode:screen;
+
+      filter:blur(80px);
+
+      animation:headerAurora 12s cubic-bezier(.55,.12,.37,.88) infinite alternate;
+
+    }
+
+                    header.site-header .grain{position:absolute;inset:0;pointer-events:none;z-index:2;opacity:.12;mix-blend-mode:overlay;background-image:url("data:image/svg+xml;utf8,\<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"120\" height=\"120\" viewBox=\"0 0 120 120\">\<filter id=\"n\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"0.9\" numOctaves=\"2\" stitchTiles=\"stitch\"/></filter>\<rect width=\"120\" height=\"120\" filter=\"url(%23n)\" opacity=\"0.75\"/></svg>");animation:grainShift 8s steps(12) infinite}
+
+        header.site-header::after{
+
+  content: "PLEX";              /* ohne Backslashes! */
+
+  position: absolute;
+
+  left: 50%;
+
+  top: 55%;
+
+  transform: translate(-50%, -50%);
+
+  z-index: 3;
+
+  font-family: "Segoe UI","Helvetica Neue",Arial,sans-serif;
+
+  font-weight: 800;
+
+  letter-spacing: 0.22em;
+
+  font-size: clamp(84px, 16vw, 220px);
+
+  line-height: 1;
+
+  color: rgba(255,255,255,0.16);
+
+  text-transform: uppercase;
+
+  pointer-events: none;
+
+  mix-blend-mode: screen;
+
+  text-shadow: 0 26px 54px rgba(0,0,0,0.55);
+
+  filter: blur(.3px);
+
+  animation: headerGlow 18s ease-in-out infinite alternate;
+
+}
+
+    .site-header__inner{
+      position:relative;
+      z-index:4;
+      max-width:1200px;
+      margin:0 auto;
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      align-items:end;
+      gap:24px;
+    }
+    .site-header__logo{
+      height:clamp(72px,12vw,160px);
+      width:auto;
+      max-width:100%;
+      filter:drop-shadow(0 16px 36px rgba(0,0,0,0.42));
+      transform-origin:left center;
+      animation:logoFloat 12s ease-in-out infinite alternate;
+    }
+.site-header__logo.logo-missing{display:none}
+
+    .site-header__meta{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      min-width:240px;
+      max-width:560px;
+    }
+.site-title{margin:0;font-size:clamp(28px,3vw,40px);font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--fg);line-height:1.1}
+
+    .site-tagline{margin:0;color:var(--muted);font-size:clamp(16px,1.65vw,24px);letter-spacing:.15px;line-height:1.35;opacity:.98;transition:opacity .4s ease;max-width:640px}.site-tagline.is-fading{opacity:.25}
+
+    .site-header__stats{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:8px 18px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.32);
+      background:rgba(15,21,30,0.78);
+      color:var(--fg);
+      font-size:13px;
+      font-weight:600;
+      letter-spacing:.3px;
+      justify-self:end;
+      align-self:end;
+    }
+.filters{position:sticky;top:0;z-index:4;background:rgba(11,13,16,0.9);backdrop-filter:saturate(140%) blur(10px);border-bottom:1px solid rgba(255,255,255,0.06)}
+
+    .filters-wrap{max-width:1200px;margin:0 auto;padding:16px 16px 14px;display:flex;flex-direction:column;gap:12px}
+
+    .filters-main{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+
+    .library-switch{display:flex;gap:6px;background:rgba(15,18,23,0.92);border:1px solid var(--border);border-radius:999px;padding:4px}
+
+    .library-switch button{flex:1;border:none;background:transparent;color:var(--muted);padding:6px 12px;border-radius:999px;cursor:pointer;font-size:13px;transition:background .15s ease,color .15s ease}
+
+    .library-switch button.active{background:var(--accent);color:#0b1524}
+
+    .field{display:flex;align-items:center;gap:8px;background:rgba(15,18,23,0.85);border:1px solid var(--border);border-radius:14px;padding:8px 12px;min-height:44px}
+    .field.is-disabled{opacity:0.5}
+
+    .field.search{flex:1 1 260px}
+
+    .field.search input{border:none;background:transparent;color:var(--fg);width:100%}
+
+    .field.sort select{width:100%;border:1px solid var(--border);background:var(--card);color:var(--fg);border-radius:10px;padding:6px 10px}
+
+    .toggle-advanced{border:1px solid var(--border);background:rgba(15,18,23,0.85);color:var(--muted);border-radius:999px;padding:8px 16px;font-size:13px;cursor:pointer;transition:background .15s ease,color .15s ease}
+
+    .toggle-advanced:hover{border-color:var(--accent);color:var(--accent)}
+
+    .watchlist-button{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);background:rgba(15,18,23,0.85);color:var(--muted);border-radius:999px;padding:8px 16px;font-size:13px;cursor:pointer;transition:background .15s ease,color .15s ease,border .15s ease}
+
+    .watchlist-button .count{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:999px;background:rgba(106,166,255,0.18);color:var(--accent);font-weight:600;font-size:12px;padding:0 8px}
+
+    .watchlist-button.has-items{color:var(--accent);border-color:rgba(106,166,255,0.45);background:rgba(106,166,255,0.12)}
+
+    .watchlist-button.active{background:var(--accent);color:#0b1524;border-color:var(--accent)}
+
+    .filters-advanced{display:none;background:rgba(15,18,23,0.7);border:1px solid var(--border);border-radius:16px;padding:12px}
+
+    .filters-advanced.active{display:block}
+
+    .advanced-row{display:flex;gap:12px;flex-wrap:wrap}
+
+    .field.chips{flex:1 1 280px}
+    .field.collections{flex:1 1 220px}
+    .field.collections select{width:100%;border:1px solid var(--border);background:var(--card);color:var(--fg);border-radius:10px;padding:6px 10px}
+
+    .chip-group{display:flex;flex-wrap:wrap;gap:6px;overflow:auto;max-height:120px}
+
+    .chip-group[data-state="empty"]::before{content:attr(data-empty);color:var(--muted);font-size:12px;opacity:0.6}
+
+    .chip-filter{border:1px solid rgba(106,166,255,0.35);padding:4px 10px;border-radius:999px;color:var(--muted);cursor:pointer;transition:all .15s ease;background:rgba(14,17,22,0.6)}
+
+    .chip-filter:hover{border-color:var(--accent);color:var(--accent);background:rgba(106,166,255,0.12)}
+
+    .chip-filter.selected{background:var(--accent);color:#0b1524;border-color:var(--accent);box-shadow:0 0 0 1px rgba(106,166,255,0.4)}
+
+    .field.year select{width:auto;min-width:110px;border:1px solid var(--border);background:var(--card);color:var(--fg);border-radius:10px;padding:6px 10px}
+
+    .field.toggles{gap:10px;background:transparent;border:none;padding:0;flex-wrap:wrap}
+
+    .toggle-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(15,18,23,0.85);border:1px solid var(--border);border-radius:999px;padding:6px 12px;font-size:13px;color:var(--muted);cursor:pointer;transition:background .15s ease,color .15s ease}
+
+    .toggle-chip:hover{border-color:var(--accent);color:var(--accent)}
+
+    .toggle-chip input{margin:0}
+    .toggle-chip.is-disabled{opacity:0.45;pointer-events:none;cursor:not-allowed}
+
+    .icon{width:16px;height:16px;border-radius:999px;border:1px solid rgba(106,166,255,0.35);background:rgba(106,166,255,0.12);display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:var(--accent)}
+
+    main{padding-bottom:48px}
+
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,280px));justify-content:center;gap:18px;padding:24px 16px;width:min(1600px,100%);margin:0 auto;transition:opacity .25s ease,transform .25s ease}
+
+    .grid.is-leaving{opacity:0;transform:scale(.985)}
+
+    .grid.is-entering{opacity:0;transform:scale(.985)}
+
+    .grid.is-entering.is-ready{opacity:1;transform:scale(1)}
+
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;transition:transform .12s ease,box-shadow .12s ease;position:relative;will-change:transform;contain:paint;content-visibility:auto;contain-intrinsic-size:300px 480px;width:100%;max-width:280px;margin:0 auto}
+
+    .card.in-watchlist{border-color:rgba(249,178,51,0.8);box-shadow:0 0 0 1px rgba(249,178,51,0.25)}
+
+    .card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.25)}
+
+    .poster{position:relative;overflow:hidden;aspect-ratio:2/3;background:#111;transition:transform .2s ease}
+
+    .poster img{width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .25s ease;display:block}
+
+    .poster img.is-ready{opacity:1}
+
+    .card:hover .poster{transform:scale(1.04)}
+
+    .poster .rating{position:absolute;bottom:10px;right:10px;background:rgba(11,13,16,0.85);border:1px solid var(--accent);color:var(--accent);padding:4px 8px;border-radius:999px;font-size:12px;font-weight:600;letter-spacing:.3px;opacity:0;transform:translateY(6px);transition:opacity .18s ease,transform .18s ease}
+
+    .card:hover .poster .rating{opacity:1;transform:translateY(0)}
+
+    .watchlist-toggle{position:absolute;top:10px;left:10px;border:none;background:rgba(11,13,16,0.78);color:var(--muted);border-radius:999px;padding:6px 10px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer;transition:background .15s ease,color .15s ease,transform .15s ease}
+
+    .watchlist-toggle::before{content:"☆";font-size:12px}
+
+    .watchlist-toggle:hover{transform:translateY(-1px)}
+
+    .watchlist-toggle.active{background:#f9b233;color:#11151d}
+
+    .watchlist-toggle.active::before{content:"★"}
+
+    .meta{padding:10px 12px}
+
+    .title{font-weight:600;font-size:14.5px;margin:0 0 6px;letter-spacing:.2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+
+    .badge{display:inline-block;font-size:10.5px;background:#163252;color:#cfe1ff;border:1px solid #20446e;padding:2px 6px;border-radius:999px}
+
+    .sub{font-size:12.5px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap}
+
+    .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+
+    .chip{font-size:11.5px;color:#cfe1ff;background:var(--chip);border:1px solid var(--border);padding:2px 8px;border-radius:999px}
+    .collection-hint{margin-top:6px;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+    .collection-hint .collection-label{opacity:0.8}
+    .collection-hint .collection-link{border:1px solid var(--border);background:rgba(106,166,255,0.15);color:var(--accent);border-radius:999px;padding:2px 8px;font-size:11px;font-weight:600;cursor:pointer;transition:background .15s ease,color .15s ease,border .15s ease}
+    .collection-hint .collection-link:hover{background:var(--accent);color:#0b1524;border-color:var(--accent)}
+    .collection-hint .collection-more-count{font-size:11px;color:var(--muted)}
+    .card.collection-card{min-height:0}
+    .card.collection-card .collection-summary{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+    .card.collection-card .collection-summary.is-clickable{cursor:pointer;}
+    .card.collection-card .collection-summary.is-clickable .collection-more{text-decoration:underline;}
+    .card.collection-card .collection-summary.is-clickable:hover .collection-more{color:var(--accent);}
+    .card.collection-card .collection-count{font-size:12px;font-weight:600;color:var(--accent);letter-spacing:.35px;text-transform:uppercase}
+    .card.collection-card .collection-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted)}
+    .card.collection-card .collection-list li{display:flex;gap:6px;align-items:center}
+    .card.collection-card .collection-list li .index{font-size:11px;color:var(--muted)}
+    .card.collection-card .collection-list li .title{color:var(--fg);font-weight:600;flex:1}
+    .card.collection-card .collection-list li .year{font-size:11px;color:var(--muted)}
+    .card.collection-card .collection-more{font-size:12px;color:var(--muted)}
+
+    .empty{color:var(--muted);text-align:center;padding:24px}
+
+    .watchlist-panel{background:rgba(15,18,23,0.82);border:1px solid var(--border);border-radius:16px;margin:16px auto;padding:18px;max-width:1200px;box-shadow:0 12px 30px rgba(0,0,0,0.25)}
+
+    .watchlist-panel[hidden]{display:none}
+
+    .watchlist-header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+
+    .watchlist-title{margin:0;font-size:18px;font-weight:600;letter-spacing:.3px}
+
+    .watchlist-actions{display:flex;flex-wrap:wrap;gap:8px}
+
+    .watchlist-actions button{border:1px solid var(--border);background:rgba(11,13,16,0.9);color:var(--fg);border-radius:999px;padding:8px 16px;font-size:13px;cursor:pointer;transition:background .15s ease,color .15s ease,border .15s ease}
+
+    .watchlist-actions button.primary{background:var(--accent);color:#0b1524;border-color:var(--accent);font-weight:600}
+
+    .watchlist-actions button:hover{border-color:var(--accent);color:var(--accent)}
+
+    .watchlist-actions button.primary:hover{filter:brightness(1.05)}
+
+    .watchlist-empty{color:var(--muted);font-size:13px;margin:0}
+
+    .watchlist-items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+
+    .watchlist-item{display:flex;justify-content:space-between;align-items:center;gap:12px;background:rgba(11,13,16,0.6);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+
+    .watchlist-item-info{display:flex;flex-direction:column;gap:4px}
+
+    .watchlist-item-title{font-size:14px;font-weight:600;color:var(--fg);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+
+    .watchlist-item-meta{font-size:12px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap}
+    .watchlist-collection-items{margin-top:6px;display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted)}
+    .watchlist-collection-item{display:flex;align-items:center;gap:6px}
+    .watchlist-collection-item::before{content:'\2022';color:var(--accent);font-size:10px}
+    .watchlist-collection-more{font-size:12px;color:var(--muted);opacity:0.85}
+
+    .watchlist-remove{border:1px solid rgba(255,255,255,0.12);background:transparent;color:var(--muted);border-radius:999px;padding:6px 12px;font-size:12px;cursor:pointer;transition:all .15s ease}
+
+    .watchlist-remove:hover{border-color:var(--accent);color:var(--accent)}
+
+                    @keyframes headerDrift{
+
+      0%{background-position:48% 6%, 54% 20%, center}
+
+      50%{background-position:65% 32%, 38% 46%, center}
+
+      100%{background-position:30% 82%, 60% 60%, center}
+
+    }
+
+    @keyframes headerAurora{
+
+      0%{transform:translate3d(-20%, -18%,0) scale(1.06)}
+
+      50%{transform:translate3d(18%, 14%,0) scale(1.16)}
+
+      100%{transform:translate3d(-12%, 28%,0) scale(1.09)}
+
+    }
+
+    @keyframes headerGlow{
+
+  0%{opacity:.14;transform:translate(-50%,-50%) scale(1);}
+
+  50%{opacity:.22;transform:translate(calc(-50% - 8px), calc(-50% - 6px)) scale(1.03);}
+
+  100%{opacity:.28;transform:translate(calc(-50% - 16px), calc(-50% - 12px)) scale(1.06);}
+
+}
+
+
+
+@keyframes grainShift{
+
+      from{transform:translate3d(0,0,0)}
+
+      to{transform:translate3d(-200px,-240px,0)}
+
+    }footer.wrap{max-width:1200px;margin:24px auto 60px;padding:0 16px}
+
+    .foot-notes{list-style:disc;color:var(--muted);font-size:12px;display:flex;flex-direction:column;gap:6px;padding-left:18px}
+
+    @media (max-width:900px){
+      .site-header{padding:26px 16px 22px}
+      .site-header__inner{grid-template-columns:1fr auto;grid-template-rows:auto auto;gap:20px}
+      #siteLogo{grid-column:1 / 2}
+      .site-header__meta{grid-column:1 / -1}
+      .site-header__stats{grid-column:2 / 3;justify-self:end;margin-top:12px}
+      .filters-main{flex-direction:column;align-items:stretch}
+      .filters-wrap{padding:12px}
+      .filters-advanced{padding:10px}
+    }
+    @media (max-width:600px){
+      .site-header{padding:22px 14px 18px}
+      .site-header__inner{grid-template-columns:1fr;grid-template-rows:auto auto auto;align-items:flex-start;gap:18px}
+      #siteLogo{grid-column:1 / -1}
+      .site-header__logo{height:72px}
+      .site-title{font-size:0}
+      .site-tagline{font-size:15px;line-height:1.4}
+      .site-header__stats{font-size:12px;grid-column:1 / -1;justify-self:start;align-self:start;margin-top:10px}
+      .filters{position:relative;top:auto}
+      .filters-wrap{padding:10px 12px}
+      .toggle-advanced{width:100%;text-align:center}
+      .filters-main{gap:8px}
+      .watchlist-button{width:100%;justify-content:center}
+      .watchlist-actions{flex-direction:column;align-items:stretch}
+      .watchlist-actions button{width:100%}
+      .watchlist-panel{margin:12px;padding:14px}
+      .watchlist-item{flex-direction:column;align-items:flex-start}
+      .watchlist-remove{align-self:flex-end}
+    }
+</style>
+
+</head>
+
+<body>
+
+<header class="site-header">
+
+  <div class="site-header__inner">
+
+    <img src="assets/plex-katalog-logo.png" alt="Plex-Katalog" class="site-header__logo" id="siteLogo">
+
+    <div class="site-header__meta">
+
+      <h1 class="site-title">Plex-Katalog</h1>
+
+      <p class="site-tagline" id="heroSubtitle">Offline stoebern &amp; Wunschlisten teilen</p>
+
+    </div>
+
+    <div class="site-header__stats" id="heroStats">-- Filme | -- Serien</div>
+
+  </div>
+
+  <div class="grain" aria-hidden="true"></div>
+
+</header>
+
+<div id="scrollProgress" style="position:sticky;top:0;z-index:6;height:3px;background:linear-gradient(90deg,var(--accent),#f9b233);width:0%;box-shadow:0 1px 0 rgba(0,0,0,.25)"></div>
+
+  <section class="filters" id="filterBar">
+
+  <div class="wrap filters-wrap">
+
+    <div class="filters-main">
+
+      <div class="library-switch" id="librarySwitch" role="group" aria-label="Bibliotheken"></div>
+
+      <div class="field search">
+
+        <span class="icon" aria-hidden="true">S</span>
+
+        <input id="q" type="search" placeholder="Suche Titel, Darsteller, Studio..." autocomplete="off" />
+
+      </div>
+
+      <div class="field sort">
+
+        <span class="icon" aria-hidden="true">O</span>
+
+        <select id="sort">
+
+          <option value="title-asc">Titel (A-Z)</option>
+
+          <option value="title-desc">Titel (Z-A)</option>
+
+          <option value="year-desc">Jahr (neueste)</option>
+
+          <option value="year-asc">Jahr (aelteste)</option>
+
+          <option value="rating-desc">Bewertung (hoch)</option>
+
+          <option value="rating-asc">Bewertung (niedrig)</option>
+
+          <option value="added-desc">Zuletzt hinzugefuegt</option>
+
+          <option value="added-asc">Zuerst hinzugefuegt</option>
+
+        </select>
+
+      </div>
+
+      <button id="watchlistToggle" type="button" class="watchlist-button" aria-expanded="false">Merkliste <span class="count" id="watchlistCount">0</span></button>
+
+      <button id="toggleAdvanced" class="toggle-advanced" aria-expanded="false">Erweiterte Filter anzeigen</button>
+
+    </div>
+
+    <div class="filters-advanced" id="advancedFilters" hidden>
+
+      <div class="advanced-row">
+
+        <div class="field chips">
+
+          <span class="icon" aria-hidden="true">G</span>
+
+          <div id="genreFilters" class="chip-group" data-empty="Alle Genres" data-state="empty"></div>
+
+        </div>
+
+        <div class="field collections">
+
+          <span class="icon" aria-hidden="true">C</span>
+
+          <select id="collectionFilter"><option value="">Alle Collections</option></select>
+
+        </div>
+
+        <div class="field year">
+
+          <span class="icon" aria-hidden="true">Y</span>
+
+          <select id="yearFrom"><option value="">Ab Jahr</option></select>
+
+          <select id="yearTo"><option value="">Bis Jahr</option></select>
+
+        </div>
+
+        <div class="field toggles">
+
+          <label class="toggle-chip"><input id="onlyNew" type="checkbox" /> Neu (<=30 Tage)</label>
+
+          <label class="toggle-chip"><input id="groupCollections" type="checkbox" /> Sammlungen b&uuml;ndeln</label>
+
+          <label class="toggle-chip"><input id="useTmdb" type="checkbox" /> TMDB-Bilder nutzen</label>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
+
+<section class="watchlist-panel" id="watchlistPanel" hidden>
+
+  <div class="watchlist-header">
+
+    <h2 class="watchlist-title">Merkliste</h2>
+
+    <div class="watchlist-actions">
+
+      <button type="button" class="primary" id="exportWatchlist">Merkliste exportieren</button>
+
+      <button type="button" id="clearWatchlist">Merkliste leeren</button>
+
+      <button type="button" id="closeWatchlist">Schliessen</button>
+
+    </div>
+
+  </div>
+
+  <p class="watchlist-empty" id="watchlistEmpty" hidden>Keine Eintraege gemerkt.</p>
+
+  <ul class="watchlist-items" id="watchlistItems"></ul>
+
+</section>
+
+<main>
+
+  <div id="grid" class="grid"></div>
+
+  <div id="empty" class="empty" hidden>Kein Treffer. Filter lockern?</div>
+
+</main>
+
+<footer class="wrap">
+
+  <ul class="foot-notes">
+
+    <li>Offline: Filme/movies.js liefert alle Titel ohne Webserver.</li>
+
+    <li>Serien: Serien/series.js vorbereiten und oben ueber den Schalter aktivieren.</li>
+
+    <li>Filtern: Genres lassen sich kombinieren; URL enthaelt Suche, Jahre und Sortierung.</li>
+
+    <li>TMDB: Trage deinen v4 Bearer Token in der Konfiguration ein.</li>
+
+  </ul>
+
+</footer>
+
+<script>
+
+const CONFIG = {
+
+  libraries: {
+
+    movies: {
+
+      label: 'Filme',
+
+      countLabel: 'Filme',
+
+      scriptUrl: 'Filme/movies.js',
+
+      jsonUrl: 'Filme/movies.json',
+
+      thumbBase: 'Filme/',
+
+      exportKey: 'movies',
+
+      globalVar: '__PLEX_MOVIES__',
+
+      scriptId: 'movies-json',
+
+      tmdbType: 'movie',
+
+    },
+
+    shows: {
+
+      label: 'Serien',
+
+      countLabel: 'Serien',
+
+      scriptUrl: 'Serien/series.js',
+
+      jsonUrl: 'Serien/series.json',
+
+      thumbBase: 'Serien/',
+
+      exportKey: 'shows',
+
+      globalVar: '__PLEX_SHOWS__',
+
+      scriptId: 'series-json',
+
+      tmdbType: 'tv',
+
+    },
+
+  },
+
+  defaultLibrary: 'movies',
+
+  tmdbAccessToken: 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmMDYyNDQ1NTVkZjdhMjAxNDRhNjhkODg0ZDI1ZTQyYiIsIm5iZiI6MTcxODEyNzIwOC44ODIsInN1YiI6IjY2Njg4YTY4NzRhODY3NTllNGVhMDFiOSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.sPzDNfMPuZLWtGZNrNFzx3oi27qld913usjolFP3Cl4',
+
+  tmdbApiKey: '',
+
+  tmdbLang: 'de-DE',
+
+  newDays: 30,
+
+  imageWidths: { poster: 'w342', backdrop: 'w780' },
+
+};
+
+
+
+const state = {
+
+  items: [],
+
+  filtered: [],
+
+  genres: [],
+
+  years: [],
+
+  collections: [],
+
+  selectedCollection: '',
+
+  groupCollections: false,
+
+  collectionIndex: new Map(),
+
+  ready: false,
+
+  library: CONFIG.defaultLibrary,
+
+  libraryBase: '',
+
+  libraryType: 'movie',
+
+  selectedGenres: new Set(),
+
+  watchlist: new Map(),
+
+  advancedExpanded: false,
+
+  advancedManual: false,
+
+};
+
+
+
+let suppressSync = false;
+
+const loadedScripts = new Set();
+
+const libraryTotals = {};
+
+Object.keys(CONFIG.libraries).forEach(key=>{ libraryTotals[key] = null; });
+
+const heroElements = {
+
+  subtitle: document.getElementById('heroSubtitle'),
+
+  stats: document.getElementById('heroStats')
+
+};
+
+const TAGLINES = [
+
+  "Offline stoebern & Wunschlisten teilen",
+
+  "Nils Bibliothek, huebsch sortiert",
+
+  "Filter. Finden. Freuen.",
+
+  "Filme & Serien - stressfrei sichtbar",
+
+  "Schneller als jeder SMB-Share",
+
+  "Merkliste zuerst, Streit spaeter"
+
+];
+
+let taglineIdx = 0;
+
+function rotateTagline(){
+
+  const el = heroElements.subtitle;
+
+  if(!el || el.dataset.taglinePaused === '1') return;
+
+  el.classList.add('is-fading');
+
+  setTimeout(()=>{
+
+    if(!heroElements.subtitle || heroElements.subtitle.dataset.taglinePaused === '1'){
+
+      el.classList.remove('is-fading');
+
+      return;
+
+    }
+
+    taglineIdx = (taglineIdx + 1) % TAGLINES.length;
+
+    el.textContent = TAGLINES[taglineIdx];
+
+    el.classList.remove('is-fading');
+
+  }, 280);
+
+}
+
+
+
+if(heroElements.subtitle){
+
+  heroElements.subtitle.textContent = TAGLINES[taglineIdx];
+
+  heroElements.subtitle.dataset.taglinePaused = '0';
+
+  if(!window.__taglineTicker){
+
+    window.__taglineTicker = setInterval(rotateTagline, 6000);
+
+    setTimeout(rotateTagline, 3000);
+
+  }
+
+}
+
+
+
+const siteLogo = document.getElementById('siteLogo');
+
+if(siteLogo){
+
+  siteLogo.addEventListener('error', ()=>{
+
+    siteLogo.classList.add('logo-missing');
+
+    const titleEl = document.querySelector('.site-header__meta h1');
+
+    if(titleEl) titleEl.classList.remove('sr-only');
+
+  });
+
+}
+
+
+
+(function setHeaderThemeByTime(){
+
+  const h = new Date().getHours();
+
+  const root = document.documentElement;
+
+  if(h >= 6 && h < 11){
+
+    root.style.setProperty('--hdr-a','rgba(255,214,106,0.38)');
+
+    root.style.setProperty('--hdr-b','rgba(106,166,255,0.35)');
+
+  }else if(h >= 11 && h < 18){
+
+    root.style.setProperty('--hdr-a','rgba(106,166,255,0.38)');
+
+    root.style.setProperty('--hdr-b','rgba(92,236,210,0.32)');
+
+  }else{
+
+    root.style.setProperty('--hdr-a','rgba(196,106,255,0.32)');
+
+    root.style.setProperty('--hdr-b','rgba(255,106,178,0.28)');
+
+  }
+
+})();
+
+
+
+const scrollProgress = document.getElementById('scrollProgress');
+
+if(scrollProgress){
+
+  const updateScrollProgress = ()=>{
+
+    const doc = document.documentElement;
+
+    const max = doc.scrollHeight - doc.clientHeight;
+
+    const pct = max > 0 ? (doc.scrollTop / max) * 100 : 0;
+
+    scrollProgress.style.width = pct + '%';
+
+  };
+
+  addEventListener('scroll', updateScrollProgress, { passive:true });
+
+  updateScrollProgress();
+
+}
+
+const WATCHLIST_STORAGE_KEY = 'plexWatchlist';
+
+const WATCHLIST_EXPORTED_KEY = 'plexWatchlistExported';
+
+let watchlistDirty = false;
+
+let watchlistExported = false;
+
+let sessionStore = null;
+
+
+
+const $ = (q, el=document) => el.querySelector(q);
+
+const $$ = (q, el=document) => Array.from(el.querySelectorAll(q));
+
+const day = 24*60*60*1000;
+
+const dedup = arr => Array.from(new Set(arr));
+
+function debounce(fn, ms = 120){
+
+  let t;
+
+  return function(...args){
+
+    clearTimeout(t);
+
+    t = setTimeout(function(){ fn(...args); }, ms);
+
+  };
+
+}
+
+
+
+function parseGuids(item){
+
+  const ids = { imdb:null, tmdb:null, tvdb:null };
+
+  (item.guids||[]).forEach(g=>{
+
+    const id = g && g.id || '';
+
+    if(id.startsWith('imdb://')) ids.imdb = id.replace('imdb://','');
+
+    if(id.startsWith('tmdb://')) ids.tmdb = id.replace('tmdb://','');
+
+    if(id.startsWith('tvdb://')) ids.tvdb = id.replace('tvdb://','');
+
+  });
+
+  return ids;
+
+}
+
+
+
+function humanYear(item){
+
+  if(item.year) return item.year;
+
+  if(item.originallyAvailableAt) return String(item.originallyAvailableAt).slice(0,4);
+
+  return '';
+
+}
+
+
+
+function loadTmdbCache(){
+
+  try{
+
+    return new Map(JSON.parse(localStorage.getItem('tmdbCache')||'[]'));
+
+  }catch{ return new Map(); }
+
+}
+
+const tmdbCache = loadTmdbCache();
+
+const persistTmdbCache = ()=>localStorage.setItem('tmdbCache', JSON.stringify(Array.from(tmdbCache.entries())));
+
+
+
+function formatRating(val){
+
+  if(val === undefined || val === null || val === '') return '';
+
+  const num = Number(val);
+
+  if(Number.isFinite(num)){
+
+    const fixed = num.toFixed(1);
+
+    return fixed.endsWith('.0') ? fixed.slice(0,-2) : fixed;
+
+  }
+
+  return String(val).trim();
+
+}
+
+
+
+function slugify(text){
+
+  return String(text||'')
+
+    .normalize('NFD')
+
+    .replace(/[\u0300-\u036f]/g,'')
+
+    .toLowerCase()
+
+    .replace(/[^a-z0-9]+/g,'-')
+
+    .replace(/^-+|-+$/g,'')
+
+    || 'collection';
+
+}
+
+
+
+function itemIdentity(item){
+
+  if(!item) return '';
+
+  if(item.ratingKey != null) return `rating:${item.ratingKey}`;
+
+  if(item.guid) return `guid:${item.guid}`;
+
+  return `title:${(item.title||item.originalTitle||'').toLowerCase()}|${humanYear(item)||''}`;
+
+}
+
+
+
+function collectionTags(item){
+
+  return ((item && item.collections) || [])
+
+    .map(entry=>{
+
+      if(!entry) return '';
+
+      return entry.tag || entry.title || entry.name || '';
+
+    })
+
+    .filter(Boolean);
+
+}
+
+
+
+function collectionWatchlistKey(name){
+
+  return `collection:${state.library}:${slugify(name)}`;
+
+}
+
+
+
+function buildCollectionIndex(items){
+
+  const map = new Map();
+
+  (items||[]).forEach(item=>{
+
+    collectionTags(item).forEach(name=>{
+
+      if(!map.has(name)) map.set(name, []);
+
+      map.get(name).push(item);
+
+    });
+
+  });
+
+  map.forEach(list=>{
+
+    list.sort((a,b)=>{
+
+      const ay = Number(humanYear(a)) || 0;
+
+      const by = Number(humanYear(b)) || 0;
+
+      if(ay !== by) return ay - by;
+
+      return (a.title||'').localeCompare(b.title||'', 'de');
+
+    });
+
+  });
+
+  return map;
+
+}
+
+
+
+function isNew(item){
+
+  if(!item.addedAt) return false;
+
+  const added = new Date(item.addedAt).getTime();
+
+  if(!Number.isFinite(added)) return false;
+
+  return Date.now() - added <= CONFIG.newDays * day;
+
+}
+
+function matches(item){
+
+  const query = $('#q').value.trim().toLowerCase();
+
+  const onlyNew = $('#onlyNew').checked;
+
+  const yearFrom = Number($('#yearFrom').value) || null;
+
+  const yearTo = Number($('#yearTo').value) || null;
+
+  const genresActive = state.selectedGenres;
+
+  const selectedCollection = state.selectedCollection;
+
+  const itemCollections = collectionTags(item);
+
+
+
+  if(query){
+
+    const haystack = [
+
+      item.title,
+
+      item.originalTitle,
+
+      item.summary,
+
+      item.studio,
+
+      (item.genres||[]).map(g=>g && g.tag).join(' '),
+
+      (item.roles||[]).map(r=>r && (r.tag||r.role)).join(' '),
+
+      itemCollections.join(' '),
+
+    ].filter(Boolean).join(' ').toLowerCase();
+
+    if(!haystack.includes(query)) return false;
+
+  }
+
+
+
+  if(onlyNew && !isNew(item)) return false;
+
+
+
+  const year = Number(humanYear(item)) || null;
+
+  if(yearFrom && (!year || year < yearFrom)) return false;
+
+  if(yearTo && (!year || year > yearTo)) return false;
+
+
+
+  if(genresActive.size){
+
+    const itemGenres = new Set((item.genres||[]).map(g=>g && g.tag));
+
+    for(const g of genresActive){
+
+      if(!itemGenres.has(g)) return false;
+
+    }
+
+  }
+
+
+
+  if(selectedCollection){
+
+    if(!itemCollections.includes(selectedCollection)) return false;
+
+  }
+
+
+
+  return true;
+
+}
+
+
+
+function applySort(list){
+
+  const mode = $('#sort').value;
+
+  const value = (item) => ({
+
+    title: (item.title || '').toLowerCase(),
+
+    year: Number(humanYear(item)) || 0,
+
+    rating: item.rating ?? item.audienceRating ?? 0,
+
+    added: item.addedAt ? new Date(item.addedAt).getTime() : 0,
+
+  });
+
+  list.sort((a,b)=>{
+
+    const av = value(a);
+
+    const bv = value(b);
+
+    switch(mode){
+
+      case 'title-asc': return av.title.localeCompare(bv.title,'de');
+
+      case 'title-desc': return bv.title.localeCompare(av.title,'de');
+
+      case 'year-desc': return bv.year - av.year;
+
+      case 'year-asc': return av.year - bv.year;
+
+      case 'rating-desc': return (bv.rating||0) - (av.rating||0);
+
+      case 'rating-asc': return (av.rating||0) - (bv.rating||0);
+
+      case 'added-desc': return (bv.added||0) - (av.added||0);
+
+      case 'added-asc': return (av.added||0) - (bv.added||0);
+
+      default: return av.title.localeCompare(bv.title,'de');
+
+    }
+
+  });
+
+}
+
+
+
+function countTo(el, target, prev=0, dur=600){
+
+  if(!el) return;
+
+  if(!Number.isFinite(target)){
+
+    el.textContent = target;
+
+    el.dataset.value = String(target);
+
+    return;
+
+  }
+
+  const startValue = Number(el.dataset.value) || prev;
+
+  const start = performance.now();
+
+  function tick(t){
+
+    const k = Math.min(1, (t - start)/dur);
+
+    const eased = 1 - Math.pow(1 - k, 3);
+
+    const val = Math.round(startValue + (target - startValue) * eased);
+
+    el.textContent = val.toLocaleString('de-DE');
+
+    if(k < 1){
+
+      requestAnimationFrame(tick);
+
+    }else{
+
+      el.textContent = target.toLocaleString('de-DE');
+
+      el.dataset.value = String(target);
+
+    }
+
+  }
+
+  requestAnimationFrame(tick);
+
+}
+
+
+
+function updateHeroStatsDisplay(){
+
+  const el = heroElements.stats;
+
+  if(!el) return;
+
+  const numbers = Array.from(el.textContent.match(/(\d+)/g) || []);
+
+  const oldMovies = Number(numbers[0]) || 0;
+
+  const oldShows = Number(numbers[1]) || 0;
+
+  const movies = libraryTotals.movies ?? '--';
+
+  const shows = libraryTotals.shows ?? '--';
+
+  if(Number.isFinite(movies) && Number.isFinite(shows)){
+
+    el.innerHTML = `<span id="statMovies">${oldMovies}</span> Filme | <span id="statShows">${oldShows}</span> Serien`;
+
+    countTo(document.getElementById('statMovies'), movies, oldMovies);
+
+    countTo(document.getElementById('statShows'), shows, oldShows);
+
+  }else{
+
+    el.textContent = `${movies} Filme | ${shows} Serien`;
+
+  }
+
+
+
+}
+
+
+
+function libraryDefinition(key = state.library){
+
+  return CONFIG.libraries[key] || null;
+
+}
+
+
+
+function localThumbUrl(item){
+
+  if(!item.thumbFile) return '';
+
+  const base = state.libraryBase ? state.libraryBase.replace(/\/?$/, '/') : '';
+
+  return `${base}${item.thumbFile}`;
+
+}
+
+
+
+function normalizeItems(raw){
+
+  if(Array.isArray(raw)) return raw;
+
+  if(raw && Array.isArray(raw.Metadata)) return raw.Metadata;
+
+  if(raw && Array.isArray(raw.items)) return raw.items;
+
+  return [];
+
+}
+
+async function loadLibraryPayload(def, key){
+
+  const globalBag = window.__PLEX_EXPORTER__ || {};
+
+  if(def.exportKey && Array.isArray(globalBag[def.exportKey])){
+
+    return globalBag[def.exportKey];
+
+  }
+
+  if(def.globalVar && Array.isArray(window[def.globalVar])){
+
+    return window[def.globalVar];
+
+  }
+
+  const embedded = document.getElementById(def.scriptId || `${key}-json`);
+
+  if(embedded){
+
+    try{ return JSON.parse(embedded.textContent); }
+
+    catch(err){ console.warn('Embedded JSON parse failed', err); }
+
+  }
+
+  if(!loadedScripts.has(def.scriptUrl)){
+
+    await new Promise((resolve, reject)=>{
+
+      const script = document.createElement('script');
+
+      script.src = def.scriptUrl;
+
+      script.async = true;
+
+      script.onload = ()=>{ loadedScripts.add(def.scriptUrl); resolve(); };
+
+      script.onerror = reject;
+
+      document.head.appendChild(script);
+
+    });
+
+    if(def.exportKey && Array.isArray((window.__PLEX_EXPORTER__||{})[def.exportKey])){
+
+      return window.__PLEX_EXPORTER__[def.exportKey];
+
+    }
+
+    if(def.globalVar && Array.isArray(window[def.globalVar])){
+
+      return window[def.globalVar];
+
+    }
+
+  }
+
+  try{
+
+    const res = await fetch(def.jsonUrl, { cache: 'no-store' });
+
+    if(res.ok){
+
+      const json = await res.json();
+
+      return json;
+
+    }
+
+  }catch(err){
+
+    console.warn('Fetch fallback failed', err);
+
+  }
+
+  return [];
+
+}
+
+
+
+function collectFacets(){
+
+  const allGenres = [];
+
+  const allYears = [];
+
+  state.items.forEach(item=>{
+
+    (item.genres||[]).forEach(g=>{ if(g && g.tag) allGenres.push(g.tag); });
+
+    const yr = humanYear(item);
+
+    if(yr) allYears.push(String(yr));
+
+  });
+
+  state.collectionIndex = buildCollectionIndex(state.items);
+
+  state.genres = dedup(allGenres).sort((a,b)=>a.localeCompare(b,'de'));
+
+  state.years = dedup(allYears).sort((a,b)=>Number(b)-Number(a));
+
+  state.collections = Array.from(state.collectionIndex.keys()).sort((a,b)=>a.localeCompare(b,'de'));
+
+  const available = new Set(state.genres);
+
+  state.selectedGenres = new Set(Array.from(state.selectedGenres).filter(g=>available.has(g)));
+
+  if(!state.collections.includes(state.selectedCollection)){
+
+    state.selectedCollection = '';
+
+  }
+
+  if(state.collections.length === 0){
+
+    state.groupCollections = false;
+
+  }
+
+}
+
+
+
+function fillFilters(){
+
+  const genreHolder = $('#genreFilters');
+
+  if(genreHolder){
+
+    genreHolder.innerHTML = '';
+
+    if(!state.genres.length){
+
+      genreHolder.dataset.state = 'empty';
+
+    }else{
+
+      genreHolder.dataset.state = '';
+
+    }
+
+    state.genres.forEach(name=>{
+
+      const btn = document.createElement('button');
+
+      btn.type = 'button';
+
+      btn.className = 'chip-filter';
+
+      btn.textContent = name;
+
+      btn.setAttribute('aria-pressed', state.selectedGenres.has(name) ? 'true' : 'false');
+
+      if(state.selectedGenres.has(name)) btn.classList.add('selected');
+
+      btn.addEventListener('click', ()=>{
+
+        if(state.selectedGenres.has(name)){
+
+          state.selectedGenres.delete(name);
+
+        }else{
+
+          state.selectedGenres.add(name);
+
+        }
+
+        update();
+
+      });
+
+      genreHolder.appendChild(btn);
+
+    });
+
+  }
+
+
+
+  const collectionSelect = $('#collectionFilter');
+
+  if(collectionSelect){
+
+    const prev = collectionSelect.value;
+
+    collectionSelect.innerHTML = '<option value="">Alle Collections</option>';
+
+    state.collections.forEach(name=>{
+
+      const opt = document.createElement('option');
+
+      opt.value = name;
+
+      opt.textContent = name;
+
+      collectionSelect.appendChild(opt);
+
+    });
+
+    if(state.selectedCollection && state.collections.includes(state.selectedCollection)){
+
+      collectionSelect.value = state.selectedCollection;
+
+    }else if(prev && state.collections.includes(prev)){
+
+      collectionSelect.value = prev;
+
+      state.selectedCollection = prev;
+
+    }else{
+
+      collectionSelect.value = '';
+
+      state.selectedCollection = '';
+
+    }
+
+    const disabled = state.collections.length === 0;
+
+    collectionSelect.disabled = disabled;
+
+    const collectionsField = collectionSelect.closest('.field');
+
+    if(collectionsField){
+
+      collectionsField.classList.toggle('is-disabled', disabled);
+
+    }
+
+  }
+
+  const groupToggle = $('#groupCollections');
+
+  if(groupToggle){
+
+    const disableToggle = state.collections.length === 0 || Boolean(state.selectedCollection);
+
+    groupToggle.disabled = disableToggle;
+
+    if(disableToggle){
+
+      state.groupCollections = false;
+
+    }
+
+    groupToggle.checked = Boolean(state.groupCollections);
+
+    const label = groupToggle.closest('label');
+
+    if(label){
+
+      label.classList.toggle('is-disabled', disableToggle);
+
+    }
+
+  }
+
+  const yearFromSel = $('#yearFrom');
+
+  const yearToSel = $('#yearTo');
+
+  const prevFrom = yearFromSel ? yearFromSel.value : '';
+
+  const prevTo = yearToSel ? yearToSel.value : '';
+
+  if(yearFromSel){
+
+    yearFromSel.innerHTML = '<option value="">Ab Jahr</option>';
+
+    state.years.forEach(val=>{
+
+      const opt = document.createElement('option');
+
+      opt.value = val;
+
+      opt.textContent = val;
+
+      yearFromSel.appendChild(opt);
+
+    });
+
+    yearFromSel.value = prevFrom;
+
+  }
+
+  if(yearToSel){
+
+    yearToSel.innerHTML = '<option value="">Bis Jahr</option>';
+
+    state.years.forEach(val=>{
+
+      const opt = document.createElement('option');
+
+      opt.value = val;
+
+      opt.textContent = val;
+
+      yearToSel.appendChild(opt);
+
+    });
+
+    yearToSel.value = prevTo;
+
+  }
+
+}
+
+function watchlistKey(item){
+
+  if(!item) return '';
+
+  if(item.isCollectionGroup || item.type === 'collection'){
+
+    const name = item.collectionName || item.title || 'Collection';
+
+    return collectionWatchlistKey(name);
+
+  }
+
+  if(item.ratingKey != null) return String(item.ratingKey);
+
+  const base = [item.title||'', humanYear(item)||'', state.library].join('-');
+
+  return base.trim().toLowerCase().replace(/\s+/g,'-');
+
+}
+
+
+
+function watchlistEntryFor(item){
+
+  if(item && (item.isCollectionGroup || item.type === 'collection')){
+
+    const members = (item.items||[]).map(child=>({
+
+      key: watchlistKey(child),
+
+      ratingKey: child.ratingKey ?? null,
+
+      title: child.title || child.originalTitle || '-',
+
+      year: humanYear(child) || '',
+
+      duration: child.durationHuman || '',
+
+    }));
+
+    return {
+
+      key: watchlistKey(item),
+
+      ratingKey: null,
+
+      title: item.title || item.collectionName || '-',
+
+      originalTitle: '',
+
+      year: humanYear(item) || '',
+
+      library: state.library,
+
+      libraryLabel: (CONFIG.libraries[state.library] && CONFIG.libraries[state.library].label) || state.library,
+
+      type: 'collection',
+
+      duration: '',
+
+      genres: Array.isArray(item.genres) ? item.genres.slice(0,4) : [],
+
+      studio: '',
+
+      addedAt: item.addedAt || null,
+
+      collectionName: item.collectionName || item.title || '',
+
+      collectionItems: members,
+
+      collectionSize: item.itemCount || members.length,
+
+    };
+
+  }
+
+  return {
+
+    key: watchlistKey(item),
+
+    ratingKey: item.ratingKey ?? null,
+
+    title: item.title || item.originalTitle || '-',
+
+    originalTitle: item.originalTitle && item.originalTitle !== item.title ? item.originalTitle : '',
+
+    year: humanYear(item) || '',
+
+    library: state.library,
+
+    libraryLabel: (CONFIG.libraries[state.library] && CONFIG.libraries[state.library].label) || state.library,
+
+    type: item.type || state.libraryType,
+
+    duration: item.durationHuman || '',
+
+    genres: (item.genres||[]).map(g=>g && g.tag).filter(Boolean).slice(0,3),
+
+    studio: item.studio || '',
+
+    addedAt: item.addedAt || null,
+
+  };
+
+}
+
+
+
+function applyWatchlistState(key, card, button){
+
+  const active = key && state.watchlist.has(key);
+
+  const isCollection = Boolean((card && card.dataset.collectionGroup === '1') || (button && button.dataset.collection === '1'));
+
+  if(card) card.classList.toggle('in-watchlist', Boolean(active));
+
+  if(button){
+
+    button.classList.toggle('active', Boolean(active));
+
+    button.setAttribute('aria-pressed', active ? 'true' : 'false');
+
+    const activeLabel = isCollection ? 'Sammlung gemerkt' : 'Gemerkt';
+
+    const inactiveLabel = isCollection ? 'Sammlung merken' : 'Merken';
+
+    button.textContent = active ? activeLabel : inactiveLabel;
+
+    button.title = active ? (isCollection ? 'Sammlung von der Merkliste entfernen' : 'Aus Merkliste entfernen') : (isCollection ? 'Komplette Sammlung zur Merkliste hinzufuegen' : 'Zur Merkliste hinzufuegen');
+
+  }
+
+}
+
+
+
+function refreshWatchlistIndicators(){
+
+  $$('#grid .card').forEach(card=>{
+
+    const key = card.dataset.watchlistKey;
+
+    const btn = card.querySelector('.watchlist-toggle');
+
+    applyWatchlistState(key, card, btn);
+
+  });
+
+}
+
+
+
+function renderWatchlistItems(){
+
+  const list = $('#watchlistItems');
+
+  const empty = $('#watchlistEmpty');
+
+  if(!list || !empty) return;
+
+  list.innerHTML = '';
+
+  if(state.watchlist.size === 0){
+
+    empty.hidden = false;
+
+    return;
+
+  }
+
+  empty.hidden = true;
+
+  state.watchlist.forEach(entry=>{
+
+    const li = document.createElement('li');
+
+    li.className = 'watchlist-item';
+
+    li.dataset.key = entry.key;
+
+
+
+    const info = document.createElement('div');
+
+    info.className = 'watchlist-item-info';
+
+    const title = document.createElement('div');
+
+    title.className = 'watchlist-item-title';
+
+    const isCollection = entry.type === 'collection' && Array.isArray(entry.collectionItems);
+
+    const displayTitle = entry.year && !isCollection ? `${entry.title} (${entry.year})` : (entry.title || entry.collectionName || '-');
+
+    title.textContent = displayTitle;
+
+    if(isCollection){
+
+      const badge = document.createElement('span');
+
+      badge.className = 'badge';
+
+      badge.textContent = 'Sammlung';
+
+      title.appendChild(badge);
+
+      if(entry.collectionSize){
+
+        const countBadge = document.createElement('span');
+
+        countBadge.className = 'badge';
+
+        countBadge.textContent = `${entry.collectionSize} ${entry.collectionSize === 1 ? 'Film' : 'Filme'}`;
+
+        title.appendChild(countBadge);
+
+      }
+
+    }
+
+    info.appendChild(title);
+
+
+
+    if(entry.originalTitle && !isCollection){
+
+      const original = document.createElement('div');
+
+      original.className = 'watchlist-item-meta';
+
+      original.textContent = `Original: ${entry.originalTitle}`;
+
+      info.appendChild(original);
+
+    }
+
+
+
+    const metaParts = [];
+
+    if(entry.libraryLabel) metaParts.push(entry.libraryLabel);
+
+    if(isCollection){
+
+      metaParts.push('Sammlung');
+
+    }else if(entry.type && entry.type !== entry.libraryLabel){
+
+      metaParts.push(entry.type);
+
+    }
+
+    if(!isCollection && entry.genres && entry.genres.length) metaParts.push(entry.genres.join(', '));
+
+    if(!isCollection && entry.duration) metaParts.push(entry.duration);
+
+    if(!isCollection && entry.studio) metaParts.push(entry.studio);
+
+    if(metaParts.length){
+
+      const meta = document.createElement('div');
+
+      meta.className = 'watchlist-item-meta';
+
+      meta.textContent = metaParts.join(' | ');
+
+      info.appendChild(meta);
+
+    }
+
+
+
+    if(isCollection && entry.collectionItems && entry.collectionItems.length){
+
+      const itemsWrap = document.createElement('div');
+
+      itemsWrap.className = 'watchlist-collection-items';
+
+      entry.collectionItems.slice(0,5).forEach(child=>{
+
+        const row = document.createElement('div');
+
+        row.className = 'watchlist-collection-item';
+
+        row.textContent = child.year ? `${child.title} (${child.year})` : child.title;
+
+        itemsWrap.appendChild(row);
+
+      });
+
+      if(entry.collectionItems.length > 5){
+
+        const more = document.createElement('div');
+
+        more.className = 'watchlist-collection-more';
+
+        more.textContent = `+${entry.collectionItems.length - 5} weitere`;
+
+        itemsWrap.appendChild(more);
+
+      }
+
+      info.appendChild(itemsWrap);
+
+    }
+
+
+
+    const removeBtn = document.createElement('button');
+
+    removeBtn.type = 'button';
+
+    removeBtn.className = 'watchlist-remove';
+
+    removeBtn.textContent = 'Entfernen';
+
+    removeBtn.addEventListener('click', ()=>removeWatchlistEntry(entry.key));
+
+
+
+    li.appendChild(info);
+
+    li.appendChild(removeBtn);
+
+    list.appendChild(li);
+
+  });
+
+}
+
+
+
+function updateWatchlistUI(){
+
+  const count = state.watchlist.size;
+
+  const countLabel = $('#watchlistCount');
+
+  const toggleBtn = $('#watchlistToggle');
+
+  if(countLabel) countLabel.textContent = count;
+
+  if(toggleBtn){
+
+    toggleBtn.classList.toggle('has-items', count > 0);
+
+    const panel = $('#watchlistPanel');
+
+    const expanded = panel ? !panel.hidden : false;
+
+    toggleBtn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+
+  }
+
+  renderWatchlistItems();
+
+  refreshWatchlistIndicators();
+
+}
+
+
+
+function persistWatchlist(){
+
+  if(!sessionStore) return;
+
+  try{
+
+    const payload = JSON.stringify(Array.from(state.watchlist.values()));
+
+    sessionStore.setItem(WATCHLIST_STORAGE_KEY, payload);
+
+    sessionStore.setItem(WATCHLIST_EXPORTED_KEY, watchlistExported && !watchlistDirty ? '1' : '0');
+
+  }catch(err){
+
+    console.warn('Watchlist persist failed', err);
+
+  }
+
+}
+
+function setWatchlistPanelVisible(show){
+
+  const panel = $('#watchlistPanel');
+
+  const toggleBtn = $('#watchlistToggle');
+
+  if(panel) panel.hidden = !show;
+
+  if(toggleBtn){
+
+    toggleBtn.classList.toggle('active', Boolean(show));
+
+    toggleBtn.setAttribute('aria-expanded', show ? 'true' : 'false');
+
+  }
+
+  if(show) updateWatchlistUI();
+
+}
+
+
+
+function toggleCollectionWatchlist(group){
+
+  const key = watchlistKey(group);
+
+  if(!key) return;
+
+  if(state.watchlist.has(key)){
+
+    state.watchlist.delete(key);
+
+    if(state.watchlist.size === 0){
+
+      watchlistDirty = false;
+
+      watchlistExported = false;
+
+    }else{
+
+      watchlistDirty = true;
+
+      watchlistExported = false;
+
+    }
+
+  }else{
+
+    state.watchlist.set(key, watchlistEntryFor(group));
+
+    watchlistDirty = true;
+
+    watchlistExported = false;
+
+  }
+
+  persistWatchlist();
+
+  updateWatchlistUI();
+
+}
+
+
+
+function toggleWatchlist(item){
+
+  if(item && (item.isCollectionGroup || item.type === 'collection')){
+
+    toggleCollectionWatchlist(item);
+
+    return;
+
+  }
+
+  const key = watchlistKey(item);
+
+  if(!key) return;
+
+  if(state.watchlist.has(key)){
+
+    state.watchlist.delete(key);
+
+    if(state.watchlist.size === 0){
+
+      watchlistDirty = false;
+
+      watchlistExported = false;
+
+    }else{
+
+      watchlistDirty = true;
+
+      watchlistExported = false;
+
+    }
+
+  }else{
+
+    state.watchlist.set(key, watchlistEntryFor(item));
+
+    watchlistDirty = true;
+
+    watchlistExported = false;
+
+  }
+
+  persistWatchlist();
+
+  updateWatchlistUI();
+
+}
+
+
+
+function removeWatchlistEntry(key){
+
+  if(!key || !state.watchlist.has(key)) return;
+
+  state.watchlist.delete(key);
+
+  if(state.watchlist.size === 0){
+
+    watchlistDirty = false;
+
+    watchlistExported = false;
+
+  }else{
+
+    watchlistDirty = true;
+
+    watchlistExported = false;
+
+  }
+
+  persistWatchlist();
+
+  updateWatchlistUI();
+
+}
+
+
+
+function clearWatchlist(){
+
+  state.watchlist.clear();
+
+  watchlistDirty = false;
+
+  watchlistExported = false;
+
+  persistWatchlist();
+
+  updateWatchlistUI();
+
+}
+
+
+
+function exportWatchlist(){
+
+  if(state.watchlist.size === 0) return;
+
+  const data = {
+
+    exportedAt: new Date().toISOString(),
+
+    itemCount: state.watchlist.size,
+
+    items: Array.from(state.watchlist.values()),
+
+  };
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+
+  const url = URL.createObjectURL(blob);
+
+  const dateStamp = new Date().toISOString().slice(0,10);
+
+  const link = document.createElement('a');
+
+  link.href = url;
+
+  link.download = `plex-merkliste-${dateStamp}.json`;
+
+  document.body.appendChild(link);
+
+  link.click();
+
+  document.body.removeChild(link);
+
+  setTimeout(()=>URL.revokeObjectURL(url), 500);
+
+  watchlistDirty = false;
+
+  watchlistExported = true;
+
+  persistWatchlist();
+
+  updateWatchlistUI();
+
+}
+
+
+
+function bindWatchlistControls(){
+
+  const toggleBtn = $('#watchlistToggle');
+
+  if(toggleBtn){
+
+    toggleBtn.addEventListener('click', ()=>{
+
+      const panel = $('#watchlistPanel');
+
+      const next = panel ? panel.hidden : true;
+
+      setWatchlistPanelVisible(next);
+
+    });
+
+  }
+
+  const closeBtn = $('#closeWatchlist');
+
+  if(closeBtn) closeBtn.addEventListener('click', ()=>setWatchlistPanelVisible(false));
+
+  const exportBtn = $('#exportWatchlist');
+
+  if(exportBtn) exportBtn.addEventListener('click', exportWatchlist);
+
+  const clearBtn = $('#clearWatchlist');
+
+  if(clearBtn){
+
+    clearBtn.addEventListener('click', ()=>{
+
+      if(state.watchlist.size === 0) return;
+
+      if(!confirm('Merkliste wirklich leeren?')) return;
+
+      clearWatchlist();
+
+    });
+
+  }
+
+}
+
+
+
+function initWatchlist(){
+
+  try{
+
+    sessionStore = window.sessionStorage;
+
+  }catch(err){ sessionStore = null; }
+
+  state.watchlist = new Map();
+
+  watchlistDirty = false;
+
+  watchlistExported = false;
+
+  if(sessionStore){
+
+    try{
+
+      const raw = sessionStore.getItem(WATCHLIST_STORAGE_KEY);
+
+      if(raw){
+
+        const parsed = JSON.parse(raw);
+
+        if(Array.isArray(parsed)){
+
+          parsed.forEach(entry=>{
+
+            if(entry && entry.key){
+
+              state.watchlist.set(String(entry.key), entry);
+
+            }
+
+          });
+
+        }
+
+      }
+
+      watchlistExported = sessionStore.getItem(WATCHLIST_EXPORTED_KEY) === '1';
+
+    }catch(err){
+
+      console.warn('Watchlist restore failed', err);
+
+    }
+
+  }
+
+  watchlistDirty = state.watchlist.size > 0 && !watchlistExported;
+
+  setWatchlistPanelVisible(false);
+
+  updateWatchlistUI();
+
+}
+
+function anyFilterActive(){
+
+  return Boolean($('#q').value.trim() || state.selectedGenres.size || state.selectedCollection || $('#yearFrom').value || $('#yearTo').value || $('#onlyNew').checked);
+
+}
+
+
+
+async function tmdbLookup(item){
+
+  if(!$('#useTmdb').checked) return null;
+
+  const hasToken = Boolean(CONFIG.tmdbAccessToken);
+
+  const hasKey = Boolean(CONFIG.tmdbApiKey);
+
+  if(!hasToken && !hasKey) return null;
+
+  const ids = parseGuids(item);
+
+  const category = state.libraryType === 'tv' ? 'tv' : 'movie';
+
+  const cacheKey = `${state.library}:${category}:${ids.tmdb||ids.imdb||item.ratingKey}`;
+
+  if(tmdbCache.has(cacheKey)) return tmdbCache.get(cacheKey);
+
+  const headers = { Accept: 'application/json' };
+
+  let query = '';
+
+  if(hasToken){
+
+    headers.Authorization = `Bearer ${CONFIG.tmdbAccessToken}`;
+
+  }else{
+
+    query = `&api_key=${encodeURIComponent(CONFIG.tmdbApiKey)}`;
+
+  }
+
+  try{
+
+    let data = null;
+
+    if(ids.tmdb){
+
+      const url = `https://api.themoviedb.org/3/${category}/${ids.tmdb}?language=${encodeURIComponent(CONFIG.tmdbLang)}&append_to_response=images&include_image_language=${encodeURIComponent(CONFIG.tmdbLang)},en,null${query}`;
+
+      const res = await fetch(url,{ headers });
+
+      if(res.ok) data = await res.json();
+
+    }else if(ids.imdb){
+
+      const url = `https://api.themoviedb.org/3/find/${ids.imdb}?external_source=imdb_id&language=${encodeURIComponent(CONFIG.tmdbLang)}${query}`;
+
+      const res = await fetch(url,{ headers });
+
+      if(res.ok){
+
+        const json = await res.json();
+
+        data = category === 'tv' ? (json.tv_results && json.tv_results[0]) || null : (json.movie_results && json.movie_results[0]) || null;
+
+      }
+
+    }
+
+    if(!data) return null;
+
+    const posterPath = data.poster_path || (data.images?.posters?.[0]?.file_path) || null;
+
+    const backdropPath = data.backdrop_path || (data.images?.backdrops?.[0]?.file_path) || null;
+
+    const result = {
+
+      poster: posterPath ? `https://image.tmdb.org/t/p/${CONFIG.imageWidths.poster}${posterPath}` : null,
+
+      backdrop: backdropPath ? `https://image.tmdb.org/t/p/${CONFIG.imageWidths.backdrop}${backdropPath}` : null,
+
+    };
+
+    tmdbCache.set(cacheKey, result);
+
+    persistTmdbCache();
+
+    return result;
+
+  }catch(err){
+
+    console.warn('TMDB fetch failed', err);
+
+    return null;
+
+  }
+
+}
+
+
+
+const GRID_TRANSITION_MS = 260;
+
+const GRID_CHUNK_SIZE = 60;
+
+let renderRun = 0;
+
+
+
+const cardRevealObserver = typeof IntersectionObserver === 'function'
+
+  ? new IntersectionObserver((entries)=>{
+
+    entries.forEach(entry=>{
+
+      if(entry.isIntersecting){
+
+        entry.target.style.transition = 'transform .25s ease, opacity .25s ease';
+
+        entry.target.style.opacity = '1';
+
+        entry.target.style.transform = 'translateY(0)';
+
+        cardRevealObserver.unobserve(entry.target);
+
+      }
+
+    });
+
+  }, { rootMargin: '80px 0px' })
+
+  : null;
+
+
+
+function cardEl(item, useTmdb){
+
+  const card = document.createElement('article');
+
+  card.className = 'card';
+
+  card.style.opacity = '0';
+
+  card.style.transform = 'translateY(6px)';
+
+  const key = watchlistKey(item);
+
+  card.dataset.watchlistKey = key;
+
+
+
+  const posterDiv = document.createElement('div');
+
+  posterDiv.className = 'poster';
+
+
+
+  const img = document.createElement('img');
+
+  img.alt = item.title || '';
+
+  img.loading = 'lazy';
+
+  img.decoding = 'async';
+
+  const onLoad = ()=>{
+
+    const finish = ()=> img.classList.add('is-ready');
+
+    if(typeof img.decode === 'function'){
+
+      img.decode().catch(()=>{}).finally(finish);
+
+    }else{
+
+      finish();
+
+    }
+
+  };
+
+  img.addEventListener('load', onLoad);
+
+  img.addEventListener('error', ()=> img.classList.add('is-ready'));
+
+  const localUrl = localThumbUrl(item);
+
+  if(localUrl){
+
+    img.src = localUrl;
+
+    if(img.complete) onLoad();
+
+  }else{
+
+    img.classList.add('is-ready');
+
+  }
+
+  posterDiv.appendChild(img);
+
+
+
+  const watchBtn = document.createElement('button');
+
+  watchBtn.type = 'button';
+
+  watchBtn.className = 'watchlist-toggle';
+
+  watchBtn.dataset.key = key;
+
+  watchBtn.addEventListener('click', function(ev){ ev.stopPropagation(); toggleWatchlist(item); });
+
+  posterDiv.appendChild(watchBtn);
+
+
+
+  const ratingValue = item.audienceRating ?? item.rating ?? null;
+
+  const ratingText = formatRating(ratingValue);
+
+  if(ratingText){
+
+    const ratingBadge = document.createElement('div');
+
+    ratingBadge.className = 'rating';
+
+    ratingBadge.textContent = '* ' + ratingText;
+
+    posterDiv.appendChild(ratingBadge);
+
+  }
+
+
+
+  const meta = document.createElement('div');
+
+  meta.className = 'meta';
+
+  const titleEl = document.createElement('h3');
+
+  titleEl.className = 'title';
+
+  titleEl.textContent = item.title || item.originalTitle || '-';
+
+  if(isNew(item)){
+
+    const badge = document.createElement('span');
+
+    badge.className = 'badge';
+
+    badge.textContent = 'Neu';
+
+    titleEl.appendChild(badge);
+
+  }
+
+  meta.appendChild(titleEl);
+
+
+
+  const sub = document.createElement('div');
+
+  sub.className = 'sub';
+
+  const yr = humanYear(item);
+
+  if(yr) sub.appendChild(span(yr));
+
+  if(item.studio) sub.appendChild(span(item.studio));
+
+  if(!ratingText && ratingValue){
+
+    const fallback = formatRating(ratingValue);
+
+    if(fallback) sub.appendChild(span('* ' + fallback));
+
+  }
+
+  meta.appendChild(sub);
+
+
+
+  const collections = collectionTags(item);
+
+  if(collections.length){
+
+    const hint = document.createElement('div');
+
+    hint.className = 'collection-hint';
+
+    const label = document.createElement('span');
+
+    label.className = 'collection-label';
+
+    label.textContent = 'Sammlung:';
+
+    hint.appendChild(label);
+
+    const mainName = collections[0];
+
+    const link = document.createElement('button');
+
+    link.type = 'button';
+
+    link.className = 'collection-link';
+
+    link.textContent = mainName;
+
+    link.setAttribute('aria-label', `Sammlung ${mainName} anzeigen`);
+
+    link.title = 'Sammlung anzeigen';
+
+    link.addEventListener('click', ev=>{ ev.stopPropagation(); focusCollection(mainName); });
+
+    hint.appendChild(link);
+
+    if(collections.length > 1){
+
+      const more = document.createElement('span');
+
+      more.className = 'collection-more-count';
+
+      more.textContent = `+${collections.length - 1}`;
+
+      hint.appendChild(more);
+
+    }
+
+    meta.appendChild(hint);
+
+  }
+
+  const chips = document.createElement('div');
+
+  chips.className = 'chips';
+
+  (item.genres||[]).slice(0,4).forEach(g=>{ if(g && g.tag) chips.appendChild(chip(g.tag)); });
+
+  meta.appendChild(chips);
+
+
+
+  card.appendChild(posterDiv);
+
+  card.appendChild(meta);
+
+
+
+  applyWatchlistState(key, card, watchBtn);
+
+
+
+  if(cardRevealObserver){
+
+    cardRevealObserver.observe(card);
+
+  }else{
+
+    card.style.opacity = '';
+
+    card.style.transform = '';
+
+  }
+
+
+
+  if(useTmdb){
+
+    tmdbLookup(item).then(tmdbData=>{
+
+      if(tmdbData && tmdbData.poster && tmdbData.poster !== img.src){
+
+        img.classList.remove('is-ready');
+
+        img.src = tmdbData.poster;
+
+      }
+
+    }).catch(()=>{});
+
+  }
+
+
+
+  return card;
+
+}
+
+
+
+function collectionCardEl(group, useTmdb){
+
+  const card = document.createElement('article');
+
+  card.className = 'card collection-card';
+
+  card.dataset.collectionGroup = '1';
+
+  card.style.opacity = '0';
+
+  card.style.transform = 'translateY(6px)';
+
+  const key = watchlistKey(group);
+
+  card.dataset.watchlistKey = key;
+
+  const posterDiv = document.createElement('div');
+
+  posterDiv.className = 'poster';
+
+  const img = document.createElement('img');
+
+  img.alt = group.title || '';
+
+  img.loading = 'lazy';
+
+  img.decoding = 'async';
+
+  const onLoad = ()=>{
+
+    const finish = ()=> img.classList.add('is-ready');
+
+    if(typeof img.decode === 'function'){
+
+      img.decode().catch(()=>{}).finally(finish);
+
+    }else{
+
+      finish();
+
+    }
+
+  };
+
+  img.addEventListener('load', onLoad);
+
+  img.addEventListener('error', ()=> img.classList.add('is-ready'));
+
+  const posterItem = group.posterItem || (group.items && group.items[0]) || null;
+
+  const localUrl = posterItem ? localThumbUrl(posterItem) : '';
+
+  if(localUrl){
+
+    img.src = localUrl;
+
+    if(img.complete) onLoad();
+
+  }else{
+
+    img.classList.add('is-ready');
+
+  }
+
+  posterDiv.appendChild(img);
+
+  const watchBtn = document.createElement('button');
+
+  watchBtn.type = 'button';
+
+  watchBtn.className = 'watchlist-toggle';
+
+  watchBtn.dataset.key = key;
+
+  watchBtn.dataset.collection = '1';
+
+  watchBtn.addEventListener('click', ev=>{ ev.stopPropagation(); toggleCollectionWatchlist(group); });
+
+  posterDiv.appendChild(watchBtn);
+
+  const meta = document.createElement('div');
+
+  meta.className = 'meta';
+
+  const titleEl = document.createElement('h3');
+
+  titleEl.className = 'title';
+
+  titleEl.textContent = group.title || '-';
+
+  meta.appendChild(titleEl);
+
+  const countEl = document.createElement('div');
+
+  countEl.className = 'collection-count';
+
+  const count = group.itemCount || (group.items ? group.items.length : 0);
+
+  if(count){
+
+    countEl.textContent = `${count} ${count === 1 ? 'Film' : 'Filme'}`;
+
+    meta.appendChild(countEl);
+
+  }
+
+  const summary = document.createElement('div');
+
+  summary.className = 'collection-summary';
+
+  const list = document.createElement('ul');
+
+  list.className = 'collection-list';
+
+  const collectionItems = group.items || [];
+
+  const maxVisible = 3;
+
+  collectionItems.slice(0, maxVisible).forEach((item, idx)=>{
+
+    const li = document.createElement('li');
+
+    const idxEl = document.createElement('span');
+
+    idxEl.className = 'index';
+
+    idxEl.textContent = `${idx+1}.`;
+
+    const title = document.createElement('span');
+
+    title.className = 'title';
+
+    title.textContent = item.title || item.originalTitle || '-';
+
+    const yearEl = document.createElement('span');
+
+    yearEl.className = 'year';
+
+    yearEl.textContent = humanYear(item) || '';
+
+    li.appendChild(idxEl);
+
+    li.appendChild(title);
+
+    if(yearEl.textContent) li.appendChild(yearEl);
+
+    list.appendChild(li);
+
+  });
+
+  summary.appendChild(list);
+
+  const remaining = collectionItems.length - maxVisible;
+
+  if(remaining > 0){
+
+    const more = document.createElement('div');
+
+    more.className = 'collection-more';
+
+    more.textContent = `+${remaining} weitere anzeigen`;
+
+    summary.appendChild(more);
+
+    summary.classList.add('is-clickable');
+
+    const focus = ev=>{
+
+      ev.preventDefault();
+
+      ev.stopPropagation();
+
+      focusCollection(group.collectionName || group.title || '');
+
+    };
+
+    summary.addEventListener('click', focus);
+
+    more.addEventListener('click', focus);
+
+  }
+
+  meta.appendChild(summary);
+
+  if(group.genres && group.genres.length){
+
+    const chipsHolder = document.createElement('div');
+
+    chipsHolder.className = 'chips';
+
+    group.genres.slice(0,4).forEach(name=>{ chipsHolder.appendChild(chip(name)); });
+
+    meta.appendChild(chipsHolder);
+
+  }
+
+  card.appendChild(posterDiv);
+
+  card.appendChild(meta);
+
+  applyWatchlistState(key, card, watchBtn);
+
+  if(cardRevealObserver){
+
+    cardRevealObserver.observe(card);
+
+  }else{
+
+    card.style.opacity = '';
+
+    card.style.transform = '';
+
+  }
+
+  if(useTmdb && posterItem){
+
+    tmdbLookup(posterItem).then(tmdbData=>{
+
+      if(tmdbData && tmdbData.poster && tmdbData.poster !== img.src){
+
+        img.classList.remove('is-ready');
+
+        img.src = tmdbData.poster;
+
+      }
+
+    }).catch(()=>{});
+
+  }
+
+  return card;
+
+}
+
+
+
+function renderGrid(items){
+
+  const grid = $('#grid');
+
+  if(!grid) return;
+
+  const currentRun = ++renderRun;
+
+  const tmdbToggle = $('#useTmdb');
+
+  const useTmdb = Boolean(tmdbToggle && tmdbToggle.checked);
+
+  const createCard = entry => entry && entry.isCollectionGroup ? collectionCardEl(entry, useTmdb) : cardEl(entry, useTmdb);
+
+  grid.replaceChildren();
+
+  let index = 0;
+
+  const pushChunk = ()=>{
+
+    if(currentRun !== renderRun) return;
+
+    const fragment = document.createDocumentFragment();
+
+    const end = Math.min(index + GRID_CHUNK_SIZE, items.length);
+
+    for(; index < end; index++){
+
+      fragment.appendChild(createCard(items[index]));
+
+    }
+
+    grid.appendChild(fragment);
+
+    if(index < items.length){
+
+      requestAnimationFrame(pushChunk);
+
+    }
+
+  };
+
+  requestAnimationFrame(pushChunk);
+
+}
+
+
+
+function beginGridTransition(grid){
+
+  if(!grid) return;
+
+  grid.classList.remove('is-entering','is-ready');
+
+  grid.classList.add('is-leaving');
+
+}
+
+
+
+function finishGridTransition(grid){
+
+  if(!grid) return;
+
+  grid.classList.remove('is-leaving');
+
+  grid.classList.add('is-entering');
+
+  requestAnimationFrame(()=>{
+
+    grid.classList.add('is-ready');
+
+    setTimeout(()=>grid.classList.remove('is-entering','is-ready'), GRID_TRANSITION_MS);
+
+  });
+
+}
+
+
+
+async function preloadPosters(urls, limit = 16, timeoutMs = 400){
+
+  const candidates = (urls || []).filter(Boolean).slice(0, limit);
+
+  if(!candidates.length) return;
+
+  const tasks = candidates.map(src=>new Promise(resolve=>{
+
+    const img = new Image();
+
+    img.decoding = 'async';
+
+    if(typeof img.decode === 'function'){
+
+      img.src = src;
+
+      img.decode().catch(()=>{}).finally(resolve);
+
+    }else{
+
+      img.onload = resolve;
+
+      img.onerror = resolve;
+
+      img.src = src;
+
+    }
+
+  }));
+
+  await Promise.race([
+
+    Promise.all(tasks),
+
+    new Promise(res=>setTimeout(res, timeoutMs))
+
+  ]);
+
+}
+
+
+
+function createCollectionGroup(name, members){
+
+  const list = (members||[]).slice().sort((a,b)=>{
+
+    const ay = Number(humanYear(a)) || 0;
+
+    const by = Number(humanYear(b)) || 0;
+
+    if(ay !== by) return ay - by;
+
+    return (a.title||'').localeCompare(b.title||'', 'de');
+
+  });
+
+  const years = list.map(item=>Number(humanYear(item))||0).filter(Boolean);
+
+  const year = years.length ? Math.min(...years) : '';
+
+  const addedTimestamps = list.map(item=>{
+
+    if(!item.addedAt) return 0;
+
+    const time = new Date(item.addedAt).getTime();
+
+    return Number.isFinite(time) ? time : 0;
+
+  }).filter(Boolean);
+
+  const latestAdded = addedTimestamps.length ? new Date(Math.max(...addedTimestamps)).toISOString() : null;
+
+  const ratings = list.map(item=>{
+
+    const val = Number(item.rating ?? item.audienceRating);
+
+    return Number.isFinite(val) ? val : NaN;
+
+  }).filter(num=>Number.isFinite(num));
+
+  const rating = ratings.length ? ratings.reduce((sum,val)=>sum+val,0) / ratings.length : null;
+
+  const posterItem = list.find(entry=>localThumbUrl(entry)) || list[0] || null;
+
+  const genres = dedup(list.flatMap(entry=>((entry.genres||[]).map(g=>g && g.tag).filter(Boolean)))).slice(0,4);
+
+  return {
+
+    isCollectionGroup: true,
+
+    type: 'collection',
+
+    title: name,
+
+    collectionName: name,
+
+    items: list,
+
+    itemCount: list.length,
+
+    year: year || '',
+
+    addedAt: latestAdded,
+
+    rating,
+
+    posterItem,
+
+    genres,
+
+  };
+
+}
+
+
+
+function mergeCollectionView(items){
+
+  if(!state.groupCollections) return items.slice();
+
+  const membership = new Map();
+
+  items.forEach(item=>{
+
+    collectionTags(item).forEach(name=>{
+
+      if(state.selectedCollection && name !== state.selectedCollection) return;
+
+      if(!membership.has(name)) membership.set(name, []);
+
+      membership.get(name).push(item);
+
+    });
+
+  });
+
+  const groups = new Map();
+
+  const groupedIds = new Set();
+
+  const output = [];
+
+  items.forEach(item=>{
+
+    const id = itemIdentity(item);
+
+    const tags = collectionTags(item);
+
+    let contributedToGroup = false;
+
+    if(tags.length){
+
+      tags.forEach(name=>{
+
+        if(state.selectedCollection && name !== state.selectedCollection) return;
+
+        const members = membership.get(name) || [];
+
+        const qualifies = members.length > 1 || state.selectedCollection === name;
+
+        if(!qualifies) return;
+
+        if(!groups.has(name)){
+
+          const group = createCollectionGroup(name, members);
+
+          groups.set(name, group);
+
+          output.push(group);
+
+        }
+
+        members.forEach(member=> groupedIds.add(itemIdentity(member)));
+
+        contributedToGroup = true;
+
+      });
+
+    }
+
+    if(!contributedToGroup){
+
+      if(!groupedIds.has(id)){
+
+        output.push(item);
+
+        groupedIds.add(id);
+
+      }
+
+    }
+
+  });
+
+  return output;
+
+}
+
+
+
+function ensureCollectionSort(){
+
+  const sortSel = $('#sort');
+
+  if(!sortSel) return;
+
+  if(state.selectedCollection && sortSel.value === 'title-asc'){
+
+    sortSel.value = 'year-desc';
+
+  }
+
+}
+
+
+
+function focusCollection(name){
+
+  const target = String(name || '').trim();
+
+  if(!target) return;
+
+  state.selectedCollection = target;
+
+  state.groupCollections = false;
+
+  state.advancedManual = false;
+
+  ensureCollectionSort();
+
+  fillFilters();
+
+  update();
+
+}
+
+
+
+function update(){
+
+  if(!state.ready) return;
+
+  if(!state.advancedManual){
+
+    setAdvancedExpanded(shouldExpandAdvanced(), { manual: false });
+
+  }
+
+  state.filtered = state.items.filter(matches);
+
+  applySort(state.filtered);
+
+  const viewItems = mergeCollectionView(state.filtered);
+
+  updateHeroSubtitleDisplay(viewItems.length);
+
+  const grid = $('#grid');
+
+  if(!grid) return;
+
+  const empty = $('#empty');
+
+  if(viewItems.length === 0){
+
+    renderRun++;
+
+    grid.replaceChildren();
+
+    if(empty){
+
+      empty.hidden = false;
+
+      empty.textContent = (state.filtered.length === 0 && !anyFilterActive()) ? 'Keine Eintraege fuer diese Bibliothek gefunden.' : 'Kein Treffer. Filter lockern?';
+
+    }
+
+    updateWatchlistUI();
+
+    return;
+
+  }
+
+  if(empty) empty.hidden = true;
+
+  renderGrid(viewItems);
+
+  updateWatchlistUI();
+
+}
+
+
+
+
+
+
+
+function span(text){ const el = document.createElement('span'); el.textContent = text; return el; }
+
+function chip(text){ const el = document.createElement('span'); el.className = 'chip'; el.textContent = text; return el; }
+
+async function setLibrary(key){
+
+  if(!CONFIG.libraries[key]) return;
+
+  if(state.library === key && state.ready) return;
+
+  const def = libraryDefinition(key);
+
+  if(!def) return;
+
+  const grid = $('#grid');
+
+  const animate = state.ready && Boolean(grid);
+
+  if(animate) beginGridTransition(grid);
+
+  state.library = key;
+
+  state.libraryBase = def.thumbBase || '';
+
+  state.libraryType = def.tmdbType || 'movie';
+
+  const payload = await loadLibraryPayload(def, key);
+
+  state.items = normalizeItems(payload);
+
+  libraryTotals[key] = state.items.length;
+
+  collectFacets();
+
+  fillFilters();
+
+  state.ready = true;
+
+  updateHeroStatsDisplay();
+
+  if(animate){
+
+    const preloadUrls = state.items.slice(0,30).map(item=>localThumbUrl(item)).filter(Boolean);
+
+    try{
+
+      await preloadPosters(preloadUrls);
+
+    }catch(err){
+
+      console.warn('Poster preload failed', err);
+
+    }
+
+  }
+
+  update();
+
+  if(animate && grid){
+
+    requestAnimationFrame(()=>finishGridTransition(grid));
+
+  }
+
+  updateLibrarySwitch();
+
+  localStorage.setItem('plexLibrary', key);
+
+}
+
+
+
+
+
+
+
+function initLibrarySwitch(){
+
+  const holder = $('#librarySwitch');
+
+  if(!holder) return;
+
+  holder.innerHTML = '';
+
+  Object.entries(CONFIG.libraries).forEach(([key, def])=>{
+
+    const btn = document.createElement('button');
+
+    btn.type = 'button';
+
+    btn.dataset.key = key;
+
+    btn.textContent = def.label || key;
+
+    btn.addEventListener('click', ()=>{
+
+      $$('#librarySwitch button').forEach(b=>b.classList.toggle('active', b === btn));
+
+      setLibrary(key);
+
+    });
+
+    holder.appendChild(btn);
+
+  });
+
+  updateLibrarySwitch();
+
+}
+
+
+
+function updateLibrarySwitch(){
+
+  $$('#librarySwitch button').forEach(btn=>{
+
+    btn.classList.toggle('active', btn.dataset.key === state.library);
+
+  });
+
+}
+
+
+
+function advancedElements(){
+
+  return {
+
+    button: $('#toggleAdvanced'),
+
+    panel: $('#advancedFilters'),
+
+  };
+
+}
+
+
+
+function setAdvancedExpanded(next, { manual } = { manual:false }){
+
+  state.advancedExpanded = Boolean(next);
+
+  if(manual) state.advancedManual = true;
+
+  const { button, panel } = advancedElements();
+
+  if(button){
+
+    button.setAttribute('aria-expanded', next ? 'true' : 'false');
+
+    button.textContent = next ? 'Erweiterte Filter verbergen' : 'Erweiterte Filter anzeigen';
+
+  }
+
+  if(panel){
+
+    panel.hidden = !next;
+
+    panel.classList.toggle('active', next);
+
+  }
+
+}
+
+
+
+function shouldExpandAdvanced(){
+
+  return state.advancedManual ? state.advancedExpanded : state.selectedGenres.size > 0 || state.selectedCollection || state.groupCollections || $('#yearFrom').value || $('#yearTo').value || $('#onlyNew').checked;
+
+}
+
+
+
+function initAdvancedToggle(){
+
+  const { button } = advancedElements();
+
+  if(!button) return;
+
+  button.addEventListener('click', ()=>{
+
+    const next = !state.advancedExpanded;
+
+    setAdvancedExpanded(next, { manual: true });
+
+  });
+
+  setAdvancedExpanded(shouldExpandAdvanced(), { manual: false });
+
+}
+
+
+
+function bindFilters(){
+
+  const qInput = $('#q');
+
+  if(qInput){
+
+    const debounced = debounce(update, 120);
+
+    qInput.addEventListener('input', debounced);
+
+  }
+
+  const collectionSelect = $('#collectionFilter');
+
+  if(collectionSelect){
+
+    collectionSelect.addEventListener('change', ()=>{
+
+      state.selectedCollection = collectionSelect.value || '';
+
+      if(state.selectedCollection){
+
+        state.groupCollections = false;
+
+        ensureCollectionSort();
+
+      }
+
+      fillFilters();
+
+      update();
+
+    });
+
+  }
+
+  const groupToggle = $('#groupCollections');
+
+  if(groupToggle){
+
+    groupToggle.addEventListener('change', ()=>{
+
+      state.groupCollections = groupToggle.checked;
+
+      update();
+
+    });
+
+  }
+
+  $('#yearFrom').addEventListener('change', update);
+
+  $('#yearTo').addEventListener('change', update);
+
+  $('#sort').addEventListener('change', update);
+
+  $('#onlyNew').addEventListener('change', update);
+
+  $('#useTmdb').addEventListener('change', update);
+
+}
+
+
+
+window.addEventListener('beforeunload', event=>{
+
+  if(watchlistDirty && !watchlistExported){
+
+    const msg = 'Merkliste wurde noch nicht exportiert.';
+
+    event.preventDefault();
+
+    event.returnValue = msg;
+
+    return msg;
+
+  }
+
+  return undefined;
+
+});
+
+
+
+window.addEventListener('storage', evt=>{
+
+  if(evt.key === WATCHLIST_STORAGE_KEY && sessionStore){
+
+    initWatchlist();
+
+  }
+
+});
+
+
+
+function updateHeroSubtitleDisplay(count){
+
+  const target = heroElements.subtitle;
+
+  if(!target) return;
+
+  if(typeof count === 'number' && count === 0){
+
+    target.dataset.taglinePaused = '1';
+
+    target.textContent = 'Keine Eintraege gefunden.';
+
+    return;
+
+  }
+
+  target.dataset.taglinePaused = '0';
+
+  target.classList.remove('is-fading');
+
+  const current = target.textContent;
+
+  if(!TAGLINES.includes(current)){
+
+    target.textContent = TAGLINES[taglineIdx];
+
+  }
+
+}
+
+
+
+
+
+const initialLibrary = localStorage.getItem('plexLibrary');
+
+
+
+(async function init(){
+
+  initLibrarySwitch();
+
+  bindFilters();
+
+  bindWatchlistControls();
+
+  initAdvancedToggle();
+
+  initWatchlist();
+
+  const first = CONFIG.libraries[initialLibrary] ? initialLibrary : CONFIG.defaultLibrary;
+
+  await setLibrary(first);
+
+})();
+
+</script>
+
+</body>
+
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
