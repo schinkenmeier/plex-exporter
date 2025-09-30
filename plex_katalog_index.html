@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 
 <html lang="de">
 
@@ -37,7 +37,7 @@
 header.site-header{
       position:relative;
       z-index:3;
-      /* NEU: definierte Hoehe + grosszuegige Polster */
+      /* NEU: definierte Höhe + großzügige Polster */
       min-height: clamp(160px, 28vw, 320px);
       padding: 28px 16px 26px;
       background:
@@ -430,7 +430,7 @@ header.site-header::before{
 
       <h1 class="site-title">Plex-Katalog</h1>
 
-      <p class="site-tagline" id="heroSubtitle">Offline stoebern &amp; Wunschlisten teilen</p>
+      <p class="site-tagline" id="heroSubtitle">Offline stöbern &amp; Wunschlisten teilen</p>
 
     </div>
 
@@ -472,15 +472,15 @@ header.site-header::before{
 
           <option value="year-desc">Jahr (neueste)</option>
 
-          <option value="year-asc">Jahr (aelteste)</option>
+          <option value="year-asc">Jahr (älteste)</option>
 
           <option value="rating-desc">Bewertung (hoch)</option>
 
           <option value="rating-asc">Bewertung (niedrig)</option>
 
-          <option value="added-desc">Zuletzt hinzugefuegt</option>
+          <option value="added-desc">Zuletzt hinzugefügt</option>
 
-          <option value="added-asc">Zuerst hinzugefuegt</option>
+          <option value="added-asc">Zuerst hinzugefügt</option>
 
         </select>
 
@@ -526,7 +526,7 @@ header.site-header::before{
 
           <label class="toggle-chip"><input id="onlyNew" type="checkbox" /> Neu (<=30 Tage)</label>
 
-          <label class="toggle-chip"><input id="groupCollections" type="checkbox" /> Sammlungen b&uuml;ndeln</label>
+          <label class="toggle-chip"><input id="groupCollections" type="checkbox" /> Sammlungen bündeln</label>
 
           <label class="toggle-chip"><input id="useTmdb" type="checkbox" /> TMDB-Bilder nutzen</label>
 
@@ -552,13 +552,13 @@ header.site-header::before{
 
       <button type="button" id="clearWatchlist">Merkliste leeren</button>
 
-      <button type="button" id="closeWatchlist">Schliessen</button>
+      <button type="button" id="closeWatchlist">Schließen</button>
 
     </div>
 
   </div>
 
-  <p class="watchlist-empty" id="watchlistEmpty" hidden>Keine Eintraege gemerkt.</p>
+  <p class="watchlist-empty" id="watchlistEmpty" hidden>Keine Einträge gemerkt.</p>
 
   <ul class="watchlist-items" id="watchlistItems"></ul>
 
@@ -578,9 +578,9 @@ header.site-header::before{
 
     <li>Offline: Filme/movies.js liefert alle Titel ohne Webserver.</li>
 
-    <li>Serien: Serien/series.js vorbereiten und oben ueber den Schalter aktivieren.</li>
+    <li>Serien: Serien/series.js vorbereiten und oben über den Schalter aktivieren.</li>
 
-    <li>Filtern: Genres lassen sich kombinieren; URL enthaelt Suche, Jahre und Sortierung.</li>
+    <li>Filtern: Genres lassen sich kombinieren; URL enthält Suche, Jahre und Sortierung.</li>
 
     <li>TMDB: Trage deinen v4 Bearer Token in der Konfiguration ein.</li>
 
@@ -712,9 +712,9 @@ const heroElements = {
 
 const TAGLINES = [
 
-  "Offline stoebern & Wunschlisten teilen",
+  "Offline stöbern & Wunschlisten teilen",
 
-  "Nils Bibliothek, huebsch sortiert",
+  "Nils Bibliothek, hübsch sortiert",
 
   "Filter. Finden. Freuen.",
 
@@ -722,7 +722,7 @@ const TAGLINES = [
 
   "Schneller als jeder SMB-Share",
 
-  "Merkliste zuerst, Streit spaeter"
+  "Merkliste zuerst, Streit später"
 
 ];
 
@@ -1761,7 +1761,7 @@ function applyWatchlistState(key, card, button){
 
     button.textContent = active ? activeLabel : inactiveLabel;
 
-    button.title = active ? (isCollection ? 'Sammlung von der Merkliste entfernen' : 'Aus Merkliste entfernen') : (isCollection ? 'Komplette Sammlung zur Merkliste hinzufuegen' : 'Zur Merkliste hinzufuegen');
+    button.title = active ? (isCollection ? 'Sammlung von der Merkliste entfernen' : 'Aus Merkliste entfernen') : (isCollection ? 'Komplette Sammlung zur Merkliste hinzufügen' : 'Zur Merkliste hinzufügen');
 
   }
 
@@ -3301,7 +3301,7 @@ function update(){
 
       empty.hidden = false;
 
-      empty.textContent = (state.filtered.length === 0 && !anyFilterActive()) ? 'Keine Eintraege fuer diese Bibliothek gefunden.' : 'Kein Treffer. Filter lockern?';
+      empty.textContent = (state.filtered.length === 0 && !anyFilterActive()) ? 'Keine Einträge für diese Bibliothek gefunden.' : 'Kein Treffer. Filter lockern?';
 
     }
 
@@ -3625,7 +3625,7 @@ function updateHeroSubtitleDisplay(count){
 
     target.dataset.taglinePaused = '1';
 
-    target.textContent = 'Keine Eintraege gefunden.';
+    target.textContent = 'Keine Einträge gefunden.';
 
     return;
 
