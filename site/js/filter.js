@@ -138,6 +138,23 @@ export function applyFilters(){
   return ordered;
 }
 
+let gridModulePromise = null;
+function renderGridForCurrentView(){
+  if(!gridModulePromise){
+    gridModulePromise = import('./grid.js');
+  }
+  gridModulePromise.then(mod=>{
+    const fn = mod && mod.renderGrid;
+    if(typeof fn === 'function') fn(getState().view);
+  }).catch(console.error);
+}
+
+export function updateFiltersAndGrid(){
+  const result = applyFilters();
+  renderGridForCurrentView();
+  return result;
+}
+
 export function initFilters(){
   // populate sort options
   const sortSel = qs('#sort');
@@ -146,9 +163,9 @@ export function initFilters(){
       .forEach(([v,l])=> sortSel.add(new Option(l, v)));
   }
 
-  const bind = (sel, ev='input')=>{ const n=qs(sel); if(n) n.addEventListener(ev,()=>{ applyFilters(); }); };
+  const bind = (sel, ev='input')=>{ const n=qs(sel); if(n) n.addEventListener(ev,()=>{ updateFiltersAndGrid(); }); };
   bind('#q'); bind('#onlyNew','change'); bind('#yearFrom','change'); bind('#yearTo','change'); bind('#collectionFilter','change'); bind('#sort','change');
-  const yrReset = qs('#yearReset'); if(yrReset){ yrReset.addEventListener('click',()=>{ const a=qs('#yearFrom'); const b=qs('#yearTo'); if(a) a.value=''; if(b) b.value=''; applyFilters(); }); }
-  const gRoot = qs('#genreFilters'); if(gRoot){ gRoot.addEventListener('click', ev=>{ const t=ev.target; if(!(t instanceof HTMLElement)) return; if(!t.classList.contains('chip')) return; t.classList.toggle('active'); applyFilters(); }); }
+  const yrReset = qs('#yearReset'); if(yrReset){ yrReset.addEventListener('click',()=>{ const a=qs('#yearFrom'); const b=qs('#yearTo'); if(a) a.value=''; if(b) b.value=''; updateFiltersAndGrid(); }); }
+  const gRoot = qs('#genreFilters'); if(gRoot){ gRoot.addEventListener('click', ev=>{ const t=ev.target; if(!(t instanceof HTMLElement)) return; if(!t.classList.contains('chip')) return; t.classList.toggle('active'); updateFiltersAndGrid(); }); }
 }
 
