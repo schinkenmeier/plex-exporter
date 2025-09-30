@@ -517,27 +517,6 @@ header.site-header::before{
       border:1px solid #2b3a59; background:#121a2b; font-size:.85rem;
     }
 
-    /* Modal modern overrides and additions */
-    .modal__hero{ display:grid; grid-template-columns:180px 1fr; gap:18px; padding:16px 16px 10px }
-    .modal__poster{ align-self:start }
-    .modal__poster img{ aspect-ratio:2/3; border-radius:12px }
-    .modal__head{ display:grid; grid-template-rows:auto auto auto; gap:6px }
-    .modal__head .topbar{ display:flex; align-items:center; justify-content:space-between; gap:12px }
-    .modal__head h2#mTitle{ font-size:clamp(20px,2.2vw,28px); line-height:1.2 }
-    .util-actions{ display:flex; gap:8px; flex-wrap:wrap }
-    .util-actions a, .util-actions button{ appearance:none; border:1px dashed #2a3a56; background:transparent; color:#cfe1ff; border-radius:999px; padding:6px 10px; font-size:13px; cursor:pointer; opacity:.95 }
-    .util-actions a:hover, .util-actions button:hover{ border-style:solid; border-color:var(--accent); color:var(--accent); background:rgba(106,166,255,0.12) }
-    .modal__subnav{ position:sticky; top:0; z-index:2; background:linear-gradient(180deg, rgba(11,13,16,0.96), rgba(11,13,16,0.85)); backdrop-filter:saturate(140%) blur(8px); border-block:1px solid rgba(255,255,255,0.06) }
-    .modal__subnav .inner{ display:flex; gap:8px; padding:10px 12px }
-    .modal__subnav button{ border:1px solid var(--border); background:#0f141d; color:#c8d5e8; border-radius:999px; padding:6px 10px; font-size:13px; cursor:pointer; opacity:.9 }
-    .modal__subnav button.active{ border-color:var(--accent); color:var(--accent); background:rgba(106,166,255,0.12) }
-    .modal-section{ padding:12px 0 }
-    .overview{ max-width:72ch; line-height:1.6; hyphens:auto }
-    .chips .chip{ padding:.25rem .6rem; border-radius:999px; background:#1a2230; border:1px solid #263147; color:#cfe1ff }
-    .chips .chip.more{ background:transparent; border-style:dashed; color:var(--accent) }
-    @media (max-width: 720px){ .modal__hero{ grid-template-columns:120px 1fr } }
-    @media (max-width: 480px){ .modal__hero{ grid-template-columns:1fr } .modal__poster{ max-width:68% } .modal__poster img{ margin:0 auto } }
-
     /* --- Modal Tweaks: Raum, Hierarchie, Rhythmus --- */
 
     /* Hero: mehr Luft, bessere Raster */
@@ -558,9 +537,14 @@ header.site-header::before{
       background: rgba(16,23,40,.6);
       padding: 6px 12px;
       border-radius: 999px;
+      color: #cfe1ff;
+      font-size: 13px;
+      transition: background .18s ease, border-color .18s ease, color .18s ease;
     }
     .util-actions a:hover, .util-actions button:hover{
       background: rgba(106,166,255,.12);
+      border-color: rgba(106,166,255,.6);
+      color: var(--accent, #6aa6ff);
     }
 
     /* Chips ruhiger + "mehr" */
@@ -579,9 +563,40 @@ header.site-header::before{
       color: var(--accent, #6aa6ff);
       cursor: pointer;
     }
-
     /* Sticky Tabs + Anker */
-    .modal__subnav{ top: 0 }
+    .modal__subnav{
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: linear-gradient(180deg, rgba(11,13,16,0.96), rgba(11,13,16,0.82));
+      backdrop-filter: saturate(140%) blur(10px);
+      border-block: 1px solid rgba(255,255,255,0.06);
+    }
+    .modal__subnav .inner{
+      display:flex;
+      gap: 8px;
+      padding: 10px 16px;
+      flex-wrap: wrap;
+    }
+    .modal__subnav button{
+      border: 1px solid #24314a;
+      background: rgba(15,21,32,0.88);
+      color: #c8d5e8;
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background .18s ease, border-color .18s ease, color .18s ease;
+    }
+    .modal__subnav button:hover{
+      border-color: rgba(106,166,255,0.45);
+      color: var(--accent, #6aa6ff);
+    }
+    .modal__subnav button.active{
+      border-color: rgba(106,166,255,0.65);
+      color: var(--accent, #6aa6ff);
+      background: rgba(106,166,255,0.16);
+    }
     .modal-section{ padding: 12px 16px 16px; scroll-margin-top: 58px }
 
     /* Lesbarkeit der Overview */
@@ -4136,29 +4151,16 @@ const initialLibrary = localStorage.getItem('plexLibrary');
 
   function fillChips(i){
     if(!modal.chips) return;
-    modal.chips.replaceChildren();
-    const extra = [];
-    const base = (i.genres||[]);
-    base.forEach((g, idx)=>{
-      const chip = childChip(g);
-      if(idx < 6){ modal.chips.appendChild(chip); }
-      else{ extra.push(chip); }
-    });
+    const base = (i.genres||[]).map(val=>val && String(val)).filter(Boolean);
+    renderChipsLimited(modal.chips, base, 6);
+    const moreChip = modal.chips.querySelector('.chip.more') || null;
     if(i.type === 'movie' && i.runtimeMin) modal.chips.appendChild(childChip(`${i.runtimeMin} min`));
     if(i.type === 'tv'){
       if(i.runtimeMin) modal.chips.appendChild(childChip(`~${i.runtimeMin} min/Ep`));
       if(i.seasonCount) modal.chips.appendChild(childChip(`Staffeln: ${i.seasonCount}`));
     }
-    if(extra.length){
-      const more = document.createElement('button');
-      more.type='button';
-      more.className='chip more';
-      more.textContent = `+${extra.length} mehr`;
-      more.addEventListener('click', ()=>{
-        try{ extra.forEach(el=> more.before(el)); }catch{}
-        more.remove();
-      });
-      modal.chips.appendChild(more);
+    if(moreChip){
+      modal.chips.appendChild(moreChip);
     }
   }
 
@@ -4518,6 +4520,50 @@ const initialLibrary = localStorage.getItem('plexLibrary');
   // attempt initial open
   openFromHash(location.hash);
 })();
+
+function enableMoreChipBehavior(root = document){
+  if(!root) return;
+  root.querySelectorAll('.chips .chip.more').forEach(btn=>{
+    if(btn.dataset.bound === '1') return;
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', ()=>{
+      const hidden = Array.isArray(btn._extraChips) ? btn._extraChips : [];
+      hidden.forEach(node=>{
+        try{ btn.before(node); }catch{}
+      });
+      btn.remove();
+    });
+  });
+}
+
+function renderChipsLimited(containerEl, values, limit = 6){
+  if(!containerEl) return;
+  const normalized = (Array.isArray(values) ? values : [])
+    .map(v=> v == null ? '' : String(v))
+    .map(v=> v.trim())
+    .filter(Boolean);
+  const primary = normalized.slice(0, limit).map(text=>{
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.textContent = text;
+    return chip;
+  });
+  const extra = normalized.slice(limit).map(text=>{
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.textContent = text;
+    return chip;
+  });
+  containerEl.replaceChildren(...primary);
+  if(extra.length){
+    const more = document.createElement('span');
+    more.className = 'chip more';
+    more.textContent = `+${extra.length} mehr`;
+    more._extraChips = extra;
+    containerEl.appendChild(more);
+  }
+  enableMoreChipBehavior(containerEl);
+}
 </script>
 
 <!-- TV show view renderer: seasons accordion -->
