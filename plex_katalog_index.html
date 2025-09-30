@@ -954,7 +954,18 @@ function formatRating(val){
 
 function slugify(text){
 
-  return String(text||'')
+  const transliterated = String(text||'').replace(/[äÄöÖüÜßẞ]/g, char => ({
+    'ä':'ae',
+    'Ä':'Ae',
+    'ö':'oe',
+    'Ö':'Oe',
+    'ü':'ue',
+    'Ü':'Ue',
+    'ß':'ss',
+    'ẞ':'SS'
+  })[char] || char);
+
+  return transliterated
 
     .normalize('NFD')
 
