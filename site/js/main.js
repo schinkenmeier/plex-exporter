@@ -6,6 +6,7 @@ import { renderGrid } from './grid.js';
 import { openModal } from './modal/index.js';
 import { hydrateOptional } from './services/tmdb.js';
 import * as Watch from './watchlist.js';
+import * as Debug from './debug.js';
 
 async function boot(){
   applyReduceMotionPref();
@@ -30,7 +31,8 @@ async function boot(){
   Filter.renderFacets(facets);
   Filter.initFilters();
   Filter.applyFilters();
-  renderStats();
+  renderStats(true);
+  renderFooterMeta();
   renderGrid(getState().view);
 
   hideLoader();
@@ -43,6 +45,7 @@ async function boot(){
   initHeaderInteractions();
   initScrollProgress();
   initScrollTop();
+  Debug.initDebugUi();
 }
 
 window.addEventListener('hashchange', ()=>{
@@ -89,10 +92,49 @@ function renderSwitch(){
   );
 }
 
-function renderStats(){
-  const el = document.getElementById('heroStats');
+function renderStats(animate=false){
+  const root = document.getElementById('heroStats');
+  if(!root) return;
   const s = getState();
-  if(el) el.textContent = `${(s.movies||[]).length} Filme | ${(s.shows||[]).length} Serien`;
+  const movies = (s.movies||[]).length;
+  const shows = (s.shows||[]).length;
+  // ensure inner spans for animation
+  if(!root.querySelector('#statMovies') || !root.querySelector('#statShows')){
+    root.innerHTML = `<span id="statMovies">0</span> Filme | <span id="statShows">0</span> Serien`;
+  }
+  const elM = document.getElementById('statMovies');
+  const elS = document.getElementById('statShows');
+  if(animate){ countTo(elM, movies); countTo(elS, shows); }
+  else { if(elM) elM.textContent=String(movies); if(elS) elS.textContent=String(shows); }
+}
+
+function countTo(el, target){
+  if(!el) return;
+  const start = Number(el.textContent)||0;
+  const end = Number(target)||0;
+  if(start===end){ el.textContent = String(end); return; }
+  const dur = 480; // ms
+  const t0 = performance.now();
+  function step(t){
+    const p = Math.min(1, (t - t0) / dur);
+    const val = Math.round(start + (end - start) * (p<0.5 ? 2*p*p : -1 + (4 - 2*p) * p));
+    el.textContent = String(val);
+    if(p < 1) requestAnimationFrame(step); else el.textContent = String(end);
+  }
+  requestAnimationFrame(step);
+}
+
+function renderFooterMeta(){
+  const el = document.getElementById('footerMeta');
+  if(!el) return;
+  const s = getState();
+  const movies = (s.movies||[]); const shows=(s.shows||[]);
+  const mCount = movies.length; const sCount = shows.length;
+  // derive latest date from addedAt if available, else use today
+  const times = movies.concat(shows).map(x=> new Date(x.addedAt||0).getTime()).filter(Number.isFinite);
+  const latest = times.length ? new Date(Math.max(...times)) : new Date();
+  const date = latest.toISOString().slice(0,10);
+  el.textContent = `Filme ${mCount} | Serien ${sCount} — Stand: ${date}`;
 }
 
 boot();
