@@ -35,94 +35,40 @@
     .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
 header.site-header{
-      position:relative;
-      z-index:3;
-      /* NEU: definierte Höhe + großzügige Polster */
-      min-height: clamp(160px, 28vw, 320px);
-      padding: 28px 16px 26px;
-      background:
-        radial-gradient(circle at 12% 18%, var(--hdr-a) 0%, rgba(121,168,255,0) 52%),
-        radial-gradient(circle at 78% 14%, var(--hdr-b) 0%, rgba(255,183,71,0) 60%),
-        linear-gradient(135deg,#09101c 0%,#0b0d10 38%,#1f2f4a 100%);
-      background-size:220% 220%;
-      background-position:48% 6%, 54% 20%, center;
-      animation:headerDrift 18s ease-in-out infinite alternate;
-      background-blend-mode:screen;
-      border-bottom:1px solid rgba(255,255,255,0.06);
-      overflow:hidden;
-    }
+  position:relative;
+  z-index:3;
+  min-height: clamp(160px, 28vw, 320px);
+  padding: 28px 16px 26px;
+  background:
+    radial-gradient(circle at 12% 18%, var(--hdr-a) 0%, rgba(121,168,255,0) 52%),
+    radial-gradient(circle at 78% 14%, var(--hdr-b) 0%, rgba(255,183,71,0) 60%),
+    linear-gradient(135deg,#09101c 0%,#0b0d10 38%,#1f2f4a 100%);
+  background-size:220% 220%;
+  background-position:48% 6%, 54% 20%, center;
+  animation:headerDrift 18s ease-in-out infinite alternate;
+  background-blend-mode:screen;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+  overflow:hidden;
+}
 
 header.site-header::before{
-
-      content:"";
-
-      position:absolute;
-
-      inset:-55% -28%;
-
-      z-index:1;
-
-      background:
-
-        radial-gradient(ellipse at 32% 38%, var(--hdr-b) 0%, rgba(255,214,106,0) 68%),
-
-        radial-gradient(ellipse at 72% 70%, var(--hdr-a) 0%, rgba(106,166,255,0) 70%);
-
-      background-size:160% 160%;
-
-      opacity:0.92;
-
-      pointer-events:none;
-
-      mix-blend-mode:screen;
-
-      filter:blur(80px);
-
-      animation:headerAurora 12s cubic-bezier(.55,.12,.37,.88) infinite alternate;
-
-    }
-
-                    header.site-header .grain{position:absolute;inset:0;pointer-events:none;z-index:2;opacity:.12;mix-blend-mode:overlay;background-image:url("data:image/svg+xml;utf8,\<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"120\" height=\"120\" viewBox=\"0 0 120 120\">\<filter id=\"n\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"0.9\" numOctaves=\"2\" stitchTiles=\"stitch\"/></filter>\<rect width=\"120\" height=\"120\" filter=\"url(%23n)\" opacity=\"0.75\"/></svg>");animation:grainShift 8s steps(12) infinite}
-
-        header.site-header::after{
-
-  content: "PLEX";              /* ohne Backslashes! */
-
-  position: absolute;
-
-  left: 50%;
-
-  top: 55%;
-
-  transform: translate(-50%, -50%);
-
-  z-index: 3;
-
-  font-family: "Segoe UI","Helvetica Neue",Arial,sans-serif;
-
-  font-weight: 800;
-
-  letter-spacing: 0.22em;
-
-  font-size: clamp(84px, 16vw, 220px);
-
-  line-height: 1;
-
-  color: rgba(255,255,255,0.16);
-
-  text-transform: uppercase;
-
-  pointer-events: none;
-
-  mix-blend-mode: screen;
-
-  text-shadow: 0 26px 54px rgba(0,0,0,0.55);
-
-  filter: blur(.3px);
-
-  animation: headerGlow 18s ease-in-out infinite alternate;
-
+  content:"";
+  position:absolute;
+  inset:-55% -28%;
+  z-index:1;
+  background:
+    radial-gradient(ellipse at 32% 38%, var(--hdr-b) 0%, rgba(255,214,106,0) 68%),
+    radial-gradient(ellipse at 72% 70%, var(--hdr-a) 0%, rgba(106,166,255,0) 70%);
+  background-size:160% 160%;
+  opacity:0.92;
+  pointer-events:none;
+  mix-blend-mode:screen;
+  filter:blur(80px);
+  animation:headerAurora 12s cubic-bezier(.55,.12,.37,.88) infinite alternate;
 }
+
+                    header.site-header .grain{position:absolute;inset:0;pointer-events:none;z-index:2;opacity:.08;mix-blend-mode:overlay;background-image:url("data:image/svg+xml;utf8,\<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"120\" height=\"120\" viewBox=\"0 0 120 120\">\<filter id=\"n\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"0.9\" numOctaves=\"2\" stitchTiles=\"stitch\"/></filter>\<rect width=\"120\" height=\"120\" filter=\"url(%23n)\" opacity=\"0.75\"/></svg>");animation:grainShift 8s steps(12) infinite}
+
 
     .site-header__inner{
       position:relative;
@@ -191,9 +137,9 @@ header.site-header::before{
 
     .field.sort select{width:100%;border:1px solid var(--border);background:var(--card);color:var(--fg);border-radius:10px;padding:6px 10px}
 
-    .toggle-advanced{border:1px solid var(--border);background:rgba(15,18,23,0.85);color:var(--muted);border-radius:999px;padding:8px 16px;font-size:13px;cursor:pointer;transition:background .15s ease,color .15s ease}
+    .toggle-advanced, .settings-button{border:1px solid var(--border);background:rgba(15,18,23,0.85);color:var(--muted);border-radius:999px;padding:8px 16px;font-size:13px;cursor:pointer;transition:background .15s ease,color .15s ease}
 
-    .toggle-advanced:hover{border-color:var(--accent);color:var(--accent)}
+    .toggle-advanced:hover, .settings-button:hover{border-color:var(--accent);color:var(--accent)}
 
     .watchlist-button{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);background:rgba(15,18,23,0.85);color:var(--muted);border-radius:999px;padding:8px 16px;font-size:13px;cursor:pointer;transition:background .15s ease,color .15s ease,border .15s ease}
 
@@ -264,15 +210,26 @@ header.site-header::before{
 
     .card:hover .poster .rating{opacity:1;transform:translateY(0)}
 
+    /* Recently added ribbon on poster */
+    .poster .new-badge{
+      position:absolute;top:12px;right:-36px;z-index:2;
+      transform:rotate(45deg);
+      background:var(--accent);color:#0b1524;
+      font-size:10.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;
+      padding:6px 48px;
+      box-shadow:0 2px 10px rgba(0,0,0,.35);
+      pointer-events:none
+    }
+
     .watchlist-toggle{position:absolute;top:10px;left:10px;border:none;background:rgba(11,13,16,0.78);color:var(--muted);border-radius:999px;padding:6px 10px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer;transition:background .15s ease,color .15s ease,transform .15s ease}
 
-    .watchlist-toggle::before{content:"☆";font-size:12px}
+    .watchlist-toggle::before{content:"\2606";font-size:12px}
 
     .watchlist-toggle:hover{transform:translateY(-1px)}
 
     .watchlist-toggle.active{background:#f9b233;color:#11151d}
 
-    .watchlist-toggle.active::before{content:"★"}
+    .watchlist-toggle.active::before{content:"\2605"}
 
     .meta{padding:10px 12px}
 
@@ -290,7 +247,8 @@ header.site-header::before{
     .collection-hint .collection-link{border:1px solid var(--border);background:rgba(106,166,255,0.15);color:var(--accent);border-radius:999px;padding:2px 8px;font-size:11px;font-weight:600;cursor:pointer;transition:background .15s ease,color .15s ease,border .15s ease}
     .collection-hint .collection-link:hover{background:var(--accent);color:#0b1524;border-color:var(--accent)}
     .collection-hint .collection-more-count{font-size:11px;color:var(--muted)}
-    .card.collection-card{min-height:0}
+    .card.collection-card{min-height:0;border:2px dashed rgba(106,166,255,0.45)}
+    .card.collection-card.in-watchlist{border-color:rgba(249,178,51,0.8)}
     .card.collection-card .collection-summary{margin-top:12px;display:flex;flex-direction:column;gap:6px}
     .card.collection-card .collection-summary.is-clickable{cursor:pointer;}
     .card.collection-card .collection-summary.is-clickable .collection-more{text-decoration:underline;}
@@ -363,18 +321,6 @@ header.site-header::before{
 
     }
 
-    @keyframes headerGlow{
-
-  0%{opacity:.14;transform:translate(-50%,-50%) scale(1);}
-
-  50%{opacity:.22;transform:translate(calc(-50% - 8px), calc(-50% - 6px)) scale(1.03);}
-
-  100%{opacity:.28;transform:translate(calc(-50% - 16px), calc(-50% - 12px)) scale(1.06);}
-
-}
-
-
-
 @keyframes grainShift{
 
       from{transform:translate3d(0,0,0)}
@@ -383,7 +329,7 @@ header.site-header::before{
 
     }footer.wrap{max-width:1200px;margin:24px auto 60px;padding:0 16px}
 
-    .foot-notes{list-style:disc;color:var(--muted);font-size:12px;display:flex;flex-direction:column;gap:6px;padding-left:18px}
+
 
     @media (max-width:900px){
       .site-header{padding:26px 16px 22px}
@@ -405,7 +351,7 @@ header.site-header::before{
       .site-header__stats{font-size:12px;grid-column:1 / -1;justify-self:start;align-self:start;margin-top:10px}
       .filters{position:relative;top:auto}
       .filters-wrap{padding:10px 12px}
-      .toggle-advanced{width:100%;text-align:center}
+      .toggle-advanced, .settings-button{width:100%;text-align:center}
       .filters-main{gap:8px}
       .watchlist-button{width:100%;justify-content:center}
       .watchlist-actions{flex-direction:column;align-items:stretch}
@@ -414,6 +360,280 @@ header.site-header::before{
       .watchlist-item{flex-direction:column;align-items:flex-start}
       .watchlist-remove{align-self:flex-end}
     }
+/* Reduced motion / accessibility */
+@media (prefers-reduced-motion: reduce){
+  *{scroll-behavior:auto !important}
+  header.site-header, header.site-header::before{animation:none !important}
+  header.site-header .grain{opacity:.05}
+}
+
+    /* Settings overlay */
+    .settings-overlay{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45)}
+    .settings-overlay[hidden]{display:none}
+    .settings-dialog{background:rgba(15,18,23,0.95);border:1px solid var(--border);border-radius:16px;max-width:520px;width:92%;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,0.45)}
+    .settings-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .settings-title{margin:0;font-size:18px;font-weight:600;letter-spacing:.3px}
+    .settings-body{display:flex;flex-direction:column;gap:12px}
+    .settings-row{display:flex;flex-direction:column;gap:6px}
+    .settings-row label{font-size:13px;color:var(--muted)}
+    .settings-row input[type="text"], .settings-row input[type="password"]{width:100%;border:1px solid var(--border);background:var(--card);color:var(--fg);border-radius:10px;padding:8px 10px}
+    .settings-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+    .settings-actions button, .settings-inline button{border:1px solid var(--border);background:rgba(15,18,23,0.85);color:var(--fg);border-radius:999px;padding:8px 16px;font-size:13px;cursor:pointer;transition:background .15s ease,color .15s ease,border .15s ease}
+    .settings-actions button:hover, .settings-inline button:hover{border-color:var(--accent);color:var(--accent)}
+    .settings-actions button.primary{background:var(--accent);color:#0b1524;border-color:var(--accent);font-weight:600}
+    .settings-actions button.primary:hover{filter:brightness(1.05)}
+    .settings-inline{display:flex;align-items:center;gap:8px}
+    .settings-help{font-size:12px;color:var(--muted)}
+
+    /* Manual reduce-motion preference via class */
+    html.reduce-motion header.site-header,
+    html.reduce-motion header.site-header::before{animation:none !important}
+    html.reduce-motion .grain{opacity:.05}
+
+    /* Footer */
+    footer.wrap{display:flex;flex-direction:column;gap:10px}
+    .footer-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .footer-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;justify-content:flex-end}
+    .footer-actions .btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:rgba(15,18,23,0.85);color:var(--muted);border-radius:999px;padding:8px 16px;font-size:13px;cursor:pointer;transition:background .15s ease,color .15s ease,border .15s ease}
+    .footer-actions .btn:hover{border-color:var(--accent);color:var(--accent)}
+    .footer-meta{color:var(--muted);font-size:12.5px}
+    .footer-note{color:var(--muted);font-size:12px;margin:0}
+
+    /* Year reset button */
+    #yearReset{border:1px solid var(--border);background:rgba(15,18,23,0.85);color:var(--muted);border-radius:999px;padding:6px 10px;font-size:12px;cursor:pointer;transition:background .15s ease,color .15s ease,border .15s ease}
+    #yearReset:hover{border-color:var(--accent);color:var(--accent)}
+
+    /* Scroll to top button */
+    .scroll-top{position:fixed;right:18px;bottom:18px;z-index:30;border:1px solid var(--border);background:rgba(15,18,23,0.9);color:var(--accent);border-radius:999px;width:52px;height:52px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;cursor:pointer;opacity:0;transform:translateY(8px) scale(.94);pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.25);transition:opacity .2s ease,transform .24s ease,box-shadow .24s ease,background .2s ease,color .2s ease}
+    .scroll-top:hover{border-color:var(--accent);color:#0b1524;background:var(--accent);box-shadow:0 10px 26px rgba(106,166,255,0.25)}
+    .scroll-top:active{transform:translateY(0) scale(.94)}
+    .scroll-top.visible{opacity:1;transform:translateY(0) scale(1);pointer-events:auto}
+    .scroll-top.appearing{animation:scrollTopPop .24s cubic-bezier(.2,.7,.3,1) 1}
+    .scroll-top.pressed{animation:scrollTopPress .18s ease 1}
+    .scroll-top svg{width:22px;height:22px;display:block}
+    .scroll-top.visible:not(.pressed):not(:hover){animation:scrollTopPulse 3.6s ease-in-out infinite .6s}
+    @keyframes scrollTopPop{0%{transform:translateY(10px) scale(.86);opacity:.0}60%{transform:translateY(0) scale(1.04);opacity:1}100%{transform:translateY(0) scale(1)}}
+    @keyframes scrollTopPress{0%{transform:translateY(0) scale(1)}70%{transform:translateY(0) scale(.92)}100%{transform:translateY(0) scale(1)}}
+    @keyframes scrollTopPulse{0%,100%{box-shadow:0 8px 24px rgba(0,0,0,.25)}50%{box-shadow:0 12px 30px rgba(106,166,255,0.28)}}
+    @media (prefers-reduced-motion: reduce){
+      .scroll-top{transition:none}
+      .scroll-top.appearing,.scroll-top.pressed,.scroll-top.visible{animation:none}
+    }
+
+    /* Detail Modal */
+    .modal[hidden]{ display:none }
+    .modal{ position:fixed; inset:0; z-index:100; display:grid; place-items:center; }
+    .modal::before{
+      content:""; position:absolute; inset:0; background:rgba(0,0,0,.55); backdrop-filter:blur(8px) saturate(120%);
+      opacity:0; transition:opacity .2s ease; pointer-events:none; z-index:0;
+    }
+    .modal.open::before{ opacity:1 }
+    .modal__panel{
+      position:relative; width:min(980px, 92vw); max-height:86vh; overflow:auto;
+      background:#0b0d10; border:1px solid #1d2635; border-radius:16px;
+      box-shadow:0 30px 120px rgba(0,0,0,.6);
+      transform: translateY(8px); opacity:0; transition:transform .2s ease, opacity .2s ease;
+      z-index:1;
+    }
+    .modal.open .modal__panel{ transform:none; opacity:1 }
+    /* no image backdrop; we blur the page behind */
+    .modal__close{
+      position:absolute; top:12px; right:12px;
+      width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center;
+      border:none; background:rgba(15,18,23,0.9); color:var(--muted);
+      border:1px solid var(--border); border-radius:999px; cursor:pointer; line-height:1; pointer-events:auto; z-index:3;
+    }
+    .modal__close:hover{ border-color:var(--accent); color:var(--accent) }
+    .modal__hero{ display:grid; grid-template-columns:180px 1fr; gap:16px; padding:16px }
+    .modal__poster img{ width:100%; aspect-ratio:2/3; object-fit:cover; border-radius:12px; display:block; opacity:0; transition:opacity .25s ease }
+    .modal__poster img.is-ready{ opacity:1 }
+    .modal__head .subline{ opacity:.9; color:#cfd6e2; margin:.25rem 0 .5rem }
+    .modal__head .chips{ display:flex; flex-wrap:wrap; gap:.5rem }
+    .chips .chip{ padding:.25rem .6rem; border-radius:999px; background:#1a2230; border:1px solid #263147 }
+    .modal__body{ padding:0 16px 16px }
+    .overview{ margin:.5rem 0 1rem; color:#d8dde6 }
+    .cast{ display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.5rem }
+    .cast .chip{ opacity:.92 }
+    .seasons{ margin-top:1rem }
+    .season{ display:flex; gap:12px; padding:8px; border:1px solid #263147; border-radius:10px; margin-bottom:8px; background:#0f141d }
+    .episodes{ margin-left:192px; margin-top:4px }
+
+    /* Modal nav arrows */
+    .modal__arrow{ position:absolute; top:50%; transform:translateY(-50%); width:54px; height:54px; border-radius:999px; border:1px solid rgba(106,166,255,0.35); background:linear-gradient(180deg, rgba(20,24,29,0.95), rgba(13,16,21,0.95)); color:#cfe1ff; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; z-index:2; opacity:.92; transition:transform .18s ease, box-shadow .25s ease, opacity .2s ease }
+    .modal__arrow:hover{ transform:translateY(-50%) scale(1.06); box-shadow:0 8px 22px rgba(0,0,0,.35), 0 0 0 2px rgba(106,166,255,0.25) inset }
+    .modal__arrow:active{ transform:translateY(-50%) scale(.96) }
+    .modal__arrow[disabled]{ opacity:.35; pointer-events:none; filter:saturate(60%) }
+    .modal__arrow--prev{ left:clamp(8px, 3vw, 24px) }
+    .modal__arrow--next{ right:clamp(8px, 3vw, 24px) }
+    .modal__arrow .chev{ font-size:28px; line-height:1; transform:translateY(-1px) }
+    .modal.is-updating .modal__arrow{ opacity:.6; transform:translateY(-50%) scale(.98) }
+
+    /* Crossfade for title, overview, chips, cast and actions */
+    #mTitle, #mOverview, #mChips, #mCast, #mActions{ transition: opacity .25s ease, transform .25s ease; will-change: opacity, transform }
+    .modal.is-updating #mTitle, .modal.is-updating #mOverview, .modal.is-updating #mChips, .modal.is-updating #mCast, .modal.is-updating #mActions{ opacity:0; transform:translateY(2px) }
+
+    /* Seasons accordion for TV shows */
+    .seasons-accordion{ display:flex; flex-direction:column; gap:.75rem; }
+
+    .season-card{
+      border:1px solid #263147; background:#0f141d;
+      border-radius:12px; overflow:hidden;
+    }
+
+    .season-head{
+      display:grid; grid-template-columns:84px 1fr 24px;
+      align-items:center; gap:12px;
+      padding:10px 12px; cursor:pointer;
+    }
+    .season-thumb img{
+      width:100%; aspect-ratio:2/3; object-fit:cover; border-radius:6px;
+    }
+    .season-title{ font-weight:700; }
+    .season-sub{ color:#9fb0c6; opacity:.9; margin-top:2px; }
+
+    .chev{
+      width:24px; height:24px; display:grid; place-items:center;
+      border-radius:6px; border:1px solid #263147; background:#101728;
+      transition: transform .18s ease;
+    }
+    .season-card.open .chev{ transform:rotate(90deg); }
+
+    .season-body{ display:none; padding:10px 12px 12px; }
+    .season-card.open .season-body{ display:block; animation: fadeSlide .18s ease; }
+
+    @keyframes fadeSlide{ from{opacity:0; transform:translateY(4px)} to{opacity:1; transform:none} }
+
+    .episode{
+      display:grid; grid-template-columns: 1fr auto; gap:8px;
+      padding:8px 0; border-bottom:1px dashed #22304a;
+      content-visibility:auto; contain-intrinsic-size: 48px;
+    }
+    .episode:last-child{ border-bottom:none; }
+    .ep-title{ font-weight:600; }
+    .ep-meta{ color:#9fb0c6; font-size:.9rem; }
+    .badges{ display:flex; gap:.4rem; align-items:center; }
+    .badge{
+      padding:.15rem .5rem; border-radius:999px;
+      border:1px solid #2b3a59; background:#121a2b; font-size:.85rem;
+    }
+
+    /* Modal modern overrides and additions */
+    .modal__hero{ display:grid; grid-template-columns:180px 1fr; gap:18px; padding:16px 16px 10px }
+    .modal__poster{ align-self:start }
+    .modal__poster img{ aspect-ratio:2/3; border-radius:12px }
+    .modal__head{ display:grid; grid-template-rows:auto auto auto; gap:6px }
+    .modal__head .topbar{ display:flex; align-items:center; justify-content:space-between; gap:12px }
+    .modal__head h2#mTitle{ font-size:clamp(20px,2.2vw,28px); line-height:1.2 }
+    .util-actions{ display:flex; gap:8px; flex-wrap:wrap }
+    .util-actions a, .util-actions button{ appearance:none; border:1px dashed #2a3a56; background:transparent; color:#cfe1ff; border-radius:999px; padding:6px 10px; font-size:13px; cursor:pointer; opacity:.95 }
+    .util-actions a:hover, .util-actions button:hover{ border-style:solid; border-color:var(--accent); color:var(--accent); background:rgba(106,166,255,0.12) }
+    .modal__subnav{ position:sticky; top:0; z-index:2; background:linear-gradient(180deg, rgba(11,13,16,0.96), rgba(11,13,16,0.85)); backdrop-filter:saturate(140%) blur(8px); border-block:1px solid rgba(255,255,255,0.06) }
+    .modal__subnav .inner{ display:flex; gap:8px; padding:10px 12px }
+    .modal__subnav button{ border:1px solid var(--border); background:#0f141d; color:#c8d5e8; border-radius:999px; padding:6px 10px; font-size:13px; cursor:pointer; opacity:.9 }
+    .modal__subnav button.active{ border-color:var(--accent); color:var(--accent); background:rgba(106,166,255,0.12) }
+    .modal-section{ padding:12px 0 }
+    .overview{ max-width:72ch; line-height:1.6; hyphens:auto }
+    .chips .chip{ padding:.25rem .6rem; border-radius:999px; background:#1a2230; border:1px solid #263147; color:#cfe1ff }
+    .chips .chip.more{ background:transparent; border-style:dashed; color:var(--accent) }
+    @media (max-width: 720px){ .modal__hero{ grid-template-columns:120px 1fr } }
+    @media (max-width: 480px){ .modal__hero{ grid-template-columns:1fr } .modal__poster{ max-width:68% } .modal__poster img{ margin:0 auto } }
+
+    /* --- Modal Tweaks: Raum, Hierarchie, Rhythmus --- */
+
+    /* Hero: mehr Luft, bessere Raster */
+    .modal__hero{
+      grid-template-columns: 200px 1fr;
+      gap: 20px 18px;
+      padding: 18px 18px 8px;
+    }
+    @media (max-width: 900px){ .modal__hero{ grid-template-columns: 160px 1fr } }
+    @media (max-width: 720px){ .modal__hero{ grid-template-columns: 120px 1fr } }
+    @media (max-width: 560px){ .modal__hero{ grid-template-columns: 1fr } }
+
+    .modal__head{ display:grid; gap: 8px }
+    .modal__head .topbar{ display:grid; grid-template-columns: 1fr; gap:6px; align-items:start }
+    .util-actions{ display:flex; gap: 6px; flex-wrap: wrap }
+    .util-actions a, .util-actions button{
+      border: 1px solid rgba(106,166,255,.28);
+      background: rgba(16,23,40,.6);
+      padding: 6px 12px;
+      border-radius: 999px;
+    }
+    .util-actions a:hover, .util-actions button:hover{
+      background: rgba(106,166,255,.12);
+    }
+
+    /* Chips ruhiger + "mehr" */
+    .chips{ display:flex; flex-wrap:wrap; gap: 6px; margin-top: 6px }
+    .chips .chip{
+      background: #162033;
+      border: 1px solid #24314a;
+      color: #cfe1ff;
+      border-radius: 999px;
+      padding: .25rem .6rem;
+    }
+    .chips .chip.more{
+      background: transparent;
+      border-style: dashed;
+      border-color: #2a3a56;
+      color: var(--accent, #6aa6ff);
+      cursor: pointer;
+    }
+
+    /* Sticky Tabs + Anker */
+    .modal__subnav{ top: 0 }
+    .modal-section{ padding: 12px 16px 16px; scroll-margin-top: 58px }
+
+    /* Lesbarkeit der Overview */
+    .overview{
+      max-width: 72ch;
+      line-height: 1.65;
+      font-size: 0.98rem;
+      color: #d8dde6;
+      text-wrap: pretty;
+      hyphens: auto;
+    }
+
+    /* Seasons kompakter */
+    .season-card{ border-radius: 12px; overflow: hidden }
+    .season-head{
+      grid-template-columns: 84px 1fr auto;
+      padding: 10px 12px;
+    }
+    .season-sub{ font-size: .92rem }
+    .chev{
+      width: 28px; height: 28px;
+      display:grid; place-items:center;
+      border: 1px solid #2a3a56;
+      background: rgba(16,23,40,.6);
+      border-radius: 8px;
+      transition: transform .18s ease;
+    }
+    .season-card.open .chev{ transform: rotate(90deg) }
+
+    .season-body{ padding: 8px 12px 10px }
+    .episode{
+      grid-template-columns: 1fr auto;
+      gap: 10px; padding: 8px 0;
+      border-bottom: 1px dashed #23324c;
+    }
+    .episode:last-child{ border-bottom: none }
+    .ep-title{ font-weight: 600 }
+    .ep-meta{ color: #9fb0c6; font-size: .9rem; grid-column: 2; text-align: right }
+
+    /* Dezentere Scrollbar im Panel (WebKit/Chromium) */
+    .modal__panel::-webkit-scrollbar{ width: 10px }
+    .modal__panel::-webkit-scrollbar-thumb{
+      background: rgba(255,255,255,.12);
+      border-radius: 999px;
+      border: 2px solid #0b0d10;
+    }
+
+    /* Motion-Reduktion respektieren */
+    @media (prefers-reduced-motion: reduce){
+      .chev, .season-card.open .season-body{ transition: none; animation: none }
+    }
+
 </style>
 
 </head>
@@ -430,11 +650,11 @@ header.site-header::before{
 
       <h1 class="site-title">Plex-Katalog</h1>
 
-      <p class="site-tagline" id="heroSubtitle">Offline stöbern &amp; Wunschlisten teilen</p>
+      <p class="site-tagline" id="heroSubtitle">Offline stöbern & Wunschlisten teilen</p>
 
     </div>
 
-    <div class="site-header__stats" id="heroStats">-- Filme | -- Serien</div>
+    <div class="site-header__stats" id="heroStats" aria-live="polite">-- Filme | -- Serien</div>
 
   </div>
 
@@ -454,6 +674,8 @@ header.site-header::before{
 
       <div class="field search">
 
+        <label class="sr-only" for="q">Suche</label>
+
         <span class="icon" aria-hidden="true">S</span>
 
         <input id="q" type="search" placeholder="Suche Titel, Darsteller, Studio..." autocomplete="off" />
@@ -472,15 +694,15 @@ header.site-header::before{
 
           <option value="year-desc">Jahr (neueste)</option>
 
-          <option value="year-asc">Jahr (älteste)</option>
+          <option value="year-asc">Jahr (&auml;lteste)</option>
 
           <option value="rating-desc">Bewertung (hoch)</option>
 
           <option value="rating-asc">Bewertung (niedrig)</option>
 
-          <option value="added-desc">Zuletzt hinzugefügt</option>
+          <option value="added-desc">Zuletzt hinzugef&uuml;gt</option>
 
-          <option value="added-asc">Zuerst hinzugefügt</option>
+          <option value="added-asc">Zuerst hinzugef&uuml;gt</option>
 
         </select>
 
@@ -489,6 +711,7 @@ header.site-header::before{
       <button id="watchlistToggle" type="button" class="watchlist-button" aria-expanded="false">Merkliste <span class="count" id="watchlistCount">0</span></button>
 
       <button id="toggleAdvanced" class="toggle-advanced" aria-expanded="false">Erweiterte Filter anzeigen</button>
+      <button id="settingsBtn" type="button" class="settings-button" aria-haspopup="dialog" aria-controls="settingsOverlay">Einstellungen</button>
 
     </div>
 
@@ -520,6 +743,8 @@ header.site-header::before{
 
           <select id="yearTo"><option value="">Bis Jahr</option></select>
 
+          <button type="button" id="yearReset" title="Jahresfilter zurücksetzen">Reset</button>
+
         </div>
 
         <div class="field toggles">
@@ -528,7 +753,7 @@ header.site-header::before{
 
           <label class="toggle-chip"><input id="groupCollections" type="checkbox" /> Sammlungen bündeln</label>
 
-          <label class="toggle-chip"><input id="useTmdb" type="checkbox" /> TMDB-Bilder nutzen</label>
+
 
         </div>
 
@@ -558,7 +783,7 @@ header.site-header::before{
 
   </div>
 
-  <p class="watchlist-empty" id="watchlistEmpty" hidden>Keine Einträge gemerkt.</p>
+   EintrÃ¤ge gemerkt.
 
   <ul class="watchlist-items" id="watchlistItems"></ul>
 
@@ -573,20 +798,56 @@ header.site-header::before{
 </main>
 
 <footer class="wrap">
-
-  <ul class="foot-notes">
-
-    <li>Offline: Filme/movies.js liefert alle Titel ohne Webserver.</li>
-
-    <li>Serien: Serien/series.js vorbereiten und oben über den Schalter aktivieren.</li>
-
-    <li>Filtern: Genres lassen sich kombinieren; URL enthält Suche, Jahre und Sortierung.</li>
-
-    <li>TMDB: Trage deinen v4 Bearer Token in der Konfiguration ein.</li>
-
-  </ul>
-
+  <div class="footer-top">
+    <div class="footer-meta" id="footerMeta">Plex-Katalog lädt.</div>
+    <div class="footer-actions">
+      <a href="#" id="openSettings" class="btn">Einstellungen öffnen</a>
+      <a href="#" id="openWatchlist" class="btn">Merkliste anzeigen</a>
+    </div>
+  </div>
+   ist Nils' aktuelle Plex-Mediathek &ndash; was gerade so da ist.
 </footer>
+
+<button id="scrollTop" class="scroll-top" aria-label="Nach oben" title="Nach oben">
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path d="M6 14l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+</button>
+
+<!-- Einstellungen Overlay -->
+<div id="settingsOverlay" class="settings-overlay" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" hidden>
+  <div class="settings-dialog">
+    <div class="settings-header">
+      <h2 id="settingsTitle" class="settings-title">Einstellungen</h2>
+    </div>
+    <div class="settings-body">
+      <div class="settings-row">
+        <label for="tmdbTokenInput">TMDB v4 Access Token</label>
+        <input id="tmdbTokenInput" type="password" placeholder="Bearer Token eingeben" autocomplete="off" />
+        <div class="settings-inline">
+          <button type="button" id="tmdbSave" class="primary">Token speichern</button>
+          <button type="button" id="tmdbClearCache">TMDB-Cache leeren</button>
+        </div>
+        <p class="settings-help">Token wird lokal (localStorage) gespeichert. Leerlassen, um TMDB zu deaktivieren.</p>
+      </div>
+      <div class="settings-row">
+        <label class="settings-inline"><input id="prefReduceMotion" type="checkbox" /> Animationen reduzieren</label>
+      </div>
+      <div class="settings-row">
+        <label class="settings-inline"><input id="useTmdbSetting" type="checkbox" /> TMDB-Bilder nutzen</label>
+        <p class="settings-help">Nur verfügbar mit gültigem Token.</p>
+      </div>
+      <div class="settings-row">
+        <div class="settings-inline">
+          <button type="button" id="resetFilters">Filter zurücksetzen</button>
+        </div>
+      </div>
+    </div>
+    <div class="settings-actions">
+      <button type="button" id="settingsClose2">Schließen</button>
+    </div>
+  </div>
+</div>
 
 <script>
 
@@ -642,7 +903,7 @@ const CONFIG = {
 
   defaultLibrary: 'movies',
 
-  tmdbAccessToken: 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmMDYyNDQ1NTVkZjdhMjAxNDRhNjhkODg0ZDI1ZTQyYiIsIm5iZiI6MTcxODEyNzIwOC44ODIsInN1YiI6IjY2Njg4YTY4NzRhODY3NTllNGVhMDFiOSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.sPzDNfMPuZLWtGZNrNFzx3oi27qld913usjolFP3Cl4',
+  tmdbAccessToken: '',
 
   tmdbApiKey: '',
 
@@ -654,7 +915,16 @@ const CONFIG = {
 
 };
 
+// Read TMDB token from localStorage (no hardcoding)
+CONFIG.tmdbAccessToken = localStorage.getItem('tmdbToken') || CONFIG.tmdbAccessToken || '';
 
+function setTmdbToken(token){
+  try{
+    const t = String(token||'').trim();
+    localStorage.setItem('tmdbToken', t);
+    CONFIG.tmdbAccessToken = t;
+  }catch{}
+}
 
 const state = {
 
@@ -692,8 +962,6 @@ const state = {
 
 };
 
-
-
 let suppressSync = false;
 
 const loadedScripts = new Set();
@@ -712,9 +980,9 @@ const heroElements = {
 
 const TAGLINES = [
 
-  "Offline stöbern & Wunschlisten teilen",
+  "Offline stÃ¶bern & Wunschlisten teilen",
 
-  "Nils Bibliothek, hübsch sortiert",
+  "Nils Bibliothek, hÃ¼bsch sortiert",
 
   "Filter. Finden. Freuen.",
 
@@ -722,7 +990,7 @@ const TAGLINES = [
 
   "Schneller als jeder SMB-Share",
 
-  "Merkliste zuerst, Streit später"
+  "Merkliste zuerst, Streit spÃ¤ter"
 
 ];
 
@@ -756,8 +1024,6 @@ function rotateTagline(){
 
 }
 
-
-
 if(heroElements.subtitle){
 
   heroElements.subtitle.textContent = TAGLINES[taglineIdx];
@@ -774,8 +1040,6 @@ if(heroElements.subtitle){
 
 }
 
-
-
 const siteLogo = document.getElementById('siteLogo');
 
 if(siteLogo){
@@ -791,8 +1055,6 @@ if(siteLogo){
   });
 
 }
-
-
 
 (function setHeaderThemeByTime(){
 
@@ -822,9 +1084,8 @@ if(siteLogo){
 
 })();
 
-
-
 const scrollProgress = document.getElementById('scrollProgress');
+const scrollTopBtn = document.getElementById('scrollTop');
 
 if(scrollProgress){
 
@@ -838,12 +1099,33 @@ if(scrollProgress){
 
     scrollProgress.style.width = pct + '%';
 
+    if(scrollTopBtn){
+      const show = doc.scrollTop > 120;
+      const wasVisible = scrollTopBtn.classList.contains('visible');
+      if(show && !wasVisible){
+        scrollTopBtn.classList.add('visible','appearing');
+        setTimeout(()=>scrollTopBtn && scrollTopBtn.classList.remove('appearing'), 280);
+      }else if(!show && wasVisible){
+        scrollTopBtn.classList.remove('visible','appearing');
+      }
+    }
+
   };
 
   addEventListener('scroll', updateScrollProgress, { passive:true });
 
   updateScrollProgress();
 
+}
+
+if(scrollTopBtn){
+  scrollTopBtn.addEventListener('click', ()=>{
+    // press animation
+    try{ scrollTopBtn.classList.add('pressed'); setTimeout(()=>scrollTopBtn && scrollTopBtn.classList.remove('pressed'), 220); }catch{}
+    const reduce = document.documentElement.classList.contains('reduce-motion');
+    try{ window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' }); }
+    catch{ window.scrollTo(0,0); }
+  });
 }
 
 const WATCHLIST_STORAGE_KEY = 'plexWatchlist';
@@ -855,8 +1137,6 @@ let watchlistDirty = false;
 let watchlistExported = false;
 
 let sessionStore = null;
-
-
 
 const $ = (q, el=document) => el.querySelector(q);
 
@@ -880,7 +1160,11 @@ function debounce(fn, ms = 120){
 
 }
 
-
+// Normalize strings for robust search (e.g., Umlaute)
+const norm = s => String(s||'')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g,'')
+  .toLowerCase();
 
 function parseGuids(item){
 
@@ -902,8 +1186,6 @@ function parseGuids(item){
 
 }
 
-
-
 function humanYear(item){
 
   if(item.year) return item.year;
@@ -913,8 +1195,6 @@ function humanYear(item){
   return '';
 
 }
-
-
 
 function loadTmdbCache(){
 
@@ -930,7 +1210,30 @@ const tmdbCache = loadTmdbCache();
 
 const persistTmdbCache = ()=>localStorage.setItem('tmdbCache', JSON.stringify(Array.from(tmdbCache.entries())));
 
+function clearTmdbCache(){
+  try{ tmdbCache.clear(); persistTmdbCache(); }catch{}
+}
 
+// Reduce-motion preference handling
+function applyReduceMotionPref(){
+  try{
+    const pref = localStorage.getItem('prefReduceMotion') === '1';
+    document.documentElement.classList.toggle('reduce-motion', pref);
+  }catch{}
+}
+applyReduceMotionPref();
+
+// TMDB preference helpers
+function getUseTmdbPref(){
+  try{ return localStorage.getItem('useTmdb') === '1'; }catch{ return false; }
+}
+function setUseTmdbPref(on){
+  try{ localStorage.setItem('useTmdb', on ? '1' : '0'); }catch{}
+}
+function useTmdbEnabled(){
+  const hasToken = Boolean(CONFIG.tmdbAccessToken);
+  return hasToken && getUseTmdbPref();
+}
 
 function formatRating(val){
 
@@ -950,22 +1253,9 @@ function formatRating(val){
 
 }
 
-
-
 function slugify(text){
 
-  const transliterated = String(text||'').replace(/[äÄöÖüÜßẞ]/g, char => ({
-    'ä':'ae',
-    'Ä':'Ae',
-    'ö':'oe',
-    'Ö':'Oe',
-    'ü':'ue',
-    'Ü':'Ue',
-    'ß':'ss',
-    'ẞ':'SS'
-  })[char] || char);
-
-  return transliterated
+  return String(text||'')
 
     .normalize('NFD')
 
@@ -981,8 +1271,6 @@ function slugify(text){
 
 }
 
-
-
 function itemIdentity(item){
 
   if(!item) return '';
@@ -994,8 +1282,6 @@ function itemIdentity(item){
   return `title:${(item.title||item.originalTitle||'').toLowerCase()}|${humanYear(item)||''}`;
 
 }
-
-
 
 function collectionTags(item){
 
@@ -1013,15 +1299,11 @@ function collectionTags(item){
 
 }
 
-
-
 function collectionWatchlistKey(name){
 
   return `collection:${state.library}:${slugify(name)}`;
 
 }
-
-
 
 function buildCollectionIndex(items){
 
@@ -1059,8 +1341,6 @@ function buildCollectionIndex(items){
 
 }
 
-
-
 function isNew(item){
 
   if(!item.addedAt) return false;
@@ -1075,7 +1355,7 @@ function isNew(item){
 
 function matches(item){
 
-  const query = $('#q').value.trim().toLowerCase();
+  const query = norm($('#q').value.trim());
 
   const onlyNew = $('#onlyNew').checked;
 
@@ -1089,45 +1369,29 @@ function matches(item){
 
   const itemCollections = collectionTags(item);
 
-
-
   if(query){
 
-    const haystack = [
-
+    const haystack = norm([
       item.title,
-
       item.originalTitle,
-
       item.summary,
-
       item.studio,
-
       (item.genres||[]).map(g=>g && g.tag).join(' '),
-
       (item.roles||[]).map(r=>r && (r.tag||r.role)).join(' '),
-
       itemCollections.join(' '),
-
-    ].filter(Boolean).join(' ').toLowerCase();
+    ].filter(Boolean).join(' '));
 
     if(!haystack.includes(query)) return false;
 
   }
 
-
-
   if(onlyNew && !isNew(item)) return false;
-
-
 
   const year = Number(humanYear(item)) || null;
 
   if(yearFrom && (!year || year < yearFrom)) return false;
 
   if(yearTo && (!year || year > yearTo)) return false;
-
-
 
   if(genresActive.size){
 
@@ -1141,21 +1405,15 @@ function matches(item){
 
   }
 
-
-
   if(selectedCollection){
 
     if(!itemCollections.includes(selectedCollection)) return false;
 
   }
 
-
-
   return true;
 
 }
-
-
 
 function applySort(list){
 
@@ -1167,7 +1425,7 @@ function applySort(list){
 
     year: Number(humanYear(item)) || 0,
 
-    rating: item.rating ?? item.audienceRating ?? 0,
+    rating: item.audienceRating ?? item.rating ?? 0,
 
     added: item.addedAt ? new Date(item.addedAt).getTime() : 0,
 
@@ -1204,8 +1462,6 @@ function applySort(list){
   });
 
 }
-
-
 
 function countTo(el, target, prev=0, dur=600){
 
@@ -1253,8 +1509,6 @@ function countTo(el, target, prev=0, dur=600){
 
 }
 
-
-
 function updateHeroStatsDisplay(){
 
   const el = heroElements.stats;
@@ -1285,19 +1539,13 @@ function updateHeroStatsDisplay(){
 
   }
 
-
-
 }
-
-
 
 function libraryDefinition(key = state.library){
 
   return CONFIG.libraries[key] || null;
 
 }
-
-
 
 function localThumbUrl(item){
 
@@ -1308,8 +1556,6 @@ function localThumbUrl(item){
   return `${base}${item.thumbFile}`;
 
 }
-
-
 
 function normalizeItems(raw){
 
@@ -1403,8 +1649,6 @@ async function loadLibraryPayload(def, key){
 
 }
 
-
-
 function collectFacets(){
 
   const allGenres = [];
@@ -1446,8 +1690,6 @@ function collectFacets(){
   }
 
 }
-
-
 
 function fillFilters(){
 
@@ -1502,8 +1744,6 @@ function fillFilters(){
     });
 
   }
-
-
 
   const collectionSelect = $('#collectionFilter');
 
@@ -1653,8 +1893,6 @@ function watchlistKey(item){
 
 }
 
-
-
 function watchlistEntryFor(item){
 
   if(item && (item.isCollectionGroup || item.type === 'collection')){
@@ -1739,8 +1977,6 @@ function watchlistEntryFor(item){
 
 }
 
-
-
 function applyWatchlistState(key, card, button){
 
   const active = key && state.watchlist.has(key);
@@ -1761,13 +1997,15 @@ function applyWatchlistState(key, card, button){
 
     button.textContent = active ? activeLabel : inactiveLabel;
 
-    button.title = active ? (isCollection ? 'Sammlung von der Merkliste entfernen' : 'Aus Merkliste entfernen') : (isCollection ? 'Komplette Sammlung zur Merkliste hinzufügen' : 'Zur Merkliste hinzufügen');
+    button.title = active ? (isCollection ? 'Sammlung von der Merkliste entfernen' : 'Aus Merkliste entfernen') : (isCollection ? 'Komplette Sammlung zur Merkliste hinzufÃ¼gen' : 'Zur Merkliste hinzufÃ¼gen');
+
+    const itemTitle = button.dataset.itemTitle || '';
+    const ariaLabel = `${active ? 'Aus' : 'Zu'} Merkliste: ${itemTitle}`.trim();
+    button.setAttribute('aria-label', ariaLabel);
 
   }
 
 }
-
-
 
 function refreshWatchlistIndicators(){
 
@@ -1782,8 +2020,6 @@ function refreshWatchlistIndicators(){
   });
 
 }
-
-
 
 function renderWatchlistItems(){
 
@@ -1812,8 +2048,6 @@ function renderWatchlistItems(){
     li.className = 'watchlist-item';
 
     li.dataset.key = entry.key;
-
-
 
     const info = document.createElement('div');
 
@@ -1855,8 +2089,6 @@ function renderWatchlistItems(){
 
     info.appendChild(title);
 
-
-
     if(entry.originalTitle && !isCollection){
 
       const original = document.createElement('div');
@@ -1868,8 +2100,6 @@ function renderWatchlistItems(){
       info.appendChild(original);
 
     }
-
-
 
     const metaParts = [];
 
@@ -1902,8 +2132,6 @@ function renderWatchlistItems(){
       info.appendChild(meta);
 
     }
-
-
 
     if(isCollection && entry.collectionItems && entry.collectionItems.length){
 
@@ -1939,8 +2167,6 @@ function renderWatchlistItems(){
 
     }
 
-
-
     const removeBtn = document.createElement('button');
 
     removeBtn.type = 'button';
@@ -1951,8 +2177,6 @@ function renderWatchlistItems(){
 
     removeBtn.addEventListener('click', ()=>removeWatchlistEntry(entry.key));
 
-
-
     li.appendChild(info);
 
     li.appendChild(removeBtn);
@@ -1962,8 +2186,6 @@ function renderWatchlistItems(){
   });
 
 }
-
-
 
 function updateWatchlistUI(){
 
@@ -1992,8 +2214,6 @@ function updateWatchlistUI(){
   refreshWatchlistIndicators();
 
 }
-
-
 
 function persistWatchlist(){
 
@@ -2035,8 +2255,6 @@ function setWatchlistPanelVisible(show){
 
 }
 
-
-
 function toggleCollectionWatchlist(group){
 
   const key = watchlistKey(group);
@@ -2076,8 +2294,6 @@ function toggleCollectionWatchlist(group){
   updateWatchlistUI();
 
 }
-
-
 
 function toggleWatchlist(item){
 
@@ -2127,8 +2343,6 @@ function toggleWatchlist(item){
 
 }
 
-
-
 function removeWatchlistEntry(key){
 
   if(!key || !state.watchlist.has(key)) return;
@@ -2155,8 +2369,6 @@ function removeWatchlistEntry(key){
 
 }
 
-
-
 function clearWatchlist(){
 
   state.watchlist.clear();
@@ -2170,8 +2382,6 @@ function clearWatchlist(){
   updateWatchlistUI();
 
 }
-
-
 
 function exportWatchlist(){
 
@@ -2217,8 +2427,6 @@ function exportWatchlist(){
 
 }
 
-
-
 function bindWatchlistControls(){
 
   const toggleBtn = $('#watchlistToggle');
@@ -2263,13 +2471,11 @@ function bindWatchlistControls(){
 
 }
 
-
-
 function initWatchlist(){
 
   try{
 
-    sessionStore = window.sessionStorage;
+    sessionStore = window.localStorage;
 
   }catch(err){ sessionStore = null; }
 
@@ -2329,11 +2535,11 @@ function anyFilterActive(){
 
 }
 
-
+const TMDB_CACHE_TTL_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
 
 async function tmdbLookup(item){
 
-  if(!$('#useTmdb').checked) return null;
+  if(!useTmdbEnabled()) return null;
 
   const hasToken = Boolean(CONFIG.tmdbAccessToken);
 
@@ -2347,7 +2553,16 @@ async function tmdbLookup(item){
 
   const cacheKey = `${state.library}:${category}:${ids.tmdb||ids.imdb||item.ratingKey}`;
 
-  if(tmdbCache.has(cacheKey)) return tmdbCache.get(cacheKey);
+  if(tmdbCache.has(cacheKey)){
+    const entry = tmdbCache.get(cacheKey);
+    if(entry && typeof entry === 'object' && 'data' in entry){
+      if(entry.ts && (Date.now() - Number(entry.ts)) < TMDB_CACHE_TTL_MS){
+        return entry.data;
+      }
+    }else if(entry){
+      return entry; // legacy without TTL
+    }
+  }
 
   const headers = { Accept: 'application/json' };
 
@@ -2393,9 +2608,9 @@ async function tmdbLookup(item){
 
     if(!data) return null;
 
-    const posterPath = data.poster_path || (data.images?.posters?.[0]?.file_path) || null;
+    const posterPath = data.poster_path || (data.images && data.images.posters && data.images.posters[0] && data.images.posters[0].file_path) || null;
 
-    const backdropPath = data.backdrop_path || (data.images?.backdrops?.[0]?.file_path) || null;
+    const backdropPath = data.backdrop_path || (data.images && data.images.backdrops && data.images.backdrops[0] && data.images.backdrops[0].file_path) || null;
 
     const result = {
 
@@ -2405,7 +2620,7 @@ async function tmdbLookup(item){
 
     };
 
-    tmdbCache.set(cacheKey, result);
+    tmdbCache.set(cacheKey, { data: result, ts: Date.now() });
 
     persistTmdbCache();
 
@@ -2421,15 +2636,11 @@ async function tmdbLookup(item){
 
 }
 
-
-
 const GRID_TRANSITION_MS = 260;
 
 const GRID_CHUNK_SIZE = 60;
 
 let renderRun = 0;
-
-
 
 const cardRevealObserver = typeof IntersectionObserver === 'function'
 
@@ -2455,8 +2666,6 @@ const cardRevealObserver = typeof IntersectionObserver === 'function'
 
   : null;
 
-
-
 function cardEl(item, useTmdb){
 
   const card = document.createElement('article');
@@ -2471,13 +2680,9 @@ function cardEl(item, useTmdb){
 
   card.dataset.watchlistKey = key;
 
-
-
   const posterDiv = document.createElement('div');
 
   posterDiv.className = 'poster';
-
-
 
   const img = document.createElement('img');
 
@@ -2523,8 +2728,6 @@ function cardEl(item, useTmdb){
 
   posterDiv.appendChild(img);
 
-
-
   const watchBtn = document.createElement('button');
 
   watchBtn.type = 'button';
@@ -2532,12 +2735,22 @@ function cardEl(item, useTmdb){
   watchBtn.className = 'watchlist-toggle';
 
   watchBtn.dataset.key = key;
+  watchBtn.dataset.itemTitle = item.title || item.originalTitle || '-';
+  watchBtn.setAttribute('aria-label', `Zu Merkliste: ${watchBtn.dataset.itemTitle}`);
 
   watchBtn.addEventListener('click', function(ev){ ev.stopPropagation(); toggleWatchlist(item); });
 
   posterDiv.appendChild(watchBtn);
 
+  
 
+  // Recently added badge (last CONFIG.newDays days)
+  if(isNew(item)){
+    const newBadge = document.createElement('div');
+    newBadge.className = 'new-badge';
+    newBadge.textContent = 'Neu';
+    posterDiv.appendChild(newBadge);
+  }
 
   const ratingValue = item.audienceRating ?? item.rating ?? null;
 
@@ -2555,8 +2768,6 @@ function cardEl(item, useTmdb){
 
   }
 
-
-
   const meta = document.createElement('div');
 
   meta.className = 'meta';
@@ -2567,21 +2778,9 @@ function cardEl(item, useTmdb){
 
   titleEl.textContent = item.title || item.originalTitle || '-';
 
-  if(isNew(item)){
-
-    const badge = document.createElement('span');
-
-    badge.className = 'badge';
-
-    badge.textContent = 'Neu';
-
-    titleEl.appendChild(badge);
-
-  }
+  // Removed inline title "Neu" chip; ribbon is shown on poster instead
 
   meta.appendChild(titleEl);
-
-
 
   const sub = document.createElement('div');
 
@@ -2602,8 +2801,6 @@ function cardEl(item, useTmdb){
   }
 
   meta.appendChild(sub);
-
-
 
   const collections = collectionTags(item);
 
@@ -2663,17 +2860,14 @@ function cardEl(item, useTmdb){
 
   meta.appendChild(chips);
 
-
-
   card.appendChild(posterDiv);
 
   card.appendChild(meta);
 
-
+  // Keep a back-reference for modal navigation
+  try{ card.__item = item; }catch{}
 
   applyWatchlistState(key, card, watchBtn);
-
-
 
   if(cardRevealObserver){
 
@@ -2686,8 +2880,6 @@ function cardEl(item, useTmdb){
     card.style.transform = '';
 
   }
-
-
 
   if(useTmdb){
 
@@ -2705,13 +2897,19 @@ function cardEl(item, useTmdb){
 
   }
 
-
+  // Open detail modal on card click (ignore collection groups and internal buttons)
+  card.addEventListener('click', (ev)=>{
+    if(card.dataset.collectionGroup === '1') return;
+    if(ev.defaultPrevented) return;
+    try{
+      if(typeof openModalFromCard === 'function'){ openModalFromCard(card, item); }
+      else if(typeof openModal === 'function'){ openModal(buildUnifiedItem(item)); }
+    }catch(err){ console.warn('Open modal failed', err); }
+  });
 
   return card;
 
 }
-
-
 
 function collectionCardEl(group, useTmdb){
 
@@ -2788,10 +2986,20 @@ function collectionCardEl(group, useTmdb){
   watchBtn.dataset.key = key;
 
   watchBtn.dataset.collection = '1';
+  watchBtn.dataset.itemTitle = group.title || group.collectionName || '-';
+  watchBtn.setAttribute('aria-label', `Zu Merkliste: ${watchBtn.dataset.itemTitle}`);
 
   watchBtn.addEventListener('click', ev=>{ ev.stopPropagation(); toggleCollectionWatchlist(group); });
 
   posterDiv.appendChild(watchBtn);
+
+  // Recently added ribbon for collection groups
+  if(isNew(group)){
+    const newBadge = document.createElement('div');
+    newBadge.className = 'new-badge';
+    newBadge.textContent = 'Neu';
+    posterDiv.appendChild(newBadge);
+  }
 
   const meta = document.createElement('div');
 
@@ -2947,8 +3155,6 @@ function collectionCardEl(group, useTmdb){
 
 }
 
-
-
 function renderGrid(items){
 
   const grid = $('#grid');
@@ -2957,9 +3163,7 @@ function renderGrid(items){
 
   const currentRun = ++renderRun;
 
-  const tmdbToggle = $('#useTmdb');
-
-  const useTmdb = Boolean(tmdbToggle && tmdbToggle.checked);
+  const useTmdb = useTmdbEnabled();
 
   const createCard = entry => entry && entry.isCollectionGroup ? collectionCardEl(entry, useTmdb) : cardEl(entry, useTmdb);
 
@@ -2995,8 +3199,6 @@ function renderGrid(items){
 
 }
 
-
-
 function beginGridTransition(grid){
 
   if(!grid) return;
@@ -3006,8 +3208,6 @@ function beginGridTransition(grid){
   grid.classList.add('is-leaving');
 
 }
-
-
 
 function finishGridTransition(grid){
 
@@ -3027,9 +3227,7 @@ function finishGridTransition(grid){
 
 }
 
-
-
-async function preloadPosters(urls, limit = 16, timeoutMs = 400){
+async function preloadPosters(urls, limit = 30, timeoutMs = 600){
 
   const candidates = (urls || []).filter(Boolean).slice(0, limit);
 
@@ -3068,8 +3266,6 @@ async function preloadPosters(urls, limit = 16, timeoutMs = 400){
   ]);
 
 }
-
-
 
 function createCollectionGroup(name, members){
 
@@ -3142,8 +3338,6 @@ function createCollectionGroup(name, members){
   };
 
 }
-
-
 
 function mergeCollectionView(items){
 
@@ -3227,8 +3421,6 @@ function mergeCollectionView(items){
 
 }
 
-
-
 function ensureCollectionSort(){
 
   const sortSel = $('#sort');
@@ -3242,8 +3434,6 @@ function ensureCollectionSort(){
   }
 
 }
-
-
 
 function focusCollection(name){
 
@@ -3264,8 +3454,6 @@ function focusCollection(name){
   update();
 
 }
-
-
 
 function update(){
 
@@ -3301,7 +3489,7 @@ function update(){
 
       empty.hidden = false;
 
-      empty.textContent = (state.filtered.length === 0 && !anyFilterActive()) ? 'Keine Einträge für diese Bibliothek gefunden.' : 'Kein Treffer. Filter lockern?';
+      empty.textContent = (state.filtered.length === 0 && !anyFilterActive()) ? 'Keine EintrÃ¤ge fÃ¼r diese Bibliothek gefunden.' : 'Kein Treffer. Filter lockern?';
 
     }
 
@@ -3318,12 +3506,6 @@ function update(){
   updateWatchlistUI();
 
 }
-
-
-
-
-
-
 
 function span(text){ const el = document.createElement('span'); el.textContent = text; return el; }
 
@@ -3364,6 +3546,7 @@ async function setLibrary(key){
   state.ready = true;
 
   updateHeroStatsDisplay();
+  updateFooterMeta();
 
   if(animate){
 
@@ -3391,15 +3574,30 @@ async function setLibrary(key){
 
   updateLibrarySwitch();
 
+  // Ensure clean document title (avoid mojibake)
+  try{
+    const def2 = libraryDefinition(state.library);
+    const label2 = (def2 && def2.label) || state.library;
+    const count2 = state.items.length || 0;
+    document.title = `Plex-Katalog - ${label2} (${count2})`;
+  }catch{}
   localStorage.setItem('plexLibrary', key);
 
+  // Update document title with library + count
+  try{
+    const label = (def && def.label) || key;
+    const count = state.items.length || 0;
+    document.title = `Plex-Katalog Ã¢â‚¬â€œ ${label} (${count})`;
+  }catch{}
+
+  // Finalize: set clean document title (wins last)
+  try{
+    const labelX = (def && def.label) || key;
+    const countX = state.items.length || 0;
+    document.title = `Plex-Katalog - ${labelX} (${countX})`;
+  }catch{}
+
 }
-
-
-
-
-
-
 
 function initLibrarySwitch(){
 
@@ -3419,9 +3617,15 @@ function initLibrarySwitch(){
 
     btn.textContent = def.label || key;
 
+    btn.setAttribute('aria-pressed', key === state.library ? 'true' : 'false');
+
     btn.addEventListener('click', ()=>{
 
-      $$('#librarySwitch button').forEach(b=>b.classList.toggle('active', b === btn));
+      $$('#librarySwitch button').forEach(b=>{
+        const isActive = b === btn;
+        b.classList.toggle('active', isActive);
+        b.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+      });
 
       setLibrary(key);
 
@@ -3435,19 +3639,17 @@ function initLibrarySwitch(){
 
 }
 
-
-
 function updateLibrarySwitch(){
 
   $$('#librarySwitch button').forEach(btn=>{
 
-    btn.classList.toggle('active', btn.dataset.key === state.library);
+    const isActive = btn.dataset.key === state.library;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
 
   });
 
 }
-
-
 
 function advancedElements(){
 
@@ -3460,8 +3662,6 @@ function advancedElements(){
   };
 
 }
-
-
 
 function setAdvancedExpanded(next, { manual } = { manual:false }){
 
@@ -3489,15 +3689,11 @@ function setAdvancedExpanded(next, { manual } = { manual:false }){
 
 }
 
-
-
 function shouldExpandAdvanced(){
 
   return state.advancedManual ? state.advancedExpanded : state.selectedGenres.size > 0 || state.selectedCollection || state.groupCollections || $('#yearFrom').value || $('#yearTo').value || $('#onlyNew').checked;
 
 }
-
-
 
 function initAdvancedToggle(){
 
@@ -3516,8 +3712,6 @@ function initAdvancedToggle(){
   setAdvancedExpanded(shouldExpandAdvanced(), { manual: false });
 
 }
-
-
 
 function bindFilters(){
 
@@ -3573,15 +3767,115 @@ function bindFilters(){
 
   $('#yearTo').addEventListener('change', update);
 
+  const yearReset = $('#yearReset');
+  if(yearReset){
+    yearReset.addEventListener('click', ()=>{
+      const yf = $('#yearFrom');
+      const yt = $('#yearTo');
+      if(yf) yf.value = '';
+      if(yt) yt.value = '';
+      update();
+    });
+  }
+
   $('#sort').addEventListener('change', update);
 
   $('#onlyNew').addEventListener('change', update);
 
-  $('#useTmdb').addEventListener('change', update);
+  // TMDB toggle moved to settings overlay (useTmdbSetting)
 
 }
 
+function resetFilters(){
+  try{
+    const q = $('#q'); if(q) q.value = '';
+    state.selectedGenres.clear();
+    state.selectedCollection = '';
+    const yf = $('#yearFrom'); if(yf) yf.value = '';
+    const yt = $('#yearTo'); if(yt) yt.value = '';
+    const onlyNew = $('#onlyNew'); if(onlyNew) onlyNew.checked = false;
+    const group = $('#groupCollections'); if(group) group.checked = false; state.groupCollections = false;
+    fillFilters();
+    update();
+  }catch(err){ console.warn('resetFilters failed', err); }
+}
 
+function initSettingsOverlay(){
+  const openBtn = $('#settingsBtn');
+  const overlay = $('#settingsOverlay');
+  const closeBtns = ['#settingsClose2'].map(sel=>$(sel)).filter(Boolean);
+  const tokenInput = $('#tmdbTokenInput');
+  const saveBtn = $('#tmdbSave');
+  const clearBtn = $('#tmdbClearCache');
+  const reduceChk = $('#prefReduceMotion');
+  const resetBtn = $('#resetFilters');
+  const useTmdbChk = $('#useTmdbSetting');
+
+  if(openBtn && overlay){
+    openBtn.addEventListener('click', ()=>{
+      overlay.hidden = false;
+      let hasToken = false;
+      try{ tokenInput.value = localStorage.getItem('tmdbToken') || ''; hasToken = Boolean(tokenInput.value); }catch{}
+      try{ reduceChk.checked = (localStorage.getItem('prefReduceMotion') === '1'); }catch{}
+      if(useTmdbChk){
+        useTmdbChk.disabled = !hasToken;
+        useTmdbChk.checked = hasToken && getUseTmdbPref();
+        if(!hasToken){
+          useTmdbChk.setAttribute('title','TMDB-Token erforderlich');
+          useTmdbChk.setAttribute('aria-disabled','true');
+        }else{
+          useTmdbChk.removeAttribute('title');
+          useTmdbChk.removeAttribute('aria-disabled');
+        }
+      }
+      // focus first control
+      setTimeout(()=>tokenInput && tokenInput.focus(), 0);
+    });
+  }
+  closeBtns.forEach(btn=>btn.addEventListener('click', ()=>{ overlay.hidden = true; }));
+  // Allow clicking overlay backdrop to close
+  if(overlay){
+    overlay.addEventListener('click', (ev)=>{ if(ev.target === overlay) overlay.hidden = true; });
+  }
+  if(saveBtn && tokenInput){
+    saveBtn.addEventListener('click', ()=>{
+      const t = tokenInput.value||'';
+      setTmdbToken(t);
+      if(useTmdbChk){
+        const has = Boolean(t);
+        useTmdbChk.disabled = !has;
+        if(!has){
+          setUseTmdbPref(false);
+          useTmdbChk.checked = false;
+          useTmdbChk.setAttribute('title','TMDB-Token erforderlich');
+          useTmdbChk.setAttribute('aria-disabled','true');
+        }else{
+          useTmdbChk.removeAttribute('title');
+          useTmdbChk.removeAttribute('aria-disabled');
+        }
+      }
+      update();
+    });
+  }
+  if(clearBtn){
+    clearBtn.addEventListener('click', ()=>{ clearTmdbCache(); alert('TMDB-Cache geleert.'); });
+  }
+  if(reduceChk){
+    reduceChk.addEventListener('change', ()=>{
+      try{ localStorage.setItem('prefReduceMotion', reduceChk.checked ? '1' : '0'); }catch{}
+      applyReduceMotionPref();
+    });
+  }
+  if(useTmdbChk){
+    useTmdbChk.addEventListener('change', ()=>{
+      setUseTmdbPref(Boolean(useTmdbChk.checked));
+      update();
+    });
+  }
+  if(resetBtn){
+    resetBtn.addEventListener('click', ()=>{ resetFilters(); });
+  }
+}
 
 window.addEventListener('beforeunload', event=>{
 
@@ -3601,8 +3895,6 @@ window.addEventListener('beforeunload', event=>{
 
 });
 
-
-
 window.addEventListener('storage', evt=>{
 
   if(evt.key === WATCHLIST_STORAGE_KEY && sessionStore){
@@ -3612,8 +3904,6 @@ window.addEventListener('storage', evt=>{
   }
 
 });
-
-
 
 function updateHeroSubtitleDisplay(count){
 
@@ -3625,7 +3915,7 @@ function updateHeroSubtitleDisplay(count){
 
     target.dataset.taglinePaused = '1';
 
-    target.textContent = 'Keine Einträge gefunden.';
+    target.textContent = 'Keine EintrÃ¤ge gefunden.';
 
     return;
 
@@ -3645,13 +3935,20 @@ function updateHeroSubtitleDisplay(count){
 
 }
 
-
-
-
+ function updateFooterMeta(){
+   const el = document.getElementById('footerMeta');
+   if(!el) return;
+   try{
+     const lib = CONFIG.libraries[state.library];
+     const label = (lib && lib.label) || state.library;
+     const movies = libraryTotals.movies ?? '--';
+     const shows = libraryTotals.shows ?? '--';
+     const date = new Date().toLocaleDateString('de-DE');
+     el.textContent = `Bibliothek: ${label} \u2013 Filme ${movies} | Serien ${shows} \u2013 Stand: ${date}`;
+   }catch{}
+ }
 
 const initialLibrary = localStorage.getItem('plexLibrary');
-
-
 
 (async function init(){
 
@@ -3663,31 +3960,686 @@ const initialLibrary = localStorage.getItem('plexLibrary');
 
   initAdvancedToggle();
 
+  initSettingsOverlay();
+
   initWatchlist();
 
   const first = CONFIG.libraries[initialLibrary] ? initialLibrary : CONFIG.defaultLibrary;
 
   await setLibrary(first);
 
+
+  const openSettings = document.getElementById('openSettings');
+  if(openSettings){ openSettings.addEventListener('click', (ev)=>{ ev.preventDefault(); document.getElementById('settingsBtn')?.click(); }); }
+  const openWatchlist = document.getElementById('openWatchlist');
+  if(openWatchlist){ openWatchlist.addEventListener('click', (ev)=>{ ev.preventDefault(); setWatchlistPanelVisible(true); }); }
+
 })();
 
 </script>
 
-</body>
+<!-- Detail Modal -->
+<div id="modal" class="modal" hidden>
+  <button class="modal__arrow modal__arrow--prev" id="mPrev" aria-label="Vorheriger"><span class="chev"><</span></button>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <button class="modal__close" id="mClose" aria-label="Schließen">✕</button>
+
+    <div class="modal__hero">
+      <div class="modal__poster"><img id="mPoster" alt="" loading="lazy" decoding="async"></div>
+      <div class="modal__head">
+        <div class="topbar">
+          <h2 id="mTitle"></h2>
+          <div class="util-actions" id="mActions" aria-label="Externe Links und Trailer">
+            <a id="mTmdb" target="_blank" rel="noopener" aria-label="Auf TMDB öffnen" style="display:none">TMDB</a>
+            <a id="mImdb" target="_blank" rel="noopener" aria-label="Auf IMDb öffnen" style="display:none">IMDb</a>
+            <button id="mTrailer" aria-label="Trailer abspielen" hidden>Trailer</button>
+          </div>
+        </div>
+        <div id="mSubline" class="subline"></div>
+        <div id="mChips" class="chips" aria-label="Attribute"></div>
+      </div>
+    </div>
+
+    <nav class="modal__subnav" aria-label="Details Navigation">
+      <div class="inner">
+        <button type="button" id="navOverview" data-target="#sec-overview" class="active" aria-controls="sec-overview" aria-label="Zum Überblick">Überblick</button>
+        <button type="button" id="navSeasons" data-target="#sec-seasons" aria-controls="sec-seasons" aria-label="Zu den Staffeln">Staffeln</button>
+        <button type="button" id="navCast" data-target="#sec-cast" aria-controls="sec-cast" aria-label="Zur Besetzung">Besetzung</button>
+      </div>
+    </nav>
+
+    <div class="modal__body">
+      <section id="sec-overview" class="modal-section" tabindex="-1">
+        <h3 class="sr-only">Überblick</h3>
+        <p id="mOverview" class="overview"></p>
+        <p id="mOverviewShow" class="overview" hidden></p>
+        <div class="kpis chips" id="mKpiShow" hidden></div>
+      </section>
+
+      <section id="sec-seasons" class="modal-section" tabindex="-1" hidden>
+        <h3>Staffeln</h3>
+        <div id="mSeasons" class="seasons" hidden></div>
+        <div id="seasonsAccordion" class="seasons-accordion"></div>
+      </section>
+
+      <section id="sec-cast" class="modal-section" tabindex="-1">
+        <h3>Besetzung</h3>
+        <div id="mCast" class="cast"></div>
+        <div id="mCastShow" class="cast chips" hidden></div>
+      </section>
+    </div>
+  </div>
+  <button class="modal__arrow modal__arrow--next" id="mNext" aria-label="Nächster"><span class="chev">></span></button>
+  <div class="sr-only" aria-live="polite" id="modalAriaLive"></div>
+  <div class="sr-only" id="modalFocusSentinelStart" tabindex="0"></div>
+  <div class="sr-only" id="modalFocusSentinelEnd" tabindex="0"></div>
+</div>
+
+<script>
+// Modal logic: offline-first, optional TMDB hydration
+(function(){
+  const modal = {
+    el: document.getElementById('modal'),
+    panel: null,
+    poster: document.getElementById('mPoster'),
+    title: document.getElementById('mTitle'),
+    sub: document.getElementById('mSubline'),
+    chips: document.getElementById('mChips'),
+    overview: document.getElementById('mOverview'),
+    overviewShow: document.getElementById('mOverviewShow'),
+    cast: document.getElementById('mCast'),
+    castShow: document.getElementById('mCastShow'),
+    actions: document.getElementById('mActions'),
+    tmdb: document.getElementById('mTmdb'),
+    imdb: document.getElementById('mImdb'),
+    trailerBtn: document.getElementById('mTrailer'),
+    seasons: document.getElementById('mSeasons'),
+    secOverview: document.getElementById('sec-overview'),
+    secSeasons: document.getElementById('sec-seasons'),
+    secCast: document.getElementById('sec-cast'),
+    navBtns: {
+      overview: document.getElementById('navOverview'),
+      seasons: document.getElementById('navSeasons'),
+      cast: document.getElementById('navCast'),
+    },
+    closeBtn: document.getElementById('mClose'),
+    lastFocus: null,
+    current: null,
+  };
+  modal.panel = modal.el ? modal.el.querySelector('.modal__panel') : null;
+
+  function mapFSK(s){
+    if(!s) return '';
+    if(/^de\//i.test(s)) return 'FSK ' + s.split('/')[1];
+    return s;
+  }
+
+  function childChip(text){ const el = document.createElement('span'); el.className='chip'; el.textContent=String(text); return el; }
+
+  function runtimeToMin(item){
+    const ms = Number(item.duration)||0; if(ms>0) return Math.round(ms/60000);
+    const h = String(item.durationHuman||''); const m = h.match(/(\d+)\s*min|mins|minutes/i); if(m && m[1]) return Number(m[1]);
+    return null;
+  }
+
+  function toType(item){
+    const t = (item.type||'').toLowerCase();
+    if(t === 'show' || t === 'tv') return 'tv';
+    return 'movie';
+  }
+
+  function buildUnifiedItem(item){
+    const ids = parseGuids(item);
+    const type = toType(item || {});
+    const yr = humanYear(item);
+    const r = item.audienceRating ?? item.userRating ?? item.rating ?? null;
+    const run = runtimeToMin(item);
+    const poster = localThumbUrl(item);
+    const genres = (item.genres||[]).map(g=>g && g.tag).filter(Boolean);
+    const cast = (item.roles||[]).map(r=>r && r.tag).filter(Boolean);
+    return {
+      type,
+      ids,
+      title: item.title || item.originalTitle || '-',
+      year: yr ? Number(yr) : null,
+      studio: item.studio || '',
+      contentRating: item.contentRating || '',
+      rating: r,
+      runtimeMin: run,
+      genres,
+      overview: item.summary || '',
+      poster: poster || '',
+      backdrop: null,
+      cast,
+      addedAt: item.addedAt || null,
+      seasonCount: item.seasonCount || null,
+      seasons: null,
+      ratingKey: (item && item.ratingKey != null) ? String(item.ratingKey) : '',
+      _raw: item,
+    };
+  }
+
+  function buildSubline(i){
+    const parts = [];
+    if(i.year) parts.push(i.year);
+    if(i.contentRating) parts.push(mapFSK(i.contentRating));
+    if(i.studio) parts.push(i.studio);
+    if(isFinite(i.rating)) parts.push(`â˜… ${Number(i.rating).toFixed(1)}`);
+    return parts.join(' â€¢ ');
+  }
+
+  function fillChips(i){
+    if(!modal.chips) return;
+    modal.chips.replaceChildren();
+    const extra = [];
+    const base = (i.genres||[]);
+    base.forEach((g, idx)=>{
+      const chip = childChip(g);
+      if(idx < 6){ modal.chips.appendChild(chip); }
+      else{ extra.push(chip); }
+    });
+    if(i.type === 'movie' && i.runtimeMin) modal.chips.appendChild(childChip(`${i.runtimeMin} min`));
+    if(i.type === 'tv'){
+      if(i.runtimeMin) modal.chips.appendChild(childChip(`~${i.runtimeMin} min/Ep`));
+      if(i.seasonCount) modal.chips.appendChild(childChip(`Staffeln: ${i.seasonCount}`));
+    }
+    if(extra.length){
+      const more = document.createElement('button');
+      more.type='button';
+      more.className='chip more';
+      more.textContent = `+${extra.length} mehr`;
+      more.addEventListener('click', ()=>{
+        try{ extra.forEach(el=> more.before(el)); }catch{}
+        more.remove();
+      });
+      modal.chips.appendChild(more);
+    }
+  }
+
+  // Override possibly mangled buildSubline due to encoding issues
+  buildSubline = function(i){
+    const parts = [];
+    if(i && i.year) parts.push(i.year);
+    if(i && i.contentRating) parts.push(mapFSK(i.contentRating));
+    if(i && i.studio) parts.push(i.studio);
+    if(i && Number.isFinite(i.rating)) parts.push(`â˜… ${Number(i.rating).toFixed(1)}`);
+    return parts.join(' â€¢ ');
+  };
+
+  function fillCast(arr){
+    if(!modal.cast) return;
+    modal.cast.replaceChildren();
+    (arr||[]).slice(0,10).forEach(n=> modal.cast.appendChild(childChip(n)));
+  }
+
+  function fillActions(item){
+    const ids = item.ids || {};
+    const imdbId = ids.imdb; const tmdbId = ids.tmdb;
+    if(modal.imdb){ modal.imdb.style.display = imdbId ? '' : 'none'; if(imdbId) modal.imdb.href = `https://www.imdb.com/title/${imdbId}/`; }
+    if(modal.tmdb){ modal.tmdb.style.display = tmdbId ? '' : 'none'; if(tmdbId){ const path = (item.type === 'tv') ? 'tv' : 'movie'; modal.tmdb.href = `https://www.themoviedb.org/${path}/${tmdbId}`; } }
+    if(modal.trailerBtn){ modal.trailerBtn.hidden = true; modal.trailerBtn.onclick = null; }
+  }
+
+  function renderSeasons(item){
+    if(!modal.seasons) return;
+    modal.seasons.replaceChildren();
+    if(!Array.isArray(item.seasons) || !item.seasons.length){ modal.seasons.hidden = true; return; }
+    item.seasons.forEach(s=>{
+      const row = document.createElement('div'); row.className='season';
+      if(s.poster){ const t=document.createElement('div'); t.className='season-thumb'; const img=document.createElement('img'); img.src=s.poster; img.alt=s.title||''; t.appendChild(img); row.appendChild(t); }
+      const tx=document.createElement('div'); tx.className='season-text'; const st=document.createElement('strong'); st.textContent = s.title || (`Staffel ${s.number||''}`); const yr=document.createElement('div'); yr.className='muted'; yr.textContent = String(s.year||''); tx.appendChild(st); tx.appendChild(yr); row.appendChild(tx);
+      const ep = document.createElement('div'); ep.className='episodes';
+      (s.episodes||[]).forEach(e=>{
+        const r=document.createElement('div'); r.className='episode-row';
+        const c=document.createElement('span'); c.className='code'; c.textContent = e.code||''; r.appendChild(c);
+        const tt=document.createElement('span'); tt.className='title'; tt.textContent = e.title||''; r.appendChild(tt);
+        const m=document.createElement('span'); m.className='meta'; m.textContent = [ e.durationMin && `${e.durationMin} min`, e.date ].filter(Boolean).join(' â€¢ '); r.appendChild(m);
+        ep.appendChild(r);
+      });
+      modal.seasons.appendChild(row);
+      if(ep.childNodes.length) modal.seasons.appendChild(ep);
+    });
+    modal.seasons.hidden = false;
+  }
+
+  function trapFocus(container){
+    if(!container) return;
+    const focusable = container.querySelectorAll('a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    const first = focusable[0]; const last = focusable[focusable.length-1];
+    function onKey(e){
+      if(e.key !== 'Tab') return;
+      if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last && last.focus(); }
+      else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first && first.focus(); }
+    }
+    container.addEventListener('keydown', onKey);
+    container.__trap = onKey;
+    first && first.focus();
+  }
+  function releaseFocus(){ if(modal.panel && modal.panel.__trap){ modal.panel.removeEventListener('keydown', modal.panel.__trap); delete modal.panel.__trap; } }
+
+  async function tmdbDetailLookup(item){
+    try{
+      const ids = item.ids||{}; if(!ids.tmdb) return null;
+      const hasToken = Boolean(CONFIG.tmdbAccessToken); if(!hasToken) return null;
+      const category = item.type === 'tv' ? 'tv' : 'movie';
+      const cacheKey = `details:${category}:${ids.tmdb}`;
+      if(tmdbCache.has(cacheKey)){
+        const entry = tmdbCache.get(cacheKey);
+        if(entry && entry.ts && (Date.now() - Number(entry.ts)) < 14*24*60*60*1000){ return entry.data; }
+      }
+      const url = `https://api.themoviedb.org/3/${category}/${ids.tmdb}?language=${encodeURIComponent(CONFIG.tmdbLang)}&append_to_response=images,credits,videos&include_image_language=${encodeURIComponent(CONFIG.tmdbLang)},en,null`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${CONFIG.tmdbAccessToken}` } });
+      if(!res.ok) return null;
+      const data = await res.json();
+      const posterPath = data.poster_path || null;
+      const videos = (data.videos && data.videos.results) || [];
+      const youtube = videos.find(v=>v && v.site==='YouTube' && v.type==='Trailer');
+      const cast = (data.credits && Array.isArray(data.credits.cast)) ? data.credits.cast.map(x=>x && x.name).filter(Boolean) : [];
+      const result = {
+        poster: posterPath ? `https://image.tmdb.org/t/p/${CONFIG.imageWidths.poster}${posterPath}` : null,
+        overview: data.overview || '',
+        cast,
+        trailerKey: youtube && youtube.key || null,
+      };
+      tmdbCache.set(cacheKey, { data: result, ts: Date.now() }); persistTmdbCache();
+      return result;
+    }catch(err){ console.warn('TMDB detail fetch failed', err); return null; }
+  }
+
+  async function maybeHydrateFromTmdb(unified){
+    try{
+      const data = await tmdbDetailLookup(unified);
+      if(!data) return;
+      if(data.overview && !unified.overview && modal.overview) modal.overview.textContent = data.overview;
+      if(Array.isArray(data.cast) && (!unified.cast || unified.cast.length < 3)) fillCast(data.cast);
+      if(data.trailerKey && modal.trailerBtn){ modal.trailerBtn.hidden = false; modal.trailerBtn.onclick = ()=>{ window.open(`https://www.youtube.com/watch?v=${data.trailerKey}`, '_blank', 'noopener'); }; }
+    }catch{}
+  }
+
+  function renderModal(unified){
+    if(!modal.el) return;
+    // begin crossfade for title/overview
+    modal.el.classList.add('is-updating');
+    if(modal.title) modal.title.textContent = unified.title || 'â€”';
+    if(modal.poster){
+      modal.poster.classList.remove('is-ready');
+      const onLoad = ()=>{
+        const finish = ()=> modal.poster.classList.add('is-ready');
+        if(typeof modal.poster.decode === 'function'){
+          modal.poster.decode().catch(()=>{}).finally(finish);
+        }else{ finish(); }
+      };
+      modal.poster.onload = onLoad;
+      modal.poster.onerror = ()=> modal.poster.classList.add('is-ready');
+      modal.poster.src = unified.poster || '';
+      modal.poster.alt = unified.title || '';
+      if(modal.poster.complete) onLoad();
+    }
+    if(modal.sub) modal.sub.textContent = buildSubline(unified);
+    fillChips(unified);
+    if(modal.overview) modal.overview.textContent = unified.overview || '-';
+    if(modal.overviewShow) modal.overviewShow.textContent = unified.overview || '-';
+    fillCast(unified.cast || []);
+    fillActions(unified);
+
+    // Toggle modal sections by type and render detail views
+    const isTV = unified.type === 'tv';
+    if(modal.overview) modal.overview.hidden = isTV;
+    if(modal.overviewShow) modal.overviewShow.hidden = !isTV;
+    if(modal.cast) modal.cast.hidden = isTV;
+    if(modal.castShow) modal.castShow.hidden = !isTV;
+    if(modal.secSeasons) modal.secSeasons.hidden = !isTV;
+    try{ const k=document.getElementById('mKpiShow'); if(k) k.hidden = !isTV; }catch{}
+
+    if(isTV){
+      try{ renderShowView(unified); }catch(e){ /* noop */ }
+      if(modal.seasons) modal.seasons.hidden = true; // legacy block off
+      try{ if(modal.navBtns && modal.navBtns.seasons) modal.navBtns.seasons.hidden = false; }catch{}
+    }else{
+      try{ renderMovieView(unified); }catch(e){ /* noop */ }
+      if(modal.seasons) modal.seasons.hidden = true;
+      try{ if(modal.navBtns && modal.navBtns.seasons) modal.navBtns.seasons.hidden = true; }catch{}
+    }
+    activateSubnavIO();
+    maybeHydrateFromTmdb(unified).catch(()=>{});
+    // finish crossfade on next frame
+    requestAnimationFrame(()=>{ modal.el.classList.remove('is-updating'); });
+  }
+
+  function updateArrows(){
+    const prev = document.getElementById('mPrev');
+    const next = document.getElementById('mNext');
+    const nav = modal.nav;
+    if(!nav || !Array.isArray(nav.list)){
+      if(prev) prev.disabled = true; if(next) next.disabled = true; return;
+    }
+    if(prev) prev.disabled = nav.index <= 0;
+    if(next) next.disabled = nav.index >= (nav.list.length - 1);
+  }
+
+  function openModal(unified){
+    if(!modal.el) return;
+    modal.current = unified;
+    modal.lastFocus = document.activeElement;
+    renderModal(unified);
+    modal.el.hidden = false; modal.el.classList.add('open');
+    trapFocus(modal.panel);
+    updateArrows();
+    updateHashForItem(unified);
+  }
+
+  function closeModal(){
+    if(!modal.el) return;
+    modal.el.classList.remove('open');
+    setTimeout(()=>{ modal.el.hidden = true; }, 180);
+    releaseFocus();
+    if(modal.lastFocus && typeof modal.lastFocus.focus === 'function') try{ modal.lastFocus.focus(); }catch{}
+    // clear hash without adding history entry
+    try{ history.replaceState(null, '', location.pathname + location.search); }catch{}
+  }
+
+  window.openModal = openModal; // expose
+  window.buildUnifiedItem = buildUnifiedItem; // expose for debugging
+
+  // Render functions per type
+  function renderMovieView(item){
+    // Overview and cast already handled in renderModal
+    if(Array.isArray(item.cast)) fillCast(item.cast);
+    if(modal.secSeasons) modal.secSeasons.hidden = true;
+  }
+
+  function collectCardList(){
+    const grid = document.getElementById('grid');
+    if(!grid) return [];
+    return Array.from(grid.querySelectorAll('.card:not(.collection-card)'));
+  }
+
+  function buildUnifiedFromCard(card){
+    const item = card && card.__item;
+    return item ? buildUnifiedItem(item) : null;
+  }
+
+  function openModalFromCard(card, item){
+    try{
+      const list = collectCardList();
+      const idx = Math.max(0, list.indexOf(card));
+      modal.nav = { list, index: idx };
+      const unified = buildUnifiedItem(item || (card && card.__item) || {});
+      openModal(unified);
+    }catch(err){ console.warn('openModalFromCard failed', err); }
+  }
+  window.openModalFromCard = openModalFromCard;
+
+  function go(step){
+    const nav = modal.nav; if(!nav || !Array.isArray(nav.list)) return;
+    const nextIdx = nav.index + step;
+    if(nextIdx < 0 || nextIdx >= nav.list.length) return;
+    nav.index = nextIdx;
+    const el = nav.list[nav.index];
+    const unified = buildUnifiedFromCard(el);
+    if(!unified) return;
+    modal.current = unified;
+    // soft refresh content
+    renderModal(unified);
+    updateArrows();
+    updateHashForItem(unified);
+  }
+
+  const prevBtn = document.getElementById('mPrev');
+  const nextBtn = document.getElementById('mNext');
+  // fix aria/chevrons in case of encoding issues
+  try{
+    if(prevBtn){ prevBtn.setAttribute('aria-label','Vorheriger'); const c = prevBtn.querySelector('.chev'); if(c) c.textContent = '<'; }
+    if(nextBtn){ nextBtn.setAttribute('aria-label','Nächster'); const c = nextBtn.querySelector('.chev'); if(c) c.textContent = '>'; }
+  }catch{}
+  if(prevBtn) prevBtn.addEventListener('click', (e)=>{ e.preventDefault(); go(-1); });
+  if(nextBtn) nextBtn.addEventListener('click', (e)=>{ e.preventDefault(); go(1); });
+
+  // Ensure proper German diacritics for ARIA and close icon
+  try{
+    const nb = document.getElementById('mNext'); if(nb) nb.setAttribute('aria-label','N\u00E4chster');
+    const cb = document.getElementById('mClose'); if(cb){ cb.setAttribute('aria-label','Schlie\\u00DFen'); try{ cb.textContent='\\u2715'; }catch{} }
+  }catch{}
+
+  if(modal.closeBtn) modal.closeBtn.addEventListener('click', closeModal);
+  if(modal.el) modal.el.addEventListener('click', (e)=>{ if(e.target === modal.el) closeModal(); });
+  document.addEventListener('keydown', (e)=>{
+    if(!modal.el || modal.el.hidden) return;
+    if(e.key === 'Escape'){ closeModal(); return; }
+    if(e.key === 'ArrowLeft'){ e.preventDefault(); go(-1); return; }
+    if(e.key === 'ArrowRight'){ e.preventDefault(); go(1); return; }
+  });
+
+  // Robust ARIA label fix with Unicode escapes (encoding-safe)
+  try{
+    const nb2 = document.getElementById('mNext'); if(nb2) nb2.setAttribute('aria-label','N\u00E4chster');
+    const cb2 = document.getElementById('mClose'); if(cb2){ cb2.setAttribute('aria-label','Schlie\u00DFen'); try{ cb2.textContent='\u2715'; }catch{} }
+    const cw = document.getElementById('closeWatchlist'); if(cw){ try{ cw.textContent = 'SchlieÃŸen'; }catch{} }
+    const sc2 = document.getElementById('settingsClose2'); if(sc2){ try{ sc2.textContent = 'SchlieÃŸen'; }catch{} }
+  }catch{}
+
+  // Subnav: smooth scroll + active state via IntersectionObserver
+  function scrollToSection(sel){
+    const node = typeof sel === 'string' ? document.querySelector(sel) : sel;
+    if(!node || !modal.panel) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const top = node.getBoundingClientRect().top - modal.panel.getBoundingClientRect().top + modal.panel.scrollTop - 8;
+    modal.panel.scrollTo({ top, behavior: reduce ? 'auto' : 'smooth' });
+  }
+  if(modal.navBtns){
+    const bind = (btn)=>{ if(!btn) return; btn.addEventListener('click', ()=>{ const t=btn.getAttribute('data-target'); if(t) scrollToSection(t); }); };
+    bind(modal.navBtns.overview); bind(modal.navBtns.seasons); bind(modal.navBtns.cast);
+  }
+  let subnavObserver;
+  function activateSubnavIO(){
+    if(!('IntersectionObserver' in window)) return;
+    try{ if(subnavObserver){ subnavObserver.disconnect(); subnavObserver = null; } }catch{}
+    const sections = [modal.secOverview, modal.secSeasons, modal.secCast].filter(Boolean).filter(s=> !s.hidden);
+    if(!sections.length) return;
+    const map = new Map([
+      [modal.secOverview, modal.navBtns && modal.navBtns.overview],
+      [modal.secSeasons, modal.navBtns && modal.navBtns.seasons],
+      [modal.secCast,     modal.navBtns && modal.navBtns.cast],
+    ]);
+    const opts = { root: modal.panel, threshold: [0.5, 0.75], rootMargin: '0px 0px -35% 0px' };
+    subnavObserver = new IntersectionObserver((entries)=>{
+      let best = null; let bestRatio = 0;
+      for(const e of entries){ if(e.isIntersecting && e.intersectionRatio > bestRatio){ best = e.target; bestRatio = e.intersectionRatio; } }
+      if(best && map.has(best)){
+        const activeBtn = map.get(best);
+        for(const b of Object.values(modal.navBtns||{})){ if(!b) continue; b.classList.toggle('active', b === activeBtn); }
+      }
+    }, opts);
+    sections.forEach(s=> subnavObserver.observe(s));
+  }
+
+  // Hash deep-linking
+  let suppressHash = false;
+  function buildHashFor(item){
+    if(!item) return '';
+    const type = (item.type === 'tv') ? 'tv' : 'movie';
+    const ids = item.ids || {};
+    if(ids.tmdb) return `#/${type}/${ids.tmdb}`;
+    if(ids.imdb) return `#/${type}/imdb/${ids.imdb}`;
+    if(item.ratingKey) return `#/${type}/rk/${item.ratingKey}`;
+    return `#/${type}/${encodeURIComponent(item.title||'')}`;
+  }
+  function updateHashForItem(item){
+    try{
+      const h = buildHashFor(item);
+      if(!h) return;
+      suppressHash = true;
+      if(location.hash !== h){ location.hash = h; }
+      setTimeout(()=>{ suppressHash = false; }, 0);
+    }catch{}
+  }
+  function parseHash(h){
+    try{
+      const m = String(h||'').match(/^#\/(tv|movie)\/(?:imdb\/([\w]+)|rk\/(\d+)|([\d]+)|(.+))$/);
+      if(!m) return null;
+      const type = m[1];
+      if(m[2]) return { type, idType:'imdb', id:m[2] };
+      if(m[3]) return { type, idType:'rk', id:m[3] };
+      if(m[4]) return { type, idType:'tmdb', id:m[4] };
+      if(m[5]) return { type, idType:'title', id:decodeURIComponent(m[5]) };
+      return null;
+    }catch{ return null; }
+  }
+  async function ensureLibraryForType(type){
+    const want = (type === 'tv') ? 'shows' : 'movies';
+    if(state.library !== want){ await setLibrary(want); }
+  }
+  function findItemByHash(info){
+    const list = state.items || [];
+    for(const it of list){
+      const ids = parseGuids(it);
+      if(info.idType === 'tmdb' && ids.tmdb === info.id) return it;
+      if(info.idType === 'imdb' && ids.imdb === info.id) return it;
+      if(info.idType === 'rk' && String(it.ratingKey||'') === String(info.id)) return it;
+      if(info.idType === 'title' && (it.title||'').toLowerCase() === String(info.id).toLowerCase()) return it;
+    }
+    return null;
+  }
+  async function openFromHash(h){
+    if(suppressHash) return;
+    const info = parseHash(h||location.hash);
+    if(!info){ return; }
+    await ensureLibraryForType(info.type);
+    // wait a tick for grid render
+    await new Promise(r=>setTimeout(r,0));
+    const target = findItemByHash(info);
+    if(!target){ return; }
+    // try to find its card for nav
+    const cards = collectCardList();
+    const card = cards.find(c=> c.__item === target);
+    if(card){ openModalFromCard(card, target); }
+    else{ modal.nav = { list: cards, index: -1 }; openModal(buildUnifiedItem(target)); }
+  }
+  window.openFromHash = openFromHash;
+  window.addEventListener('hashchange', ()=>{ openFromHash(location.hash); });
+  // attempt initial open
+  openFromHash(location.hash);
+})();
+</script>
+
+<!-- TV show view renderer: seasons accordion -->
+<script>
+ // Mini-helpers (non-conflicting names)
+ const _chipView = t => { const s=document.createElement('span'); s.className='chip'; s.textContent=String(t||''); return s; };
+ const _setTextView = (sel, txt)=>{ const n = $(sel); if(n) n.textContent = txt ?? ''; };
+ const _fillChipsEl = (sel, arr)=>{ const n=$(sel); if(!n) return; const nodes=(arr||[]).filter(Boolean).map(_chipView); n.replaceChildren(...nodes); };
+
+ function renderShowView(item){
+   try{
+     const seasons = Array.isArray(item.seasons) ? item.seasons : (item._raw && Array.isArray(item._raw.seasons) ? item._raw.seasons : []);
+
+     // Overview & KPIs
+     _setTextView('#mOverviewShow', item.overview || '');
+    _fillChipsEl('#mKpiShow', [
+      (item.runtimeMin ? `~${item.runtimeMin} min/Ep` : null),
+      (item.seasonCount ? `Staffeln: ${item.seasonCount}` : null)
+    ]);
+    try{ const k=document.getElementById('mKpiShow'); if(k) k.hidden = false; }catch{}
+
+     // Cast (top 10)
+    _fillChipsEl('#mCastShow', (item.cast||[]).slice(0,10));
+    try{ const c=document.getElementById('mCastShow'); if(c) c.hidden = false; }catch{}
+
+     // Seasons accordion
+     renderSeasonsAccordion('#seasonsAccordion', seasons);
+   }catch(err){ console.warn('renderShowView failed', err); }
+ }
+
+ function renderSeasonsAccordion(sel, seasons){
+   const root = $(sel); if(!root) return; root.replaceChildren();
+   (seasons||[]).forEach((s, idx)=> root.append(seasonCardEl(s, idx)));
+ }
+
+ function seasonCardEl(season, idx){
+   const card = document.createElement('article'); card.className='season-card';
+
+   const head = document.createElement('div'); head.className='season-head';
+
+   // Thumb (local)
+   const th = document.createElement('div'); th.className='season-thumb';
+   const img = new Image();
+   try{ img.src = (typeof localThumbUrl === 'function' ? (localThumbUrl(season) || season.thumbFile || '') : (season.thumbFile || '')); }catch{ img.src = season.thumbFile || ''; }
+   img.alt = season.title || `Staffel ${season.seasonNumber||idx+1}`;
+   img.loading = 'lazy'; img.decoding = 'async';
+   th.append(img);
+
+   // Text
+   const txt = document.createElement('div');
+   const title = document.createElement('div'); title.className='season-title';
+   title.textContent = season.title || `Staffel ${season.seasonNumber||idx+1}`;
+   const sub = document.createElement('div'); sub.className='season-sub';
+   const year = season.year || season.releaseYear || '';
+   const epCount = Array.isArray(season.episodes) ? season.episodes.length : (season.episodeCount || 0);
+   sub.textContent = [year, epCount ? `${epCount} Episoden` : ''].filter(Boolean).join(' â€¢ ');
+   txt.append(title, sub);
+
+   // Chevron
+   const chev = document.createElement('div'); chev.className='chev'; chev.textContent = 'â€º';
+
+   head.append(th, txt, chev);
+
+   // Body (episodes)
+   const body = document.createElement('div'); body.className='season-body';
+   (season.episodes||[]).forEach(ep => body.append(episodeRowEl(ep)));
+
+   head.addEventListener('click', ()=> card.classList.toggle('open'));
+   card.append(head, body);
+   return card;
+ }
+
+ function episodeRowEl(ep){
+   const row = document.createElement('div'); row.className='episode';
+
+   // Title line: SxxEyy â€“ Title
+   const title = document.createElement('div'); title.className='ep-title';
+   const sNum = ep.seasonNumber != null ? Number(ep.seasonNumber) : null;
+   const eNum = ep.episodeNumber != null ? Number(ep.episodeNumber) : null;
+   const code = (ep.seasonEpisode && String(ep.seasonEpisode).toUpperCase()) ||
+                (Number.isFinite(sNum) && Number.isFinite(eNum) ? `S${String(sNum).padStart(2,'0')}E${String(eNum).padStart(2,'0')}` : '');
+   title.textContent = `${code ? code + ' â€“ ' : ''}${ep.title || ''}`;
+
+   // Right badges (optional rating)
+   const right = document.createElement('div'); right.className='badges';
+   const r = Number(ep.audienceRating ?? ep.rating);
+   if(Number.isFinite(r)) right.append(badge(`â˜… ${r.toFixed(1)}`));
+
+   // Meta: duration â€¢ date
+   const meta = document.createElement('div'); meta.className='ep-meta';
+   const durMin = ep.durationMin || (ep.duration ? Math.round(Number(ep.duration)/60000) : null);
+   const durText = ep.durationHuman || (durMin ? `${durMin} min` : null);
+   const dateText = ep.originallyAvailableAt || ep.date || '';
+   meta.textContent = [durText, dateText].filter(Boolean).join(' â€¢ ');
+
+   row.append(title, right, meta);
+   return row;
+ }
+
+ function badge(text){ const b = document.createElement('span'); b.className='badge'; b.textContent = text; return b; }
+ </script>
+
+ <!-- JS-Helfer: "+N mehr" Chips-Reveal -->
+ <script>
+ // Aktiviert den "mehr"-Chip (hat Klasse .chip.more)
+ function enableMoreChipBehavior(root = document){
+   try{
+     root.querySelectorAll('.chips .chip.more').forEach(btn=>{
+       if(btn.dataset.bound) return;
+       btn.dataset.bound = '1';
+       btn.addEventListener('click', ()=>{
+         const hidden = btn._extraChips || [];
+         try{ hidden.forEach(ch => btn.before(ch)); }catch{}
+         btn.remove();
+       });
+     });
+   }catch{}
+ }
+ </script>
+ </body>
 
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
