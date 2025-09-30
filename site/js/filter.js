@@ -164,7 +164,7 @@ export function initFilters(){
   }
 
   const bind = (sel, ev='input')=>{ const n=qs(sel); if(n) n.addEventListener(ev,()=>{ updateFiltersAndGrid(); }); };
-  bind('#q'); bind('#onlyNew','change'); bind('#yearFrom','change'); bind('#yearTo','change'); bind('#collectionFilter','change'); bind('#sort','change');
+  bind('#q'); bind('#onlyNew','change'); bind('#yearFrom','change'); bind('#yearTo','change'); bind('#collectionFilter','change'); bind('#sort','change'); bind('#groupCollections','change');
   const yrReset = qs('#yearReset'); if(yrReset){ yrReset.addEventListener('click',()=>{ const a=qs('#yearFrom'); const b=qs('#yearTo'); if(a) a.value=''; if(b) b.value=''; updateFiltersAndGrid(); }); }
   const gRoot = qs('#genreFilters'); if(gRoot){ gRoot.addEventListener('click', ev=>{ const t=ev.target; if(!(t instanceof HTMLElement)) return; if(!t.classList.contains('chip')) return; t.classList.toggle('active'); updateFiltersAndGrid(); }); }
 }
