@@ -1255,11 +1255,17 @@ function formatRating(val){
 
 function slugify(text){
 
-  return String(text||'')
+  const base = String(text||'')
 
     .normalize('NFD')
 
-    .replace(/[\u0300-\u036f]/g,'')
+    .replace(/[\u0300-\u036f]/g,'');
+
+  const transliterated = base.replace(/[ÄÖÜäöüß]/g,char=>({
+    'Ä':'Ae','Ö':'Oe','Ü':'Ue','ä':'ae','ö':'oe','ü':'ue','ß':'ss'
+  })[char]||char);
+
+  return transliterated
 
     .toLowerCase()
 
