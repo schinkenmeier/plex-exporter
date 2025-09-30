@@ -1,0 +1,15 @@
+:root{
+  color-scheme: dark;
+  --bg:#0b0d10;--fg:#e8ecf1;--muted:#9aa7b2;--card:#14181d;--accent:#6aa6ff;--chip:#20262d;--border:#1e242b;
+  --hdr-a: rgba(121,168,255,0.38);
+  --hdr-b: rgba(255,183,71,0.35);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+a{color:inherit;text-decoration:none}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+button, select, input{font:inherit}
+.btn, button{cursor:pointer}
+
+.reduce-motion *{ transition: none !important; animation: none !important }

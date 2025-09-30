@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Plex-Katalog</title>
+  <link rel="icon" href="assets/plex-katalog-favicon.png">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/modal.css">
+  <link rel="stylesheet" href="css/loader.css">
+  <script type="module" src="js/main.js"></script>
+  <meta name="color-scheme" content="dark light" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <img src="assets/plex-katalog-logo.png" alt="Plex-Katalog" class="site-header__logo" id="siteLogo">
+      <div class="site-header__meta">
+        <h1 class="site-title sr-only">Plex-Katalog</h1>
+        <p class="site-tagline" id="heroSubtitle">Offline stöbern & Wunschlisten teilen</p>
+      </div>
+      <div class="site-header__stats" id="heroStats" aria-live="polite">-- Filme | -- Serien</div>
+    </div>
+    <div class="grain" aria-hidden="true"></div>
+  </header>
+
+  <div id="scrollProgress" class="scroll-progress" aria-hidden="true"></div>
+
+  <section class="filters" id="filterBar">
+    <div class="wrap filters-wrap">
+      <div class="filters-main">
+        <div class="library-switch" id="librarySwitch" role="group" aria-label="Bibliotheken"></div>
+
+        <div class="field search">
+          <label class="sr-only" for="q">Suche</label>
+          <span class="icon" aria-hidden="true">S</span>
+          <input id="q" type="search" placeholder="Suche Titel, Darsteller, Studio..." autocomplete="off" />
+        </div>
+
+        <div class="field sort">
+          <span class="icon" aria-hidden="true">O</span>
+          <select id="sort"></select>
+        </div>
+
+        <button id="watchlistToggle" type="button" class="watchlist-button" aria-expanded="false">Merkliste <span class="count" id="watchlistCount">0</span></button>
+        <button id="toggleAdvanced" class="toggle-advanced" aria-expanded="false">Erweiterte Filter anzeigen</button>
+        <button id="settingsBtn" type="button" class="settings-button" aria-haspopup="dialog" aria-controls="settingsOverlay">Einstellungen</button>
+      </div>
+
+      <div class="filters-advanced" id="advancedFilters" hidden>
+        <div class="advanced-row">
+          <div class="field chips">
+            <span class="icon" aria-hidden="true">G</span>
+            <div id="genreFilters" class="chip-group" data-empty="Alle Genres" data-state="empty"></div>
+          </div>
+
+          <div class="field collections">
+            <span class="icon" aria-hidden="true">C</span>
+            <select id="collectionFilter"><option value="">Alle Collections</option></select>
+          </div>
+
+          <div class="field year">
+            <span class="icon" aria-hidden="true">Y</span>
+            <select id="yearFrom"><option value="">Ab Jahr</option></select>
+            <select id="yearTo"><option value="">Bis Jahr</option></select>
+            <button type="button" id="yearReset" title="Jahresfilter zurücksetzen">Reset</button>
+          </div>
+
+          <div class="field toggles">
+            <label class="toggle-chip"><input id="onlyNew" type="checkbox" /> Neu (<=30 Tage)</label>
+            <label class="toggle-chip"><input id="groupCollections" type="checkbox" /> Sammlungen bündeln</label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="watchlist-panel" id="watchlistPanel" hidden>
+    <div class="watchlist-header">
+      <h2 class="watchlist-title">Merkliste</h2>
+      <div class="watchlist-actions">
+        <button type="button" class="primary" id="exportWatchlist">Merkliste exportieren</button>
+        <button type="button" id="clearWatchlist">Merkliste leeren</button>
+        <button type="button" id="closeWatchlist">Schließen</button>
+      </div>
+    </div>
+    <p id="watchlistEmpty" class="watchlist-empty">Noch keine Einträge gemerkt.</p>
+    <ul class="watchlist-items" id="watchlistItems"></ul>
+  </section>
+
+  <main class="wrap" id="main">
+    <div id="grid" class="grid"></div>
+    <div id="empty" class="empty" hidden>Kein Treffer. Filter lockern?</div>
+  </main>
+
+  <footer class="wrap">
+    <div class="footer-top">
+      <div class="footer-meta" id="footerMeta">Plex-Katalog lädt.</div>
+      <div class="footer-actions">
+        <a href="#" id="openSettings" class="btn">Einstellungen öffnen</a>
+        <a href="#" id="openWatchlist" class="btn">Merkliste anzeigen</a>
+      </div>
+    </div>
+  </footer>
+
+  <button id="scrollTop" class="scroll-top" aria-label="Nach oben" title="Nach oben">↑</button>
+
+  <!-- Einstellungen Overlay -->
+  <div id="settingsOverlay" class="settings-overlay" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" hidden>
+    <div class="settings-dialog">
+      <div class="settings-header">
+        <h2 id="settingsTitle" class="settings-title">Einstellungen</h2>
+      </div>
+      <div class="settings-body">
+        <div class="settings-row">
+          <input id="tmdbTokenInput" type="password" placeholder="Bearer Token eingeben" autocomplete="off" />
+          <div class="settings-inline">
+            <button type="button" id="tmdbSave" class="primary">Token speichern</button>
+            <button type="button" id="tmdbClearCache">TMDB-Cache leeren</button>
+          </div>
+          <p class="settings-help">Token wird lokal (localStorage) gespeichert. Leerlassen, um TMDB zu deaktivieren.</p>
+        </div>
+        <div class="settings-row">
+          <label class="settings-inline"><input id="prefReduceMotion" type="checkbox" /> Animationen reduzieren</label>
+        </div>
+        <div class="settings-row">
+          <label class="settings-inline"><input id="useTmdbSetting" type="checkbox" /> TMDB-Bilder nutzen</label>
+          <p class="settings-help">Nur verfügbar mit gültigem Token.</p>
+        </div>
+        <div class="settings-row">
+          <div class="settings-inline">
+            <button type="button" id="resetFilters">Filter zurücksetzen</button>
+          </div>
+        </div>
+      </div>
+      <div class="settings-actions">
+        <button type="button" id="settingsClose2">Schließen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div id="modal" class="modal" hidden>
+    <button class="modal__arrow modal__arrow--prev" id="mPrev" aria-label="Vorheriger"><span class="chev"><</span></button>
+    <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+      <button class="modal__close" id="mClose" aria-label="Schließen">×</button>
+      <div class="modal__hero">
+        <div class="modal__poster"><img id="mPoster" alt="" loading="lazy" decoding="async"></div>
+        <div class="modal__head">
+          <div class="topbar">
+            <h2 id="mTitle"></h2>
+            <div class="util-actions" id="mActions" aria-label="Externe Links und Trailer">
+              <a id="mTmdb" target="_blank" rel="noopener" aria-label="Auf TMDB öffnen" style="display:none">TMDB</a>
+              <a id="mImdb" target="_blank" rel="noopener" aria-label="Auf IMDb öffnen" style="display:none">IMDb</a>
+              <button id="mTrailer" aria-label="Trailer abspielen" hidden>Trailer</button>
+            </div>
+          </div>
+          <div id="mSubline" class="subline"></div>
+          <div id="mChips" class="chips" aria-label="Attribute"></div>
+        </div>
+      </div>
+      <nav class="modal__subnav" aria-label="Details Navigation">
+        <div class="inner">
+          <button type="button" id="navOverview" data-target="#sec-overview" class="active" aria-controls="sec-overview" aria-label="Zum Überblick">Überblick</button>
+          <button type="button" id="navSeasons" data-target="#sec-seasons" aria-controls="sec-seasons" aria-label="Zu den Staffeln">Staffeln</button>
+          <button type="button" id="navCast" data-target="#sec-cast" aria-controls="sec-cast" aria-label="Zur Besetzung">Besetzung</button>
+        </div>
+      </nav>
+      <div class="modal__body">
+        <section id="sec-overview" class="modal-section" tabindex="-1">
+          <h3 class="sr-only">Überblick</h3>
+          <p id="mOverview" class="overview"></p>
+          <p id="mOverviewShow" class="overview" hidden></p>
+          <div class="kpis chips" id="mKpiShow" hidden></div>
+        </section>
+        <section id="sec-seasons" class="modal-section" tabindex="-1" hidden>
+          <div id="mSeasons" class="seasons" hidden></div>
+          <div id="seasonsAccordion" class="seasons-accordion"></div>
+        </section>
+        <section id="sec-cast" class="modal-section" tabindex="-1">
+          <div id="mCast" class="cast"></div>
+          <div id="mCastShow" class="cast chips" hidden></div>
+        </section>
+      </div>
+    </div>
+    <button class="modal__arrow modal__arrow--next" id="mNext" aria-label="Nächster"><span class="chev">></span></button>
+    <div class="sr-only" aria-live="polite" id="modalAriaLive"></div>
+    <div class="sr-only" id="modalFocusSentinelStart" tabindex="0"></div>
+    <div class="sr-only" id="modalFocusSentinelEnd" tabindex="0"></div>
+  </div>
+</body>
+</html>
+
