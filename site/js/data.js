@@ -42,21 +42,34 @@ async function loadWithCompat(primaryUrl, opts){
 }
 
 export async function loadMovies(){
-  return loadWithCompat('data/movies.json', {
+  return loadWithCompat('data/movies/movies.json', {
     label: 'movies',
     embedId: 'movies-json',
     exportKey: 'movies',
     globalVar: '__PLEX_MOVIES__',
-    altUrls: ['Filme/movies.json','movies.json'],
+    altUrls: [
+      'movies/movies.json',
+      'data/movies.json',
+      'Filme/movies.json',
+      'movies.json',
+    ],
   });
 }
 export async function loadShows(){
-  return loadWithCompat('data/shows.json', {
+  return loadWithCompat('data/series/series_index.json', {
     label: 'shows',
     embedId: 'series-json',
     exportKey: 'shows',
     globalVar: '__PLEX_SHOWS__',
-    altUrls: ['Serien/series.json','series.json','shows.json'],
+    altUrls: [
+      'series/series_index.json',
+      'data/shows.json',
+      'data/series.json',
+      'Serien/series.json',
+      'series/series.json',
+      'series.json',
+      'shows.json',
+    ],
   });
 }
 
