@@ -1,0 +1,9 @@
+{
+  "name": "plex-exporter",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "split:series": "node tools/split_series.mjs site/data/series/series_full.json site/data/series"
+  }
+}

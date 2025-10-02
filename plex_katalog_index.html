@@ -876,18 +876,13 @@ const CONFIG = {
 
       countLabel: 'Filme',
 
-      scriptUrl: 'Filme/movies.js',
+      // Neues Datenlayout: statische JSON im site/data-Pfad
+      jsonUrl: 'site/data/movies/movies.json',
 
-      jsonUrl: 'Filme/movies.json',
+      // Lokale Poster/Thumbs liegen unterhalb dieses Basispfads
+      thumbBase: 'site/data/movies/',
 
-      thumbBase: 'Filme/',
-
-      exportKey: 'movies',
-
-      globalVar: '__PLEX_MOVIES__',
-
-      scriptId: 'movies-json',
-
+      // Typ für TMDB-Rückfragen
       tmdbType: 'movie',
 
     },
@@ -898,17 +893,12 @@ const CONFIG = {
 
       countLabel: 'Serien',
 
-      scriptUrl: 'Serien/series.js',
+      // Index-Datei aus dem modularen Splitter
+      jsonUrl: 'site/data/series/series_index.json',
 
-      jsonUrl: 'Serien/series.json',
-
-      thumbBase: 'Serien/',
-
-      exportKey: 'shows',
-
-      globalVar: '__PLEX_SHOWS__',
-
-      scriptId: 'series-json',
+      // Basispfad für lokale Poster/Thumbs und Detail-JSONs
+      thumbBase: 'site/data/series/',
+      dataBase: 'site/data/series/', // für Details (details/<ratingKey>.json)
 
       tmdbType: 'tv',
 
@@ -1569,13 +1559,40 @@ function libraryDefinition(key = state.library){
 }
 
 function localThumbUrl(item){
-
-  if(!item.thumbFile) return '';
-
   const base = state.libraryBase ? state.libraryBase.replace(/\/?$/, '/') : '';
+  // Primär: exportiertes Feld 'thumbFile' (z.B. Movies-Export)
+  if(item && item.thumbFile){ return `${base}${item.thumbFile}`; }
+  // Fallback: falls 'thumb' bereits als relativer Pfad vorliegt
+  if(item && typeof item.thumb === 'string' && !/^https?:\/\//i.test(item.thumb) && !/^\//.test(item.thumb)){
+    return `${base}${item.thumb}`;
+  }
+  // Heuristik: lokales Poster nach gängigem Export-Schema ableiten
+  // Movies:  site/data/movies/  "Movie - <Title> [<rk>].images/<Title> [<rk>].thumb.jpg"
+  // Series:  site/data/series/  "Show - <Title> [<rk>].images/<Title> [<rk>].thumb.jpg"
+  const rk = item && (item.ratingKey != null) ? String(item.ratingKey) : '';
+  const title = (item && (item.title || item.originalTitle)) ? String(item.title || item.originalTitle) : '';
+  if(!rk || !title) return '';
+  const t = sanitizeFsTitle(title);
+  const isTv = (item && (String(item.type||'').toLowerCase() === 'tv' || state.libraryType === 'tv'));
+  const prefix = isTv ? 'Show' : 'Movie';
+  const dir = `${prefix} - ${t} [${rk}].images`;
+  const file = `${t} [${rk}].thumb.jpg`;
+  return `${base}${dir}/${file}`;
+}
 
-  return `${base}${item.thumbFile}`;
-
+function sanitizeFsTitle(s){
+  // Ersetze unzulässige/ungünstige Zeichen wie in den vorhandenen Ordnern beobachtet
+  const map = {
+    '#': '_', ':': '_', '�': '', '\\u0000': ''
+  };
+  let out = String(s||'');
+  // Windows-verbotene Zeichen
+  out = out.replace(/[<>:"/\\|?*]/g, '_');
+  // Einige häufige Sonderfälle glätten
+  out = out.replace(/[#:]/g, ch => (map[ch] != null ? map[ch] : '_'));
+  // Trim Leerzeichen/Doppel-Underscores
+  out = out.trim().replace(/\s+/g, ' ');
+  return out;
 }
 
 function normalizeItems(raw){
@@ -4110,7 +4127,10 @@ const initialLibrary = localStorage.getItem('plexLibrary');
   }
 
   function buildUnifiedItem(item){
-    const ids = parseGuids(item);
+    let ids = parseGuids(item);
+    if(item && item.ids && (item.ids.imdb || item.ids.tmdb || item.ids.tvdb)){
+      ids = Object.assign({}, ids, item.ids);
+    }
     const type = toType(item || {});
     const yr = humanYear(item);
     const r = item.audienceRating ?? item.userRating ?? item.rating ?? null;
@@ -4138,6 +4158,32 @@ const initialLibrary = localStorage.getItem('plexLibrary');
       ratingKey: (item && item.ratingKey != null) ? String(item.ratingKey) : '',
       _raw: item,
     };
+  }
+
+  // --- Serien-Details (modularer Loader) ---
+  const __seriesDetailCache = new Map(); // key: ratingKey -> detail JSON
+
+  function seriesDetailBase(){
+    const def = (CONFIG && CONFIG.libraries && CONFIG.libraries.shows) || {};
+    const base = def.dataBase || def.thumbBase || '';
+    return base ? String(base).replace(/\/?$/, '/') : '';
+  }
+
+  async function fetchSeriesDetail(item){
+    try{
+      if(!item) return null;
+      const rk = item.ratingKey || (item._raw && item._raw.ratingKey) || '';
+      if(!rk) return null;
+      if(__seriesDetailCache.has(rk)) return __seriesDetailCache.get(rk);
+      const base = seriesDetailBase();
+      const href = (item._raw && item._raw.href) || item.href || `details/${rk}.json`;
+      const url = base + href;
+      const res = await fetch(url, { cache: 'no-store' });
+      if(!res.ok) return null;
+      const data = await res.json();
+      __seriesDetailCache.set(rk, data);
+      return data;
+    }catch(err){ console.warn('Fetch series detail failed', err); return null; }
   }
 
   function buildSubline(i){
@@ -4303,6 +4349,28 @@ const initialLibrary = localStorage.getItem('plexLibrary');
       try{ renderShowView(unified); }catch(e){ /* noop */ }
       if(modal.seasons) modal.seasons.hidden = true; // legacy block off
       try{ if(modal.navBtns && modal.navBtns.seasons) modal.navBtns.seasons.hidden = false; }catch{}
+      // Serien-Details on-demand laden und UI aktualisieren
+      fetchSeriesDetail(unified).then(detail=>{
+        if(!detail) return;
+        try{
+          if(!unified.overview && detail.summary){ unified.overview = detail.summary; if(modal.overviewShow) modal.overviewShow.textContent = detail.summary; }
+          if(Array.isArray(detail.cast) && (!unified.cast || unified.cast.length < 3)){
+            unified.cast = detail.cast.slice(0,12);
+            const c = document.getElementById('mCastShow'); if(c){ c.hidden = false; c.replaceChildren(...unified.cast.map(n=>{ const s=document.createElement('span'); s.className='chip'; s.textContent=n; return s; })); }
+          }
+          if(Array.isArray(detail.seasons)){
+            unified.seasons = detail.seasons;
+            if(typeof renderSeasonsAccordion === 'function') renderSeasonsAccordion('#seasonsAccordion', detail.seasons);
+          }
+          if(Number.isFinite(detail.year) && !unified.year){ unified.year = Number(detail.year); }
+          if(detail.studio && !unified.studio){ unified.studio = detail.studio; }
+          if(detail.contentRating && !unified.contentRating){ unified.contentRating = detail.contentRating; }
+          if(Array.isArray(detail.genres) && (!unified.genres || unified.genres.length === 0)){
+            unified.genres = detail.genres;
+            if(modal.chips){ fillChips(unified); }
+          }
+        }catch(err){ console.warn('Detail merge failed', err); }
+      }).catch(()=>{});
     }else{
       try{ renderMovieView(unified); }catch(e){ /* noop */ }
       if(modal.seasons) modal.seasons.hidden = true;
@@ -4492,9 +4560,12 @@ const initialLibrary = localStorage.getItem('plexLibrary');
   function findItemByHash(info){
     const list = state.items || [];
     for(const it of list){
-      const ids = parseGuids(it);
-      if(info.idType === 'tmdb' && ids.tmdb === info.id) return it;
-      if(info.idType === 'imdb' && ids.imdb === info.id) return it;
+      const idsA = parseGuids(it);
+      const idsB = (it && it.ids) || {};
+      const tmdb = idsB.tmdb || idsA.tmdb;
+      const imdb = idsB.imdb || idsA.imdb;
+      if(info.idType === 'tmdb' && String(tmdb||'') === String(info.id)) return it;
+      if(info.idType === 'imdb' && String(imdb||'') === String(info.id)) return it;
       if(info.idType === 'rk' && String(it.ratingKey||'') === String(info.id)) return it;
       if(info.idType === 'title' && (it.title||'').toLowerCase() === String(info.id).toLowerCase()) return it;
     }
