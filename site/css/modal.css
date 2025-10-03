@@ -21,6 +21,7 @@
 .season-card{border:1px solid var(--border);border-radius:12px;overflow:hidden}
 .season-head{display:grid;grid-template-columns:84px 1fr auto;align-items:center;gap:12px;padding:10px 12px;background:#12161d}
 .season-thumb{width:80px;aspect-ratio:2/3;background:#0e1217;border-radius:6px;overflow:hidden}
+.season-thumb img{display:block;width:100%;height:100%;object-fit:cover;object-position:center}
 .season-sub{font-size:.92rem}
 .season-body{padding:8px 12px 10px;display:none}
 .season-card.open .season-body{display:block}

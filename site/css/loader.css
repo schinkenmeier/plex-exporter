@@ -1,7 +1,7 @@
 .loader-overlay{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45)}
+.loader-overlay[hidden]{display:none}
 .loader{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;min-width:260px}
 .loader .bar{height:6px;background:linear-gradient(90deg,var(--accent),#f9b233);width:0;border-radius:999px}
 .skeleton{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
 .skeleton .skel{height:240px;background:#0e1217;border-radius:10px;animation:pulse .9s ease-in-out infinite alternate}
 @keyframes pulse{from{opacity:.6}to{opacity:.95}}
-
