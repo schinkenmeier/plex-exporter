@@ -3,7 +3,7 @@ import * as Filter from './filter.js';
 import { el } from './dom.js';
 import { humanYear, formatRating, renderChipsLimited, useTmdbOn, isNew, getGenreNames } from './utils.js';
 import * as Watch from './watchlist.js';
-import { openModal, openMovieModalV2, openSeriesModalV2, getModalLayout } from './modal/index.js';
+import { openMovieModalV2, openSeriesModalV2 } from './modal/index.js';
 
 function cardEl(item){
   const card = el('article','cardv2');
@@ -310,12 +310,6 @@ function openDetail(item){
   const kind = item?.type === 'tv' ? 'show' : 'movie';
   const id = resolveItemId(item);
   if(id) updateHash(kind, id);
-  const useV2 = getModalLayout() === 'v2';
-  if(kind === 'show'){
-    if(useV2) openSeriesModalV2(item);
-    else openModal(item);
-  }else{
-    if(useV2) openMovieModalV2(item);
-    else openModal(item);
-  }
+  if(kind === 'show') openSeriesModalV2(item);
+  else openMovieModalV2(item);
 }

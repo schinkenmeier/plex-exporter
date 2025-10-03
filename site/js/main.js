@@ -3,7 +3,7 @@ import { showLoader, setLoader, hideLoader, showSkeleton, clearSkeleton } from '
 import * as Data from './data.js';
 import * as Filter from './filter.js';
 import { renderGrid } from './grid.js';
-import { getModalLayout, setModalLayout, openModal, openMovieModalV2, openSeriesModalV2 } from './modal/index.js';
+import { openMovieModalV2, openSeriesModalV2 } from './modal/index.js';
 import { hydrateOptional } from './services/tmdb.js';
 import * as Watch from './watchlist.js';
 import * as Debug from './debug.js';
@@ -99,14 +99,8 @@ window.addEventListener('hashchange', ()=>{
   const pool = kind==='movie' ? getState().movies : getState().shows;
   const item = (pool||[]).find(x => (x?.ids?.imdb===id || x?.ids?.tmdb===id || String(x?.ratingKey)===id));
   if(!item) return;
-  const useV2 = getModalLayout() === 'v2';
-  if(kind === 'show'){
-    if(useV2) openSeriesModalV2(item);
-    else openModal(item);
-  }else{
-    if(useV2) openMovieModalV2(item);
-    else openModal(item);
-  }
+  if(kind === 'show') openSeriesModalV2(item);
+  else openMovieModalV2(item);
 });
 
 function renderSwitch(){
@@ -354,14 +348,8 @@ function resolveHeroId(item){
 
 function openHeroModal(item, kind, heroId){
   if(heroId) navigateToItemHash(kind, heroId);
-  const useV2 = getModalLayout() === 'v2';
-  if(kind === 'show'){
-    if(useV2) openSeriesModalV2(item);
-    else openModal(item);
-  }else{
-    if(useV2) openMovieModalV2(item);
-    else openModal(item);
-  }
+  if(kind === 'show') openSeriesModalV2(item);
+  else openMovieModalV2(item);
 }
 
 function navigateToItemHash(kind, id){
@@ -430,7 +418,6 @@ function initSettingsOverlay(cfg){
   const reduce = document.getElementById('prefReduceMotion');
   const useTmdb = document.getElementById('useTmdbSetting');
   const resetFilters = document.getElementById('resetFilters');
-  const modalLayoutRadios = overlay ? overlay.querySelectorAll('input[name="modalLayout"]') : [];
 
   const show = ()=>{ if(overlay) overlay.hidden=false; syncSettingsUi(); };
   const hide = ()=>{ if(overlay) overlay.hidden=true; };
@@ -505,10 +492,6 @@ function initSettingsOverlay(cfg){
         }catch(e){ setTmdbStatus('Prüfung fehlgeschlagen. Netzwerk/Browser-Konsole prüfen.', 'error'); }
       })();
     } else { setUseTmdbAvailability(!!(cfg&&cfg.tmdbApiKey)); }
-    try{
-      const layout = getModalLayout();
-      modalLayoutRadios.forEach(radio=>{ radio.checked = radio.value === layout; });
-    }catch{}
   }
 
   tmdbSave && tmdbSave.addEventListener('click', async ()=>{
@@ -569,12 +552,6 @@ function initSettingsOverlay(cfg){
     }
     renderGrid(getState().view);
     renderHeroHighlight();
-  });
-  modalLayoutRadios.forEach(radio=>{
-    radio.addEventListener('change', ()=>{
-      if(!radio.checked) return;
-      setModalLayout(radio.value === 'v2' ? 'v2' : 'v1');
-    });
   });
   resetFilters && resetFilters.addEventListener('click', ()=>{
     const search = document.getElementById('search'); if(search) search.value='';
