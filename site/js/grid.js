@@ -109,7 +109,7 @@ function collectionCardEl(entry){
 export function renderGrid(view){
   const { movies, shows, filtered } = getState();
   const base = (view==='shows' ? shows : movies) || [];
-  const list = (filtered && filtered.length) ? filtered : base;
+  const list = Array.isArray(filtered) ? filtered : base;
   const items = groupCollectionsIfEnabled(list);
   const grid = document.getElementById('grid');
   if(!grid) return;
@@ -119,7 +119,7 @@ export function renderGrid(view){
   grid.replaceChildren(frag);
   finishGridTransition(grid);
   const empty = document.getElementById('empty');
-  if(empty) empty.hidden = items.length !== 0;
+  if(empty) empty.hidden = items.length > 0;
 }
 
 function beginGridTransition(grid){
