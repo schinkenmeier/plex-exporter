@@ -45,6 +45,16 @@
 .v2-overview { white-space: pre-line; line-height: 1.6; }
 .v2-seasons { display: flex; flex-direction: column; gap: 14px; }
 .v2-cast { padding-top: 4px; }
+.v2-details { display: flex; flex-direction: column; gap: 20px; }
+.v2-details-grid { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.v2-details-section { display: flex; flex-direction: column; gap: 12px; background: linear-gradient(180deg, rgba(20,26,38,0.6), rgba(20,26,38,0.36)); border: 1px solid rgba(69,93,129,0.25); border-radius: 14px; padding: 18px 20px; }
+.v2-details-heading { margin: 0; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: #8fa2c5; }
+.v2-details-list { margin: 0; display: grid; grid-template-columns: minmax(120px, 160px) minmax(0, 1fr); column-gap: 18px; row-gap: 10px; }
+.v2-details-list dt { margin: 0; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: #7f93b5; grid-column: 1; }
+.v2-details-list dd { margin: 0; font-size: 0.95rem; color: #dbe4f4; grid-column: 2; }
+.v2-chip-group { display: flex; flex-wrap: wrap; gap: 10px; }
+.v2-chip-group .chip { padding: .3rem .75rem; border-radius: 999px; background: #1a2230; border: 1px solid #263147; font-size: .84rem; color: #dbe4f4; }
+.v2-details-empty { color: #9fb0c6; font-size: 0.95rem; margin: 0; }
 .v2-cast-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
 .v2-cast-scroll::-webkit-scrollbar { display: none; }
 .v2-cast-chip { border: 1px solid var(--border); background: #121722; border-radius: 20px; padding: 8px 14px; font-size: 0.9rem; white-space: nowrap; color: #dde5f6; }
@@ -69,6 +79,7 @@
   .v2-poster { max-width: 280px; }
   .v2-tabs { flex-wrap: wrap; gap: 8px; }
   .v2-tabs button { flex: 1 1 calc(50% - 4px); text-align: center; }
+  .v2-details-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 480px) {
