@@ -1,4 +1,8 @@
-.field{display:flex;align-items:center;gap:8px}
+.field{display:flex;align-items:center;gap:8px;transition:border-color .15s ease,box-shadow .15s ease}
+.field .icon{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:var(--field-icon-size,clamp(28px,2.8vw+16px,36px));height:var(--field-icon-size,clamp(28px,2.8vw+16px,36px));border-radius:10px;background:rgba(20,26,36,.78);border:1px solid var(--border);color:rgba(207,225,255,.88);font-size:0;line-height:0;transition:background .15s ease,border-color .15s ease,color .15s ease,box-shadow .15s ease}
+.field.search:hover,.field.search:focus-within,.field.sort:hover,.field.sort:focus-within,.field.chips:hover,.field.chips:focus-within,.field.collections:hover,.field.collections:focus-within,.field.year:hover,.field.year:focus-within{border-color:rgba(106,166,255,.6);box-shadow:0 0 0 1px rgba(106,166,255,.24)}
+.field.search:hover .icon,.field.search:focus-within .icon,.field.sort:hover .icon,.field.sort:focus-within .icon,.field.chips:hover .icon,.field.chips:focus-within .icon,.field.collections:hover .icon,.field.collections:focus-within .icon,.field.year:hover .icon,.field.year:focus-within .icon{border-color:rgba(106,166,255,.6);background:rgba(106,166,255,.12);color:var(--accent);box-shadow:0 0 0 1px rgba(106,166,255,.24)}
+.field .icon svg{width:18px;height:18px;display:block;stroke-width:1.75;stroke:currentColor;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .field.search{flex:1 1 240px;background:rgba(15,18,23,0.92);border:1px solid var(--border);border-radius:12px;padding:6px 10px}
 .field.search input{flex:1;background:transparent;border:none;color:var(--fg);outline:none}
 .chip-group{display:flex;flex-wrap:wrap;gap:6px}
