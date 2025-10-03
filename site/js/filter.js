@@ -1,5 +1,6 @@
 import { getState, setState } from './state.js';
 import { qs } from './dom.js';
+import { getGenreNames } from './utils.js';
 
 function humanYear(item){
   if(item.year) return item.year;
@@ -38,7 +39,7 @@ function matches(item, opts){
       item.originalTitle,
       item.summary,
       item.studio,
-      (item.genres||[]).map(g=>g&&g.tag).join(' '),
+      getGenreNames(item.genres).join(' '),
       (item.roles||[]).map(r=>r && (r.tag||r.role||r.name)).join(' '),
       collectionTags(item).join(' '),
     ].filter(Boolean).join(' '));
@@ -52,7 +53,7 @@ function matches(item, opts){
   if(yearTo && (!year || year > yearTo)) return false;
 
   if(genresActive.size){
-    const itemGenres = new Set((item.genres||[]).map(g=>g && g.tag));
+    const itemGenres = new Set(getGenreNames(item.genres));
     for(const g of genresActive){ if(!itemGenres.has(g)) return false; }
   }
 
@@ -87,7 +88,7 @@ export function computeFacets(movies, shows){
   const years = new Set();
   const collections = new Set();
   const add = (arr)=> (arr||[]).forEach(x=>{
-    (x.genres||[]).forEach(g=>{ if(g&&g.tag) genres.add(g.tag); });
+    getGenreNames(x.genres).forEach(name=>genres.add(name));
     const y = x.year || (x.originallyAvailableAt?String(x.originallyAvailableAt).slice(0,4):'');
     if(y) years.add(Number(y));
     collectionTags(x).forEach(c=>collections.add(c));

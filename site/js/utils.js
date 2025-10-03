@@ -1,5 +1,24 @@
 import { getState } from './state.js';
 
+export function getGenreNames(genres){
+  const seen = new Set();
+  const names = [];
+  (genres || []).forEach(entry=>{
+    let name = '';
+    if(typeof entry === 'string'){
+      name = entry;
+    }else if(entry && typeof entry === 'object'){
+      name = entry.tag || entry.title || entry.name || '';
+    }
+    const str = String(name || '').trim();
+    if(str && !seen.has(str)){
+      seen.add(str);
+      names.push(str);
+    }
+  });
+  return names;
+}
+
 export function renderChipsLimited(container, values, limit=6){
   if(!container) return;
   const vals = (values||[]).filter(Boolean);
