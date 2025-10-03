@@ -25,6 +25,7 @@ function focusTrap(modal){
   };
   modal.addEventListener('keydown', onKey);
   modal._focusTrapBound = true;
+  modal._focusTrapHandler = onKey;
 }
 
 function setHeader(item){
@@ -101,6 +102,19 @@ export function openModal(item){
 }
 export function closeModal(){
   hide();
+  const modal = qs('#modal');
+  if(modal){
+    if(modal._focusTrapHandler){
+      modal.removeEventListener('keydown', modal._focusTrapHandler);
+      modal._focusTrapHandler = null;
+    }
+    modal._focusTrapBound = false;
+  }
+  if(lastFocused && typeof lastFocused.focus === 'function'){
+    try{ lastFocused.focus(); }
+    catch{}
+  }
+  lastFocused = null;
   if(arrowNavBound){
     removeEventListener('keydown', onArrowNav);
     arrowNavBound = false;
