@@ -3,7 +3,7 @@ import { renderMovieView } from './movieView.js';
 import { renderShowView } from './showView.js';
 import { getState } from '../state.js';
 import { renderChipsLimited, humanYear, formatRating, useTmdbOn, isNew } from '../utils.js';
-import { loadShowDetail } from '../data.js';
+import { loadShowDetail, prefixShowThumb } from '../data.js';
 
 let currentIndex = -1;
 let currentList = [];
@@ -213,9 +213,7 @@ function normalizeEpisodeEntry(ep){
 }
 
 function normalizeThumbField(obj){
-  if(!obj || typeof obj !== 'object') return;
-  if(obj.thumbFile){ obj.thumbFile = String(obj.thumbFile); }
-  else if(obj.thumb){ obj.thumbFile = String(obj.thumb); }
+  prefixShowThumb(obj);
 }
 
 function normalizeGenresList(list){
