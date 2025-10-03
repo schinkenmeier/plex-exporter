@@ -46,6 +46,18 @@ async function boot(){
   initScrollProgress();
   initScrollTop();
   Debug.initDebugUi();
+  // Re-render grid on TMDB hydration progress to reveal new posters
+  let tmdbRaf;
+  window.addEventListener('tmdb:chunk', ()=>{
+    if(tmdbRaf) return; // throttle to animation frame
+    tmdbRaf = requestAnimationFrame(()=>{
+      tmdbRaf = null;
+      try{ if(localStorage.getItem('useTmdb')==='1') renderGrid(getState().view); }catch{}
+    });
+  });
+  window.addEventListener('tmdb:done', ()=>{
+    try{ if(localStorage.getItem('useTmdb')==='1') renderGrid(getState().view); }catch{}
+  });
 }
 
 window.addEventListener('hashchange', ()=>{
@@ -146,7 +158,10 @@ function initSettingsOverlay(cfg){
   const close2 = document.getElementById('settingsClose2');
   const tmdbInput = document.getElementById('tmdbTokenInput');
   const tmdbSave = document.getElementById('tmdbSave');
+  const tmdbTest = document.getElementById('tmdbTest');
+  const tmdbStatus = document.getElementById('tmdbStatus');
   const tmdbClear = document.getElementById('tmdbClearCache');
+  const tmdbBadge = document.getElementById('tmdbStatusBadge');
   const reduce = document.getElementById('prefReduceMotion');
   const useTmdb = document.getElementById('useTmdbSetting');
   const resetFilters = document.getElementById('resetFilters');
@@ -159,20 +174,115 @@ function initSettingsOverlay(cfg){
   close2 && close2.addEventListener('click', hide);
   overlay && overlay.addEventListener('click', (ev)=>{ if(ev.target===overlay) hide(); });
 
+  function setTmdbStatus(msg='', kind=''){
+    if(!tmdbStatus) return;
+    tmdbStatus.textContent = msg;
+    tmdbStatus.dataset.kind = kind; // kind: success|error|info|pending
+    if(tmdbBadge){ tmdbBadge.dataset.kind = kind || ''; tmdbBadge.title = msg || ''; }
+    // Auto-Fallback: Bei Fehler und vorhandenem v3 API Key, gespeicherten ungültigen Token entfernen
+    try{
+      if(kind==='error' && cfg && cfg.tmdbApiKey){
+        const stored = String(localStorage.getItem('tmdbToken')||'').trim();
+        const currentInput = String(tmdbInput?.value||'').trim();
+        if(stored && currentInput){
+          try{ localStorage.removeItem('tmdbToken'); }catch{}
+          if(tmdbInput) tmdbInput.value = '';
+          setUseTmdbAvailability(true);
+          const m = 'Ungültiger Token entfernt. Verwende API Key aus config.json.';
+          tmdbStatus.textContent = m;
+          tmdbStatus.dataset.kind = 'info';
+          if(tmdbBadge){ tmdbBadge.dataset.kind = 'info'; tmdbBadge.title = m; }
+        }
+      }
+    }catch{}
+  }
+
+  function setUseTmdbAvailability(allowed){
+    if(!useTmdb) return;
+    useTmdb.disabled = !allowed;
+    useTmdb.title = useTmdb.disabled ? 'Nur verfügbar mit gültigem Token oder API Key.' : '';
+    if(!allowed && useTmdb.checked){
+      try{ localStorage.setItem('useTmdb', '0'); }catch{}
+      useTmdb.checked = false;
+      renderGrid(getState().view);
+    }
+  }
+
   function syncSettingsUi(){
     let token = '';
     try{ tmdbInput && (tmdbInput.value = token = (localStorage.getItem('tmdbToken')||'')); }catch{}
     try{ reduce && (reduce.checked = localStorage.getItem('prefReduceMotion')==='1'); }catch{}
-    try{ if(useTmdb){ useTmdb.checked = localStorage.getItem('useTmdb')==='1'; useTmdb.disabled = !token; } }catch{}
+    try{ if(useTmdb){
+      useTmdb.checked = localStorage.getItem('useTmdb')==='1';
+      useTmdb.disabled = !token;
+      useTmdb.title = useTmdb.disabled ? 'Nur verfügbar mit gültigem Token.' : '';
+    } }catch{}
+    try{ setUseTmdbAvailability(!!token || !!(cfg&&cfg.tmdbApiKey)); }catch{}
+    setTmdbStatus('', '');
+    if(!token){ setTmdbStatus('Kein Token hinterlegt. TMDB ist deaktiviert.', 'info'); }
+    if(!cfg?.tmdbEnabled){ setTmdbStatus('Hinweis: TMDB in config.json deaktiviert (tmdbEnabled=false).', 'info'); }
+    // Optional: Auto-Check bei geöffnetem Dialog
+    if(token){
+      (async()=>{
+        setTmdbStatus('Prüfe Token...', 'pending');
+        try{
+          const svc = await import('./services/tmdb.js');
+          const res = await svc.validateToken?.(token);
+          if(res && res.ok){
+            setUseTmdbAvailability(true);
+            if(res.as==='bearer') setTmdbStatus('Token gültig (v4 Bearer).', 'success');
+            else if(res.as==='apikey') setTmdbStatus('API Key gültig (v3). Tipp: dauerhaft in site/config.json unter "tmdbApiKey" eintragen.', 'success');
+          }else{
+            setUseTmdbAvailability(false);
+            if(res?.hint==='looksV3') setTmdbStatus('Eingegebener Wert sieht wie ein v3 API Key aus. Bitte in config.json als "tmdbApiKey" eintragen oder v4 Bearer Token verwenden.', 'error');
+            else setTmdbStatus('Token ungültig oder keine Berechtigung (401).', 'error');
+          }
+        }catch(e){ setTmdbStatus('Prüfung fehlgeschlagen. Netzwerk/Browser-Konsole prüfen.', 'error'); }
+      })();
+    } else { setUseTmdbAvailability(!!(cfg&&cfg.tmdbApiKey)); }
     try{
       const layout = getModalLayout();
       modalLayoutRadios.forEach(radio=>{ radio.checked = radio.value === layout; });
     }catch{}
   }
 
-  tmdbSave && tmdbSave.addEventListener('click', ()=>{
-    try{ const t=String(tmdbInput.value||'').trim(); localStorage.setItem('tmdbToken', t); }catch{}
-    hide();
+  tmdbSave && tmdbSave.addEventListener('click', async ()=>{
+    const raw = String(tmdbInput?.value||'').trim();
+    try{ localStorage.setItem('tmdbToken', raw); }catch{}
+    if(!raw){ setTmdbStatus('Kein Token hinterlegt. TMDB ist deaktiviert.', 'info'); setUseTmdbAvailability(!!(cfg&&cfg.tmdbApiKey)); return; }
+    setTmdbStatus('Prüfe Token...', 'pending');
+    try{
+      const svc = await import('./services/tmdb.js');
+      const res = await svc.validateToken?.(raw);
+      if(res && res.ok){
+        setUseTmdbAvailability(true);
+        setUseTmdbAvailability(true);
+        if(res.as==='bearer') setTmdbStatus('Token gültig (v4 Bearer).', 'success');
+        else if(res.as==='apikey') setTmdbStatus('API Key gültig (v3). Tipp: dauerhaft in site/config.json unter "tmdbApiKey" eintragen.', 'success');
+      }else{
+        setUseTmdbAvailability(false);
+        setUseTmdbAvailability(false);
+        if(res?.hint==='looksV3') setTmdbStatus('Eingegebener Wert sieht wie ein v3 API Key aus. Bitte in config.json als "tmdbApiKey" eintragen oder v4 Bearer Token verwenden.', 'error');
+        else setTmdbStatus('Token ungültig oder keine Berechtigung (401).', 'error');
+      }
+    }catch(e){ setTmdbStatus('Prüfung fehlgeschlagen. Netzwerk/Browser-Konsole prüfen.', 'error'); }
+  });
+
+  tmdbTest && tmdbTest.addEventListener('click', async ()=>{
+    const raw = String(tmdbInput?.value||'').trim();
+    if(!raw){ setTmdbStatus('Bitte Token eingeben.', 'error'); return; }
+    setTmdbStatus('Prüfe Token...', 'pending');
+    try{
+      const svc = await import('./services/tmdb.js');
+      const res = await svc.validateToken?.(raw);
+      if(res && res.ok){
+        if(res.as==='bearer') setTmdbStatus('Token gültig (v4 Bearer).', 'success');
+        else if(res.as==='apikey') setTmdbStatus('API Key gültig (v3). Tipp: dauerhaft in site/config.json unter "tmdbApiKey" eintragen.', 'success');
+      }else{
+        if(res?.hint==='looksV3') setTmdbStatus('Eingegebener Wert sieht wie ein v3 API Key aus. Dieser funktioniert hier nicht als Bearer. Bitte in config.json als "tmdbApiKey" eintragen oder v4 Bearer Token verwenden.', 'error');
+        else setTmdbStatus('Token ungültig oder keine Berechtigung (401).', 'error');
+      }
+    }catch(e){ setTmdbStatus('Prüfung fehlgeschlagen. Netzwerk/Browser-Konsole prüfen.', 'error'); }
   });
   tmdbClear && tmdbClear.addEventListener('click', ()=>{ import('./services/tmdb.js').then(m=>m.clearCache?.()); });
   reduce && reduce.addEventListener('change', ()=>{
@@ -181,6 +291,17 @@ function initSettingsOverlay(cfg){
   });
   useTmdb && useTmdb.addEventListener('change', ()=>{
     try{ localStorage.setItem('useTmdb', useTmdb.checked ? '1' : '0'); }catch{}
+    // Start TMDB hydration when enabling the toggle (if not already started)
+    if(useTmdb.checked && !window.__tmdbHydrationStarted){
+      window.__tmdbHydrationStarted = 1;
+      import('./services/tmdb.js').then(m=>{
+        const s = getState();
+        m.hydrateOptional?.(s.movies, s.shows, s.cfg);
+      }).catch(()=>{});
+      // Re-render a bit later to reflect incoming posters
+      setTimeout(()=>{ if(useTmdb.checked) renderGrid(getState().view); }, 1200);
+      setTimeout(()=>{ if(useTmdb.checked) renderGrid(getState().view); }, 3000);
+    }
     renderGrid(getState().view);
   });
   modalLayoutRadios.forEach(radio=>{

@@ -121,15 +121,17 @@
           <input id="tmdbTokenInput" type="password" placeholder="Bearer Token eingeben" autocomplete="off" />
           <div class="settings-inline">
             <button type="button" id="tmdbSave" class="primary">Token speichern</button>
+            <button type="button" id="tmdbTest">Token testen</button>
             <button type="button" id="tmdbClearCache">TMDB-Cache leeren</button>
           </div>
           <p class="settings-help">Token wird lokal (localStorage) gespeichert. Leerlassen, um TMDB zu deaktivieren.</p>
+          <p class="settings-help" id="tmdbStatus" aria-live="polite"></p>
         </div>
         <div class="settings-row">
           <label class="settings-inline"><input id="prefReduceMotion" type="checkbox" /> Animationen reduzieren</label>
         </div>
         <div class="settings-row">
-          <label class="settings-inline"><input id="useTmdbSetting" type="checkbox" /> TMDB-Bilder nutzen</label>
+          <label class="settings-inline"><input id="useTmdbSetting" type="checkbox" /> TMDB-Bilder nutzen <span id="tmdbStatusBadge" class="status-badge" aria-hidden="true"></span></label>
           <p class="settings-help">Nur verfügbar mit gültigem Token.</p>
         </div>
         <div class="settings-row" id="modalLayoutSettings">

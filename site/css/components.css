@@ -53,6 +53,16 @@
 .settings-inline{display:flex;gap:8px;flex-wrap:wrap}
 .settings-actions{display:flex;justify-content:flex-end;gap:8px;padding:8px}
 .settings-help{opacity:.8;font-size:.9em}
+.settings-help#tmdbStatus{opacity:1}
+.settings-help#tmdbStatus[data-kind="success"]{color:#58d68d}
+.settings-help#tmdbStatus[data-kind="error"]{color:#ff6b6b}
+.settings-help#tmdbStatus[data-kind="info"]{color:var(--muted)}
+.settings-help#tmdbStatus[data-kind="pending"]{color:var(--muted)}
+.status-badge{display:inline-block;width:10px;height:10px;border-radius:50%;margin-left:6px;border:1px solid var(--border);background:transparent;vertical-align:middle}
+.status-badge[data-kind="success"]{background:#58d68d;border-color:#58d68d}
+.status-badge[data-kind="error"]{background:#ff6b6b;border-color:#ff6b6b}
+.status-badge[data-kind="info"]{background:transparent;border-color:var(--muted)}
+.status-badge[data-kind="pending"]{background:linear-gradient(90deg, rgba(106,166,255,.4), rgba(255,183,71,.4));border-color:var(--accent,#6aa6ff)}
 .settings-row fieldset{border:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
 .settings-row fieldset legend{font-weight:600;margin-bottom:4px}
 .settings-row fieldset .settings-inline label{display:flex;align-items:center;gap:6px;font-weight:500}
