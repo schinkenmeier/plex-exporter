@@ -3,10 +3,12 @@ import { renderMovieView } from './movieView.js';
 import { renderShowView } from './showView.js';
 import { getState } from '../state.js';
 import { renderChipsLimited, humanYear, formatRating, useTmdbOn, isNew } from '../utils.js';
+import { loadShowDetail } from '../data.js';
 
 let currentIndex = -1;
 let currentList = [];
 let lastFocused = null;
+let renderToken = 0;
 
 function focusTrap(modal){
   const selectors = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
@@ -80,8 +82,7 @@ export function openModal(item){
     (x?.ids?.tmdb && item?.ids?.tmdb && x.ids.tmdb===item.ids.tmdb)
   ));
 
-  setHeader(item);
-  if(item.type === 'tv') renderShowView(item); else renderMovieView(item);
+  renderItem(item);
   show();
   const modal = qs('#modal');
   if(modal){ lastFocused = document.activeElement; focusTrap(modal); modal.querySelector('#mClose')?.focus(); }
@@ -105,8 +106,7 @@ function step(delta){
   currentIndex = (currentIndex + delta + currentList.length) % currentList.length;
   const item = currentList[currentIndex];
   if(!item) return;
-  setHeader(item);
-  if(item.type === 'tv') renderShowView(item); else renderMovieView(item);
+  renderItem(item);
 }
 
 function onArrowNav(ev){
@@ -129,4 +129,128 @@ function bindSubnav(){
       });
     }
   });
+}
+
+async function renderItem(item){
+  if(!item) return;
+  const token = ++renderToken;
+  setHeader(item);
+  if(item.type === 'tv'){
+    const needsDetails = needsShowDetail(item);
+    let detail = null;
+    if(needsDetails){
+      showTvLoadingState();
+      try{ detail = await loadShowDetail(item); }
+      catch{ detail = null; }
+      if(token !== renderToken) return;
+    }
+    mergeShowDetail(item, detail);
+    if(token !== renderToken) return;
+    renderShowView(item);
+  }else{
+    renderMovieView(item);
+  }
+}
+
+function needsShowDetail(item){
+  const seasons = Array.isArray(item?.seasons) ? item.seasons : [];
+  const hasEpisodes = seasons.some(season=>Array.isArray(season?.episodes) && season.episodes.length);
+  const cast = Array.isArray(item?.cast) ? item.cast : Array.isArray(item?.roles) ? item.roles : [];
+  return !seasons.length || !hasEpisodes || !cast.length;
+}
+
+function showTvLoadingState(){
+  const overviewMovie = qs('#mOverview'); if(overviewMovie) overviewMovie.textContent = '';
+  const ov = qs('#mOverviewShow');
+  if(ov){ ov.hidden = false; ov.textContent = 'Details werden geladen …'; }
+  const kpi = qs('#mKpiShow');
+  if(kpi){ kpi.hidden = true; kpi.replaceChildren(); }
+  const castEl = qs('#mCastShow');
+  if(castEl){ castEl.hidden = true; castEl.replaceChildren(); }
+  const seasonsRoot = document.getElementById('seasonsAccordion');
+  if(seasonsRoot){
+    const info = document.createElement('div');
+    info.className = 'loading-indicator';
+    info.textContent = 'Details werden geladen …';
+    seasonsRoot.replaceChildren(info);
+  }
+}
+
+function mergeShowDetail(target, detail){
+  if(!target) return target;
+  if(detail && typeof detail === 'object') Object.assign(target, detail);
+  normalizeShow(target);
+  return target;
+}
+
+function normalizeShow(show){
+  if(!show || typeof show !== 'object') return;
+  normalizeThumbField(show);
+  show.genres = normalizeGenresList(show.genres);
+  const cast = normalizePeopleList(show.cast || show.roles || []);
+  show.cast = cast;
+  show.roles = cast;
+  show.seasons = Array.isArray(show.seasons) ? show.seasons.map(normalizeSeasonEntry).filter(Boolean) : [];
+  const sc = Number(show.seasonCount);
+  show.seasonCount = Number.isFinite(sc) && sc > 0 ? sc : show.seasons.length;
+}
+
+function normalizeSeasonEntry(season){
+  if(!season || typeof season !== 'object') return null;
+  const out = { ...season };
+  normalizeThumbField(out);
+  out.genres = normalizeGenresList(out.genres);
+  out.episodes = Array.isArray(out.episodes) ? out.episodes.map(normalizeEpisodeEntry).filter(Boolean) : [];
+  return out;
+}
+
+function normalizeEpisodeEntry(ep){
+  if(!ep || typeof ep !== 'object') return null;
+  const out = { ...ep };
+  normalizeThumbField(out);
+  out.genres = normalizeGenresList(out.genres);
+  return out;
+}
+
+function normalizeThumbField(obj){
+  if(!obj || typeof obj !== 'object') return;
+  if(obj.thumbFile){ obj.thumbFile = String(obj.thumbFile); }
+  else if(obj.thumb){ obj.thumbFile = String(obj.thumb); }
+}
+
+function normalizeGenresList(list){
+  if(!Array.isArray(list)) return [];
+  const seen = new Set();
+  const result = [];
+  list.forEach(entry=>{
+    let item = null;
+    if(typeof entry === 'string'){
+      const tag = entry.trim();
+      if(tag) item = { tag };
+    }else if(entry && typeof entry === 'object'){
+      const tag = String(entry.tag || entry.title || entry.name || entry.label || '').trim();
+      if(tag){ item = { ...entry, tag }; }
+    }
+    if(item && !seen.has(item.tag)){
+      seen.add(item.tag);
+      result.push(item);
+    }
+  });
+  return result;
+}
+
+function normalizePeopleList(list){
+  if(!Array.isArray(list)) return [];
+  return list.map(entry=>{
+    if(!entry) return null;
+    if(typeof entry === 'string'){
+      const tag = entry.trim();
+      return tag ? { tag } : null;
+    }
+    if(typeof entry === 'object'){
+      const tag = String(entry.tag || entry.name || entry.role || '').trim();
+      return tag ? { ...entry, tag } : { ...entry };
+    }
+    return null;
+  }).filter(Boolean);
 }

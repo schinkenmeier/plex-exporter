@@ -1,4 +1,5 @@
 let lastSources = { movies: null, shows: null };
+const showDetailCache = new Map();
 
 async function fetchJson(url){
   try{ const r = await fetch(url, { cache:'no-store' }); if(r && r.ok) return await r.json(); }
@@ -73,6 +74,25 @@ export async function loadShows(){
   });
 }
 
+export async function loadShowDetail(item){
+  if(!item) return null;
+  const keys = cacheKeys(item);
+  const cached = getCachedDetail(keys);
+  if(cached !== undefined) return cached;
+
+  const urls = detailUrlCandidates(item);
+  for(const url of urls){
+    const data = await fetchJson(url);
+    if(data && typeof data === 'object'){
+      const normalized = normalizeShowDetail(data);
+      storeDetail(keys, normalized, item);
+      return cloneDetail(normalized);
+    }
+  }
+  storeDetail(keys, null, item);
+  return null;
+}
+
 function markSource(label, src){
   if(!label) return;
   try{ lastSources[label] = src; }catch{}
@@ -89,4 +109,153 @@ export function buildFacets(movies, shows){
     if(y) years.add(Number(y));
   });
   return { genres:[...genres].sort(), years:[...years].sort((a,b)=>a-b), collections: [] };
+}
+
+function cacheKeys(item){
+  const keys = [];
+  if(item?.ratingKey !== undefined && item?.ratingKey !== null && item?.ratingKey !== ''){
+    keys.push(`rk:${String(item.ratingKey)}`);
+  }
+  const href = normalizeHrefKey(item?.href);
+  if(href) keys.push(`href:${href}`);
+  return keys;
+}
+
+function normalizeHrefKey(href){
+  if(!href) return '';
+  return String(href).trim().replace(/^\.\//,'').replace(/^\/+/, '');
+}
+
+function getCachedDetail(keys){
+  for(const key of keys){
+    if(showDetailCache.has(key)){
+      const cached = showDetailCache.get(key);
+      return cached ? cloneDetail(cached) : null;
+    }
+  }
+  return undefined;
+}
+
+function storeDetail(keys, value, item){
+  const val = value;
+  keys.forEach(key=>{ showDetailCache.set(key, val); });
+  const rk = item?.ratingKey;
+  if(rk !== undefined && rk !== null){
+    showDetailCache.set(`rk:${String(rk)}`, val);
+  }
+  const detailKey = value && typeof value === 'object' ? value.ratingKey : undefined;
+  if(detailKey !== undefined && detailKey !== null){
+    showDetailCache.set(`rk:${String(detailKey)}`, val);
+  }
+  const href = normalizeHrefKey(item?.href);
+  if(href){
+    showDetailCache.set(`href:${href}`, val);
+  }
+  const detailHref = value && typeof value === 'object' ? normalizeHrefKey(value.href) : '';
+  if(detailHref){
+    showDetailCache.set(`href:${detailHref}`, val);
+  }
+}
+
+function detailUrlCandidates(item){
+  const urls = new Set();
+  const hrefKey = normalizeHrefKey(item?.href);
+  if(hrefKey){
+    if(/^https?:/i.test(hrefKey)){ urls.add(hrefKey); }
+    else{
+      if(hrefKey.startsWith('data/')) urls.add(hrefKey);
+      else urls.add(`data/${hrefKey}`);
+      const withoutData = hrefKey.replace(/^data\//,'');
+      if(!withoutData.startsWith('series/')) urls.add(`data/series/${withoutData}`);
+      const idPart = withoutData.replace(/^series\//,'').replace(/^details\//,'').replace(/\.json$/,'');
+      if(idPart) urls.add(`data/series/details/${idPart}.json`);
+    }
+  }
+  const rk = item?.ratingKey;
+  if(rk !== undefined && rk !== null){
+    urls.add(`data/series/details/${String(rk)}.json`);
+  }
+  return Array.from(urls);
+}
+
+function normalizeShowDetail(data){
+  if(!data || typeof data !== 'object') return null;
+  const show = { ...data };
+  normalizeThumb(show);
+  show.genres = normalizeGenres(show.genres);
+  const castList = normalizePeople(show.cast || show.roles || []);
+  show.cast = castList;
+  show.roles = castList;
+  show.seasons = Array.isArray(show.seasons) ? show.seasons.map(normalizeSeason).filter(Boolean) : [];
+  show.seasonCount = Number.isFinite(show.seasonCount) ? show.seasonCount : show.seasons.length;
+  return show;
+}
+
+function normalizeSeason(season){
+  if(!season || typeof season !== 'object') return null;
+  const out = { ...season };
+  normalizeThumb(out);
+  out.genres = normalizeGenres(out.genres);
+  out.episodes = Array.isArray(out.episodes) ? out.episodes.map(normalizeEpisode).filter(Boolean) : [];
+  return out;
+}
+
+function normalizeEpisode(ep){
+  if(!ep || typeof ep !== 'object') return null;
+  const out = { ...ep };
+  normalizeThumb(out);
+  out.genres = normalizeGenres(out.genres);
+  return out;
+}
+
+function normalizeThumb(obj){
+  if(!obj || typeof obj !== 'object') return obj;
+  if(obj.thumbFile){ obj.thumbFile = String(obj.thumbFile); }
+  else if(obj.thumb){ obj.thumbFile = String(obj.thumb); }
+  return obj;
+}
+
+function normalizeGenres(list){
+  if(!Array.isArray(list)) return [];
+  const seen = new Set();
+  const result = [];
+  list.forEach(entry=>{
+    let obj = null;
+    if(typeof entry === 'string'){
+      const tag = entry.trim();
+      if(tag) obj = { tag };
+    }else if(entry && typeof entry === 'object'){
+      const tag = String(entry.tag || entry.title || entry.name || entry.label || '').trim();
+      if(tag){ obj = { ...entry, tag }; }
+    }
+    if(obj && !seen.has(obj.tag)){
+      seen.add(obj.tag);
+      result.push(obj);
+    }
+  });
+  return result;
+}
+
+function normalizePeople(list){
+  if(!Array.isArray(list)) return [];
+  return list.map(entry=>{
+    if(!entry) return null;
+    if(typeof entry === 'string'){
+      const tag = entry.trim();
+      return tag ? { tag } : null;
+    }
+    if(typeof entry === 'object'){
+      const tag = String(entry.tag || entry.name || entry.role || '').trim();
+      if(tag){ return { ...entry, tag }; }
+      return { ...entry };
+    }
+    return null;
+  }).filter(Boolean);
+}
+
+function cloneDetail(detail){
+  if(detail === null || detail === undefined) return detail;
+  try{ return structuredClone(detail); }catch{}
+  try{ return JSON.parse(JSON.stringify(detail)); }catch{}
+  return detail;
 }
