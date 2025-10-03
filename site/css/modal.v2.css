@@ -1,6 +1,22 @@
 /* Cinematic modal layout (V2) */
+.modalv2-overlay { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; padding: 32px 24px; background: var(--bg-overlay, rgba(9, 15, 26, 0.85)); backdrop-filter: blur(22px); }
+.modalv2-overlay[hidden] { display: none; }
+.modalv2-backdrop { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 20% 20%, rgba(34,51,78,0.32), rgba(9,14,23,0.76)); }
+.modalv2-dialog { position: relative; z-index: 1; width: min(1040px, 100%); max-height: min(92vh, 900px); border-radius: 24px; border: 1px solid rgba(69,93,129,0.35); box-shadow: 0 26px 64px rgba(5,8,15,0.65); background: linear-gradient(180deg, rgba(12,17,28,0.96), rgba(10,14,23,0.92)); overflow: hidden; display: flex; flex-direction: column; }
+.modalv2-scroll { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+body.modalv2-open { overflow: hidden; }
 .modalv2 { padding: 0; display: flex; flex-direction: column; gap: 0; }
 .modalv2[hidden] { display: none; }
+
+@media (max-width: 880px) {
+  .modalv2-overlay { padding: 24px 18px; }
+  .modalv2-dialog { max-height: calc(100vh - 40px); border-radius: 20px; }
+}
+
+@media (max-width: 640px) {
+  .modalv2-overlay { padding: 16px 12px; }
+  .modalv2-dialog { width: 100%; border-radius: 18px; }
+}
 
 .v2-layout { display: grid; grid-template-columns: minmax(220px, 320px) minmax(0, 1fr); gap: 32px; padding: 24px 24px 28px; align-items: flex-start; }
 .v2-side { display: flex; flex-direction: column; gap: 24px; position: sticky; top: 24px; align-self: flex-start; }

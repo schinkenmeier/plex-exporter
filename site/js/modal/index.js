@@ -3,12 +3,20 @@ import { renderMovieView } from './movieView.js';
 import { renderShowView } from './showView.js';
 import { getState } from '../state.js';
 import { renderChipsLimited, humanYear, formatRating, useTmdbOn, isNew } from '../utils.js';
-import { loadShowDetail, prefixShowThumb } from '../data.js';
-import { renderModalV2, showModalV2Loading } from '../modalV2.js';
+import { loadShowDetail } from '../data.js';
+import {
+  openMovieModalV2 as openMovieModalV2Impl,
+  openSeriesModalV2 as openSeriesModalV2Impl,
+  closeModalV2,
+  isModalV2Open,
+  getModalV2Context,
+} from '../modalV2.js';
+import { needsShowDetail, mergeShowDetail } from './shared.js';
 
 let currentIndex = -1;
 let currentList = [];
 let lastFocused = null;
+let lastOpenedItem = null;
 let renderToken = 0;
 let arrowNavBound = false;
 let modalLayout = readStoredLayout();
@@ -33,38 +41,36 @@ export function setModalLayout(next){
     return;
   }
   modalLayout = desired;
-  if(isModalOpen()){
-    const item = currentList[currentIndex];
-    if(item){ renderItem(item); }
-    else if(desired === 'v1') showLayoutV1();
-    else showLayoutV2();
+  const legacyOpen = Boolean(qs('#modal') && !qs('#modal').hidden);
+  const v2Open = isModalV2Open();
+  const ctx = getModalV2Context() || { item:null, kind:null };
+  const itemFromList = currentList[currentIndex] || null;
+  const fallbackItem = itemFromList || lastOpenedItem || ctx.item;
+
+  if(desired === 'v2'){
+    if(legacyOpen) closeModal();
+    const target = fallbackItem;
+    if(target) openInV2(target);
+  }else{
+    if(v2Open) closeModalV2();
+    const target = fallbackItem;
+    if(target) openModal(target);
   }
 }
 
 function isModalOpen(){
   const modal = qs('#modal');
-  return Boolean(modal && !modal.hidden);
+  const legacyOpen = Boolean(modal && !modal.hidden);
+  return legacyOpen || isModalV2Open();
 }
 
 function showLayoutV1(){
+  const modal = document.getElementById('modal');
   const v1 = document.getElementById('modalV1Root');
-  const v2 = document.getElementById('modalV2Root');
   const mClose = document.getElementById('mClose');
+  if(modal) modal.hidden = false;
   if(v1) v1.removeAttribute('hidden');
-  if(v2){
-    v2.setAttribute('hidden','');
-    v2.replaceChildren();
-  }
   if(mClose) mClose.removeAttribute('hidden');
-}
-
-function showLayoutV2(){
-  const v1 = document.getElementById('modalV1Root');
-  const v2 = document.getElementById('modalV2Root');
-  const mClose = document.getElementById('mClose');
-  if(v1) v1.setAttribute('hidden','');
-  if(v2) v2.removeAttribute('hidden');
-  if(mClose) mClose.setAttribute('hidden','');
 }
 
 function focusTrap(modal){
@@ -128,10 +134,8 @@ function setHeader(item){
 function show(){ const m = qs('#modal'); if(m) m.hidden = false; }
 function hide(){ const m = qs('#modal'); if(m) m.hidden = true; }
 
-export function openModal(item){
-  if(!item) return;
-  modalLayout = readStoredLayout();
-  // determine navigation list from current view and filtered items
+function prepareModalContext(item){
+  if(!item || typeof item !== 'object') return;
   const s = getState();
   const view = s.view;
   const pool = (view==='shows'? s.shows : s.movies) || [];
@@ -142,6 +146,21 @@ export function openModal(item){
     (x?.ids?.imdb && item?.ids?.imdb && x.ids.imdb===item.ids.imdb) ||
     (x?.ids?.tmdb && item?.ids?.tmdb && x.ids.tmdb===item.ids.tmdb)
   ));
+}
+
+export function openModal(item){
+  if(!item) return;
+  modalLayout = readStoredLayout();
+  if(modalLayout === 'v2'){
+    openInV2(item);
+    return;
+  }
+
+  if(item && typeof item === 'object'){
+    lastOpenedItem = item;
+  }
+  prepareModalContext(item);
+  if(isModalV2Open()) closeModalV2();
 
   renderItem(item);
   show();
@@ -149,13 +168,8 @@ export function openModal(item){
   if(modal){
     lastFocused = document.activeElement;
     focusTrap(modal);
-    const layout = getModalLayout();
-    const preferred = layout === 'v2' ? '#v2Close' : '#mClose';
-    let target = modal.querySelector(preferred);
-    if(!target || target.hasAttribute('hidden')){
-      target = modal.querySelector('#mClose:not([hidden])');
-    }
-    if(!target || target.hasAttribute('hidden')){
+    let target = modal.querySelector('#mClose:not([hidden])');
+    if(!target){
       const selectors = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
       target = Array.from(modal.querySelectorAll(selectors)).find(el=>el.offsetParent!==null);
     }
@@ -192,23 +206,42 @@ export function closeModal(){
   }
 }
 
-function openWithPreferredLayout(item, preferred){
+function isShowLike(source){
+  if(!source || typeof source !== 'object') return false;
+  const type = String(source.type || source.librarySectionType || '').toLowerCase();
+  return type === 'show' || type === 'tv';
+}
+
+function openInV2(item){
   if(!item) return;
-  if(preferred === 'v2' && getModalLayout() !== 'v2'){
-    openModal(item);
-    return;
+  if(isShowLike(item)) openSeriesModalV2(item);
+  else openMovieModalV2(item);
+}
+
+export async function openMovieModalV2(idOrData){
+  modalLayout = 'v2';
+  if(idOrData && typeof idOrData === 'object'){
+    prepareModalContext(idOrData);
+    lastOpenedItem = idOrData;
   }
-  openModal(item);
+  await openMovieModalV2Impl(idOrData);
+  const ctx = getModalV2Context();
+  if(ctx && ctx.item){
+    lastOpenedItem = ctx.item;
+  }
 }
 
-export function openMovieModalV2(item){
-  if(!item) return;
-  openWithPreferredLayout(item, 'v2');
-}
-
-export function openSeriesModalV2(item){
-  if(!item) return;
-  openWithPreferredLayout(item, 'v2');
+export async function openSeriesModalV2(idOrData){
+  modalLayout = 'v2';
+  if(idOrData && typeof idOrData === 'object'){
+    prepareModalContext(idOrData);
+    lastOpenedItem = idOrData;
+  }
+  await openSeriesModalV2Impl(idOrData);
+  const ctx = getModalV2Context();
+  if(ctx && ctx.item){
+    lastOpenedItem = ctx.item;
+  }
 }
 
 function bindArrows(){
@@ -250,34 +283,23 @@ function bindSubnav(){
 async function renderItem(item){
   if(!item) return;
   const token = ++renderToken;
-  const layout = getModalLayout();
-  if(layout === 'v2') showLayoutV2(); else showLayoutV1();
-  if(layout === 'v1') setHeader(item);
+  showLayoutV1();
+  setHeader(item);
   if(item.type === 'tv'){
     const needsDetails = needsShowDetail(item);
     let detail = null;
     if(needsDetails){
-      if(layout === 'v2') showModalV2Loading();
-      else showTvLoadingState();
+      showTvLoadingState();
       try{ detail = await loadShowDetail(item); }
       catch{ detail = null; }
       if(token !== renderToken) return;
     }
     mergeShowDetail(item, detail);
     if(token !== renderToken) return;
-    if(layout === 'v2') renderModalV2(item);
-    else renderShowView(item);
+    renderShowView(item);
   }else{
-    if(layout === 'v2') renderModalV2(item);
-    else renderMovieView(item);
+    renderMovieView(item);
   }
-}
-
-function needsShowDetail(item){
-  const seasons = Array.isArray(item?.seasons) ? item.seasons : [];
-  const hasEpisodes = seasons.some(season=>Array.isArray(season?.episodes) && season.episodes.length);
-  const cast = Array.isArray(item?.cast) ? item.cast : Array.isArray(item?.roles) ? item.roles : [];
-  return !seasons.length || !hasEpisodes || !cast.length;
 }
 
 function showTvLoadingState(){
@@ -297,79 +319,3 @@ function showTvLoadingState(){
   }
 }
 
-function mergeShowDetail(target, detail){
-  if(!target) return target;
-  if(detail && typeof detail === 'object') Object.assign(target, detail);
-  normalizeShow(target);
-  return target;
-}
-
-function normalizeShow(show){
-  if(!show || typeof show !== 'object') return;
-  normalizeThumbField(show);
-  show.genres = normalizeGenresList(show.genres);
-  const cast = normalizePeopleList(show.cast || show.roles || []);
-  show.cast = cast;
-  show.roles = cast;
-  show.seasons = Array.isArray(show.seasons) ? show.seasons.map(normalizeSeasonEntry).filter(Boolean) : [];
-  const sc = Number(show.seasonCount);
-  show.seasonCount = Number.isFinite(sc) && sc > 0 ? sc : show.seasons.length;
-}
-
-function normalizeSeasonEntry(season){
-  if(!season || typeof season !== 'object') return null;
-  const out = { ...season };
-  normalizeThumbField(out);
-  out.genres = normalizeGenresList(out.genres);
-  out.episodes = Array.isArray(out.episodes) ? out.episodes.map(normalizeEpisodeEntry).filter(Boolean) : [];
-  return out;
-}
-
-function normalizeEpisodeEntry(ep){
-  if(!ep || typeof ep !== 'object') return null;
-  const out = { ...ep };
-  normalizeThumbField(out);
-  out.genres = normalizeGenresList(out.genres);
-  return out;
-}
-
-function normalizeThumbField(obj){
-  prefixShowThumb(obj);
-}
-
-function normalizeGenresList(list){
-  if(!Array.isArray(list)) return [];
-  const seen = new Set();
-  const result = [];
-  list.forEach(entry=>{
-    let item = null;
-    if(typeof entry === 'string'){
-      const tag = entry.trim();
-      if(tag) item = { tag };
-    }else if(entry && typeof entry === 'object'){
-      const tag = String(entry.tag || entry.title || entry.name || entry.label || '').trim();
-      if(tag){ item = { ...entry, tag }; }
-    }
-    if(item && !seen.has(item.tag)){
-      seen.add(item.tag);
-      result.push(item);
-    }
-  });
-  return result;
-}
-
-function normalizePeopleList(list){
-  if(!Array.isArray(list)) return [];
-  return list.map(entry=>{
-    if(!entry) return null;
-    if(typeof entry === 'string'){
-      const tag = entry.trim();
-      return tag ? { tag } : null;
-    }
-    if(typeof entry === 'object'){
-      const tag = String(entry.tag || entry.name || entry.role || '').trim();
-      return tag ? { ...entry, tag } : { ...entry };
-    }
-    return null;
-  }).filter(Boolean);
-}
