@@ -61,7 +61,16 @@ export function prefixThumbValue(value, base){
     }
   }).join('/');
   if(withoutDots.startsWith('data/')) return encodePath(withoutDots);
-  const cleaned = withoutDots.replace(/^\/+/, '');
+  const cleanedLeading = withoutDots.replace(/^\/+/, '');
+  let cleaned = cleanedLeading;
+  if(normalizedBase){
+    const escapeRegExp = str => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const baseDir = normalizedBase.replace(/\/+$/, '').split('/').pop();
+    if(baseDir){
+      const re = new RegExp(`^${escapeRegExp(baseDir)}\/`);
+      cleaned = cleanedLeading.replace(re, '');
+    }
+  }
   const encoded = encodePath(cleaned);
   return `${normalizedBase}${encoded}`;
 }
