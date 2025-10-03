@@ -9,8 +9,7 @@ Der Plex Exporter stellt einen statischen Katalog deiner Plex-Bibliotheken berei
 - Schnelle Datenladewege mit Fallbacks für eingebettete JSON-Blöcke oder ältere Exporte (`site/js/data.js`).
 - Watchlist mit Export- und Importmöglichkeiten (lokal im Browser gespeichert, Logik in `site/js/watchlist.js`).
 - Debug-Overlay zur Fehlersuche mit Quellinformationen, TMDB-Status und Filterzusammenfassung (`site/js/debug.js`).
-- Modalansichten für Detailseiten, Scroll-Animationen sowie optionale Bewegungsreduktion.
-- Cinematic-Modal mit Sticky-Poster, Schnellinfos und Tabs (implementiert in `site/js/modalV2.js`).
+- Cinematic-Modal für Film- und Serien-Details mit Sticky-Poster, Schnellinfos, Tabs und optional reduzierter Bewegung (implementiert in `site/js/modalV2.js`).
 
 ## Projektstruktur
 | Pfad | Beschreibung |

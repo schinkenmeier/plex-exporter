@@ -62,9 +62,9 @@ Dieser Leitfaden skizziert den Aufbau der Plex-Exporter-Weboberfläche sowie wic
 ## Modal-System (`site/js/modalV2.js`)
 
 * **Zentrale Steuerung:**
-  * Module importieren `openMovieModalV2()` und `openSeriesModalV2()` direkt aus `site/js/modalV2.js`. Das frühere V1-Layout wurde entfernt; ein separater Wrapper ist nicht mehr nötig.
+  * Module importieren `openMovieModalV2()` und `openSeriesModalV2()` direkt aus `site/js/modalV2.js`. Das Cinematic-Modal ist die einzige Detailansicht und benötigt keinen zusätzlichen Wrapper.
 
-* **Modernes Layout (`site/js/modalV2.js`):**
+* **Cinematic-Modal (`site/js/modalV2.js`):**
   * Baut die strukturierte Oberfläche aus Kopfbereich, Schnellinfos, Tabs und Content-Panes. `renderModalV2()` erzeugt das Markup und delegiert an spezialisierte Updater (`populateHead()`, `updateOverview()`, `updateDetails()`, `updateCast()`).
   * Die Tab-Navigation (`applyTabs()`) setzt ARIA-Rollen, Tastatur-Shortcuts (Links/Rechts, Home/End) und steuert Sichtbarkeit/Focus der Pane-Inhalte (`data-pane`). Damit lassen sich Überblick, Detail-Gitter, Staffeln und Cast parallel vorhalten.
   * `updateDetails()` generiert das mehrspaltige „Details-Grid“ (Sektionen für Allgemein, Genres, Credits). `updateCast()` erstellt Cast-Karten inkl. TMDB/Thumb-Auflösung, fallback auf Initialen sowie Rollenbeschriftung. `populateHead()` liefert Schnellinfos, Chip-Gruppen und Poster-Handling inklusive Lazy-Loading-Indikator.
