@@ -277,7 +277,9 @@ function updateCast(root, cast){
     card.className = 'v2-cast-card';
     card.tabIndex = 0;
     card.setAttribute('role', 'listitem');
-    card.setAttribute('aria-label', data.role ? `${data.name} – ${data.role}` : data.name);
+
+    const roleText = String(data.role || '').trim();
+    card.setAttribute('aria-label', roleText ? `${data.name} – ${roleText}` : data.name);
 
     const avatar = document.createElement('div');
     avatar.className = 'v2-cast-avatar';
@@ -302,11 +304,16 @@ function updateCast(root, cast){
     nameLine.className = 'v2-cast-name';
     nameLine.textContent = data.name;
 
-    const roleLine = document.createElement('p');
-    roleLine.className = 'v2-cast-role';
-    roleLine.textContent = data.role || 'Keine Rollenangabe';
+    card.append(avatar, nameLine);
 
-    card.append(avatar, nameLine, roleLine);
+    if(roleText){
+      const roleLine = document.createElement('p');
+      roleLine.className = 'v2-cast-role';
+      roleLine.textContent = roleText;
+      card.append(roleLine);
+    }else{
+      card.classList.add('v2-cast-card--no-role');
+    }
     scroll.appendChild(card);
   });
 
