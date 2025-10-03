@@ -2,7 +2,7 @@ import { qs } from '../dom.js';
 import { renderMovieView } from './movieView.js';
 import { renderShowView } from './showView.js';
 import { getState } from '../state.js';
-import { renderChipsLimited, humanYear, formatRating, useTmdbOn, isNew } from '../utils.js';
+import { renderChipsLimited, humanYear, formatRating, useTmdbOn, isNew, getGenreNames } from '../utils.js';
 import { loadShowDetail } from '../data.js';
 import {
   openMovieModalV2 as openMovieModalV2Impl,
@@ -106,7 +106,7 @@ function setHeader(item){
   const chips = [];
   if(isNew(item)) chips.push('Neu');
   if(item.contentRating) chips.push(item.contentRating);
-  const genres = (item.genres||[]).map(g=>g&&g.tag).filter(Boolean);
+  const genres = getGenreNames(item.genres);
   chips.push(...genres);
   if(chipsRoot) renderChipsLimited(chipsRoot, chips, 6);
   // Actions

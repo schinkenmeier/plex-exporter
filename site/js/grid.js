@@ -1,7 +1,7 @@
 import { getState } from './state.js';
 import * as Filter from './filter.js';
 import { el } from './dom.js';
-import { humanYear, formatRating, renderChipsLimited, useTmdbOn, isNew } from './utils.js';
+import { humanYear, formatRating, renderChipsLimited, useTmdbOn, isNew, getGenreNames } from './utils.js';
 import * as Watch from './watchlist.js';
 import { openModal, openMovieModalV2, openSeriesModalV2, getModalLayout } from './modal/index.js';
 
@@ -26,7 +26,7 @@ function cardEl(item){
   sub.textContent = metaPieces.join(' • ');
 
   const tags = el('div','cardv2__tags');
-  const genres = (item?.genres||[]).map(g=>g&&g.tag).filter(Boolean);
+  const genres = getGenreNames(item?.genres);
   renderChipsLimited(tags, genres, 3);
 
   const actions = el('div','cardv2__actions');
@@ -76,7 +76,7 @@ function createCollectionGroup(name, members){
   const ratings = list.map(item=>Number(item.rating ?? item.audienceRating)).filter(Number.isFinite);
   const rating = ratings.length ? ratings.reduce((sum,val)=>sum+val,0) / ratings.length : null;
   const posterItem = list.find(entry=>entry.thumbFile) || list[0] || null;
-  const genres = Array.from(new Set(list.flatMap(entry=>((entry.genres||[]).map(g=>g && g.tag).filter(Boolean))))).slice(0,4);
+  const genres = Array.from(new Set(list.flatMap(entry=>getGenreNames(entry.genres)))).slice(0,4);
   return { isCollectionGroup:true, type:'collection', title:name, collectionName:name, items:list, itemCount:list.length, year: year || '', addedAt: latestAdded, rating, posterItem, genres };
 }
 
