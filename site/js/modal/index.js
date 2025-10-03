@@ -192,6 +192,25 @@ export function closeModal(){
   }
 }
 
+function openWithPreferredLayout(item, preferred){
+  if(!item) return;
+  if(preferred === 'v2' && getModalLayout() !== 'v2'){
+    openModal(item);
+    return;
+  }
+  openModal(item);
+}
+
+export function openMovieModalV2(item){
+  if(!item) return;
+  openWithPreferredLayout(item, 'v2');
+}
+
+export function openSeriesModalV2(item){
+  if(!item) return;
+  openWithPreferredLayout(item, 'v2');
+}
+
 function bindArrows(){
   const prev = qs('#mPrev'); const next = qs('#mNext');
   if(prev && !prev._bound){ prev._bound = true; prev.addEventListener('click', ()=> step(-1)); }
