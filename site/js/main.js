@@ -3,7 +3,7 @@ import { showLoader, setLoader, hideLoader, showSkeleton, clearSkeleton } from '
 import * as Data from './data.js';
 import * as Filter from './filter.js';
 import { renderGrid } from './grid.js';
-import { getModalLayout, setModalLayout, openMovieModalV2, openSeriesModalV2 } from './modal/index.js';
+import { getModalLayout, setModalLayout, openModal, openMovieModalV2, openSeriesModalV2 } from './modal/index.js';
 import { hydrateOptional } from './services/tmdb.js';
 import * as Watch from './watchlist.js';
 import * as Debug from './debug.js';
@@ -99,8 +99,14 @@ window.addEventListener('hashchange', ()=>{
   const pool = kind==='movie' ? getState().movies : getState().shows;
   const item = (pool||[]).find(x => (x?.ids?.imdb===id || x?.ids?.tmdb===id || String(x?.ratingKey)===id));
   if(!item) return;
-  if(kind === 'show') openSeriesModalV2(item);
-  else openMovieModalV2(item);
+  const useV2 = getModalLayout() === 'v2';
+  if(kind === 'show'){
+    if(useV2) openSeriesModalV2(item);
+    else openModal(item);
+  }else{
+    if(useV2) openMovieModalV2(item);
+    else openModal(item);
+  }
 });
 
 function renderSwitch(){
@@ -348,8 +354,14 @@ function resolveHeroId(item){
 
 function openHeroModal(item, kind, heroId){
   if(heroId) navigateToItemHash(kind, heroId);
-  if(kind === 'show') openSeriesModalV2(item);
-  else openMovieModalV2(item);
+  const useV2 = getModalLayout() === 'v2';
+  if(kind === 'show'){
+    if(useV2) openSeriesModalV2(item);
+    else openModal(item);
+  }else{
+    if(useV2) openMovieModalV2(item);
+    else openModal(item);
+  }
 }
 
 function navigateToItemHash(kind, id){

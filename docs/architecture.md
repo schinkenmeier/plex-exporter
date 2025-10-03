@@ -63,7 +63,7 @@ Dieser Leitfaden skizziert den Aufbau der Plex-Exporter-Weboberfläche sowie wic
 
 * **Zentrale Steuerung (`site/js/modal/index.js`):**
   * Hält den aktuellen Navigationskontext (`currentList`/`currentIndex`) sowie den zuletzt fokussierten Knoten fest, damit Tastatur-Navigation (Pfeiltasten, Escape) und Fokus-Rückgabe nach `closeModal()` zuverlässig funktionieren.
-  * Persistiert die Layout-Wahl (`localStorage.modalLayout`) und schaltet zwischen der Legacy-Ansicht (V1) und der modernen Oberfläche (V2). `setModalLayout()` rendert bei geöffnetem Modal das aktive Element neu und blendet je nach Wahl die entsprechenden DOM-Wurzeln (`#modalV1Root`, `#modalV2Root`) ein oder aus.
+  * Persistiert die Layout-Wahl (`localStorage.modalLayout`) und schaltet zwischen der Legacy-Ansicht (V1) und der modernen Oberfläche (V2). `setModalLayout()` rendert bei geöffnetem Modal das aktive Element neu und blendet je nach Wahl die entsprechenden DOM-Wurzeln (`#modalV1Root`, `#modal-root-v2`) ein oder aus.
   * Bindet Tasten-/Button-Navigation (`bindArrows()`, `bindSubnav()`) und kapselt den Fokus-Loop per `focusTrap()`, damit Tab-Reihenfolgen innerhalb des Modals verbleiben. Beim Öffnen wird anhand des Layouts automatisch ein sinnvoller Startfokus gesetzt.
   * Übernimmt Datenaufbereitung: Bei Serien ergänzt `renderItem()` fehlende Staffel-/Cast-Informationen über `loadShowDetail()` und normalisiert Felder (`normalizeShow()` etc.), bevor je nach Layout `renderShowView()`/`renderMovieView()` (V1) oder `renderModalV2()` (V2) aufgerufen wird. V1-spezifische Kopfzeilen (Poster, Chips, externe Aktionen) werden über `setHeader()` versorgt.
 

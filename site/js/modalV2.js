@@ -1,11 +1,236 @@
 import { renderSeasonsAccordion } from './modal/seasonsAccordion.js';
 import { formatRating, humanYear, isNew, useTmdbOn } from './utils.js';
+import { getState } from './state.js';
+import { loadShowDetail } from './data.js';
+import { mapMovie, mapShow, mergeShowDetail, needsShowDetail } from './modal/shared.js';
 
 const TMDB_PROFILE_BASE = 'https://image.tmdb.org/t/p/';
 const TMDB_PROFILE_SIZE = 'w185';
 
+let overlayContainer = null;
+let dialogEl = null;
+let scrollContainer = null;
+let rootEl = null;
+let lastActiveElement = null;
+let focusTrapHandler = null;
+let escapeHandler = null;
+let renderToken = 0;
+let currentKind = null;
+let currentItem = null;
+
+const DEMO_MOVIE = {
+  type: 'movie',
+  title: 'Lumen: Der Aufbruch',
+  tagline: 'Eine cineastische Demo für das neue Modal',
+  overview: 'Die Crew der Lumen wagt den Sprung in unerforschte Welten und enthüllt dabei eine Energiequelle, die alles verändern könnte. Zwischen Loyalität, Intrigen und berauschenden Bildern entfaltet sich ein Abenteuer, das für das Cinematic-Layout entworfen wurde.',
+  summary: 'Die Crew der Lumen entdeckt eine Energiequelle, die das Schicksal der Menschheit verändern könnte.',
+  runtimeMin: 142,
+  contentRating: 'FSK 12',
+  studio: 'Aurora Pictures',
+  rating: 8.4,
+  audienceRating: 8.0,
+  userRating: 8.7,
+  originallyAvailableAt: '2024-05-17',
+  countries: [{ tag: 'Deutschland' }, { tag: 'Kanada' }],
+  genres: [{ tag: 'Science-Fiction' }, { tag: 'Drama' }, { tag: 'Abenteuer' }],
+  cast: [
+    { name: 'Mara Lenz', role: 'Captain Alys Vega', tmdbProfile: '/3rxeQHiuCYaXJqfyUG8yt0YdHtH.jpg' },
+    { name: 'Tariq Benassi', role: 'Navigator Elian Soh', tmdbProfile: '/wGl8DCycJ2U0FvJbLABd8R4FS3X.jpg' },
+    { name: 'Hannah Ko', role: 'Wissenschaftlerin Dr. Mira Han', tmdbProfile: '/hJuDvwzS0SPlsE6MN4pF2UYDGtt.jpg' },
+  ],
+  directors: [{ tag: 'Jonas Falk' }],
+  writers: [{ tag: 'Lea Winter' }],
+  producers: [{ tag: 'Studio Atlas' }],
+  labels: [{ tag: 'Dolby Atmos' }, { tag: '4K' }],
+  collections: [{ tag: 'Aurora-Saga' }],
+  trailer: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+  tmdbPoster: 'https://image.tmdb.org/t/p/w500/2lUYbD2C3XSuwqMUbDVDQuz9mqz.jpg',
+  ids: { tmdb: 'demo-lumen', imdb: 'tt0000001' },
+  addedAt: '2024-06-01T12:00:00Z',
+};
+
+const DEMO_SERIES = {
+  type: 'tv',
+  title: 'Aurora Station',
+  tagline: 'Neue Horizonte in Serie',
+  overview: 'Die Besatzung der Aurora Station schützt eine Außenposten an der Grenze des bekannten Raums. Jede Episode verbindet kosmische Rätsel mit persönlichen Geschichten – perfekt geeignet, um das Cinematic-Modal auszuprobieren.',
+  summary: 'Ein orbitaler Außenposten ringt um Hoffnung und Zusammenhalt, während eine fremde Macht erwacht.',
+  contentRating: 'TV-14',
+  studio: 'Nebula Network',
+  originallyAvailableAt: '2023-09-14',
+  seasonCount: 2,
+  genres: [{ tag: 'Science-Fiction' }, { tag: 'Drama' }],
+  countries: [{ tag: 'USA' }, { tag: 'Island' }],
+  creators: [{ tag: 'Elina Sørensen' }],
+  cast: [
+    { name: 'Noah Adler', role: 'Commander Ivar Hale', tmdbProfile: '/4MqUjb1SYrzHmFSVoKHSKP5MGGm.jpg' },
+    { name: 'Sofia Idris', role: 'Ingenieurin Kaia Rhee', tmdbProfile: '/tHMgWz6EpRdbgoMJ2JfzFzjg3QB.jpg' },
+    { name: 'Helena Ruiz', role: 'Strategin Tala Voss', tmdbProfile: '/ziEuG1ESSofxDCspotYlrwz3Tq.png' },
+  ],
+  seasons: [
+    {
+      title: 'Staffel 1',
+      seasonNumber: 1,
+      year: 2023,
+      thumbFile: 'https://image.tmdb.org/t/p/w300/4dO2YpC8S9nLmQAXoJLRV8LZRxn.jpg',
+      episodes: [
+        {
+          title: 'Kapitel Eins: Erwachen',
+          seasonNumber: 1,
+          episodeNumber: 1,
+          durationMin: 54,
+          originallyAvailableAt: '2023-09-14',
+          audienceRating: 8.6,
+        },
+        {
+          title: 'Kapitel Zwei: Grenzwelten',
+          seasonNumber: 1,
+          episodeNumber: 2,
+          durationMin: 52,
+          originallyAvailableAt: '2023-09-21',
+          audienceRating: 8.2,
+        },
+      ],
+    },
+    {
+      title: 'Staffel 2',
+      seasonNumber: 2,
+      year: 2024,
+      thumbFile: 'https://image.tmdb.org/t/p/w300/bSL4hY8SgdKzac8AUbWQm74y87C.jpg',
+      episodes: [
+        {
+          title: 'Kapitel Dreizehn: Resonanz',
+          seasonNumber: 2,
+          episodeNumber: 1,
+          durationMin: 56,
+          originallyAvailableAt: '2024-02-08',
+          audienceRating: 8.9,
+        },
+        {
+          title: 'Kapitel Vierzehn: Echo',
+          seasonNumber: 2,
+          episodeNumber: 2,
+          durationMin: 55,
+          originallyAvailableAt: '2024-02-15',
+          audienceRating: 8.7,
+        },
+      ],
+    },
+  ],
+  tmdbPoster: 'https://image.tmdb.org/t/p/w500/a4I481szRmycyreQTLrRe4f4YJe.jpg',
+  ids: { tmdb: 'demo-aurora-station', imdb: 'tt0000002' },
+};
+
 function resolveRoot(){
-  return document.getElementById('modalV2Root');
+  if(rootEl) return rootEl;
+  const container = document.getElementById('modal-root-v2');
+  if(!container) return null;
+  overlayContainer = container;
+  container.classList.add('modalv2-overlay');
+  if(!container.hasAttribute('hidden')) container.setAttribute('hidden', '');
+  if(!container.dataset.modalv2Ready){
+    container.innerHTML = `
+      <div class="modalv2-backdrop" data-modalv2-backdrop="1"></div>
+      <div class="modalv2-dialog" role="dialog" aria-modal="true">
+        <div class="modalv2-scroll" data-modalv2-scroll></div>
+      </div>
+    `;
+    container.dataset.modalv2Ready = '1';
+    container.addEventListener('click', onOverlayClick);
+  }
+  dialogEl = container.querySelector('.modalv2-dialog');
+  if(dialogEl && !dialogEl.hasAttribute('tabindex')) dialogEl.setAttribute('tabindex', '-1');
+  scrollContainer = container.querySelector('[data-modalv2-scroll]');
+  if(scrollContainer && !rootEl){
+    const existing = scrollContainer.querySelector('.modalv2');
+    if(existing) rootEl = existing;
+    else {
+      rootEl = document.createElement('div');
+      rootEl.className = 'modalv2';
+      rootEl.setAttribute('hidden', '');
+      scrollContainer.appendChild(rootEl);
+    }
+  }
+  return rootEl;
+}
+
+function onOverlayClick(ev){
+  if(!overlayContainer) return;
+  const target = ev.target;
+  if(target === overlayContainer || (target && target.dataset && target.dataset.modalv2Backdrop)){ closeModalV2(); }
+}
+
+function getFocusableElements(){
+  if(!dialogEl) return [];
+  const selectors = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
+  return Array.from(dialogEl.querySelectorAll(selectors)).filter(el=>{
+    if(el.hasAttribute('disabled')) return false;
+    if(el.getAttribute('aria-hidden') === 'true') return false;
+    if(el.hasAttribute('hidden')) return false;
+    return el.offsetParent !== null;
+  });
+}
+
+function bindFocusTrap(){
+  if(!dialogEl) return;
+  if(focusTrapHandler){ dialogEl.removeEventListener('keydown', focusTrapHandler); }
+  focusTrapHandler = (ev)=>{
+    if(ev.key !== 'Tab') return;
+    const focusables = getFocusableElements();
+    if(!focusables.length) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if(ev.shiftKey){
+      if(document.activeElement === first){ ev.preventDefault(); last.focus(); }
+    }else if(document.activeElement === last){
+      ev.preventDefault(); first.focus();
+    }
+  };
+  dialogEl.addEventListener('keydown', focusTrapHandler);
+}
+
+function unbindFocusTrap(){
+  if(!dialogEl || !focusTrapHandler) return;
+  dialogEl.removeEventListener('keydown', focusTrapHandler);
+  focusTrapHandler = null;
+}
+
+function bindEscape(){
+  if(escapeHandler) return;
+  escapeHandler = (ev)=>{
+    if(ev.key === 'Escape'){ ev.preventDefault(); closeModalV2(); }
+  };
+  window.addEventListener('keydown', escapeHandler);
+}
+
+function unbindEscape(){
+  if(!escapeHandler) return;
+  window.removeEventListener('keydown', escapeHandler);
+  escapeHandler = null;
+}
+
+function showOverlay(){
+  const root = resolveRoot();
+  if(!root || !overlayContainer) return null;
+  overlayContainer.hidden = false;
+  overlayContainer.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('modalv2-open');
+  if(scrollContainer) scrollContainer.scrollTop = 0;
+  bindFocusTrap();
+  bindEscape();
+  return root;
+}
+
+function focusInitial(){
+  if(!dialogEl) return;
+  const closeBtn = dialogEl.querySelector('#v2Close');
+  const focusables = getFocusableElements();
+  let target = (closeBtn && !closeBtn.hasAttribute('hidden')) ? closeBtn : focusables[0];
+  if(!target) target = dialogEl;
+  if(target){
+    const focus = ()=>{ try{ target.focus(); }catch{} };
+    (window.requestAnimationFrame || setTimeout)(focus, 0);
+  }
 }
 
 function resolvePoster(item){
@@ -628,14 +853,14 @@ function onPosterReady(ev){
 }
 
 export function showModalV2Loading(message='Details werden geladen …'){
-  const root = resolveRoot();
+  const root = showOverlay();
   if(!root) return;
   root.hidden = false;
   root.innerHTML = `<div class="modalv2-loading">${message}</div>`;
 }
 
 export function renderModalV2(item){
-  const root = resolveRoot();
+  const root = showOverlay();
   if(!root) return;
   root.hidden = false;
   const hasSeasons = item?.type === 'tv';
@@ -652,7 +877,7 @@ export function renderModalV2(item){
         <header class="v2-head">
           <div class="v2-titlebar">
             <div class="v2-title-wrap">
-              <h2 class="v2-title"></h2>
+              <h2 class="v2-title" id="modalV2Title"></h2>
               <div class="v2-subline"></div>
               <div class="v2-meta"></div>
             </div>
@@ -707,9 +932,121 @@ export function renderModalV2(item){
   applyTabs(root);
   const closeBtn = root.querySelector('#v2Close');
   if(closeBtn){
-    closeBtn.addEventListener('click', ()=>{
-      const legacyClose = document.getElementById('mClose');
-      if(legacyClose){ legacyClose.click(); }
-    });
+    closeBtn.addEventListener('click', closeModalV2);
   }
+  if(dialogEl) dialogEl.setAttribute('aria-labelledby', 'modalV2Title');
+  focusInitial();
+}
+
+export async function openMovieModalV2(idOrData){
+  const token = ++renderToken;
+  lastActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const root = showOverlay();
+  if(!root) return;
+  const data = resolveMovieData(idOrData);
+  if(token !== renderToken) return;
+  if(!data){
+    root.hidden = false;
+    root.innerHTML = '<div class="modalv2-loading">Film konnte nicht geladen werden.</div>';
+    currentItem = null;
+    currentKind = null;
+    focusInitial();
+    return;
+  }
+  currentItem = data;
+  currentKind = 'movie';
+  renderModalV2(data);
+}
+
+export async function openSeriesModalV2(idOrData){
+  const token = ++renderToken;
+  lastActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const base = resolveSeriesData(idOrData);
+  const root = showOverlay();
+  if(!root) return;
+  if(token !== renderToken) return;
+  if(!base){
+    root.hidden = false;
+    root.innerHTML = '<div class="modalv2-loading">Seriendetails konnten nicht geladen werden.</div>';
+    currentItem = null;
+    currentKind = null;
+    focusInitial();
+    return;
+  }
+  currentItem = base;
+  currentKind = 'show';
+  let working = base;
+  if(needsShowDetail(working)){
+    showModalV2Loading();
+    if(token !== renderToken) return;
+    let detail = null;
+    try{ detail = await loadShowDetail(working); }
+    catch{ detail = null; }
+    if(token !== renderToken) return;
+    if(detail){ mergeShowDetail(working, detail); currentItem = working; }
+  }
+  if(token !== renderToken) return;
+  renderModalV2(working);
+}
+
+export function closeModalV2(){
+  renderToken++;
+  if(!overlayContainer) return;
+  overlayContainer.hidden = true;
+  overlayContainer.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('modalv2-open');
+  unbindFocusTrap();
+  unbindEscape();
+  if(rootEl){
+    rootEl.innerHTML = '';
+    rootEl.setAttribute('hidden', '');
+  }
+  if(scrollContainer) scrollContainer.scrollTop = 0;
+  if(lastActiveElement && typeof lastActiveElement.focus === 'function'){
+    try{ lastActiveElement.focus(); }
+    catch{}
+  }
+  lastActiveElement = null;
+  currentItem = null;
+  currentKind = null;
+}
+
+export function isModalV2Open(){
+  return Boolean(overlayContainer && !overlayContainer.hidden);
+}
+
+export function getModalV2Context(){
+  return currentItem ? { item: currentItem, kind: currentKind } : { item: null, kind: null };
+}
+
+function resolveMovieData(idOrData){
+  if(idOrData === 'demo') return mapMovie(DEMO_MOVIE);
+  if(idOrData && typeof idOrData === 'object') return mapMovie(idOrData);
+  const str = idOrData == null ? '' : String(idOrData).trim();
+  if(!str) return null;
+  const state = getState();
+  const movies = Array.isArray(state?.movies) ? state.movies : [];
+  const match = movies.find(movie => matchesIdentifier(movie, str));
+  return match ? mapMovie(match) : null;
+}
+
+function resolveSeriesData(idOrData){
+  if(idOrData === 'demo') return mapShow(DEMO_SERIES);
+  if(idOrData && typeof idOrData === 'object') return mapShow(idOrData);
+  const str = idOrData == null ? '' : String(idOrData).trim();
+  if(!str) return null;
+  const state = getState();
+  const shows = Array.isArray(state?.shows) ? state.shows : [];
+  const match = shows.find(show => matchesIdentifier(show, str));
+  return match ? mapShow(match) : null;
+}
+
+function matchesIdentifier(item, id){
+  if(!item) return false;
+  const str = String(id || '').trim();
+  if(!str) return false;
+  if(item?.ids?.imdb && String(item.ids.imdb) === str) return true;
+  if(item?.ids?.tmdb && String(item.ids.tmdb) === str) return true;
+  if(item?.ratingKey != null && String(item.ratingKey) === str) return true;
+  return false;
 }
