@@ -3,7 +3,7 @@ import { showLoader, setLoader, hideLoader, showSkeleton, clearSkeleton } from '
 import * as Data from './data.js';
 import * as Filter from './filter.js';
 import { renderGrid } from './grid.js';
-import { openModal } from './modal/index.js';
+import { openModal, getModalLayout, setModalLayout } from './modal/index.js';
 import { hydrateOptional } from './services/tmdb.js';
 import * as Watch from './watchlist.js';
 import * as Debug from './debug.js';
@@ -150,6 +150,7 @@ function initSettingsOverlay(cfg){
   const reduce = document.getElementById('prefReduceMotion');
   const useTmdb = document.getElementById('useTmdbSetting');
   const resetFilters = document.getElementById('resetFilters');
+  const modalLayoutRadios = overlay ? overlay.querySelectorAll('input[name="modalLayout"]') : [];
 
   const show = ()=>{ if(overlay) overlay.hidden=false; syncSettingsUi(); };
   const hide = ()=>{ if(overlay) overlay.hidden=true; };
@@ -163,6 +164,10 @@ function initSettingsOverlay(cfg){
     try{ tmdbInput && (tmdbInput.value = token = (localStorage.getItem('tmdbToken')||'')); }catch{}
     try{ reduce && (reduce.checked = localStorage.getItem('prefReduceMotion')==='1'); }catch{}
     try{ if(useTmdb){ useTmdb.checked = localStorage.getItem('useTmdb')==='1'; useTmdb.disabled = !token; } }catch{}
+    try{
+      const layout = getModalLayout();
+      modalLayoutRadios.forEach(radio=>{ radio.checked = radio.value === layout; });
+    }catch{}
   }
 
   tmdbSave && tmdbSave.addEventListener('click', ()=>{
@@ -177,6 +182,12 @@ function initSettingsOverlay(cfg){
   useTmdb && useTmdb.addEventListener('change', ()=>{
     try{ localStorage.setItem('useTmdb', useTmdb.checked ? '1' : '0'); }catch{}
     renderGrid(getState().view);
+  });
+  modalLayoutRadios.forEach(radio=>{
+    radio.addEventListener('change', ()=>{
+      if(!radio.checked) return;
+      setModalLayout(radio.value === 'v2' ? 'v2' : 'v1');
+    });
   });
   resetFilters && resetFilters.addEventListener('click', ()=>{
     const q = document.getElementById('q'); if(q) q.value='';

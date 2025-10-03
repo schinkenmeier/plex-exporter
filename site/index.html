@@ -9,7 +9,9 @@
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/modal.css">
+  <link rel="stylesheet" href="css/modal.v2.css">
   <link rel="stylesheet" href="css/loader.css">
+  <script type="module" src="js/modalV2.js"></script>
   <script type="module" src="js/main.js"></script>
   <meta name="color-scheme" content="dark light" />
 </head>
@@ -130,6 +132,15 @@
           <label class="settings-inline"><input id="useTmdbSetting" type="checkbox" /> TMDB-Bilder nutzen</label>
           <p class="settings-help">Nur verfügbar mit gültigem Token.</p>
         </div>
+        <div class="settings-row" id="modalLayoutSettings">
+          <fieldset>
+            <legend>Modal-Layout</legend>
+            <div class="settings-inline">
+              <label><input type="radio" name="modalLayout" value="v1" checked /> V1</label>
+              <label><input type="radio" name="modalLayout" value="v2" /> V2 (Cinematic)</label>
+            </div>
+          </fieldset>
+        </div>
         <div class="settings-row">
           <div class="settings-inline">
             <button type="button" id="resetFilters">Filter zurücksetzen</button>
@@ -147,44 +158,47 @@
     <button class="modal__arrow modal__arrow--prev" id="mPrev" aria-label="Vorheriger"><span class="chev"><</span></button>
     <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="mTitle">
       <button class="modal__close" id="mClose" aria-label="Schließen">×</button>
-      <div class="modal__hero">
-        <div class="modal__poster"><img id="mPoster" alt="" loading="lazy" decoding="async"></div>
-        <div class="modal__head">
-          <div class="topbar">
-            <h2 id="mTitle"></h2>
-            <div class="util-actions" id="mActions" aria-label="Externe Links und Trailer">
-              <a id="mTmdb" target="_blank" rel="noopener" aria-label="Auf TMDB öffnen" style="display:none">TMDB</a>
-              <a id="mImdb" target="_blank" rel="noopener" aria-label="Auf IMDb öffnen" style="display:none">IMDb</a>
-              <button id="mTrailer" aria-label="Trailer abspielen" hidden>Trailer</button>
+      <div id="modalV1Root" class="modalv1">
+        <div class="modal__hero">
+          <div class="modal__poster"><img id="mPoster" alt="" loading="lazy" decoding="async"></div>
+          <div class="modal__head">
+            <div class="topbar">
+              <h2 id="mTitle"></h2>
+              <div class="util-actions" id="mActions" aria-label="Externe Links und Trailer">
+                <a id="mTmdb" target="_blank" rel="noopener" aria-label="Auf TMDB öffnen" style="display:none">TMDB</a>
+                <a id="mImdb" target="_blank" rel="noopener" aria-label="Auf IMDb öffnen" style="display:none">IMDb</a>
+                <button id="mTrailer" aria-label="Trailer abspielen" hidden>Trailer</button>
+              </div>
             </div>
+            <div id="mSubline" class="subline"></div>
+            <div id="mChips" class="chips" aria-label="Attribute"></div>
           </div>
-          <div id="mSubline" class="subline"></div>
-          <div id="mChips" class="chips" aria-label="Attribute"></div>
+        </div>
+        <nav class="modal__subnav" aria-label="Details Navigation">
+          <div class="inner">
+            <button type="button" id="navOverview" data-target="#sec-overview" class="active" aria-controls="sec-overview" aria-label="Zum Überblick">Überblick</button>
+            <button type="button" id="navSeasons" data-target="#sec-seasons" aria-controls="sec-seasons" aria-label="Zu den Staffeln">Staffeln</button>
+            <button type="button" id="navCast" data-target="#sec-cast" aria-controls="sec-cast" aria-label="Zur Besetzung">Besetzung</button>
+          </div>
+        </nav>
+        <div class="modal__body">
+          <section id="sec-overview" class="modal-section" tabindex="-1">
+            <h3 class="sr-only">Überblick</h3>
+            <p id="mOverview" class="overview"></p>
+            <p id="mOverviewShow" class="overview" hidden></p>
+            <div class="kpis chips" id="mKpiShow" hidden></div>
+          </section>
+          <section id="sec-seasons" class="modal-section" tabindex="-1" hidden>
+            <div id="mSeasons" class="seasons" hidden></div>
+            <div id="seasonsAccordion" class="seasons-accordion"></div>
+          </section>
+          <section id="sec-cast" class="modal-section" tabindex="-1">
+            <div id="mCast" class="cast"></div>
+            <div id="mCastShow" class="cast chips" hidden></div>
+          </section>
         </div>
       </div>
-      <nav class="modal__subnav" aria-label="Details Navigation">
-        <div class="inner">
-          <button type="button" id="navOverview" data-target="#sec-overview" class="active" aria-controls="sec-overview" aria-label="Zum Überblick">Überblick</button>
-          <button type="button" id="navSeasons" data-target="#sec-seasons" aria-controls="sec-seasons" aria-label="Zu den Staffeln">Staffeln</button>
-          <button type="button" id="navCast" data-target="#sec-cast" aria-controls="sec-cast" aria-label="Zur Besetzung">Besetzung</button>
-        </div>
-      </nav>
-      <div class="modal__body">
-        <section id="sec-overview" class="modal-section" tabindex="-1">
-          <h3 class="sr-only">Überblick</h3>
-          <p id="mOverview" class="overview"></p>
-          <p id="mOverviewShow" class="overview" hidden></p>
-          <div class="kpis chips" id="mKpiShow" hidden></div>
-        </section>
-        <section id="sec-seasons" class="modal-section" tabindex="-1" hidden>
-          <div id="mSeasons" class="seasons" hidden></div>
-          <div id="seasonsAccordion" class="seasons-accordion"></div>
-        </section>
-        <section id="sec-cast" class="modal-section" tabindex="-1">
-          <div id="mCast" class="cast"></div>
-          <div id="mCastShow" class="cast chips" hidden></div>
-        </section>
-      </div>
+      <div id="modalV2Root" class="modalv2" hidden></div>
     </div>
     <button class="modal__arrow modal__arrow--next" id="mNext" aria-label="Nächster"><span class="chev">></span></button>
     <div class="sr-only" aria-live="polite" id="modalAriaLive"></div>
