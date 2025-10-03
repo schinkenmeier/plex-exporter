@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="260" viewBox="0 0 900 260" role="img" aria-labelledby="title desc">
+  <title id="title">Plex Katalog – Adaptive Logo</title>
+  <desc id="desc">Logo with play icon in amber and text adapting to currentColor.</desc>
+
+  <defs>
+    <style>
+      .plex { font: 800 88px/1 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; }
+      .kata { font: 800 88px/1 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; }
+    </style>
+  </defs>
+
+  <!-- Icon block -->
+  <g transform="translate(30,30)">
+    <path d="M70 70
+             Q70 50 90 60
+             L200 118
+             Q210 123 200 128
+             L90 185
+             Q70 195 70 175
+             Z" fill="#E5A00D"/>
+    <circle cx="106" cy="106" r="9" fill="currentColor" opacity="0.9"/>
+    <circle cx="130" cy="122" r="9" fill="currentColor" opacity="0.9"/>
+    <circle cx="106" cy="138" r="9" fill="currentColor" opacity="0.9"/>
+  </g>
+
+  <!-- Wordmark -->
+  <g transform="translate(280,120)">
+    <text class="plex" x="0" y="0" fill="currentColor">Plex</text>
+    <text class="kata" x="0" y="90" fill="#E5A00D">Katalog</text>
+  </g>
+</svg>

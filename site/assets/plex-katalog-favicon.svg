@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 200 200">
+  <title>Plex Katalog – Icon (refined)</title>
+  <desc>Rounded right-pointing triangle in amber with three film reel holes.</desc>
+
+  <!-- Rounded play triangle (hand-tuned quadratic curves) -->
+  <path d="M60 70
+           Q60 50 80 60
+           L140 95
+           Q150 100 140 105
+           L80 140
+           Q60 150 60 130
+           Z"
+        fill="#E5A00D"/>
+
+  <!-- Film reel holes -->
+  <circle cx="88" cy="88" r="8" fill="white" opacity="0.9"/>
+  <circle cx="103" cy="100" r="8" fill="white" opacity="0.9"/>
+  <circle cx="88" cy="112" r="8" fill="white" opacity="0.9"/>
+</svg>
