@@ -1,3 +1,5 @@
+import { prefixShowThumb } from '../data.js';
+
 export function renderSeasonsAccordion(seasons){
   const root = document.getElementById('seasonsAccordion');
   if(!root) return;
@@ -6,6 +8,7 @@ export function renderSeasonsAccordion(seasons){
 }
 
 function seasonCardEl(season, idx){
+  prefixShowThumb(season);
   const card = document.createElement('article'); card.className='season-card';
   const head = document.createElement('div'); head.className='season-head';
   const th = document.createElement('div'); th.className='season-thumb';
@@ -23,7 +26,7 @@ function seasonCardEl(season, idx){
   const chev = document.createElement('div'); chev.className='chev'; chev.textContent = '›';
   head.append(th, txt, chev);
   const body = document.createElement('div'); body.className='season-body';
-  (season.episodes||[]).forEach(ep => body.append(episodeRowEl(ep)));
+  (season.episodes||[]).forEach(ep => { prefixShowThumb(ep); body.append(episodeRowEl(ep)); });
   head.addEventListener('click', ()=> card.classList.toggle('open'));
   card.append(head, body);
   return card;

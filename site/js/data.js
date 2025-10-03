@@ -1,6 +1,10 @@
 let lastSources = { movies: null, shows: null };
 const showDetailCache = new Map();
 
+const MOVIE_THUMB_BASE = 'data/movies/';
+const SHOW_THUMB_BASE = 'data/series/';
+const SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i;
+
 async function fetchJson(url){
   try{ const r = await fetch(url, { cache:'no-store' }); if(r && r.ok) return await r.json(); }
   catch{}
@@ -42,8 +46,69 @@ async function loadWithCompat(primaryUrl, opts){
   return Array.isArray(data) ? data : [];
 }
 
+export function prefixThumbValue(value, base){
+  const raw = value == null ? '' : String(value).trim();
+  if(!raw) return '';
+  if(raw.startsWith('//') || raw.startsWith('/') || SCHEME_RE.test(raw)) return raw;
+  const normalizedBase = base ? (base.endsWith('/') ? base : `${base}/`) : '';
+  const withoutDots = raw.replace(/^\.\/+/, '');
+  if(withoutDots.startsWith('data/')) return withoutDots;
+  const cleaned = withoutDots.replace(/^\/+/, '');
+  return `${normalizedBase}${cleaned}`;
+}
+
+
+export function prefixThumb(obj, base){
+  if(!obj || typeof obj !== 'object') return obj;
+  const current = obj.thumbFile ?? obj.thumb ?? '';
+  const prefixed = prefixThumbValue(current, base);
+  if(prefixed){
+    obj.thumbFile = prefixed;
+    obj.thumb = prefixed;
+  }else if(current){
+    const str = String(current);
+    obj.thumbFile = str;
+    if(obj.thumb == null) obj.thumb = str;
+  }
+  return obj;
+}
+
+export function prefixMovieThumb(obj){
+  return prefixThumb(obj, MOVIE_THUMB_BASE);
+}
+
+export function prefixShowThumb(obj){
+  return prefixThumb(obj, SHOW_THUMB_BASE);
+}
+
+export function prefixShowTree(show){
+  if(!show || typeof show !== 'object') return show;
+  prefixShowThumb(show);
+  if(Array.isArray(show.seasons)) show.seasons.forEach(prefixSeasonTree);
+  return show;
+}
+
+function prefixSeasonTree(season){
+  if(!season || typeof season !== 'object') return season;
+  prefixShowThumb(season);
+  if(Array.isArray(season.episodes)) season.episodes.forEach(ep=>prefixShowThumb(ep));
+  return season;
+}
+
+function normalizeMovieThumbs(list){
+  if(!Array.isArray(list)) return [];
+  list.forEach(item=>{ if(item && typeof item === 'object') prefixMovieThumb(item); });
+  return list;
+}
+
+function normalizeShowThumbs(list){
+  if(!Array.isArray(list)) return [];
+  list.forEach(item=>{ if(item && typeof item === 'object') prefixShowTree(item); });
+  return list;
+}
+
 export async function loadMovies(){
-  return loadWithCompat('data/movies/movies.json', {
+  const movies = await loadWithCompat('data/movies/movies.json', {
     label: 'movies',
     embedId: 'movies-json',
     exportKey: 'movies',
@@ -55,9 +120,10 @@ export async function loadMovies(){
       'movies.json',
     ],
   });
+  return normalizeMovieThumbs(movies);
 }
 export async function loadShows(){
-  return loadWithCompat('data/series/series_index.json', {
+  const shows = await loadWithCompat('data/series/series_index.json', {
     label: 'shows',
     embedId: 'series-json',
     exportKey: 'shows',
@@ -72,6 +138,7 @@ export async function loadShows(){
       'shows.json',
     ],
   });
+  return normalizeShowThumbs(shows);
 }
 
 export async function loadShowDetail(item){
@@ -181,38 +248,33 @@ function detailUrlCandidates(item){
 function normalizeShowDetail(data){
   if(!data || typeof data !== 'object') return null;
   const show = { ...data };
-  normalizeThumb(show);
+  prefixShowThumb(show);
   show.genres = normalizeGenres(show.genres);
   const castList = normalizePeople(show.cast || show.roles || []);
   show.cast = castList;
   show.roles = castList;
   show.seasons = Array.isArray(show.seasons) ? show.seasons.map(normalizeSeason).filter(Boolean) : [];
   show.seasonCount = Number.isFinite(show.seasonCount) ? show.seasonCount : show.seasons.length;
+  prefixShowTree(show);
   return show;
 }
 
 function normalizeSeason(season){
   if(!season || typeof season !== 'object') return null;
   const out = { ...season };
-  normalizeThumb(out);
+  prefixShowThumb(out);
   out.genres = normalizeGenres(out.genres);
   out.episodes = Array.isArray(out.episodes) ? out.episodes.map(normalizeEpisode).filter(Boolean) : [];
+  prefixSeasonTree(out);
   return out;
 }
 
 function normalizeEpisode(ep){
   if(!ep || typeof ep !== 'object') return null;
   const out = { ...ep };
-  normalizeThumb(out);
+  prefixShowThumb(out);
   out.genres = normalizeGenres(out.genres);
   return out;
-}
-
-function normalizeThumb(obj){
-  if(!obj || typeof obj !== 'object') return obj;
-  if(obj.thumbFile){ obj.thumbFile = String(obj.thumbFile); }
-  else if(obj.thumb){ obj.thumbFile = String(obj.thumb); }
-  return obj;
 }
 
 function normalizeGenres(list){
