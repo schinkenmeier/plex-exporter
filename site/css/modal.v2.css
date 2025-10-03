@@ -42,7 +42,14 @@
 
 .v2-body { display: flex; flex-direction: column; gap: 24px; padding-bottom: 24px; }
 .v2-pane { color: #d8dde6; }
-.v2-overview { white-space: pre-line; line-height: 1.6; }
+.v2-overview { display: flex; flex-direction: column; gap: 12px; }
+.v2-overview-text { margin: 0; white-space: pre-line; line-height: 1.6; }
+.line-clamp { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; -webkit-line-clamp: var(--line-clamp-lines, 5); }
+.line-clamp-5 { --line-clamp-lines: 5; }
+.line-clamp.is-expanded { display: block; -webkit-line-clamp: unset; overflow: visible; }
+.v2-overview-toggle { align-self: flex-start; background: none; border: none; padding: 0; color: var(--accent); font-weight: 600; cursor: pointer; font-size: 0.95rem; text-decoration: none; }
+.v2-overview-toggle:hover { text-decoration: underline; }
+.v2-overview-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
 .v2-seasons { display: flex; flex-direction: column; gap: 14px; }
 .v2-cast { padding-top: 4px; }
 .v2-details { display: flex; flex-direction: column; gap: 20px; }
