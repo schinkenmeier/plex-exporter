@@ -4,12 +4,64 @@ import { renderShowView } from './showView.js';
 import { getState } from '../state.js';
 import { renderChipsLimited, humanYear, formatRating, useTmdbOn, isNew } from '../utils.js';
 import { loadShowDetail, prefixShowThumb } from '../data.js';
+import { renderModalV2, showModalV2Loading } from '../modalV2.js';
 
 let currentIndex = -1;
 let currentList = [];
 let lastFocused = null;
 let renderToken = 0;
 let arrowNavBound = false;
+let modalLayout = readStoredLayout();
+
+function readStoredLayout(){
+  try{
+    const stored = localStorage.getItem('modalLayout');
+    return stored === 'v2' ? 'v2' : 'v1';
+  }catch{
+    return 'v1';
+  }
+}
+
+export function getModalLayout(){
+  return modalLayout;
+}
+
+export function setModalLayout(next){
+  const desired = next === 'v2' ? 'v2' : 'v1';
+  try{ localStorage.setItem('modalLayout', desired); }catch{}
+  if(desired === modalLayout){
+    return;
+  }
+  modalLayout = desired;
+  if(isModalOpen()){
+    const item = currentList[currentIndex];
+    if(item){ renderItem(item); }
+    else if(desired === 'v1') showLayoutV1();
+    else showLayoutV2();
+  }
+}
+
+function isModalOpen(){
+  const modal = qs('#modal');
+  return Boolean(modal && !modal.hidden);
+}
+
+function showLayoutV1(){
+  const v1 = document.getElementById('modalV1Root');
+  const v2 = document.getElementById('modalV2Root');
+  if(v1) v1.removeAttribute('hidden');
+  if(v2){
+    v2.setAttribute('hidden','');
+    v2.replaceChildren();
+  }
+}
+
+function showLayoutV2(){
+  const v1 = document.getElementById('modalV1Root');
+  const v2 = document.getElementById('modalV2Root');
+  if(v1) v1.setAttribute('hidden','');
+  if(v2) v2.removeAttribute('hidden');
+}
 
 function focusTrap(modal){
   if(modal._focusTrapBound) return;
@@ -74,6 +126,7 @@ function hide(){ const m = qs('#modal'); if(m) m.hidden = true; }
 
 export function openModal(item){
   if(!item) return;
+  modalLayout = readStoredLayout();
   // determine navigation list from current view and filtered items
   const s = getState();
   const view = s.view;
@@ -160,21 +213,26 @@ function bindSubnav(){
 async function renderItem(item){
   if(!item) return;
   const token = ++renderToken;
-  setHeader(item);
+  const layout = getModalLayout();
+  if(layout === 'v2') showLayoutV2(); else showLayoutV1();
+  if(layout === 'v1') setHeader(item);
   if(item.type === 'tv'){
     const needsDetails = needsShowDetail(item);
     let detail = null;
     if(needsDetails){
-      showTvLoadingState();
+      if(layout === 'v2') showModalV2Loading();
+      else showTvLoadingState();
       try{ detail = await loadShowDetail(item); }
       catch{ detail = null; }
       if(token !== renderToken) return;
     }
     mergeShowDetail(item, detail);
     if(token !== renderToken) return;
-    renderShowView(item);
+    if(layout === 'v2') renderModalV2(item);
+    else renderShowView(item);
   }else{
-    renderMovieView(item);
+    if(layout === 'v2') renderModalV2(item);
+    else renderMovieView(item);
   }
 }
 

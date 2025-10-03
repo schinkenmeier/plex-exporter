@@ -1,10 +1,29 @@
 import { prefixShowThumb } from '../data.js';
 
-export function renderSeasonsAccordion(seasons){
-  const root = document.getElementById('seasonsAccordion');
+export function renderSeasonsAccordion(targetOrSeasons, maybeSeasons){
+  const root = resolveTarget(targetOrSeasons, maybeSeasons);
   if(!root) return;
+  const seasons = Array.isArray(targetOrSeasons) && !isTarget(targetOrSeasons)
+    ? (targetOrSeasons || [])
+    : (Array.isArray(maybeSeasons) ? maybeSeasons : []);
   root.replaceChildren();
   (seasons||[]).forEach((s, idx)=> root.append(seasonCardEl(s, idx)));
+}
+
+function isTarget(value){
+  return value instanceof Element || typeof value === 'string';
+}
+
+function resolveTarget(targetOrSeasons, maybeSeasons){
+  if(isTarget(targetOrSeasons)){
+    if(targetOrSeasons instanceof Element) return targetOrSeasons;
+    if(typeof targetOrSeasons === 'string') return document.querySelector(targetOrSeasons);
+  }
+  if(isTarget(maybeSeasons)){
+    if(maybeSeasons instanceof Element) return maybeSeasons;
+    if(typeof maybeSeasons === 'string') return document.querySelector(maybeSeasons);
+  }
+  return document.getElementById('seasonsAccordion');
 }
 
 function seasonCardEl(season, idx){
