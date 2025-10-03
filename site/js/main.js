@@ -311,6 +311,7 @@ function initSettingsOverlay(cfg){
     });
   });
   resetFilters && resetFilters.addEventListener('click', ()=>{
+    const search = document.getElementById('search'); if(search) search.value='';
     const q = document.getElementById('q'); if(q) q.value='';
     const onlyNew = document.getElementById('onlyNew'); if(onlyNew) onlyNew.checked=false;
     const yf = document.getElementById('yearFrom'); const yt = document.getElementById('yearTo'); if(yf) yf.value=''; if(yt) yt.value='';
@@ -340,7 +341,7 @@ function initHeaderInteractions(){
   if(siteLogo){
     siteLogo.addEventListener('error', ()=>{
       siteLogo.classList.add('logo-missing');
-      const titleEl = document.querySelector('.site-header__meta h1');
+      const titleEl = document.querySelector('.site-header__titles .site-title');
       if(titleEl) titleEl.classList.remove('sr-only');
     });
   }
