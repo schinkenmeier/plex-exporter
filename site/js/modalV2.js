@@ -34,14 +34,6 @@ function buildChips(item){
   if(item?.type === 'tv' && Number.isFinite(Number(item?.seasonCount))){
     chips.push(`Staffeln: ${item.seasonCount}`);
   }
-  const run = runtimeText(item);
-  if(run) chips.push(run);
-  const content = item?.contentRating;
-  if(content) chips.push(content);
-  const rating = ratingText(item);
-  if(rating) chips.push(rating);
-  const studio = studioText(item);
-  if(studio) chips.push(studio);
   const genres = (item?.genres || []).map(entry=>{
     if(!entry) return '';
     if(typeof entry === 'string') return entry;
@@ -158,9 +150,19 @@ function populateHead(root, item){
   const metaEl = root.querySelector('.v2-meta');
   const subEl = root.querySelector('.v2-subline');
   const year = humanYear(item);
-  const metaParts = [year, runtimeText(item), ratingText(item), studioText(item)].filter(Boolean);
-  if(subEl){ subEl.textContent = tagline || metaParts.join(' • '); }
-  if(metaEl){ metaEl.textContent = tagline && metaParts.length ? metaParts.join(' • ') : ''; metaEl.hidden = !(tagline && metaParts.length); }
+  const runtime = runtimeText(item);
+  const rating = ratingText(item);
+  const studio = studioText(item);
+  const metaParts = [year, runtime, rating, studio].filter(Boolean);
+  if(subEl){
+    const fallback = metaParts.join(' • ');
+    subEl.textContent = tagline || fallback;
+    subEl.hidden = !(tagline || fallback);
+  }
+  if(metaEl){
+    metaEl.textContent = tagline && metaParts.length ? metaParts.join(' • ') : '';
+    metaEl.hidden = !(tagline && metaParts.length);
+  }
   const chipsRoot = root.querySelector('.v2-chips');
   if(chipsRoot){
     chipsRoot.replaceChildren();
@@ -170,6 +172,27 @@ function populateHead(root, item){
       span.textContent = text;
       chipsRoot.appendChild(span);
     });
+    chipsRoot.hidden = !chipsRoot.childElementCount;
+  }
+  const quickFacts = root.querySelector('.v2-facts');
+  const quickList = root.querySelector('.v2-facts-list');
+  if(quickFacts && quickList){
+    const facts = [];
+    if(year) facts.push(['Jahr', year]);
+    const contentRating = (item?.contentRating || '').trim();
+    if(contentRating) facts.push(['Freigabe', contentRating]);
+    if(runtime) facts.push(['Laufzeit', runtime]);
+    if(rating) facts.push(['Bewertung', rating]);
+    if(studio) facts.push(['Studio', studio]);
+    quickList.replaceChildren();
+    facts.forEach(([label, value])=>{
+      const dt = document.createElement('dt');
+      dt.textContent = label;
+      const dd = document.createElement('dd');
+      dd.textContent = value;
+      quickList.append(dt, dd);
+    });
+    quickFacts.hidden = !facts.length;
   }
   const img = root.querySelector('.v2-poster img');
   if(img){
@@ -204,31 +227,59 @@ export function renderModalV2(item){
   if(!root) return;
   root.hidden = false;
   root.innerHTML = `
-    <section class="v2-hero">
-      <div class="v2-poster"><img alt=""></div>
-      <div class="v2-head">
-        <div class="v2-toprow">
-          <h2 class="v2-title"></h2>
-          <div class="v2-actions">
-            <a class="v2-btn" id="v2Tmdb" target="_blank" rel="noopener" hidden>TMDB</a>
-            <a class="v2-btn" id="v2Imdb" target="_blank" rel="noopener" hidden>IMDb</a>
-            <button class="v2-btn" id="v2Trailer" type="button" hidden>Trailer</button>
-          </div>
+    <section class="v2-layout">
+      <aside class="v2-side">
+        <div class="v2-poster"><img alt=""></div>
+        <div class="v2-facts" aria-label="Schnellinfos" hidden>
+          <h3 class="v2-facts-title">Schnellinfos</h3>
+          <dl class="v2-facts-list"></dl>
         </div>
-        <div class="v2-subline"></div>
-        <div class="v2-meta"></div>
-        <div class="v2-chips"></div>
+      </aside>
+      <div class="v2-info">
+        <header class="v2-head">
+          <div class="v2-titlebar">
+            <div class="v2-title-wrap">
+              <h2 class="v2-title"></h2>
+              <div class="v2-subline"></div>
+              <div class="v2-meta"></div>
+            </div>
+            <div class="v2-actions" aria-label="Externe Aktionen">
+              <button class="v2-icon-btn" id="v2Close" type="button" aria-label="Schließen">
+                <svg class="v2-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M6 6l12 12M6 18L18 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+                </svg>
+              </button>
+              <a class="v2-icon-btn" id="v2Tmdb" target="_blank" rel="noopener" aria-label="Auf TMDB öffnen" hidden>
+                <svg class="v2-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M4 9h16v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
+                  <path d="M4 9V7a2 2 0 0 1 2-2h1l2 4 2-4 2 4 2-4h1a2 2 0 0 1 2 2v2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path>
+                </svg>
+              </a>
+              <a class="v2-icon-btn" id="v2Imdb" target="_blank" rel="noopener" aria-label="Auf IMDb öffnen" hidden>
+                <svg class="v2-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M12 4l2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4-3.9-3.8 5.4-.8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
+                </svg>
+              </a>
+              <button class="v2-icon-btn" id="v2Trailer" type="button" aria-label="Trailer abspielen" hidden>
+                <svg class="v2-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M9 6l8 6-8 6V6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="v2-chips" aria-label="Attribute"></div>
+        </header>
+        <nav class="v2-tabs" aria-label="Details Navigation">
+          <button type="button" data-t="overview" class="active">Überblick</button>
+          ${item?.type === 'tv' ? '<button type="button" data-t="seasons">Staffeln</button>' : ''}
+          <button type="button" data-t="cast">Cast</button>
+        </nav>
+        <section class="v2-body">
+          <div class="v2-pane v2-overview" data-pane="overview"></div>
+          ${item?.type === 'tv' ? '<div class="v2-pane v2-seasons" data-pane="seasons" hidden></div>' : ''}
+          <div class="v2-pane v2-cast" data-pane="cast" hidden></div>
+        </section>
       </div>
-    </section>
-    <nav class="v2-tabs" aria-label="Details Navigation">
-      <button type="button" data-t="overview" class="active">Überblick</button>
-      ${item?.type === 'tv' ? '<button type="button" data-t="seasons">Staffeln</button>' : ''}
-      <button type="button" data-t="cast">Cast</button>
-    </nav>
-    <section class="v2-body">
-      <div class="v2-pane v2-overview" data-pane="overview"></div>
-      ${item?.type === 'tv' ? '<div class="v2-pane v2-seasons" data-pane="seasons" hidden></div>' : ''}
-      <div class="v2-pane v2-cast" data-pane="cast" hidden></div>
     </section>
   `;
 
@@ -238,4 +289,11 @@ export function renderModalV2(item){
   if(item?.type === 'tv'){ updateSeasons(root, item); }
   updateCast(root, buildCastList(item));
   applyTabs(root);
+  const closeBtn = root.querySelector('#v2Close');
+  if(closeBtn){
+    closeBtn.addEventListener('click', ()=>{
+      const legacyClose = document.getElementById('mClose');
+      if(legacyClose){ legacyClose.click(); }
+    });
+  }
 }
