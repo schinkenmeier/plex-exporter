@@ -887,13 +887,13 @@ export function renderModalV2(item){
                   <path d="M6 6l12 12M6 18L18 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
                 </svg>
               </button>
-              <a class="v2-icon-btn" id="v2Tmdb" target="_blank" rel="noopener" aria-label="Auf TMDB öffnen" hidden>
+              <a class="v2-icon-btn" id="v2Tmdb" target="_blank" rel="noopener noreferrer" aria-label="Auf TMDB öffnen" hidden>
                 <svg class="v2-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <path d="M4 9h16v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
                   <path d="M4 9V7a2 2 0 0 1 2-2h1l2 4 2-4 2 4 2-4h1a2 2 0 0 1 2 2v2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path>
                 </svg>
               </a>
-              <a class="v2-icon-btn" id="v2Imdb" target="_blank" rel="noopener" aria-label="Auf IMDb öffnen" hidden>
+              <a class="v2-icon-btn" id="v2Imdb" target="_blank" rel="noopener noreferrer" aria-label="Auf IMDb öffnen" hidden>
                 <svg class="v2-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <path d="M12 4l2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4-3.9-3.8 5.4-.8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
                 </svg>

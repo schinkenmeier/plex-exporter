@@ -3,7 +3,7 @@ import { getSources } from './data.js';
 
 export function initDebugUi(){
   const open = document.getElementById('openDebug');
-  if(open){ open.addEventListener('click', (ev)=>{ ev.preventDefault(); openPanel(); }); }
+  if(open){ open.addEventListener('click', ()=>{ openPanel(); }); }
 }
 
 function openPanel(){

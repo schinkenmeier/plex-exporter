@@ -1,0 +1,20 @@
+{
+  "name": "Plex-Katalog",
+  "short_name": "Plex",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#05070b",
+  "theme_color": "#10141f",
+  "icons": [
+    {
+      "src": "assets/plex-katalog-favicon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/plex-katalog-logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
