@@ -461,9 +461,16 @@
 .cardv2__thumb,
 .card .poster {
   position: relative;
-  aspect-ratio: 2 / 3;
   background: rgba(8, 12, 20, 0.9);
   overflow: hidden;
+}
+
+.cardv2__thumb {
+  aspect-ratio: 3 / 4;
+}
+
+.card .poster {
+  aspect-ratio: 2 / 3;
 }
 
 .cardv2__thumb img,
@@ -473,12 +480,28 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   transition: transform var(--transition-base);
+}
+
+.cardv2__thumb-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(6, 10, 18, 0.1) 0%, rgba(6, 10, 18, 0.78) 70%, rgba(4, 6, 12, 0.92) 100%);
+  opacity: 0.78;
+  pointer-events: none;
+  transition: opacity var(--transition-base);
+  z-index: 1;
 }
 
 .cardv2:hover .cardv2__thumb img,
 .card:hover .poster img {
   transform: scale(1.04);
+}
+
+.cardv2:hover .cardv2__thumb-overlay,
+.cardv2:focus-within .cardv2__thumb-overlay {
+  opacity: 0.92;
 }
 
 .cardv2__progress,
@@ -551,6 +574,17 @@
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+}
+
+.cardv2__badge-group {
+  position: absolute;
+  inset: 12px auto auto 12px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.cardv2__badge-group .badge {
+  pointer-events: auto;
 }
 
 .watch-btn {

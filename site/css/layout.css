@@ -91,6 +91,9 @@ header.site-header {
   position: relative;
   overflow: hidden;
   padding: clamp(48px, 12vw, 140px) 0 clamp(32px, 6vw, 72px);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
 }
 
 .hero::before {

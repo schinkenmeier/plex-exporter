@@ -112,12 +112,13 @@ export function renderFacets(f){
       const b = document.createElement('button'); b.type='button'; b.className='chip'; b.textContent=name; b.dataset.name=name; return b;
     });
     gRoot.replaceChildren(...chips);
+    updateGenreFilterState();
   }
 }
 
 function getFilterOpts(){
-  const searchInput = qs('#search') || qs('#q');
-  const query = searchInput?.value || '';
+  const searchInput = document.getElementById('search') || document.getElementById('q');
+  const query = (searchInput?.value || '').trim();
   const onlyNew = qs('#onlyNew')?.checked || false;
   const yearFrom = qs('#yearFrom')?.value || '';
   const yearTo = qs('#yearTo')?.value || '';
@@ -153,7 +154,24 @@ function renderGridForCurrentView(){
 export function updateFiltersAndGrid(){
   const result = applyFilters();
   renderGridForCurrentView();
+  notifyFiltersUpdated(result);
   return result;
+}
+
+function notifyFiltersUpdated(items){
+  try{
+    const payload = Array.isArray(items) ? items.slice() : [];
+    const detail = { items: payload, view: getState().view };
+    window.dispatchEvent(new CustomEvent('filters:updated', { detail }));
+  }catch{}
+}
+
+function updateGenreFilterState(){
+  const root = document.getElementById('genreFilters');
+  if(!root) return;
+  const activeCount = root.querySelectorAll('.chip.active').length;
+  root.dataset.state = activeCount > 0 ? 'active' : 'empty';
+  root.dataset.count = String(activeCount);
 }
 
 export function initFilters(){
@@ -164,11 +182,29 @@ export function initFilters(){
       .forEach(([v,l])=> sortSel.add(new Option(l, v)));
   }
 
-  const bind = (sel, ev='input')=>{ const n=qs(sel); if(n) n.addEventListener(ev,()=>{ updateFiltersAndGrid(); }); };
+  const bind = (sel, ev='input')=>{
+    const n = qs(sel);
+    if(!n) return;
+    n.addEventListener(ev, ()=>{ updateFiltersAndGrid(); });
+    if(ev === 'input' && n instanceof HTMLInputElement && n.type === 'search'){
+      n.addEventListener('search', ()=>{ updateFiltersAndGrid(); });
+    }
+  };
   bind('#search');
   bind('#q');
   bind('#onlyNew','change'); bind('#yearFrom','change'); bind('#yearTo','change'); bind('#collectionFilter','change'); bind('#sort','change'); bind('#groupCollections','change');
   const yrReset = qs('#yearReset'); if(yrReset){ yrReset.addEventListener('click',()=>{ const a=qs('#yearFrom'); const b=qs('#yearTo'); if(a) a.value=''; if(b) b.value=''; updateFiltersAndGrid(); }); }
-  const gRoot = qs('#genreFilters'); if(gRoot){ gRoot.addEventListener('click', ev=>{ const t=ev.target; if(!(t instanceof HTMLElement)) return; if(!t.classList.contains('chip')) return; t.classList.toggle('active'); updateFiltersAndGrid(); }); }
+  const gRoot = qs('#genreFilters');
+  if(gRoot){
+    gRoot.addEventListener('click', ev=>{
+      const t = ev.target;
+      if(!(t instanceof HTMLElement)) return;
+      if(!t.classList.contains('chip')) return;
+      t.classList.toggle('active');
+      updateGenreFilterState();
+      updateFiltersAndGrid();
+    });
+    updateGenreFilterState();
+  }
 }
 
