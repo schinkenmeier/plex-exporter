@@ -52,9 +52,18 @@ export function prefixThumbValue(value, base){
   if(raw.startsWith('//') || raw.startsWith('/') || SCHEME_RE.test(raw)) return raw;
   const normalizedBase = base ? (base.endsWith('/') ? base : `${base}/`) : '';
   const withoutDots = raw.replace(/^\.\/+/, '');
-  if(withoutDots.startsWith('data/')) return withoutDots;
+  const encodePath = path => path.split('/').map(segment => {
+    if(!segment) return '';
+    try{
+      return encodeURIComponent(decodeURIComponent(segment));
+    }catch{
+      return encodeURIComponent(segment);
+    }
+  }).join('/');
+  if(withoutDots.startsWith('data/')) return encodePath(withoutDots);
   const cleaned = withoutDots.replace(/^\/+/, '');
-  return `${normalizedBase}${cleaned}`;
+  const encoded = encodePath(cleaned);
+  return `${normalizedBase}${encoded}`;
 }
 
 
