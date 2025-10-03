@@ -17,47 +17,77 @@
 </head>
 <body>
   <header class="site-header">
-    <div class="site-header__inner">
-      <img src="assets/plex-katalog-logo.png" alt="Plex-Katalog" class="site-header__logo" id="siteLogo">
-      <div class="site-header__meta">
-        <h1 class="site-title sr-only">Plex-Katalog</h1>
-        <p class="site-tagline" id="heroSubtitle">Offline stöbern & Wunschlisten teilen</p>
+    <div class="site-header__backdrop" aria-hidden="true"></div>
+    <div class="wrap site-header__layout">
+      <div class="site-header__branding">
+        <img src="assets/plex-katalog-logo.png" alt="Plex-Katalog" class="site-header__logo" id="siteLogo">
+        <div class="site-header__titles">
+          <h1 class="site-title">Plex-Katalog</h1>
+          <p class="site-subtitle">Deine Bibliothek, neu inszeniert</p>
+        </div>
       </div>
-      <div class="site-header__stats" id="heroStats" aria-live="polite">-- Filme | -- Serien</div>
+      <div class="site-header__meta" aria-live="polite">
+        <span class="site-header__stat-label">Bestand</span>
+        <span class="site-header__stats" id="heroStats">-- Filme | -- Serien</span>
+      </div>
+      <div class="site-header__switch">
+        <div class="library-switch" id="librarySwitch" role="group" aria-label="Bibliotheken"></div>
+      </div>
     </div>
-    <div class="grain" aria-hidden="true"></div>
   </header>
+
+  <section class="hero" id="hero">
+    <div class="hero__backdrop" aria-hidden="true"></div>
+    <div class="wrap hero__content">
+      <div class="hero__copy">
+        <h2 class="hero__title" id="heroTitle">Entdecke Plex wie im Kino</h2>
+        <p class="hero__subtitle" id="heroSubtitle">Offline stöbern &amp; Wunschlisten teilen</p>
+        <button type="button" class="hero__cta" id="heroCta" data-modal-target="modalV2">Film-Highlights anzeigen</button>
+      </div>
+    </div>
+  </section>
 
   <div id="scrollProgress" class="scroll-progress" aria-hidden="true"></div>
 
   <section class="filters" id="filterBar">
     <div class="wrap filters-wrap">
       <div class="filters-main">
-        <div class="library-switch" id="librarySwitch" role="group" aria-label="Bibliotheken"></div>
-
-        <div class="field search">
-          <label class="sr-only" for="q">Suche</label>
+        <div class="filters-search field">
+          <label class="sr-only" for="search">Suche</label>
           <span class="icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" focusable="false"><circle cx="11" cy="11" r="6"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg></span>
-          <input id="q" type="search" placeholder="Suche Titel, Darsteller, Studio..." autocomplete="off" />
+          <input id="search" type="search" placeholder="Suche Titel, Darsteller, Studio..." autocomplete="off" />
         </div>
 
-        <div class="field sort">
+        <div class="filters-sort field">
+          <label class="sr-only" for="sort">Sortierung</label>
           <span class="icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" focusable="false"><polyline points="3 7 7 3 11 7"></polyline><line x1="7" y1="3" x2="7" y2="21"></line><polyline points="13 17 17 21 21 17"></polyline><line x1="17" y1="3" x2="17" y2="21"></line></svg></span>
           <select id="sort"></select>
         </div>
 
-        <button id="watchlistToggle" type="button" class="watchlist-button" aria-expanded="false">Merkliste <span class="count" id="watchlistCount">0</span></button>
-        <button id="toggleAdvanced" class="toggle-advanced" aria-expanded="false">Erweiterte Filter anzeigen</button>
-        <button id="settingsBtn" type="button" class="settings-button" aria-haspopup="dialog" aria-controls="settingsOverlay">Einstellungen</button>
+        <div class="filters-actions-primary">
+          <button id="watchlistToggle" type="button" class="watchlist-button" aria-expanded="false">Merkliste <span class="count" id="watchlistCount">0</span></button>
+          <button id="settingsBtn" type="button" class="settings-button" aria-haspopup="dialog" aria-controls="settingsOverlay">Einstellungen</button>
+        </div>
+      </div>
+
+      <div class="filters-secondary">
+        <div class="filters-chips">
+          <div class="quick-filter" id="quickFilterGenres">
+            <span class="icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" focusable="false"><path d="M20 12v7a2 2 0 0 1-2 2h-7L2 12l9-9h7a2 2 0 0 1 2 2z"></path><path d="M7.5 7.5h.01"></path></svg></span>
+            <div id="genreFilters" class="chip-group" data-empty="Alle Genres" data-state="empty"></div>
+          </div>
+          <div class="quick-filter toggles">
+            <label class="toggle-chip"><input id="onlyNew" type="checkbox" /><span>Neu (<=30 Tage)</span></label>
+            <label class="toggle-chip"><input id="groupCollections" type="checkbox" /><span>Sammlungen bündeln</span></label>
+          </div>
+        </div>
+        <div class="filters-actions">
+          <button id="toggleAdvanced" class="toggle-advanced" aria-expanded="false">Erweiterte Filter</button>
+        </div>
       </div>
 
       <div class="filters-advanced" id="advancedFilters" hidden>
         <div class="advanced-row">
-          <div class="field chips">
-            <span class="icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" focusable="false"><path d="M20 12v7a2 2 0 0 1-2 2h-7L2 12l9-9h7a2 2 0 0 1 2 2z"></path><path d="M7.5 7.5h.01"></path></svg></span>
-            <div id="genreFilters" class="chip-group" data-empty="Alle Genres" data-state="empty"></div>
-          </div>
-
           <div class="field collections">
             <span class="icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" focusable="false"><path d="M12 2 2 7l10 5 10-5-10-5z"></path><path d="m2 12 10 5 10-5"></path><path d="m2 17 10 5 10-5"></path></svg></span>
             <select id="collectionFilter"><option value="">Alle Collections</option></select>
@@ -69,42 +99,42 @@
             <select id="yearTo"><option value="">Bis Jahr</option></select>
             <button type="button" id="yearReset" title="Jahresfilter zurücksetzen">Reset</button>
           </div>
-
-          <div class="field toggles">
-            <label class="toggle-chip"><input id="onlyNew" type="checkbox" /><span>Neu (<=30 Tage)</span></label>
-            <label class="toggle-chip"><input id="groupCollections" type="checkbox" /><span>Sammlungen bündeln</span></label>
-          </div>
         </div>
       </div>
     </div>
   </section>
 
   <section class="watchlist-panel" id="watchlistPanel" hidden>
-    <div class="watchlist-header">
-      <h2 class="watchlist-title">Merkliste</h2>
-      <div class="watchlist-actions">
-        <button type="button" class="primary" id="exportWatchlist">Merkliste exportieren</button>
-        <button type="button" id="clearWatchlist">Merkliste leeren</button>
-        <button type="button" id="closeWatchlist">Schließen</button>
-      </div>
+    <div class="watchlist-panel__inner wrap">
+      <header class="watchlist-header">
+        <div class="watchlist-titlegroup">
+          <h2 class="watchlist-title">Merkliste</h2>
+          <p class="watchlist-subtitle">Sammle Favoriten und teile sie mit Freund:innen.</p>
+        </div>
+        <div class="watchlist-actions">
+          <button type="button" class="primary" id="exportWatchlist">Merkliste exportieren</button>
+          <button type="button" id="clearWatchlist">Merkliste leeren</button>
+          <button type="button" id="closeWatchlist">Schließen</button>
+        </div>
+      </header>
+      <p id="watchlistEmpty" class="watchlist-empty">Noch keine Einträge gemerkt.</p>
+      <ul class="watchlist-items" id="watchlistItems"></ul>
     </div>
-    <p id="watchlistEmpty" class="watchlist-empty">Noch keine Einträge gemerkt.</p>
-    <ul class="watchlist-items" id="watchlistItems"></ul>
   </section>
 
   <main class="wrap" id="main">
-    <div id="grid" class="grid"></div>
+    <div id="grid" class="grid card-grid" data-layout="cards"></div>
     <div id="empty" class="empty" hidden>Kein Treffer. Filter lockern?</div>
   </main>
 
-  <footer class="wrap">
-    <div class="footer-top">
+  <footer class="site-footer">
+    <div class="wrap footer-wrap">
       <div class="footer-meta" id="footerMeta">Plex-Katalog lädt.</div>
-      <div class="footer-actions">
-        <a href="#" id="openSettings" class="btn">Einstellungen öffnen</a>
-        <a href="#" id="openWatchlist" class="btn">Merkliste anzeigen</a>
-        <a href="#" id="openDebug" class="btn">Debug</a>
-      </div>
+      <nav class="footer-links" aria-label="Schnellzugriffe">
+        <a href="#" id="openSettings" class="btn-link">Einstellungen öffnen</a>
+        <a href="#" id="openWatchlist" class="btn-link">Merkliste anzeigen</a>
+        <a href="#" id="openDebug" class="btn-link">Debug</a>
+      </nav>
     </div>
   </footer>
 
@@ -207,5 +237,7 @@
     <div class="sr-only" id="modalFocusSentinelStart" tabindex="0"></div>
     <div class="sr-only" id="modalFocusSentinelEnd" tabindex="0"></div>
   </div>
+
+  <div id="modal-root-v2"></div>
 </body>
 </html>
