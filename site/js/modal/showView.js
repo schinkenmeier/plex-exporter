@@ -16,5 +16,12 @@ export function renderShowView(item){
   const cast = (item.cast||item.roles||[]).map(x=>x && (x.tag||x.role||x.name)).filter(Boolean);
   const castEl = qs('#mCastShow');
   if(castEl){ castEl.hidden=false; renderChipsLimited(castEl, cast, 6); }
+  const seasonsAccordion = document.getElementById('seasonsAccordion');
+  if(seasonsAccordion){ seasonsAccordion.hidden = false; }
   renderSeasonsAccordion(item.seasons || []);
+
+  const movieOv = qs('#mOverview');
+  if(movieOv){ movieOv.hidden = true; movieOv.textContent = ''; }
+  const movieCast = qs('#mCast');
+  if(movieCast){ movieCast.hidden = true; movieCast.replaceChildren(); }
 }
