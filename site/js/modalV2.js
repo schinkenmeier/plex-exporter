@@ -28,6 +28,50 @@ function studioText(item){
   return item?.studio || item?.network || item?.studioName || '';
 }
 
+function releaseDateText(item){
+  const candidates = [
+    item?.originallyAvailableAt,
+    item?.releaseDate,
+    item?.premiereDate,
+    item?.firstAired,
+    item?.airDate,
+  ];
+  for(const raw of candidates){
+    const str = raw == null ? '' : String(raw).trim();
+    if(!str) continue;
+    const parsed = new Date(str);
+    if(Number.isFinite(parsed.getTime())){
+      try{
+        return parsed.toLocaleDateString('de-DE', { year:'numeric', month:'2-digit', day:'2-digit' });
+      }catch{}
+    }
+    const iso = str.match(/^\d{4}-\d{2}-\d{2}/);
+    if(iso && iso[0]) return iso[0];
+    if(str.length >= 4) return str.slice(0, 10);
+  }
+  const year = humanYear(item);
+  return year ? String(year) : '';
+}
+
+function namesFromList(source){
+  if(!Array.isArray(source)) return [];
+  return source.map(entry=>{
+    if(!entry) return '';
+    if(typeof entry === 'string') return entry;
+    return entry.tag || entry.title || entry.name || '';
+  }).filter(Boolean);
+}
+
+function genresFromItem(item){
+  const arr = Array.isArray(item?.genres) ? item.genres : [];
+  const mapped = arr.map(entry=>{
+    if(!entry) return '';
+    if(typeof entry === 'string') return entry;
+    return entry.tag || entry.title || entry.name || '';
+  }).filter(Boolean);
+  return Array.from(new Set(mapped));
+}
+
 function buildChips(item){
   const chips = [];
   if(isNew(item)) chips.push('Neu');
@@ -57,17 +101,28 @@ function buildCastList(item){
 function applyTabs(root){
   const tabs = root.querySelector('.v2-tabs');
   if(!tabs) return;
+  const buttons = Array.from(tabs.querySelectorAll('button[data-t]'));
+  const select = (target)=>{
+    buttons.forEach(btn=>{
+      const isActive = btn.dataset.t === target;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      btn.tabIndex = isActive ? 0 : -1;
+      const pane = root.querySelector(`.v2-pane[data-pane="${btn.dataset.t}"]`);
+      if(pane){
+        pane.hidden = !isActive;
+        pane.setAttribute('aria-hidden', pane.hidden ? 'true' : 'false');
+      }
+    });
+  };
   tabs.addEventListener('click', ev=>{
     const btn = ev.target.closest('button[data-t]');
     if(!btn) return;
-    const target = btn.dataset.t;
-    tabs.querySelectorAll('button').forEach(b=> b.classList.toggle('active', b===btn));
-    root.querySelectorAll('.v2-pane').forEach(pane=>{
-      if(!pane) return;
-      const key = pane.dataset.pane;
-      pane.hidden = key !== target;
-    });
+    ev.preventDefault();
+    select(btn.dataset.t);
   });
+  const initial = buttons.find(btn=> btn.classList.contains('active')) || buttons[0];
+  if(initial) select(initial.dataset.t);
 }
 
 function updateCast(root, cast){
@@ -92,6 +147,145 @@ function updateCast(root, cast){
 function updateOverview(root, text){
   const pane = root.querySelector('.v2-overview');
   if(pane) pane.textContent = text || '';
+}
+
+function updateDetails(root, item){
+  const pane = root.querySelector('.v2-details');
+  if(!pane) return;
+  pane.replaceChildren();
+
+  const grid = document.createElement('div');
+  grid.className = 'v2-details-grid';
+
+  const general = [];
+  const release = releaseDateText(item);
+  if(release) general.push(['Veröffentlichung', release]);
+  const runtime = runtimeText(item);
+  if(runtime) general.push(['Laufzeit', runtime]);
+  const studio = studioText(item);
+  if(studio) general.push(['Studio', studio]);
+  const certification = (item?.contentRating || '').trim();
+  if(certification) general.push(['Freigabe', certification]);
+  const critic = formatRating(item?.rating);
+  const audience = formatRating(item?.audienceRating);
+  const user = formatRating(item?.userRating);
+  if(critic){
+    general.push(['Bewertung', `★ ${critic}`]);
+    if(audience && audience !== critic) general.push(['Publikum', `★ ${audience}`]);
+  }else if(audience){
+    general.push(['Bewertung', `★ ${audience}`]);
+  }
+  if(user) general.push(['Eigene Wertung', `★ ${user}`]);
+
+  if(item?.type === 'tv'){
+    const numericSeasons = Number(item?.seasonCount);
+    const seasonCount = Number.isFinite(numericSeasons) ? numericSeasons : (Array.isArray(item?.seasons) ? item.seasons.length : null);
+    if(Number.isFinite(seasonCount) && seasonCount > 0){
+      general.push(['Staffeln', String(seasonCount)]);
+    }
+    const episodeCount = Array.isArray(item?.seasons) ? item.seasons.reduce((sum, season)=>{
+      if(!season) return sum;
+      const eps = Array.isArray(season.episodes) ? season.episodes.length : 0;
+      return sum + (Number.isFinite(eps) ? eps : 0);
+    }, 0) : null;
+    if(Number.isFinite(episodeCount) && episodeCount > 0){
+      general.push(['Episoden', String(episodeCount)]);
+    }
+  }
+
+  const countries = namesFromList(item?.countries);
+  if(countries.length) general.push(['Länder', countries.join(', ')]);
+  const collections = namesFromList(item?.collections);
+  if(collections.length) general.push(['Sammlungen', collections.join(', ')]);
+  const labels = namesFromList(item?.labels);
+  if(labels.length) general.push(['Labels', labels.join(', ')]);
+  if(item?.editionTitle) general.push(['Edition', item.editionTitle]);
+  if(item?.originalTitle && item.originalTitle !== item.title) general.push(['Originaltitel', item.originalTitle]);
+
+  if(general.length){
+    const section = document.createElement('section');
+    section.className = 'v2-details-section';
+    section.dataset.section = 'general';
+    const heading = document.createElement('h3');
+    heading.className = 'v2-details-heading';
+    heading.textContent = 'Allgemein';
+    const list = document.createElement('dl');
+    list.className = 'v2-details-list';
+    general.forEach(([label, value])=>{
+      if(!label || !value) return;
+      const dt = document.createElement('dt');
+      dt.textContent = label;
+      const dd = document.createElement('dd');
+      dd.textContent = value;
+      list.append(dt, dd);
+    });
+    if(list.childElementCount){
+      section.append(heading, list);
+      grid.append(section);
+    }
+  }
+
+  const genres = genresFromItem(item);
+  if(genres.length){
+    const section = document.createElement('section');
+    section.className = 'v2-details-section';
+    section.dataset.section = 'genres';
+    const heading = document.createElement('h3');
+    heading.className = 'v2-details-heading';
+    heading.textContent = 'Genres';
+    const chips = document.createElement('div');
+    chips.className = 'v2-chip-group';
+    genres.forEach(name=>{
+      const span = document.createElement('span');
+      span.className = 'chip';
+      span.textContent = name;
+      chips.appendChild(span);
+    });
+    section.append(heading, chips);
+    grid.append(section);
+  }
+
+  const crew = [];
+  const directors = namesFromList(item?.directors);
+  if(directors.length) crew.push(['Regie', directors.join(', ')]);
+  const writers = namesFromList(item?.writers);
+  if(writers.length) crew.push(['Drehbuch', writers.join(', ')]);
+  const producers = namesFromList(item?.producers);
+  if(producers.length) crew.push(['Produktion', producers.join(', ')]);
+  const creators = namesFromList(item?.creators || item?.showrunners);
+  if(item?.type === 'tv' && creators.length) crew.push(['Creator', creators.join(', ')]);
+
+  if(crew.length){
+    const section = document.createElement('section');
+    section.className = 'v2-details-section';
+    section.dataset.section = 'crew';
+    const heading = document.createElement('h3');
+    heading.className = 'v2-details-heading';
+    heading.textContent = 'Credits';
+    const list = document.createElement('dl');
+    list.className = 'v2-details-list';
+    crew.forEach(([label, value])=>{
+      if(!label || !value) return;
+      const dt = document.createElement('dt');
+      dt.textContent = label;
+      const dd = document.createElement('dd');
+      dd.textContent = value;
+      list.append(dt, dd);
+    });
+    if(list.childElementCount){
+      section.append(heading, list);
+      grid.append(section);
+    }
+  }
+
+  if(grid.childElementCount){
+    pane.appendChild(grid);
+  }else{
+    const fallback = document.createElement('p');
+    fallback.className = 'v2-details-empty';
+    fallback.textContent = 'Keine zusätzlichen Details verfügbar.';
+    pane.appendChild(fallback);
+  }
 }
 
 function updateSeasons(root, item){
@@ -226,6 +420,7 @@ export function renderModalV2(item){
   const root = resolveRoot();
   if(!root) return;
   root.hidden = false;
+  const hasSeasons = item?.type === 'tv';
   root.innerHTML = `
     <section class="v2-layout">
       <aside class="v2-side">
@@ -269,15 +464,17 @@ export function renderModalV2(item){
           </div>
           <div class="v2-chips" aria-label="Attribute"></div>
         </header>
-        <nav class="v2-tabs" aria-label="Details Navigation">
-          <button type="button" data-t="overview" class="active">Überblick</button>
-          ${item?.type === 'tv' ? '<button type="button" data-t="seasons">Staffeln</button>' : ''}
-          <button type="button" data-t="cast">Cast</button>
+        <nav class="v2-tabs" aria-label="Details Navigation" role="tablist">
+          <button type="button" data-t="overview" class="active" id="v2TabOverview" role="tab" aria-controls="v2PaneOverview" aria-selected="true">Überblick</button>
+          <button type="button" data-t="details" id="v2TabDetails" role="tab" aria-controls="v2PaneDetails" aria-selected="false">Details</button>
+          ${hasSeasons ? '<button type="button" data-t="seasons" id="v2TabSeasons" role="tab" aria-controls="v2PaneSeasons" aria-selected="false">Staffeln</button>' : ''}
+          <button type="button" data-t="cast" id="v2TabCast" role="tab" aria-controls="v2PaneCast" aria-selected="false">Cast</button>
         </nav>
         <section class="v2-body">
-          <div class="v2-pane v2-overview" data-pane="overview"></div>
-          ${item?.type === 'tv' ? '<div class="v2-pane v2-seasons" data-pane="seasons" hidden></div>' : ''}
-          <div class="v2-pane v2-cast" data-pane="cast" hidden></div>
+          <div class="v2-pane v2-overview" data-pane="overview" id="v2PaneOverview" role="tabpanel" aria-labelledby="v2TabOverview"></div>
+          <div class="v2-pane v2-details" data-pane="details" id="v2PaneDetails" role="tabpanel" aria-labelledby="v2TabDetails" hidden></div>
+          ${hasSeasons ? '<div class="v2-pane v2-seasons" data-pane="seasons" id="v2PaneSeasons" role="tabpanel" aria-labelledby="v2TabSeasons" hidden></div>' : ''}
+          <div class="v2-pane v2-cast" data-pane="cast" id="v2PaneCast" role="tabpanel" aria-labelledby="v2TabCast" hidden></div>
         </section>
       </div>
     </section>
@@ -286,6 +483,7 @@ export function renderModalV2(item){
   populateHead(root, item);
   setExternalLinks(root, item);
   updateOverview(root, item?.overview || item?.summary || '');
+  updateDetails(root, item);
   if(item?.type === 'tv'){ updateSeasons(root, item); }
   updateCast(root, buildCastList(item));
   applyTabs(root);
