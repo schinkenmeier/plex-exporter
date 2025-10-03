@@ -49,18 +49,22 @@ function isModalOpen(){
 function showLayoutV1(){
   const v1 = document.getElementById('modalV1Root');
   const v2 = document.getElementById('modalV2Root');
+  const mClose = document.getElementById('mClose');
   if(v1) v1.removeAttribute('hidden');
   if(v2){
     v2.setAttribute('hidden','');
     v2.replaceChildren();
   }
+  if(mClose) mClose.removeAttribute('hidden');
 }
 
 function showLayoutV2(){
   const v1 = document.getElementById('modalV1Root');
   const v2 = document.getElementById('modalV2Root');
+  const mClose = document.getElementById('mClose');
   if(v1) v1.setAttribute('hidden','');
   if(v2) v2.removeAttribute('hidden');
+  if(mClose) mClose.setAttribute('hidden','');
 }
 
 function focusTrap(modal){
@@ -142,7 +146,21 @@ export function openModal(item){
   renderItem(item);
   show();
   const modal = qs('#modal');
-  if(modal){ lastFocused = document.activeElement; focusTrap(modal); modal.querySelector('#mClose')?.focus(); }
+  if(modal){
+    lastFocused = document.activeElement;
+    focusTrap(modal);
+    const layout = getModalLayout();
+    const preferred = layout === 'v2' ? '#v2Close' : '#mClose';
+    let target = modal.querySelector(preferred);
+    if(!target || target.hasAttribute('hidden')){
+      target = modal.querySelector('#mClose:not([hidden])');
+    }
+    if(!target || target.hasAttribute('hidden')){
+      const selectors = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
+      target = Array.from(modal.querySelectorAll(selectors)).find(el=>el.offsetParent!==null);
+    }
+    if(target) target.focus();
+  }
   const closeBtn = qs('#mClose');
   if(closeBtn && !closeBtn._bound){ closeBtn._bound = true; closeBtn.addEventListener('click', closeModal); }
   addEventListener('keydown', ev=>{ if(ev.key==='Escape') closeModal(); }, { once:true });
