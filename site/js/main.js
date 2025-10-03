@@ -3,7 +3,7 @@ import { showLoader, setLoader, hideLoader, showSkeleton, clearSkeleton } from '
 import * as Data from './data.js';
 import * as Filter from './filter.js';
 import { renderGrid } from './grid.js';
-import { openMovieModalV2, openSeriesModalV2 } from './modal/index.js';
+import { openMovieModalV2, openSeriesModalV2 } from './modalV2.js';
 import { hydrateOptional } from './services/tmdb.js';
 import * as Watch from './watchlist.js';
 import * as Debug from './debug.js';

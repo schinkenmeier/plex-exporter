@@ -3,7 +3,7 @@ import * as Filter from './filter.js';
 import { el } from './dom.js';
 import { humanYear, formatRating, renderChipsLimited, useTmdbOn, isNew, getGenreNames } from './utils.js';
 import * as Watch from './watchlist.js';
-import { openMovieModalV2, openSeriesModalV2 } from './modal/index.js';
+import { openMovieModalV2, openSeriesModalV2 } from './modalV2.js';
 
 function cardEl(item){
   const card = el('article','cardv2');
