@@ -2,6 +2,12 @@
 .field.search{flex:1 1 240px;background:rgba(15,18,23,0.92);border:1px solid var(--border);border-radius:12px;padding:6px 10px}
 .field.search input{flex:1;background:transparent;border:none;color:var(--fg);outline:none}
 .chip-group{display:flex;flex-wrap:wrap;gap:6px}
+.field.toggles{flex-wrap:wrap}
+.toggle-chip{position:relative;display:inline-flex;align-items:center;font-size:14px;line-height:1.2}
+.toggle-chip input{position:absolute;opacity:0;pointer-events:none}
+.toggle-chip span{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:1px solid var(--border);background:var(--card);color:var(--fg);transition:background .15s ease,border-color .15s ease,color .15s ease,box-shadow .15s ease}
+.toggle-chip:focus-within span{border-color:rgba(106,166,255,.6);box-shadow:0 0 0 2px rgba(106,166,255,.3)}
+.toggle-chip input:checked+span{background:rgba(106,166,255,.18);border-color:rgba(106,166,255,.6);color:var(--accent)}
 .chip{display:inline-flex;align-items:center;gap:6px;background:var(--chip);border:1px solid var(--border);color:var(--fg);border-radius:999px;padding:6px 10px;font-size:13px}
 .chip.more{cursor:pointer;opacity:.9}
 .btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--card);color:var(--fg);padding:8px 12px;border-radius:10px}
