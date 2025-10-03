@@ -39,6 +39,7 @@
   background: var(--bg-overlay);
   backdrop-filter: blur(14px);
   z-index: 950;
+  overflow-y: auto;
 }
 
 .settings-overlay[hidden] {
@@ -55,6 +56,8 @@
   border: 1px solid rgba(126, 166, 255, 0.32);
   background: linear-gradient(165deg, rgba(12, 18, 32, 0.96), rgba(8, 14, 26, 0.92));
   box-shadow: 0 30px 60px rgba(5, 12, 26, 0.6);
+  max-height: calc(100vh - 64px);
+  overflow: auto;
 }
 
 .settings-header {
