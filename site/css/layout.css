@@ -32,7 +32,7 @@ header.site-header {
 
 .site-header__layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: clamp(16px, 3vw, 28px);
   align-items: center;
   padding: clamp(18px, 2.4vw, 32px) 0;
@@ -80,6 +80,7 @@ header.site-header {
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.04em;
+  justify-self: end;
 }
 
 .site-header__switch {
