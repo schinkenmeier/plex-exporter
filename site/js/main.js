@@ -12,23 +12,42 @@ import { humanYear, formatRating, useTmdbOn } from './utils.js';
 let currentHeroItem = null;
 let heroDefaults = null;
 
+function setFooterStatus(message, busy=true){
+  const footer = document.getElementById('footerMeta');
+  if(footer){
+    footer.textContent = message;
+    footer.dataset.state = busy ? 'loading' : 'ready';
+  }
+  const grid = document.getElementById('grid');
+  if(grid){
+    grid.setAttribute('aria-busy', busy ? 'true' : 'false');
+  }
+}
+
 async function boot(){
   applyReduceMotionPref();
-  showLoader(); setLoader('Initialisiere …', 8); showSkeleton(18);
+  showLoader();
+  setFooterStatus('Initialisiere …', true);
+  setLoader('Initialisiere …', 8);
+  showSkeleton(18);
 
   const cfg = await fetch('config.json').then(r=>r.json()).catch(()=>({ startView:'movies', tmdbEnabled:false }));
   setState({ cfg, view: cfg.startView || 'movies' });
 
+  setFooterStatus('Filme laden …', true);
   setLoader('Filme laden …', 25);
   const movies = await Data.loadMovies();
+  setFooterStatus('Serien laden …', true);
   setLoader('Serien laden …', 45);
   const shows  = await Data.loadShows();
 
+  setFooterStatus('Filter vorbereiten …', true);
   setLoader('Filter vorbereiten …', 60);
   // build facets (richer set via Filter)
   const facets = Filter.computeFacets(movies, shows);
   setState({ movies, shows, facets });
 
+  setFooterStatus('Ansicht aufbauen …', true);
   setLoader('Ansicht aufbauen …', 85);
   clearSkeleton();
   renderSwitch();
@@ -36,8 +55,8 @@ async function boot(){
   Filter.initFilters();
   Filter.applyFilters();
   renderStats(true);
-  renderFooterMeta();
   renderGrid(getState().view);
+  renderFooterMeta();
 
   hideLoader();
 
@@ -180,6 +199,9 @@ function renderFooterMeta(){
   const latest = times.length ? new Date(Math.max(...times)) : new Date();
   const date = latest.toISOString().slice(0,10);
   el.textContent = `Filme ${mCount} | Serien ${sCount} — Stand: ${date}`;
+  el.dataset.state = 'ready';
+  const grid = document.getElementById('grid');
+  if(grid){ grid.setAttribute('aria-busy', 'false'); }
 }
 
 function renderHeroHighlight(listOverride){
@@ -406,6 +428,7 @@ boot();
 
 function initSettingsOverlay(cfg){
   const overlay = document.getElementById('settingsOverlay');
+  const dialog = overlay?.querySelector('.settings-dialog');
   const open1 = document.getElementById('settingsBtn');
   const open2 = document.getElementById('openSettings');
   const close2 = document.getElementById('settingsClose2');
@@ -419,12 +442,113 @@ function initSettingsOverlay(cfg){
   const useTmdb = document.getElementById('useTmdbSetting');
   const resetFilters = document.getElementById('resetFilters');
 
-  const show = ()=>{ if(overlay) overlay.hidden=false; syncSettingsUi(); };
-  const hide = ()=>{ if(overlay) overlay.hidden=true; };
-  open1 && open1.addEventListener('click', show);
-  open2 && open2.addEventListener('click', ev=>{ ev.preventDefault(); show(); });
-  close2 && close2.addEventListener('click', hide);
-  overlay && overlay.addEventListener('click', (ev)=>{ if(ev.target===overlay) hide(); });
+  if(overlay && overlay.hidden) overlay.setAttribute('aria-hidden', 'true');
+
+  let restoreFocus = null;
+  let previousOverflow = '';
+  let isOpen = false;
+  const backgroundState = new Map();
+  const focusSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+  function getFocusable(){
+    if(!overlay) return [];
+    return Array.from(overlay.querySelectorAll(focusSelector)).filter(el=> !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true');
+  }
+
+  function focusDialog(){
+    if(dialog && typeof dialog.focus === 'function') dialog.focus({ preventScroll:true });
+    else if(overlay && typeof overlay.focus === 'function') overlay.focus({ preventScroll:true });
+  }
+
+  function setBackgroundInert(active){
+    if(!overlay) return;
+    const nodes = Array.from(document.body.children).filter(node=> node !== overlay);
+    if(active){
+      nodes.forEach(node=>{
+        if(!backgroundState.has(node)){
+          backgroundState.set(node, {
+            ariaHidden: node.hasAttribute('aria-hidden') ? node.getAttribute('aria-hidden') : null,
+            inert: node.hasAttribute('inert')
+          });
+        }
+        node.setAttribute('aria-hidden', 'true');
+        node.setAttribute('inert', '');
+      });
+    }else{
+      nodes.forEach(node=>{
+        const state = backgroundState.get(node);
+        if(state){
+          if(state.ariaHidden === null || state.ariaHidden === undefined) node.removeAttribute('aria-hidden');
+          else node.setAttribute('aria-hidden', state.ariaHidden);
+          if(state.inert) node.setAttribute('inert', '');
+          else node.removeAttribute('inert');
+          backgroundState.delete(node);
+        }else{
+          node.removeAttribute('aria-hidden');
+          node.removeAttribute('inert');
+        }
+      });
+      backgroundState.clear();
+    }
+  }
+
+  function openOverlay(){
+    if(!overlay || isOpen) return;
+    isOpen = true;
+    overlay.hidden = false;
+    overlay.setAttribute('aria-hidden', 'false');
+    restoreFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    setBackgroundInert(true);
+    syncSettingsUi();
+    requestAnimationFrame(focusDialog);
+  }
+
+  function closeOverlay(){
+    if(!overlay || !isOpen) return;
+    isOpen = false;
+    overlay.hidden = true;
+    overlay.setAttribute('aria-hidden', 'true');
+    setBackgroundInert(false);
+    document.body.style.overflow = previousOverflow;
+    if(restoreFocus && typeof restoreFocus.focus === 'function'){ restoreFocus.focus(); }
+    restoreFocus = null;
+  }
+
+  function handleKeydown(ev){
+    if(!isOpen) return;
+    if(ev.key === 'Escape'){
+      ev.preventDefault();
+      closeOverlay();
+      return;
+    }
+    if(ev.key !== 'Tab') return;
+    const focusable = getFocusable();
+    if(!focusable.length){
+      ev.preventDefault();
+      focusDialog();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    if(ev.shiftKey){
+      if(active === first || !overlay.contains(active)){
+        ev.preventDefault();
+        last.focus();
+      }
+    }else if(active === last){
+      ev.preventDefault();
+      first.focus();
+    }
+  }
+
+  open1 && open1.addEventListener('click', openOverlay);
+  open2 && open2.addEventListener('click', ()=>{ openOverlay(); });
+  close2 && close2.addEventListener('click', closeOverlay);
+  overlay && overlay.addEventListener('click', (ev)=>{ if(ev.target===overlay) closeOverlay(); });
+  overlay && overlay.addEventListener('keydown', handleKeydown);
 
   function setTmdbStatus(msg='', kind=''){
     if(!tmdbStatus) return;

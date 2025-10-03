@@ -281,8 +281,19 @@ header.site-header {
   background: var(--card);
   color: var(--fg);
   padding: 12px 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   box-shadow: var(--shadow-soft);
   transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.scroll-top svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
 }
 
 .scroll-top:hover,

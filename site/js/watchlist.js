@@ -21,8 +21,8 @@ export function toggle(item){ const k=idFor(item); if(!k) return; if(saved.has(k
 
 export function renderCount(){ const el=document.getElementById('watchlistCount'); if(el) el.textContent = String(count()); }
 
-export function openPanel(){ const p=document.getElementById('watchlistPanel'); if(p) { p.hidden=false; renderPanel(); } }
-export function closePanel(){ const p=document.getElementById('watchlistPanel'); if(p) p.hidden=true; setExpanded(false); }
+export function openPanel(){ const p=document.getElementById('watchlistPanel'); if(p) { p.hidden=false; p.setAttribute('aria-hidden','false'); renderPanel(); } }
+export function closePanel(){ const p=document.getElementById('watchlistPanel'); if(p){ p.hidden=true; p.setAttribute('aria-hidden','true'); } setExpanded(false); }
 
 export function clear(){ saved.clear(); persist(); renderCount(); renderPanel(); }
 
@@ -82,7 +82,7 @@ export function initUi(){
   const closeBtn = document.getElementById('closeWatchlist');
   const clearBtn = document.getElementById('clearWatchlist');
   const exportBtn = document.getElementById('exportWatchlist');
-  openBtn && openBtn.addEventListener('click', ev=>{ ev.preventDefault(); openPanel(); setExpanded(true); });
+  openBtn && openBtn.addEventListener('click', ()=>{ openPanel(); setExpanded(true); });
   toggleBtn && toggleBtn.addEventListener('click', ()=>{ const p=document.getElementById('watchlistPanel'); if(p && !p.hidden){ closePanel(); } else { openPanel(); setExpanded(true); } });
   closeBtn && closeBtn.addEventListener('click', ()=>{ closePanel(); });
   clearBtn && clearBtn.addEventListener('click', ()=>{ clear(); });
