@@ -1,56 +1,66 @@
-# Plex Exporter - Offline Katalog
+# Plex Exporter – Offline Katalog
 
-Dieses Projekt liefert einen statischen Plex-Katalog, der direkt im Browser ohne Webserver laeuft. plex_katalog_index.html liegt im Projektstamm und greift auf die Bibliotheken in Filme/ und Serien/ zu. Ein Umschalter in der Toolbar wechselt zwischen den Bibliotheken.
+## Überblick
+Der Plex Exporter stellt einen statischen Katalog deiner Plex-Bibliotheken bereit. Sämtliche Dateien liegen im Ordner `site/`, die Oberfläche startest du direkt über `site/index.html`. Dadurch lässt sich der Katalog ohne Webserver per Doppelklick oder über ein einfaches Hosting mit rein statischen Dateien öffnen.
 
-## Ordnerstruktur
+## Funktionsumfang
+- Umschaltbare Film- und Serienansichten inklusive Deep-Linking über die URL-Fragmentnavigation (`#/movies`, `#/shows`).
+- Umfangreiche Filter mit Genres, Jahrspannenauswahl, Sortierung und optionalen TMDB-Postern (gesteuert in `site/js/main.js` und `site/js/filter.js`).
+- Schnelle Datenladewege mit Fallbacks für eingebettete JSON-Blöcke oder ältere Exporte (`site/js/data.js`).
+- Watchlist mit Export- und Importmöglichkeiten (lokal im Browser gespeichert, Logik in `site/js/watchlist.js`).
+- Debug-Overlay zur Fehlersuche mit Quellinformationen, TMDB-Status und Filterzusammenfassung (`site/js/debug.js`).
+- Modalansichten für Detailseiten, Scroll-Animationen sowie optionale Bewegungsreduktion.
 
-- plex_katalog_index.html - Bedienoberflaeche fuer Filme und Serien
-- Filme/ - movies.js (offline Daten), movies.json (Roh-Export) und Poster-Unterordner
-- Serien/ - series.js, series.json und Poster (nach Export erzeugen)
+## Projektstruktur
+| Pfad | Beschreibung |
+| --- | --- |
+| `site/index.html` | Einstiegspunkt und UI-Markup für den Katalog. |
+| `site/config.json` | Laufzeitkonfiguration (Startansicht, TMDB-Schalter, Sprache). |
+| `site/js/main.js` | Bootstrapping der Anwendung, Initialisierung von Filtern, Watchlist, Debug und Einstellungen. |
+| `site/js/data.js` | Datenlader mit Unterstützung für lokale Dateien (`site/data/...`) und Legacy-Fallbacks. |
+| `site/js/…` | Weitere Module für Filter, Grid, Modals, Services, Utils und Watchlist. |
+| `site/data/movies/` | Exportierte Filmdaten (`movies.json`) und optionale Posterordner (`Movie - … .images`). |
+| `site/data/series/` | Serienindex (`series_index.json`), Detaildateien (`details/<ratingKey>.json`) und Posterordner (`Show - … .images`). |
+| `site/assets/` | Statische Assets wie Favicons und Illustrationen. |
+| `tools/split_series.mjs` | Hilfsskript zum Aufteilen großer Serien-JSONs in Index- und Detaildateien. |
+| `package.json` | Projektmetadaten und npm-Skripte (z. B. `split:series`). |
 
-## Schnellstart
+## Konfiguration (`site/config.json`)
+| Schlüssel | Typ | Beschreibung |
+| --- | --- | --- |
+| `startView` | String (`"movies"`\|`"shows"`) | Legt fest, welche Bibliothek nach dem Laden angezeigt wird. |
+| `tmdbEnabled` | Boolean | Aktiviert den optionalen Abruf von TMDB-Metadaten (wird beim Start berücksichtigt). |
+| `tmdbApiKey` | String | Optionaler TMDB v3 API Key als Fallback, wenn kein Token im Browser hinterlegt wurde. |
+| `lang` | String | Sprache für TMDB-Anfragen sowie lokalisierte UI-Texte. |
 
-1. Lege plex_katalog_index.html, den Ordner Filme/ und bei Bedarf Serien/ gemeinsam weiter.
-2. Oeffne plex_katalog_index.html per Doppelklick - standardmaessig werden die Filme aus Filme/movies.js geladen.
-3. Nutze den Umschalter oben links, um zwischen Filme und Serien zu wechseln.
+## Datenpflege
+### Filme aktualisieren
+1. Exportiere deine Filmbibliothek aus Plex (oder Tautulli) als `movies.json` und kopiere die Datei nach `site/data/movies/movies.json`.
+2. Lege Poster oder Backdrops optional in eigenen Unterordnern ab (`site/data/movies/Movie - <Titel> [<ratingKey>].images/`). Die Anwendung referenziert Pfade automatisch relativ zum Datenverzeichnis.
+3. Öffne `site/index.html`, um den aktualisierten Bestand zu prüfen. Änderungen an den Daten werden beim nächsten Laden erkannt.
 
-## Header und Filter
+### Serien aktualisieren
+1. Exportiere deine Serienbibliothek als vollständige JSON-Datei (z. B. aus Plex) und speichere sie als `site/data/series/series_full.json`.
+2. Erzeuge Index- und Detaildateien mit `npm run split:series`. Das Skript `tools/split_series.mjs` erstellt `series_index.json` sowie einzelne Dateien unter `site/data/series/details/`.
+3. Kopiere Poster/Staffelbilder in passende Unterordner (`site/data/series/Show - <Titel> [<ratingKey>].images/`). Die Anwendung verknüpft Staffel- und Episodenbilder automatisch über `site/js/data.js`.
+4. Starte den Katalog neu in `site/index.html`, um die aktualisierten Serien zu überprüfen.
 
-- Hero-Bereich zeigt Titel, Zufalls-Backdrop und Statistik (Filme | Serien).
-- Sticky Toolbar darunter: Suche und Sortierung sind immer sichtbar.
-- Button "Erweiterte Filter" blendet Genre-Chips, Jahr-Spanne, Neu-Toggle und TMDB-Option ein.
-- Filteraenderungen landen direkt in der URL - Link teilen reicht, um denselben Blick zu oeffnen.
+### Datenspeicherung und Fallbacks
+- `site/js/data.js` bevorzugt die Dateien unter `site/data/...`. Falls diese fehlen, werden vorhandene `<script>`-Blöcke im HTML oder globale Variablen genutzt. So bleibt der Katalog kompatibel mit früheren Exportformaten.
+- Detailansichten laden zusätzliche JSON-Dateien erst beim Öffnen eines Elements, um die Initialladezeit niedrig zu halten.
 
-## Daten aktualisieren
+## Watchlist & Debugging
+- Die Watchlist speichert Einträge in `localStorage` (`watchlist:v1`). Über die Buttons im UI kannst du Einträge hinzufügen, entfernen, exportieren oder die Liste leeren. Beim Export wird eine `watchlist.json` im Browser heruntergeladen.
+- Das Debug-Overlay (Button "Debug" in den Einstellungen) zeigt Informationen über aktuelle Filter, Datenquellen und TMDB-Status. Die Ausgabe lässt sich direkt kopieren, um Fehlerberichte zu erleichtern.
 
-### Filme
+## TMDB-Integration
+- Setze `tmdbEnabled` in `site/config.json` auf `true`, um TMDB-Aufrufe zu erlauben. Standardmäßig bleiben alle Anfragen deaktiviert.
+- Hinterlege einen TMDB v4 Bearer Token zur Laufzeit im Einstellungsdialog (`TMDB Token`) oder trage deinen API Key dauerhaft im Feld `tmdbApiKey` ein. Tokens werden im Browser in `localStorage` gespeichert.
+- Sobald TMDB aktiviert ist, lädt das Frontend Cover und Backdrops nach (`site/js/services/tmdb.js`). Die Nutzung ist optional und kann jederzeit über den UI-Toggle abgeschaltet werden.
 
-1. Exportiere wie gewohnt movies.json (z. B. via Tautulli) nach Filme/movies.json.
-2. Erzeuge Filme/movies.js, damit die Seite ohne Fetch funktioniert:
-   ```powershell
-   cd Filme
-   python -c "import json, pathlib; base = pathlib.Path('.'); data = json.load(open('movies.json', encoding='utf-8')); payload = json.dumps(data, ensure_ascii=False, separators=(',', ':')); out = base/'movies.js'; out.write_text('window.__PLEX_EXPORTER__ = window.__PLEX_EXPORTER__ || {};
-' + 'window.__PLEX_EXPORTER__.movies = ' + payload + ';
-' + 'window.__PLEX_MOVIES__ = window.__PLEX_EXPORTER__.movies;
-', encoding='utf-8')"
-   ```
-3. Filme/movies.json kann als Fallback liegen bleiben - sie wird nur genutzt, wenn kein movies.js vorhanden ist.
+## Nützliche Befehle
+| Befehl | Beschreibung |
+| --- | --- |
+| `npm run split:series` | Ruft `tools/split_series.mjs` auf, verarbeitet `site/data/series/series_full.json` und erzeugt `series_index.json` sowie Detaildateien. |
 
-### Serien
-
-1. Exportiere series.json nach Serien/series.json.
-2. Erzeuge Serien/series.js analog zum Filmskript (ersetzt movies durch series).
-3. Poster (thumbFile) im Serien/-Unterordner werden automatisch als Fallback genutzt.
-
-## TMDB Bilder
-
-- Der Toggle ist standardmaessig aus. Erst bei Aktivierung werden Poster/Backdrop von TMDB nachgeladen.
-- Trage deinen TMDB v4 Bearer Token in CONFIG.tmdbAccessToken ein (alternativ v3 API Key in CONFIG.tmdbApiKey).
-
-## Anpassungen
-
-- Farben, Hero und Filter liegen direkt im CSS-Block von plex_katalog_index.html.
-- Die Scripts laden Daten aus window.__PLEX_EXPORTER__, <script id="movies-json"> / <script id="series-json"> oder greifen auf Filme/movies.json bzw. Serien/series.json zurueck.
-- Fuer weitere Bibliotheken kannst du zusaetzliche Eintraege in CONFIG.libraries anlegen.
-
-Viel Spass beim Teilen deines Katalogs!
+Viel Spaß beim Verteilen deines Plex-Katalogs!
