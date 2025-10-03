@@ -9,8 +9,10 @@ let currentIndex = -1;
 let currentList = [];
 let lastFocused = null;
 let renderToken = 0;
+let arrowNavBound = false;
 
 function focusTrap(modal){
+  if(modal._focusTrapBound) return;
   const selectors = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
   const nodes = Array.from(modal.querySelectorAll(selectors)).filter(el=>el.offsetParent!==null);
   if(!nodes.length) return;
@@ -22,6 +24,7 @@ function focusTrap(modal){
     else { if(document.activeElement===last){ ev.preventDefault(); first.focus(); } }
   };
   modal.addEventListener('keydown', onKey);
+  modal._focusTrapBound = true;
 }
 
 function setHeader(item){
@@ -89,11 +92,20 @@ export function openModal(item){
   const closeBtn = qs('#mClose');
   if(closeBtn && !closeBtn._bound){ closeBtn._bound = true; closeBtn.addEventListener('click', closeModal); }
   addEventListener('keydown', ev=>{ if(ev.key==='Escape') closeModal(); }, { once:true });
-  addEventListener('keydown', onArrowNav);
+  if(!arrowNavBound){
+    addEventListener('keydown', onArrowNav);
+    arrowNavBound = true;
+  }
   bindArrows();
   bindSubnav();
 }
-export function closeModal(){ hide(); }
+export function closeModal(){
+  hide();
+  if(arrowNavBound){
+    removeEventListener('keydown', onArrowNav);
+    arrowNavBound = false;
+  }
+}
 
 function bindArrows(){
   const prev = qs('#mPrev'); const next = qs('#mNext');
