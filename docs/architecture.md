@@ -59,6 +59,25 @@ Dieser Leitfaden skizziert den Aufbau der Plex-Exporter-Weboberfläche sowie wic
 6. Startet optionale Module: TMDB-Hydration (per `requestIdleCallback`), Watchlist (`Watch.initUi()`), Settings-Overlay, Advanced-Filter-Toggle, Header/Scroll-Helfer sowie Debug-Overlay.
 7. Ein `hashchange`-Listener unterstützt View-Wechsel (`#/movies`, `#/shows`) und öffnet bei `#/movie/<id>` bzw. `#/show/<id>` die Detail-Modal (`openModal()`).
 
+## Modal-System (`site/js/modal/index.js`, `site/js/modalV2.js`)
+
+* **Zentrale Steuerung (`site/js/modal/index.js`):**
+  * Hält den aktuellen Navigationskontext (`currentList`/`currentIndex`) sowie den zuletzt fokussierten Knoten fest, damit Tastatur-Navigation (Pfeiltasten, Escape) und Fokus-Rückgabe nach `closeModal()` zuverlässig funktionieren.
+  * Persistiert die Layout-Wahl (`localStorage.modalLayout`) und schaltet zwischen der Legacy-Ansicht (V1) und der modernen Oberfläche (V2). `setModalLayout()` rendert bei geöffnetem Modal das aktive Element neu und blendet je nach Wahl die entsprechenden DOM-Wurzeln (`#modalV1Root`, `#modalV2Root`) ein oder aus.
+  * Bindet Tasten-/Button-Navigation (`bindArrows()`, `bindSubnav()`) und kapselt den Fokus-Loop per `focusTrap()`, damit Tab-Reihenfolgen innerhalb des Modals verbleiben. Beim Öffnen wird anhand des Layouts automatisch ein sinnvoller Startfokus gesetzt.
+  * Übernimmt Datenaufbereitung: Bei Serien ergänzt `renderItem()` fehlende Staffel-/Cast-Informationen über `loadShowDetail()` und normalisiert Felder (`normalizeShow()` etc.), bevor je nach Layout `renderShowView()`/`renderMovieView()` (V1) oder `renderModalV2()` (V2) aufgerufen wird. V1-spezifische Kopfzeilen (Poster, Chips, externe Aktionen) werden über `setHeader()` versorgt.
+
+* **Modernes Layout (`site/js/modalV2.js`):**
+  * Baut die strukturierte Oberfläche aus Kopfbereich, Schnellinfos, Tabs und Content-Panes. `renderModalV2()` erzeugt das Markup und delegiert an spezialisierte Updater (`populateHead()`, `updateOverview()`, `updateDetails()`, `updateCast()`).
+  * Die Tab-Navigation (`applyTabs()`) setzt ARIA-Rollen, Tastatur-Shortcuts (Links/Rechts, Home/End) und steuert Sichtbarkeit/Focus der Pane-Inhalte (`data-pane`). Damit lassen sich Überblick, Detail-Gitter, Staffeln und Cast parallel vorhalten.
+  * `updateDetails()` generiert das mehrspaltige „Details-Grid“ (Sektionen für Allgemein, Genres, Credits). `updateCast()` erstellt Cast-Karten inkl. TMDB/Thumb-Auflösung, fallback auf Initialen sowie Rollenbeschriftung. `populateHead()` liefert Schnellinfos, Chip-Gruppen und Poster-Handling inklusive Lazy-Loading-Indikator.
+  * Einbettung externer Aktionen geschieht zentral in `setExternalLinks()`: Die Funktion aktiviert/deaktiviert TMDB-/IMDb-Links und Trailer-Button (öffnet neues Tab via `window.open`). Bei V1 übernimmt `setHeader()` diese Rolle für klassische Buttons.
+
+* **Hilfsmodule & Koexistenz:**
+  * Staffel-/Episodenlisten rendert `site/js/modal/seasonsAccordion.js`, das aus Staffel-Objekten Akkordeon-Karten mit Lazy-Poster, Episoden-Badges und Toggle-Verhalten erzeugt. V2 bindet die Ausgabe im Tab „Staffeln“ über `renderSeasonsAccordion()` ein; V1 nutzt dasselbe Modul im klassischen Layout.
+  * Beide Layouts leben parallel: `getModalLayout()` liest die Präferenz, `openModal()` prüft sie vor jedem Render und entscheidet, welche Oberfläche angezeigt wird. So können Beitragende Features iterativ in V2 entwickeln, ohne V1 zu beeinträchtigen. Der V2-Schließen-Button löst intern den Legacy-Close (`#mClose`) aus, damit die gemeinsame Lifecycle-Logik greift.
+  * Neue externe Links/Tabs werden jeweils über `setHeader()` (V1) bzw. `setExternalLinks()` und `applyTabs()` (V2) erweitert. Für zusätzliche Tabs genügt es, in `renderModalV2()` einen weiteren Button + Pane anzulegen und ihn im Tab-Controller zu berücksichtigen. Externe Aktionen folgen dem bestehenden Muster: Button oder Link markieren, Attribut/`hidden`-Status dynamisch setzen.
+
 ## Erweiterungspunkte
 
 * **Weitere Datenquellen:** `site/js/data.js` ist der zentrale Einstieg; neue Loader (z. B. für Musikbibliotheken) können nach dem Muster von `loadMovies()`/`loadShows()` implementiert und im State abgelegt werden.
