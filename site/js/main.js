@@ -15,7 +15,9 @@ let heroDefaults = null;
 function setFooterStatus(message, busy=true){
   const footer = document.getElementById('footerMeta');
   if(footer){
-    footer.textContent = message;
+    const status = footer.querySelector('#footerStatus');
+    if(status) status.textContent = message;
+    else footer.textContent = message;
     footer.dataset.state = busy ? 'loading' : 'ready';
   }
   const grid = document.getElementById('grid');
@@ -154,14 +156,11 @@ function renderStats(animate=false){
   const s = getState();
   const movies = (s.movies||[]).length;
   const shows = (s.shows||[]).length;
-  // ensure inner spans for animation
-  if(!root.querySelector('#statMovies') || !root.querySelector('#statShows')){
-    root.innerHTML = `<span id="statMovies">0</span> Filme | <span id="statShows">0</span> Serien`;
-  }
-  const elM = document.getElementById('statMovies');
-  const elS = document.getElementById('statShows');
+  const elM = root.querySelector('[data-stat="movies"]');
+  const elS = root.querySelector('[data-stat="shows"]');
+  if(!elM || !elS) return;
   if(animate){ countTo(elM, movies); countTo(elS, shows); }
-  else { if(elM) elM.textContent=String(movies); if(elS) elS.textContent=String(shows); }
+  else { elM.textContent=String(movies); elS.textContent=String(shows); }
 }
 
 function countTo(el, target){
@@ -183,14 +182,15 @@ function countTo(el, target){
 function renderFooterMeta(){
   const el = document.getElementById('footerMeta');
   if(!el) return;
+  const status = document.getElementById('footerStatus');
   const s = getState();
   const movies = (s.movies||[]); const shows=(s.shows||[]);
-  const mCount = movies.length; const sCount = shows.length;
-  // derive latest date from addedAt if available, else use today
   const times = movies.concat(shows).map(x=> new Date(x.addedAt||0).getTime()).filter(Number.isFinite);
   const latest = times.length ? new Date(Math.max(...times)) : new Date();
   const date = latest.toISOString().slice(0,10);
-  el.textContent = `Filme ${mCount} | Serien ${sCount} — Stand: ${date}`;
+  if(status){
+    status.textContent = `Stand: ${date}`;
+  }
   el.dataset.state = 'ready';
   const grid = document.getElementById('grid');
   if(grid){ grid.setAttribute('aria-busy', 'false'); }

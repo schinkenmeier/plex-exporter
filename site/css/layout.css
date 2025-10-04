@@ -66,14 +66,6 @@ header.site-header {
   white-space: nowrap;
 }
 
-.site-header__stats {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-  text-transform: uppercase;
-}
-
 .site-nav {
   display: flex;
   align-items: center;
@@ -332,6 +324,44 @@ header.site-header {
   justify-content: space-between;
   gap: 12px;
   padding: clamp(18px, 2vw, 24px) 0;
+}
+
+.footer-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.footer-meta__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.footer-meta__stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.footer-meta__count {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.footer-meta__label {
+  color: var(--muted);
+}
+
+.footer-meta__divider {
+  opacity: 0.6;
 }
 
 .footer-links {
