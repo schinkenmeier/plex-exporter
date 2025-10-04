@@ -155,9 +155,11 @@ header.site-header {
 .hero__backdrop {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(4, 6, 12, 0.6) 0%, rgba(4, 6, 12, 0.9) 65%, rgba(4, 6, 12, 1) 100%);
-  mix-blend-mode: screen;
-  opacity: 0.65;
+  background:
+    radial-gradient(circle at center, rgba(5, 7, 14, 0.1) 0%, rgba(5, 7, 14, 0.82) 72%),
+    linear-gradient(135deg, rgba(4, 6, 12, 0.92) 0%, rgba(4, 6, 12, 0.84) 45%, rgba(3, 5, 10, 0.96) 100%);
+  mix-blend-mode: multiply;
+  opacity: 0.94;
   pointer-events: none;
 }
 
@@ -165,15 +167,18 @@ header.site-header {
   position: relative;
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: clamp(16px, 3vw, 32px);
-  align-items: end;
+  gap: clamp(20px, 4vw, 40px);
+  align-items: center;
+  min-height: clamp(520px, 82vh, 880px);
 }
 
 .hero__copy {
   grid-column: 1 / span 7;
   display: flex;
   flex-direction: column;
-  gap: clamp(16px, 3vw, 24px);
+  gap: clamp(20px, 4vw, 32px);
+  align-self: center;
+  justify-self: start;
 }
 
 .hero__title {
