@@ -701,10 +701,76 @@ function initAdvancedToggle(){
   const btn = document.getElementById('toggleAdvanced');
   const panel = document.getElementById('advancedFilters');
   if(!btn || !panel) return;
+  let animating = false;
+  let fallbackTimer = 0;
+
+  const finishAnimation = ()=>{
+    animating = false;
+    if(fallbackTimer){
+      clearTimeout(fallbackTimer);
+      fallbackTimer = 0;
+    }
+    if(panel.dataset.state === 'closing'){
+      panel.dataset.state = 'closed';
+      panel.hidden = true;
+      panel.style.removeProperty('--advanced-max');
+    }else if(panel.dataset.state === 'open'){
+      panel.style.removeProperty('--advanced-max');
+    }else if(panel.dataset.state === 'expanding'){
+      panel.dataset.state = 'open';
+      panel.style.removeProperty('--advanced-max');
+    }
+  };
+
+  const queueFinish = ()=>{
+    if(fallbackTimer){
+      clearTimeout(fallbackTimer);
+    }
+    fallbackTimer = window.setTimeout(finishAnimation, 320);
+  };
+
+  panel.addEventListener('transitionend', event=>{
+    if(event.target !== panel || event.propertyName !== 'max-height') return;
+    finishAnimation();
+  });
+
+  const openPanel = ()=>{
+    if(animating) return;
+    animating = true;
+    panel.hidden = false;
+    panel.dataset.state = 'expanding';
+    panel.setAttribute('aria-hidden', 'false');
+    panel.style.setProperty('--advanced-max', '0px');
+    requestAnimationFrame(()=>{
+      const height = panel.scrollHeight;
+      panel.style.setProperty('--advanced-max', height + 'px');
+      panel.dataset.state = 'open';
+      queueFinish();
+    });
+  };
+
+  const closePanel = ()=>{
+    if(animating) return;
+    animating = true;
+    const height = panel.scrollHeight;
+    panel.style.setProperty('--advanced-max', height + 'px');
+    panel.dataset.state = 'closing';
+    panel.setAttribute('aria-hidden', 'true');
+    requestAnimationFrame(()=>{
+      panel.style.setProperty('--advanced-max', '0px');
+      queueFinish();
+    });
+  };
+
   btn.addEventListener('click', ()=>{
-    const now = panel.hasAttribute('hidden');
-    if(now) panel.removeAttribute('hidden'); else panel.setAttribute('hidden','');
-    btn.setAttribute('aria-expanded', String(now));
+    const expanded = btn.getAttribute('aria-expanded') === 'true';
+    if(expanded){
+      btn.setAttribute('aria-expanded', 'false');
+      closePanel();
+    }else{
+      btn.setAttribute('aria-expanded', 'true');
+      openPanel();
+    }
   });
 }
 
