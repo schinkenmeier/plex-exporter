@@ -239,40 +239,58 @@ header.site-header {
   display: inline-flex;
   gap: 10px;
   align-items: center;
+  justify-content: flex-end;
+  align-self: stretch;
 }
 
-.filters-secondary {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: center;
-}
-
-.filters-chips {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.filters-chips .icon {
-  border-radius: var(--radius-md);
+.filters-main .toggle-advanced {
+  align-self: stretch;
+  justify-self: end;
 }
 
 .filters-advanced {
   border-top: 1px dashed rgba(255, 255, 255, 0.06);
-  padding-top: 12px;
+  padding-top: 16px;
+  display: grid;
+  gap: 16px;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+  transition: max-height var(--transition-base), opacity var(--transition-base), transform var(--transition-base);
+}
+
+.filters-advanced[data-state="expanding"],
+.filters-advanced[data-state="open"] {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+  max-height: var(--advanced-max, 720px);
+}
+
+.filters-advanced[data-state="closing"] {
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+}
+
+.advanced-quick {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 12px;
+  align-items: center;
+}
+
+.advanced-quick .icon {
+  border-radius: var(--radius-md);
 }
 
 .advanced-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto;
   gap: 12px;
-  align-items: center;
+  align-items: stretch;
 }
 
 .grid {
@@ -413,6 +431,12 @@ header.site-header {
 
   .filters-actions-primary {
     justify-content: flex-start;
+    grid-column: 1 / -1;
+  }
+
+  .filters-main .toggle-advanced {
+    justify-self: stretch;
+    width: 100%;
   }
 
   .advanced-row {
@@ -470,17 +494,11 @@ header.site-header {
     top: 0;
   }
 
-  .filters-chips {
+  .advanced-quick {
     width: 100%;
-  }
-
-  .filters-secondary {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .filters-actions {
-    align-self: stretch;
+    gap: 10px;
   }
 
   .grid {
@@ -501,8 +519,8 @@ header.site-header {
     gap: 10px;
   }
 
-  .filters-secondary {
-    gap: 10px;
+  .filters-advanced {
+    gap: 14px;
   }
 
   .advanced-row {

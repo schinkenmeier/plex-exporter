@@ -109,13 +109,11 @@
           <select id="sort"></select>
         </div>
 
-        <div class="filters-actions-primary">
-          <button id="settingsBtn" type="button" class="settings-button" aria-haspopup="dialog" aria-controls="settingsOverlay">Einstellungen</button>
-        </div>
+        <button id="toggleAdvanced" type="button" class="toggle-advanced" aria-expanded="false" aria-controls="advancedFilters">Erweiterte Filter</button>
       </div>
 
-      <div class="filters-secondary">
-        <div class="filters-chips">
+      <div class="filters-advanced" id="advancedFilters" hidden data-state="closed" aria-hidden="true">
+        <div class="advanced-quick">
           <div class="quick-filter" id="quickFilterGenres">
             <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><use href="#icon-tag"></use></svg></span>
             <div id="genreFilters" class="chip-group" data-empty="Alle Genres" data-state="empty"></div>
@@ -125,12 +123,7 @@
             <label class="toggle-chip"><input id="groupCollections" type="checkbox" /><span>Sammlungen bündeln</span></label>
           </div>
         </div>
-        <div class="filters-actions">
-          <button id="toggleAdvanced" class="toggle-advanced" aria-expanded="false" aria-controls="advancedFilters">Erweiterte Filter</button>
-        </div>
-      </div>
 
-      <div class="filters-advanced" id="advancedFilters" hidden>
         <div class="advanced-row">
           <div class="field collections">
             <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><use href="#icon-stack"></use></svg></span>
@@ -145,6 +138,10 @@
             <label class="sr-only" for="yearTo">Bis Jahr</label>
             <select id="yearTo"><option value="">Bis Jahr</option></select>
             <button type="button" id="yearReset" title="Jahresfilter zurücksetzen">Reset</button>
+          </div>
+
+          <div class="filters-actions-primary">
+            <button id="settingsBtn" type="button" class="settings-button" aria-haspopup="dialog" aria-controls="settingsOverlay">Einstellungen</button>
           </div>
         </div>
       </div>
