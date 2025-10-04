@@ -9,6 +9,7 @@ import * as Watch from './watchlist.js';
 import * as Debug from './debug.js';
 import { humanYear, formatRating, useTmdbOn } from './utils.js';
 import { initErrorHandler, showError, showRetryableError } from './errorHandler.js';
+import { initFilterBarAutoHide } from './filterBarAutoHide.js';
 
 let currentHeroItem = null;
 let heroDefaults = null;
@@ -77,6 +78,7 @@ async function boot(){
     initHeaderInteractions();
     initScrollProgress();
     initScrollTop();
+    initFilterBarAutoHide();
     renderHeroHighlight();
     Debug.initDebugUi();
   } catch (error) {
@@ -556,6 +558,9 @@ function initSettingsOverlay(cfg){
     setBackgroundInert(true);
     syncSettingsUi();
     requestAnimationFrame(focusDialog);
+
+    // Dispatch event for filter bar auto-hide
+    document.dispatchEvent(new CustomEvent('settings:open'));
   }
 
   function closeOverlay(){
@@ -567,6 +572,9 @@ function initSettingsOverlay(cfg){
     document.body.style.overflow = previousOverflow;
     if(restoreFocus && typeof restoreFocus.focus === 'function'){ restoreFocus.focus(); }
     restoreFocus = null;
+
+    // Dispatch event for filter bar auto-hide
+    document.dispatchEvent(new CustomEvent('settings:close'));
   }
 
   function handleKeydown(ev){
