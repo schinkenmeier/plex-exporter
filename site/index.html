@@ -228,6 +228,10 @@
     <symbol id="icon-arrow-up" viewBox="0 0 24 24">
       <polyline points="6 15 12 9 18 15"></polyline>
     </symbol>
+    <symbol id="icon-settings" viewBox="0 0 24 24">
+      <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
   </svg>
   <header class="site-header">
     <div class="site-header__backdrop" aria-hidden="true"></div>
@@ -244,6 +248,9 @@
           <button type="button" class="site-nav__tab" data-lib="series" aria-pressed="false">Serien</button>
         </div>
         <button id="watchlistToggle" type="button" class="watchlist-button" aria-expanded="false" aria-controls="watchlistPanel">Merkliste <span class="count" id="watchlistCount">0</span></button>
+        <button id="headerSettingsBtn" type="button" class="header-settings-button" aria-haspopup="dialog" aria-controls="settingsOverlay" aria-label="Einstellungen öffnen">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-settings"></use></svg>
+        </button>
       </nav>
     </div>
   </header>
@@ -307,10 +314,6 @@
             <label class="sr-only" for="yearTo">Bis Jahr</label>
             <select id="yearTo"><option value="">Bis Jahr</option></select>
             <button type="button" id="yearReset" title="Jahresfilter zurücksetzen">Reset</button>
-          </div>
-
-          <div class="filters-actions-primary">
-            <button id="settingsBtn" type="button" class="settings-button" aria-haspopup="dialog" aria-controls="settingsOverlay">Einstellungen</button>
           </div>
         </div>
       </div>

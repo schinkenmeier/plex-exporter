@@ -302,6 +302,9 @@ function renderHeroHighlight(listOverride){
   }
 }
 
+// Expose for hero autoplay timer
+window.__heroRefresh = renderHeroHighlight;
+
 function ensureHeroDefaults(){
   if(heroDefaults) return;
   heroDefaults = {
@@ -486,6 +489,7 @@ function initSettingsOverlay(cfg){
   const dialog = overlay?.querySelector('.settings-dialog');
   const open1 = document.getElementById('settingsBtn');
   const open2 = document.getElementById('openSettings');
+  const headerSettingsBtn = document.getElementById('headerSettingsBtn');
   const close2 = document.getElementById('settingsClose2');
   const tmdbInput = document.getElementById('tmdbTokenInput');
   const tmdbSave = document.getElementById('tmdbSave');
@@ -607,6 +611,7 @@ function initSettingsOverlay(cfg){
 
   open1 && open1.addEventListener('click', openOverlay);
   open2 && open2.addEventListener('click', ()=>{ openOverlay(); });
+  headerSettingsBtn && headerSettingsBtn.addEventListener('click', openOverlay);
   close2 && close2.addEventListener('click', closeOverlay);
   overlay && overlay.addEventListener('click', (ev)=>{ if(ev.target===overlay) closeOverlay(); });
   overlay && overlay.addEventListener('keydown', handleKeydown);
