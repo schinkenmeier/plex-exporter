@@ -244,12 +244,12 @@ header.site-header {
 .filters-wrap {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: clamp(16px, 2vw, 24px) 0 clamp(14px, 2vw, 20px);
+  gap: clamp(10px, 2vh, 14px);
+  padding: clamp(12px, 2.4vh, 24px) 0 clamp(10px, 2vh, 20px);
 }
 
 .filters-main {
-  --filters-gap: 12px;
+  --filters-gap: clamp(8px, min(1.6vw, 2vh), 12px);
   display: grid;
   grid-template-columns:
     minmax(0, 1.6fr)
