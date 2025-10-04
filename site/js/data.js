@@ -108,8 +108,8 @@ export function prefixThumbValue(value, base){
   const raw = value == null ? '' : String(value).trim();
   if(!raw) return '';
   if(raw.startsWith('//') || raw.startsWith('/') || SCHEME_RE.test(raw)) return raw;
+  const normalizedRaw = raw.replace(/\\/g, '/');
   const normalizedBase = base ? (base.endsWith('/') ? base : `${base}/`) : '';
-  const withoutDots = raw.replace(/^\.\/+/, '');
   const encodePath = path => path.split('/').map(segment => {
     if(!segment) return '';
     try{
@@ -118,17 +118,27 @@ export function prefixThumbValue(value, base){
       return encodeURIComponent(segment);
     }
   }).join('/');
-  if(withoutDots.startsWith('data/')) return encodePath(withoutDots);
-  const cleanedLeading = withoutDots.replace(/^\/+/, '');
-  let cleaned = cleanedLeading;
-  if(normalizedBase){
-    const escapeRegExp = str => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const trimmed = normalizedRaw.replace(/^\/+/, '');
+  const segments = trimmed.split('/');
+  const normalizedSegments = [];
+  for(const segment of segments){
+    if(!segment || segment === '.') continue;
+    if(segment === '..'){
+      if(normalizedSegments.length) normalizedSegments.pop();
+      continue;
+    }
+    normalizedSegments.push(segment);
+  }
+  const normalizedPath = normalizedSegments.join('/');
+  if(normalizedPath.startsWith('data/')) return encodePath(normalizedPath);
+  let relativeSegments = normalizedSegments;
+  if(normalizedBase && relativeSegments.length){
     const baseDir = normalizedBase.replace(/\/+$/, '').split('/').pop();
-    if(baseDir){
-      const re = new RegExp(`^${escapeRegExp(baseDir)}\/`);
-      cleaned = cleanedLeading.replace(re, '');
+    if(baseDir && relativeSegments[0] === baseDir){
+      relativeSegments = relativeSegments.slice(1);
     }
   }
+  const cleaned = relativeSegments.join('/');
   const encoded = encodePath(cleaned);
   return `${normalizedBase}${encoded}`;
 }
