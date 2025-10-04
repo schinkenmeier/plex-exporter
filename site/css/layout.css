@@ -182,7 +182,7 @@ header.site-header {
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: clamp(20px, 4vw, 40px);
   align-items: center;
-  min-height: clamp(420px, 55vh, 650px);
+  min-height: clamp(300px, 45vh, 520px);
 }
 
 .hero__copy {
@@ -344,6 +344,20 @@ header.site-header {
 .grid.is-ready {
   opacity: 1;
   transform: none;
+}
+
+@media (max-height: 820px) {
+  .hero {
+    padding: clamp(32px, 10vw, 100px) 0 clamp(20px, 5vw, 56px);
+  }
+
+  .hero__content {
+    gap: clamp(16px, 3vw, 28px);
+  }
+
+  .filters {
+    top: 56px;
+  }
 }
 
 .empty {
