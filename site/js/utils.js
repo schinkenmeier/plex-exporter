@@ -57,13 +57,22 @@ export function humanYear(item){
 }
 
 export function formatRating(val){
-  if(val === undefined || val === null || val === '') return '';
-  const num = Number(val);
-  if(Number.isFinite(num)){
-    const fixed = num.toFixed(1);
-    return fixed.endsWith('.0') ? fixed.slice(0,-2) : fixed;
+  if(val instanceof Number){
+    return formatRating(val.valueOf());
   }
-  return String(val).trim();
+
+  if(typeof val === 'number'){
+    return Number.isFinite(val) ? val.toFixed(1) : '0.0';
+  }
+
+  if(typeof val === 'string'){
+    const trimmed = val.trim();
+    if(!trimmed) return '0.0';
+    const num = Number(trimmed);
+    return Number.isFinite(num) ? num.toFixed(1) : '0.0';
+  }
+
+  return '0.0';
 }
 
 function chip(text){ const s=document.createElement('span'); s.className='chip'; s.textContent=String(text||''); return s; }
