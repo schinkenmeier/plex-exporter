@@ -723,7 +723,7 @@ function initSettingsOverlay(cfg){
   tmdbClear && tmdbClear.addEventListener('click', ()=>{ import('./services/tmdb.js').then(m=>m.clearCache?.()); });
   reduce && reduce.addEventListener('change', ()=>{
     try{ localStorage.setItem('prefReduceMotion', reduce.checked ? '1' : '0'); }catch{}
-    document.documentElement.classList.toggle('reduce-motion', reduce.checked);
+    setReduceMotionClass(reduce.checked);
   });
   useTmdb && useTmdb.addEventListener('change', ()=>{
     try{ localStorage.setItem('useTmdb', useTmdb.checked ? '1' : '0'); }catch{}
@@ -761,10 +761,26 @@ function initSettingsOverlay(cfg){
   });
 }
 
+function setReduceMotionClass(pref){
+  try{
+    const body = document.body;
+    if(body){
+      document.documentElement?.classList.remove('reduce-motion', 'reduced-motion');
+      body.classList.remove('reduced-motion');
+      body.classList.toggle('reduce-motion', pref);
+    } else {
+      document.documentElement?.classList.toggle('reduce-motion', pref);
+      window.addEventListener('DOMContentLoaded', ()=> setReduceMotionClass(pref), { once: true });
+    }
+  }catch(err){
+    console.warn('[main] Failed to update reduce motion class:', err.message);
+  }
+}
+
 function applyReduceMotionPref(){
   try{
     const pref = localStorage.getItem('prefReduceMotion')==='1';
-    document.documentElement.classList.toggle('reduce-motion', pref);
+    setReduceMotionClass(pref);
   }catch(err){
     console.warn('[main] Failed to apply reduce motion preference:', err.message);
   }
