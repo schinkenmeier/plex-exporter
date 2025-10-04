@@ -31,60 +31,111 @@ header.site-header {
 }
 
 .site-header__layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: clamp(16px, 3vw, 28px);
-  align-items: center;
-  padding: clamp(18px, 2.4vw, 32px) 0;
-}
-
-.site-header__branding {
   display: flex;
   align-items: center;
-  gap: clamp(16px, 2.4vw, 28px);
+  justify-content: space-between;
+  gap: clamp(12px, 2vw, 28px);
+  padding: clamp(12px, 1.8vw, 20px) 0;
+}
+
+.site-header__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: clamp(10px, 2vw, 18px);
+  min-width: 0;
 }
 
 .site-header__logo {
-  height: clamp(58px, 6vw, 88px);
+  height: clamp(30px, 4.5vw, 54px);
   width: auto;
-  filter: drop-shadow(0 18px 36px rgba(2, 5, 14, 0.75));
+  filter: drop-shadow(0 12px 24px rgba(2, 5, 14, 0.65));
   transition: transform var(--transition-base), filter var(--transition-base);
 }
 
-.site-header__titles {
+.site-header__brand-text {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
+  min-width: 0;
 }
 
-.site-title {
-  font-size: clamp(26px, 2.6vw, 38px);
+.site-header__label {
+  font-size: clamp(18px, 2.2vw, 26px);
   text-transform: uppercase;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
 }
 
-.site-subtitle {
-  font-size: clamp(14px, 1.5vw, 18px);
+.site-header__stats {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   color: var(--muted);
-  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 
-.site-header__meta {
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: clamp(12px, 2.4vw, 24px);
+  min-width: 0;
+}
+
+.site-nav__tabs {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 18px;
-  border-radius: var(--radius-pill);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(9, 13, 22, 0.75);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  justify-self: end;
+  overflow-x: auto;
+  max-width: clamp(220px, 36vw, 420px);
+  padding-block: 4px;
+  margin-inline-end: clamp(4px, 1vw, 12px);
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
 
-.site-header__switch {
-  justify-self: end;
+.site-nav__tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.site-nav__tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: max-content;
+  padding: 9px 18px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(14, 18, 30, 0.7);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transition: border-color var(--transition-base), background var(--transition-base), box-shadow var(--transition-base), color var(--transition-base);
+  scroll-snap-align: center;
+}
+
+.site-nav__tab:hover,
+.site-nav__tab:focus-visible {
+  border-color: rgba(249, 178, 51, 0.45);
+  color: #fff;
+}
+
+.site-nav__tab.is-active {
+  background: linear-gradient(145deg, rgba(249, 178, 51, 0.28), rgba(255, 255, 255, 0.12));
+  border-color: rgba(249, 178, 51, 0.6);
+  box-shadow: 0 18px 34px rgba(5, 10, 20, 0.45);
+  color: #fff;
+}
+
+.site-nav__tab.is-active:focus-visible {
+  outline-offset: 4px;
+}
+
+.site-nav .watchlist-button {
+  flex-shrink: 0;
 }
 
 .hero {
@@ -327,16 +378,21 @@ header.site-header {
 
 @media (max-width: 1024px) {
   .site-header__layout {
-    grid-template-columns: 1fr;
-    text-align: left;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
   }
 
-  .site-header__switch {
-    justify-self: start;
+  .site-nav {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
   }
 
-  .site-header__meta {
-    justify-self: start;
+  .site-nav__tabs {
+    flex: 1 1 auto;
+    max-width: none;
   }
 
   .hero__content {
@@ -374,13 +430,27 @@ header.site-header {
   }
 
   .site-header__layout {
-    padding-block: 20px;
-    gap: 16px;
+    padding-block: 16px;
+    gap: 12px;
   }
 
-  .site-header__branding {
+  .site-header__brand {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .site-header__label {
+    white-space: normal;
+  }
+
+  .site-nav {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
+  }
+
+  .site-nav__tabs {
+    justify-content: flex-start;
   }
 
   .hero {
@@ -419,7 +489,7 @@ header.site-header {
 }
 
 @media (max-width: 520px) {
-  .site-title {
+  .site-header__label {
     letter-spacing: 0.12em;
   }
 
