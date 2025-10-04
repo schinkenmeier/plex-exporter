@@ -3,38 +3,56 @@
  * Run with: node --test site/js/__tests__/cache.test.js
  */
 
-import { describe, it, beforeEach } from 'node:test';
+import { describe, it, beforeEach, after } from 'node:test';
 import assert from 'node:assert';
 
-// Mock localStorage
-global.localStorage = {
-  data: {},
-  getItem(key) {
-    return this.data[key] || null;
-  },
-  setItem(key, value) {
-    this.data[key] = value;
-  },
-  removeItem(key) {
-    delete this.data[key];
-  },
-  clear() {
-    this.data = {};
-  },
-  keys() {
-    return Object.keys(this.data);
-  }
-};
+// Mock localStorage with proper Object.keys() support
+const localStorageData = {};
 
-// Mock window
+global.localStorage = new Proxy(localStorageData, {
+  get(target, prop) {
+    if (prop === 'getItem') {
+      return (key) => target[key] || null;
+    }
+    if (prop === 'setItem') {
+      return (key, value) => { target[key] = value; };
+    }
+    if (prop === 'removeItem') {
+      return (key) => { delete target[key]; };
+    }
+    if (prop === 'clear') {
+      return () => {
+        Object.keys(target).forEach(key => delete target[key]);
+      };
+    }
+    return target[prop];
+  },
+  ownKeys(target) {
+    return Object.keys(target);
+  },
+  getOwnPropertyDescriptor(target, prop) {
+    return {
+      enumerable: true,
+      configurable: true
+    };
+  }
+});
+
+// Mock window (but NOT as globalThis to prevent interval from starting)
 global.window = { localStorage: global.localStorage };
 
 // Import after mocks are set up
-const { setCache, getCache, removeCache, clearAllCache, getCacheStats } = await import('../cache.js');
+const { setCache, getCache, removeCache, clearAllCache, getCacheStats, stopCleanupInterval } = await import('../cache.js');
+
+// Cleanup after all tests
+after(() => {
+  stopCleanupInterval();
+});
 
 describe('Cache Module', () => {
   beforeEach(() => {
-    global.localStorage.clear();
+    // Clear the localStorageData object
+    Object.keys(localStorageData).forEach(key => delete localStorageData[key]);
   });
 
   describe('setCache and getCache', () => {
