@@ -241,6 +241,14 @@ html {
   max-height: var(--hero-h, 600px);
 }
 
+.hero.is-collapsing {
+  opacity: 0;
+  max-height: 0;
+  min-height: 0;
+  margin-bottom: 0;
+  pointer-events: auto;
+}
+
 .hero.is-hidden {
   opacity: 0;
   max-height: 0;
@@ -261,6 +269,7 @@ html {
   will-change: opacity, transform;
   transition: opacity var(--dur-ui) var(--ease-ui),
               transform var(--dur-ui) var(--ease-ui);
+  pointer-events: auto;
 }
 
 .filters.is-hidden {
@@ -284,6 +293,10 @@ body.hero-hidden .hero {
   min-height: 0;
   margin-bottom: 0;
   pointer-events: none;
+}
+
+body.hero-hidden .hero.is-collapsing {
+  pointer-events: auto;
 }
 
 body.filters-hidden .filters {
@@ -331,6 +344,7 @@ body.filters-hidden .grid {
   /* Disable orchestration animations */
   .hero,
   .hero.is-hidden,
+  .hero.is-collapsing,
   .filters.is-collapsing,
   .filters.is-hidden {
     transition: none !important;
@@ -357,6 +371,7 @@ body.filters-hidden .grid {
 /* User reduce-motion toggle (body.reduce-motion) */
 body.reduce-motion .hero,
 body.reduce-motion .hero.is-hidden,
+body.reduce-motion .hero.is-collapsing,
 body.reduce-motion .filters.is-collapsing,
 body.reduce-motion .filters.is-hidden,
 body.reduce-motion .grid {

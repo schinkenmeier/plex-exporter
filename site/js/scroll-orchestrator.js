@@ -53,6 +53,8 @@ export function initScrollOrchestrator({
   let scrollTicking = false;
   let intersectionObserver = null;
   let resizeObserver = null;
+  let heroTransitionHandler = null;
+  let heroTransitionMode = null; // 'collapsing' | 'expanding'
 
   // Focus selectors for interaction detection
   const focusableSelectors = [
@@ -357,6 +359,56 @@ export function initScrollOrchestrator({
     applyState(newState);
   }
 
+  function detachHeroTransitionHandler() {
+    if (heroTransitionHandler && heroEl) {
+      heroEl.removeEventListener('transitionend', heroTransitionHandler);
+      heroEl.removeEventListener('transitioncancel', heroTransitionHandler);
+    }
+    heroTransitionHandler = null;
+  }
+
+  function clearHeroTransition() {
+    detachHeroTransitionHandler();
+    heroTransitionMode = null;
+  }
+
+  function completeHeroTransition() {
+    if (!heroTransitionMode) {
+      detachHeroTransitionHandler();
+      return;
+    }
+
+    const mode = heroTransitionMode;
+    detachHeroTransitionHandler();
+    heroTransitionMode = null;
+
+    if (mode === 'expanding') {
+      if (heroEl) {
+        heroEl.classList.remove('is-collapsing');
+        heroEl.removeAttribute('aria-hidden');
+      }
+
+      if (filterEl) {
+        filterEl.classList.remove('is-collapsing', 'is-sticky', 'is-hidden');
+        filterEl.removeAttribute('aria-hidden');
+        removeInert(filterEl);
+      }
+    } else if (mode === 'collapsing') {
+      if (heroEl) {
+        heroEl.classList.remove('is-collapsing');
+        heroEl.classList.add('is-hidden');
+        heroEl.setAttribute('aria-hidden', 'true');
+      }
+
+      if (filterEl) {
+        filterEl.classList.remove('is-collapsing');
+        filterEl.classList.add('is-sticky');
+        filterEl.removeAttribute('aria-hidden');
+        removeInert(filterEl);
+      }
+    }
+  }
+
   /**
    * Apply body classes and element states for current state
    */
@@ -387,18 +439,54 @@ export function initScrollOrchestrator({
    * State: has-hero (hero visible, filterbar normal)
    */
   function applyHasHeroState(skipAnimation) {
+    clearHeroTransition();
+
+    let heroWillAnimate = false;
+
     if (heroEl) {
+      heroWillAnimate =
+        (heroEl.classList.contains('is-hidden') || heroEl.classList.contains('is-collapsing')) &&
+        !skipAnimation &&
+        !shouldReduceMotion;
+
       heroEl.classList.remove('is-hidden', 'is-collapsing');
-      heroEl.removeAttribute('aria-hidden');
       // Clear any inline styles
       heroEl.style.opacity = '';
       heroEl.style.transform = '';
+
+      if (heroWillAnimate) {
+        heroTransitionMode = 'expanding';
+
+        heroTransitionHandler = event => {
+          if (!heroEl || event.target !== heroEl || event.propertyName !== 'max-height') {
+            return;
+          }
+
+          completeHeroTransition();
+        };
+
+        heroEl.addEventListener('transitionend', heroTransitionHandler);
+        heroEl.addEventListener('transitioncancel', heroTransitionHandler);
+
+        requestAnimationFrame(() => {
+          if (heroTransitionMode !== 'expanding' || !heroEl) return;
+          void heroEl.offsetHeight;
+        });
+      } else {
+        heroEl.removeAttribute('aria-hidden');
+      }
     }
 
     if (filterEl) {
       filterEl.classList.remove('is-hidden', 'is-collapsing');
       filterEl.removeAttribute('aria-hidden');
       removeInert(filterEl);
+
+      if (heroWillAnimate) {
+        filterEl.classList.add('is-collapsing');
+      } else {
+        filterEl.classList.remove('is-sticky');
+      }
     }
   }
 
@@ -406,20 +494,58 @@ export function initScrollOrchestrator({
    * State: hero-hidden (hero collapsed, filterbar sticky)
    */
   function applyHeroHiddenState(skipAnimation) {
+    clearHeroTransition();
+
+    let heroWillAnimate = false;
+
     if (heroEl) {
-      heroEl.classList.add('is-hidden');
-      heroEl.classList.remove('is-collapsing');
-      heroEl.setAttribute('aria-hidden', 'true');
+      heroWillAnimate = !skipAnimation && !shouldReduceMotion && !heroEl.classList.contains('is-hidden');
+
       // Clear any inline styles
       heroEl.style.opacity = '';
       heroEl.style.transform = '';
+
+      if (heroWillAnimate) {
+        heroTransitionMode = 'collapsing';
+
+        if (filterEl) {
+          filterEl.classList.remove('is-hidden', 'is-sticky');
+          filterEl.classList.add('is-collapsing');
+          filterEl.removeAttribute('aria-hidden');
+          removeInert(filterEl);
+        }
+
+        heroTransitionHandler = event => {
+          if (!heroEl || event.target !== heroEl || event.propertyName !== 'max-height') {
+            return;
+          }
+
+          completeHeroTransition();
+        };
+
+        heroEl.addEventListener('transitionend', heroTransitionHandler);
+        heroEl.addEventListener('transitioncancel', heroTransitionHandler);
+
+        heroEl.classList.remove('is-hidden', 'is-collapsing');
+
+        requestAnimationFrame(() => {
+          if (heroTransitionMode !== 'collapsing' || !heroEl) return;
+          heroEl.classList.add('is-collapsing');
+        });
+      } else {
+        heroEl.classList.add('is-hidden');
+        heroEl.classList.remove('is-collapsing');
+        heroEl.setAttribute('aria-hidden', 'true');
+      }
     }
 
     if (filterEl) {
-      filterEl.classList.remove('is-hidden', 'is-collapsing');
-      filterEl.classList.add('is-sticky');
-      filterEl.removeAttribute('aria-hidden');
-      removeInert(filterEl);
+      if (!heroWillAnimate) {
+        filterEl.classList.remove('is-hidden', 'is-collapsing');
+        filterEl.classList.add('is-sticky');
+        filterEl.removeAttribute('aria-hidden');
+        removeInert(filterEl);
+      }
     }
   }
 
@@ -427,8 +553,11 @@ export function initScrollOrchestrator({
    * State: filters-hidden (both hidden, grid maximized)
    */
   function applyFiltersHiddenState(skipAnimation) {
+    clearHeroTransition();
+
     if (heroEl) {
       heroEl.classList.add('is-hidden');
+      heroEl.classList.remove('is-collapsing');
       heroEl.setAttribute('aria-hidden', 'true');
       heroEl.style.opacity = '0';
       heroEl.style.transform = '';
@@ -436,7 +565,7 @@ export function initScrollOrchestrator({
 
     if (filterEl) {
       filterEl.classList.add('is-hidden');
-      filterEl.classList.remove('is-sticky');
+      filterEl.classList.remove('is-sticky', 'is-collapsing');
       filterEl.setAttribute('aria-hidden', 'true');
 
       // Clear focus if inside filterbar
@@ -526,6 +655,10 @@ export function initScrollOrchestrator({
   function setReduceMotion(reduce) {
     shouldReduceMotion = reduce;
     document.body.classList.toggle('reduce-motion', reduce);
+
+    if (reduce) {
+      completeHeroTransition();
+    }
   }
 
   /**
