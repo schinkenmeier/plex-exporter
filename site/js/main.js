@@ -10,9 +10,11 @@ import * as Debug from './debug.js';
 import { humanYear, formatRating, useTmdbOn } from './utils.js';
 import { initErrorHandler, showError, showRetryableError } from './errorHandler.js';
 import { initFilterBarAutoHide } from './filterBarAutoHide.js';
+import { initScrollOrchestrator } from './scroll-orchestrator.js';
 
 let currentHeroItem = null;
 let heroDefaults = null;
+let scrollOrchestratorInstance = null;
 
 function setFooterStatus(message, busy=true){
   const footer = document.getElementById('footerMeta');
@@ -79,6 +81,7 @@ async function boot(){
     initScrollProgress();
     initScrollTop();
     initFilterBarAutoHide();
+    initScrollOrchestratorWithSettings();
     renderHeroHighlight();
     Debug.initDebugUi();
   } catch (error) {
@@ -500,6 +503,7 @@ function initSettingsOverlay(cfg){
   const reduce = document.getElementById('prefReduceMotion');
   const useTmdb = document.getElementById('useTmdbSetting');
   const resetFilters = document.getElementById('resetFilters');
+  const scrollOrchestratorToggle = document.getElementById('scrollOrchestratorToggle');
 
   if(overlay && overlay.hidden) overlay.setAttribute('aria-hidden', 'true');
 
@@ -654,6 +658,7 @@ function initSettingsOverlay(cfg){
     let token = '';
     try{ tmdbInput && (tmdbInput.value = token = (localStorage.getItem('tmdbToken')||'')); }catch{}
     try{ reduce && (reduce.checked = localStorage.getItem('prefReduceMotion')==='1'); }catch{}
+    try{ scrollOrchestratorToggle && (scrollOrchestratorToggle.checked = localStorage.getItem('scrollOrchestratorEnabled')!=='0'); }catch{}
     try{ if(useTmdb){
       useTmdb.checked = localStorage.getItem('useTmdb')==='1';
       useTmdb.disabled = !token;
@@ -724,6 +729,10 @@ function initSettingsOverlay(cfg){
   reduce && reduce.addEventListener('change', ()=>{
     try{ localStorage.setItem('prefReduceMotion', reduce.checked ? '1' : '0'); }catch{}
     setReduceMotionClass(reduce.checked);
+    // Update scroll orchestrator
+    if(scrollOrchestratorInstance && scrollOrchestratorInstance.setReduceMotion){
+      scrollOrchestratorInstance.setReduceMotion(reduce.checked);
+    }
   });
   useTmdb && useTmdb.addEventListener('change', ()=>{
     try{ localStorage.setItem('useTmdb', useTmdb.checked ? '1' : '0'); }catch{}
@@ -758,6 +767,22 @@ function initSettingsOverlay(cfg){
       renderGrid(getState().view);
       renderHeroHighlight(result);
     });
+  });
+
+  scrollOrchestratorToggle && scrollOrchestratorToggle.addEventListener('change', ()=>{
+    const enabled = scrollOrchestratorToggle.checked;
+    try{
+      localStorage.setItem('scrollOrchestratorEnabled', enabled ? '1' : '0');
+    }catch{}
+
+    // Update orchestrator instance
+    if(scrollOrchestratorInstance && scrollOrchestratorInstance.setEnabled){
+      scrollOrchestratorInstance.setEnabled(enabled);
+    } else if(enabled){
+      // If toggled on but instance doesn't exist, reinitialize
+      closeOverlay();
+      window.location.reload(); // Simple approach: reload to reinit
+    }
   });
 }
 
@@ -913,3 +938,44 @@ function initScrollTop(){
   toggle();
   btn.addEventListener('click', ()=> window.scrollTo({ top:0, behavior:'smooth' }));
 }
+
+function initScrollOrchestratorWithSettings(){
+  const heroEl = document.getElementById('hero');
+  const filterEl = document.getElementById('filterBar');
+  const headerEl = document.querySelector('.site-header');
+  const mainEl = document.getElementById('main');
+  const advancedToggle = document.getElementById('toggleAdvanced');
+  const advancedPanel = document.getElementById('advancedFilters');
+
+  if(!heroEl || !filterEl) {
+    console.warn('[main] Cannot init scroll orchestrator: missing hero or filterBar');
+    return;
+  }
+
+  // Read initial reduce motion preference
+  const reduceMotionFlag = localStorage.getItem('prefReduceMotion') === '1';
+
+  // Check if orchestrator is enabled (default: true)
+  const orchestratorEnabled = localStorage.getItem('scrollOrchestratorEnabled') !== '0';
+
+  if(!orchestratorEnabled) {
+    console.log('[main] Scroll orchestrator disabled via settings');
+    return;
+  }
+
+  // Initialize orchestrator
+  scrollOrchestratorInstance = initScrollOrchestrator({
+    heroEl,
+    filterEl,
+    headerEl,
+    mainEl,
+    advancedToggle,
+    advancedPanel,
+    reduceMotionFlag
+  });
+
+  console.log('[main] Scroll orchestrator initialized');
+}
+
+// Expose orchestrator instance for settings toggle
+window.__scrollOrchestrator = () => scrollOrchestratorInstance;

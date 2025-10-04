@@ -220,6 +220,94 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Scroll Orchestration – Hero & Filterbar State Transitions */
+
+/* CSS Variables for smooth orchestration */
+:root {
+  --hero-h: 720px;
+  --filters-h: 80px;
+  --ease-ui: cubic-bezier(0.18, 0.67, 0.32, 1);
+  --dur-ui: 360ms;
+}
+
+/* Hero collapse & hide states – simple and smooth */
+.hero {
+  transform-origin: top center;
+  transition: opacity calc(var(--dur-ui) * 0.7) var(--ease-ui),
+              max-height var(--dur-ui) var(--ease-ui),
+              min-height var(--dur-ui) var(--ease-ui),
+              margin-bottom var(--dur-ui) var(--ease-ui);
+  will-change: opacity, max-height, margin-bottom;
+  max-height: var(--hero-h, 600px);
+}
+
+.hero.is-hidden {
+  opacity: 0;
+  max-height: 0;
+  min-height: 0;
+  pointer-events: none;
+  margin-bottom: 0;
+}
+
+/* Filterbar sticky & hide states */
+.filters.is-sticky {
+  position: sticky;
+  top: clamp(68px, 8vw, 88px);
+  transition: transform var(--dur-ui) var(--ease-ui),
+              opacity var(--dur-ui) var(--ease-ui);
+}
+
+.filters.is-collapsing {
+  will-change: opacity, transform;
+  transition: opacity var(--dur-ui) var(--ease-ui),
+              transform var(--dur-ui) var(--ease-ui);
+}
+
+.filters.is-hidden {
+  opacity: 0;
+  transform: translateY(-12px);
+  pointer-events: none;
+  transition: opacity calc(var(--dur-ui) * 0.7) var(--ease-ui),
+              transform var(--dur-ui) var(--ease-ui);
+}
+
+/* Body state classes for scroll orchestration */
+body.has-hero .hero {
+  opacity: 1;
+  max-height: var(--hero-h, 600px);
+  margin-bottom: 0;
+}
+
+body.hero-hidden .hero {
+  opacity: 0;
+  max-height: 0;
+  min-height: 0;
+  margin-bottom: 0;
+  pointer-events: none;
+}
+
+body.filters-hidden .filters {
+  opacity: 0;
+  transform: translateY(-12px);
+  pointer-events: none;
+}
+
+/* Scroll progress bar – only visible when filters hidden */
+body.filters-hidden .scroll-progress {
+  opacity: 1;
+  transition: opacity calc(var(--dur-ui) * 1.2) var(--ease-ui);
+}
+
+body:not(.filters-hidden) .scroll-progress {
+  opacity: 0;
+}
+
+/* Grid adjustment when filterbar hidden – smooth shift */
+body.filters-hidden .grid {
+  padding-top: clamp(8px, 2vw, 16px);
+  transition: padding var(--dur-ui) var(--ease-ui);
+}
+
 /* Reduce motion preferences */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -239,6 +327,58 @@ html {
   .btn:hover {
     transform: none;
   }
+
+  /* Disable orchestration animations */
+  .hero,
+  .hero.is-hidden,
+  .filters.is-collapsing,
+  .filters.is-hidden {
+    transition: none !important;
+    will-change: auto;
+  }
+
+  body.has-hero .hero {
+    max-height: var(--hero-h, 600px);
+    margin-bottom: 0;
+  }
+
+  body.hero-hidden .hero {
+    max-height: 0;
+    min-height: 0;
+    margin-bottom: 0;
+    pointer-events: none;
+  }
+
+  body.filters-hidden .filters {
+    transform: none;
+  }
+}
+
+/* User reduce-motion toggle (body.reduce-motion) */
+body.reduce-motion .hero,
+body.reduce-motion .hero.is-hidden,
+body.reduce-motion .filters.is-collapsing,
+body.reduce-motion .filters.is-hidden,
+body.reduce-motion .grid {
+  transition: none !important;
+  animation: none !important;
+  will-change: auto;
+}
+
+body.reduce-motion.has-hero .hero {
+  max-height: var(--hero-h, 600px);
+  margin-bottom: 0;
+}
+
+body.reduce-motion.hero-hidden .hero {
+  max-height: 0;
+  min-height: 0;
+  margin-bottom: 0;
+  pointer-events: none;
+}
+
+body.reduce-motion.filters-hidden .filters {
+  transform: none;
 }
 
 /* Loading state for images */

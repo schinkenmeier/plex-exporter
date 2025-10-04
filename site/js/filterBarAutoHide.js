@@ -1,12 +1,10 @@
 /**
- * Auto-hide filter bar on scroll and when modals are open
+ * Auto-hide filter bar when modals/overlays are open
+ *
+ * NOTE: Hero fade & scroll-based auto-hide is now handled by scroll-orchestrator.js.
+ * This module only handles filterbar hiding when overlays (modals, settings, watchlist) open.
  */
 
-const SCROLL_SHOW_THRESHOLD = 50;
-
-let lastScrollY = 0;
-let isScrollingDown = false;
-let scrollTicking = false;
 let filterBar = null;
 const supportsInert =
   typeof HTMLElement !== 'undefined' && 'inert' in HTMLElement.prototype;
@@ -25,14 +23,11 @@ const focusableSelectors = [
 ].join(',');
 
 /**
- * Initialize auto-hide functionality
+ * Initialize auto-hide functionality (overlay-based only)
  */
 export function initFilterBarAutoHide() {
   filterBar = document.getElementById('filterBar');
   if (!filterBar) return;
-
-  // Listen to scroll events
-  window.addEventListener('scroll', handleScroll, { passive: true });
 
   // Listen to modal open/close events
   document.addEventListener('modal:open', hideFilterBar);
@@ -48,55 +43,10 @@ export function initFilterBarAutoHide() {
 }
 
 /**
- * Handle scroll events with throttling
- */
-function handleScroll() {
-  if (!scrollTicking) {
-    window.requestAnimationFrame(() => {
-      updateFilterBarVisibility();
-      scrollTicking = false;
-    });
-    scrollTicking = true;
-  }
-}
-
-/**
- * Update filter bar visibility based on scroll position
- */
-function updateFilterBarVisibility() {
-  const currentScrollY = window.scrollY;
-
-  // Determine scroll direction
-  if (currentScrollY > lastScrollY && currentScrollY > SCROLL_SHOW_THRESHOLD) {
-    // Scrolling down and past threshold
-    if (!isScrollingDown) {
-      hideFilterBar();
-    }
-  } else if (currentScrollY < lastScrollY) {
-    // Scrolling up
-    if (isScrollingDown && currentScrollY <= SCROLL_SHOW_THRESHOLD) {
-      showFilterBar();
-    }
-  } else if (
-    currentScrollY <= SCROLL_SHOW_THRESHOLD &&
-    filterBar &&
-    filterBar.classList.contains('filters--hidden')
-  ) {
-    // Handle cases where the bar is hidden but scroll position was reset without
-    // triggering a scroll direction change (e.g. scroll-to-top button)
-    showFilterBar();
-  }
-
-  lastScrollY = currentScrollY;
-}
-
-/**
  * Hide the filter bar
  */
 function hideFilterBar() {
   if (!filterBar) return;
-  isScrollingDown = true;
-  lastScrollY = window.scrollY;
   filterBar.classList.add('filters--hidden');
   document.body.classList.add('filter-bar-hidden');
   filterBar.setAttribute('aria-hidden', 'true');
@@ -122,8 +72,6 @@ function showFilterBar() {
     return; // Keep hidden if something is open
   }
 
-  isScrollingDown = false;
-  lastScrollY = window.scrollY;
   filterBar.classList.remove('filters--hidden');
   document.body.classList.remove('filter-bar-hidden');
   filterBar.setAttribute('aria-hidden', 'false');
