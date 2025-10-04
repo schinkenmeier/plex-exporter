@@ -24,9 +24,8 @@
 }
 
 .library-switch button.active {
-  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  background: var(--accent);
   color: var(--accent-contrast);
-  box-shadow: 0 12px 26px rgba(94, 142, 255, 0.32);
 }
 
 .settings-overlay {
@@ -152,8 +151,8 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: transform var(--transition-base), box-shadow var(--transition-base), background var(--transition-base), border-color var(--transition-base), color var(--transition-base);
-  background: linear-gradient(135deg, rgba(20, 32, 52, 0.95), rgba(16, 26, 42, 0.95));
+  transition: transform var(--transition-base), background-color var(--transition-base), opacity var(--transition-base), border-color var(--transition-base), color var(--transition-base);
+  background-color: rgba(18, 26, 42, 0.94);
   color: var(--fg);
 }
 
@@ -163,10 +162,9 @@
 .watchlist-actions > button.primary,
 #tmdbSave,
 #exportWatchlist {
-  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  background-color: var(--accent);
   color: var(--accent-contrast);
   border-color: transparent;
-  box-shadow: 0 20px 45px rgba(74, 120, 210, 0.42);
 }
 
 .btn,
@@ -185,7 +183,7 @@
 #toggleAdvanced,
 #watchlistToggle,
 #settingsBtn {
-  background: rgba(18, 26, 42, 0.9);
+  background-color: rgba(18, 26, 42, 0.88);
   border-color: var(--border);
   color: var(--fg);
 }
@@ -197,7 +195,7 @@
 #tmdbSave:hover,
 #exportWatchlist:hover {
   transform: translateY(-1px);
-  box-shadow: 0 24px 48px rgba(74, 120, 210, 0.46);
+  background-color: var(--accent-strong);
 }
 
 .btn:hover,
@@ -234,7 +232,29 @@
 #watchlistToggle:focus-visible,
 #settingsBtn:focus-visible {
   border-color: var(--border-strong);
-  box-shadow: var(--shadow-ring);
+}
+
+.hero__cta:focus-visible,
+.btn:focus-visible,
+.watchlist-button:focus-visible,
+.settings-button:focus-visible,
+.toggle-advanced:focus-visible,
+.watchlist-actions > button:focus-visible,
+.settings-actions > button:focus-visible,
+#yearReset:focus-visible,
+#closeWatchlist:focus-visible,
+#clearWatchlist:focus-visible,
+#settingsClose2:focus-visible,
+#tmdbTest:focus-visible,
+#tmdbClearCache:focus-visible,
+#resetFilters:focus-visible,
+#toggleAdvanced:focus-visible,
+#watchlistToggle:focus-visible,
+#settingsBtn:focus-visible,
+#tmdbSave:focus-visible,
+#exportWatchlist:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .btn:disabled,
@@ -257,7 +277,6 @@
 #exportWatchlist:disabled {
   opacity: 0.55;
   cursor: not-allowed;
-  box-shadow: none;
 }
 
 .btn-link {
