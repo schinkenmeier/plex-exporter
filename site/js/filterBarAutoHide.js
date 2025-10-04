@@ -6,7 +6,8 @@ let lastScrollY = 0;
 let isScrollingDown = false;
 let scrollTicking = false;
 let filterBar = null;
-const supportsInert = 'inert' in HTMLElement.prototype;
+const supportsInert =
+  typeof HTMLElement !== 'undefined' && 'inert' in HTMLElement.prototype;
 const focusableSelectors = [
   'a[href]',
   'area[href]',
