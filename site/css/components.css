@@ -324,6 +324,30 @@
   stroke-linejoin: round;
 }
 
+/* Ensure small icons also inside the filter chips header */
+.filters-chips .icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: rgba(18, 27, 46, 0.9);
+  border: 1px solid var(--border);
+  color: rgba(201, 216, 248, 0.88);
+}
+
+.filters-chips .icon svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  display: block;
+}
+
 .field input,
 .field select,
 .field button {

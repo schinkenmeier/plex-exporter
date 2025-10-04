@@ -1,4 +1,4 @@
-.loader-overlay{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45)}
+.loader-overlay{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.38)}
 .loader-overlay[hidden]{display:none}
 .loader{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;min-width:260px}
 .loader .bar{height:6px;background:linear-gradient(90deg,var(--accent),#f9b233);width:0;border-radius:999px}

@@ -426,6 +426,10 @@ window.addEventListener('filters:updated', ev=>{
 
 boot();
 
+// Fallback: ensure the loading overlay is not left visible
+// in case an error interrupts the boot sequence.
+window.addEventListener('load', ()=>{ try{ hideLoader(); }catch{} });
+
 function initSettingsOverlay(cfg){
   const overlay = document.getElementById('settingsOverlay');
   const dialog = overlay?.querySelector('.settings-dialog');

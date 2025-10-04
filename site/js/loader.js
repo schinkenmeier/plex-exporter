@@ -11,6 +11,9 @@ function ensure(){
   if(!overlay){
     overlay = el('div','loader-overlay');
     overlay.id = 'loaderOverlay';
+    // Start hidden by default so a partially executed boot sequence
+    // does not leave a dark overlay on screen.
+    overlay.hidden = true;
     const box = el('div','loader');
     msgEl = el('div','msg','');
     bar = el('div','bar');
@@ -35,4 +38,3 @@ export function clearSkeleton(){
   if(skeletonRoot && skeletonRoot.parentElement){ skeletonRoot.parentElement.removeChild(skeletonRoot); }
   skeletonRoot = null;
 }
-
