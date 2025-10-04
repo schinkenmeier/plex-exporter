@@ -113,8 +113,9 @@ input[type="radio"] {
   cursor: pointer;
 }
 
-.reduced-motion *,
-:where(body.reduce-motion *) {
+body.reduce-motion,
+body.reduce-motion *,
+.reduced-motion * {
   transition-duration: 0ms !important;
   animation-duration: 0ms !important;
 }
