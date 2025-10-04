@@ -123,26 +123,19 @@ window.addEventListener('hashchange', ()=>{
 });
 
 function renderSwitch(){
-  const root = document.getElementById('librarySwitch');
+  const root = document.getElementById('libraryTabs');
   if(!root) return;
-  root.replaceChildren();
-  const control = document.createElement('div');
-  control.className = 'segment-control';
-  control.setAttribute('role', 'group');
-  control.setAttribute('aria-label', 'Bibliotheken');
+  const buttons = Array.from(root.querySelectorAll('[data-lib]'));
   const current = getState().view === 'shows' ? 'shows' : 'movies';
-  const options = [['movies','Filme'], ['shows','Serien']];
-  options.forEach(([key,label])=>{
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.textContent = label;
-    btn.dataset.key = key;
-    const isActive = current === (key === 'shows' ? 'shows' : 'movies');
-    btn.classList.toggle('active', isActive);
+  buttons.forEach(btn => {
+    const target = btn.dataset.lib === 'series' ? 'shows' : 'movies';
+    const isActive = current === target;
+    btn.classList.toggle('is-active', isActive);
     btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-    btn.addEventListener('click', ()=>{
-      if(isActive) return;
-      const view = key === 'shows' ? 'shows' : 'movies';
+    if(btn.dataset.bound === 'true') return;
+    btn.addEventListener('click', () => {
+      const view = btn.dataset.lib === 'series' ? 'shows' : 'movies';
+      if(getState().view === view) return;
       setState({ view });
       try{ window.__skipNextHashNavigation = true; }catch{}
       location.hash = view === 'movies' ? '#/movies' : '#/shows';
@@ -151,9 +144,8 @@ function renderSwitch(){
       renderGrid(view);
       renderHeroHighlight(result);
     });
-    control.append(btn);
+    btn.dataset.bound = 'true';
   });
-  root.append(control);
 }
 
 function renderStats(animate=false){
@@ -721,7 +713,7 @@ function initHeaderInteractions(){
   if(siteLogo){
     siteLogo.addEventListener('error', ()=>{
       siteLogo.classList.add('logo-missing');
-      const titleEl = document.querySelector('.site-header__titles .site-title');
+      const titleEl = document.querySelector('.site-header__brand-text .site-header__label');
       if(titleEl) titleEl.classList.remove('sr-only');
     });
   }
