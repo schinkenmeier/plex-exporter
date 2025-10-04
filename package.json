@@ -6,7 +6,10 @@
   "scripts": {
     "build": "node tools/build.mjs",
     "build:watch": "node tools/build.mjs --watch",
-    "split:series": "node tools/split_series.mjs site/data/series/series_full.json site/data/series"
+    "split:series": "node tools/split_series.mjs site/data/series/series_full.json site/data/series",
+    "test": "node --test site/js/__tests__/*.test.js",
+    "test:coverage": "node --test --experimental-test-coverage site/js/__tests__/*.test.js",
+    "analyze": "node tools/analyze-bundle.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.19.12"

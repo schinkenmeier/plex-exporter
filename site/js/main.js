@@ -8,6 +8,7 @@ import { hydrateOptional } from './services/tmdb.js';
 import * as Watch from './watchlist.js';
 import * as Debug from './debug.js';
 import { humanYear, formatRating, useTmdbOn } from './utils.js';
+import { initErrorHandler, showError, showRetryableError } from './errorHandler.js';
 
 let currentHeroItem = null;
 let heroDefaults = null;
@@ -27,51 +28,64 @@ function setFooterStatus(message, busy=true){
 }
 
 async function boot(){
+  initErrorHandler();
   applyReduceMotionPref();
   showLoader();
   setFooterStatus('Initialisiere …', true);
   setLoader('Initialisiere …', 8);
   showSkeleton(18);
 
-  const cfg = await fetch('config.json').then(r=>r.json()).catch(()=>({ startView:'movies', tmdbEnabled:false }));
+  const cfg = await fetch('config.json').then(r=>r.json()).catch((err)=>{
+    console.warn('[main] Failed to load config.json, using defaults:', err.message);
+    showError('Konfiguration konnte nicht geladen werden', 'Verwende Standardeinstellungen');
+    return { startView:'movies', tmdbEnabled:false };
+  });
   setState({ cfg, view: cfg.startView || 'movies' });
 
-  setFooterStatus('Filme laden …', true);
-  setLoader('Filme laden …', 25);
-  const movies = await Data.loadMovies();
-  setFooterStatus('Serien laden …', true);
-  setLoader('Serien laden …', 45);
-  const shows  = await Data.loadShows();
+  try {
+    setFooterStatus('Filme laden …', true);
+    setLoader('Filme laden …', 25);
+    const movies = await Data.loadMovies();
+    setFooterStatus('Serien laden …', true);
+    setLoader('Serien laden …', 45);
+    const shows  = await Data.loadShows();
 
-  setFooterStatus('Filter vorbereiten …', true);
-  setLoader('Filter vorbereiten …', 60);
-  // build facets (richer set via Filter)
-  const facets = Filter.computeFacets(movies, shows);
-  setState({ movies, shows, facets });
+    setFooterStatus('Filter vorbereiten …', true);
+    setLoader('Filter vorbereiten …', 60);
+    // build facets (richer set via Filter)
+    const facets = Filter.computeFacets(movies, shows);
+    setState({ movies, shows, facets });
 
-  setFooterStatus('Ansicht aufbauen …', true);
-  setLoader('Ansicht aufbauen …', 85);
-  clearSkeleton();
-  renderSwitch();
-  Filter.renderFacets(facets);
-  Filter.initFilters();
-  Filter.applyFilters();
-  renderStats(true);
-  renderGrid(getState().view);
-  renderFooterMeta();
+    setFooterStatus('Ansicht aufbauen …', true);
+    setLoader('Ansicht aufbauen …', 85);
+    clearSkeleton();
+    renderSwitch();
+    Filter.renderFacets(facets);
+    Filter.initFilters();
+    Filter.applyFilters();
+    renderStats(true);
+    renderGrid(getState().view);
+    renderFooterMeta();
 
-  hideLoader();
+    hideLoader();
 
-  if(cfg.tmdbEnabled) (window.requestIdleCallback || setTimeout)(()=> hydrateOptional?.(movies, shows, cfg), 400);
+    if(cfg.tmdbEnabled) (window.requestIdleCallback || setTimeout)(()=> hydrateOptional?.(movies, shows, cfg), 400);
 
-  Watch.initUi();
-  initSettingsOverlay(cfg);
-  initAdvancedToggle();
-  initHeaderInteractions();
-  initScrollProgress();
-  initScrollTop();
-  renderHeroHighlight();
-  Debug.initDebugUi();
+    Watch.initUi();
+    initSettingsOverlay(cfg);
+    initAdvancedToggle();
+    initHeaderInteractions();
+    initScrollProgress();
+    initScrollTop();
+    renderHeroHighlight();
+    Debug.initDebugUi();
+  } catch (error) {
+    console.error('[main] Boot failed:', error);
+    hideLoader();
+    clearSkeleton();
+    showRetryableError('Fehler beim Laden der Daten', () => window.location.reload());
+    throw error;
+  }
   // Re-render grid on TMDB hydration progress to reveal new posters
   let tmdbRaf;
   window.addEventListener('tmdb:chunk', ()=>{
@@ -83,7 +97,9 @@ async function boot(){
           renderGrid(getState().view);
           renderHeroHighlight();
         }
-      }catch{}
+      }catch(err){
+        console.warn('[main] TMDB chunk render failed:', err.message);
+      }
     });
   });
   window.addEventListener('tmdb:done', ()=>{
@@ -92,36 +108,61 @@ async function boot(){
         renderGrid(getState().view);
         renderHeroHighlight();
       }
-    }catch{}
+    }catch(err){
+      console.warn('[main] TMDB done render failed:', err.message);
+    }
   });
 }
 
+// Debounced hashchange handler to prevent race conditions
+let hashchangeTimeout = null;
+let lastProcessedHash = '';
+
 window.addEventListener('hashchange', ()=>{
   if(window.__skipNextHashNavigation){
-    try{ window.__skipNextHashNavigation = false; }
-    catch{}
+    try{
+      window.__skipNextHashNavigation = false;
+      lastProcessedHash = location.hash || '';
+    }
+    catch(err){
+      console.warn('[main] Failed to reset skip navigation flag:', err.message);
+    }
     return;
   }
-  const hash = location.hash || '';
-  // deep link to views
-  if(/^#\/(movies|shows)$/.test(hash)){
-    const view = hash.includes('shows') ? 'shows' : 'movies';
-    setState({ view });
-    const result = Filter.applyFilters();
-    renderSwitch();
-    renderGrid(view);
-    renderHeroHighlight(result);
-    return;
+
+  const currentHash = location.hash || '';
+
+  // Debounce rapid hash changes
+  if(hashchangeTimeout){
+    clearTimeout(hashchangeTimeout);
   }
-  // item details
-  const m = hash.match(/^#\/(movie|show)\/(.+)/);
-  if(!m) return;
-  const [ , kind, id ] = m;
-  const pool = kind==='movie' ? getState().movies : getState().shows;
-  const item = (pool||[]).find(x => (x?.ids?.imdb===id || x?.ids?.tmdb===id || String(x?.ratingKey)===id));
-  if(!item) return;
-  if(kind === 'show') openSeriesModalV2(item);
-  else openMovieModalV2(item);
+
+  hashchangeTimeout = setTimeout(()=>{
+    // Skip if we already processed this hash
+    if(currentHash === lastProcessedHash) return;
+    lastProcessedHash = currentHash;
+
+    const hash = currentHash;
+    // deep link to views
+    if(/^#\/(movies|shows)$/.test(hash)){
+      const view = hash.includes('shows') ? 'shows' : 'movies';
+      setState({ view });
+      const result = Filter.applyFilters();
+      renderSwitch();
+      renderGrid(view);
+      renderHeroHighlight(result);
+      return;
+    }
+    // item details
+    const m = hash.match(/^#\/(movie|show)\/(.+)/);
+    if(!m) return;
+    const [ , kind, id ] = m;
+    const pool = kind==='movie' ? getState().movies : getState().shows;
+    const item = (pool||[]).find(x => (x?.ids?.imdb===id || x?.ids?.tmdb===id || String(x?.ratingKey)===id));
+    if(!item) return;
+    if(kind === 'show') openSeriesModalV2(item);
+    else openMovieModalV2(item);
+  }, 50);
 });
 
 function renderSwitch(){
@@ -139,7 +180,11 @@ function renderSwitch(){
       const view = btn.dataset.lib === 'series' ? 'shows' : 'movies';
       if(getState().view === view) return;
       setState({ view });
-      try{ window.__skipNextHashNavigation = true; }catch{}
+      try{
+        window.__skipNextHashNavigation = true;
+      }catch(err){
+        console.warn('[main] Failed to set skip navigation flag:', err.message);
+      }
       location.hash = view === 'movies' ? '#/movies' : '#/shows';
       renderSwitch();
       const result = Filter.applyFilters();
@@ -375,8 +420,14 @@ function navigateToItemHash(kind, id){
       else history.pushState(null, '', hash);
       return;
     }
-  }catch{}
-  try{ window.__skipNextHashNavigation = true; }catch{}
+  }catch(err){
+    console.warn('[main] Failed to navigate hash (pushState):', err.message);
+  }
+  try{
+    window.__skipNextHashNavigation = true;
+  }catch(err){
+    console.warn('[main] Failed to set skip navigation flag:', err.message);
+  }
   location.hash = hash;
 }
 
@@ -420,7 +471,13 @@ boot();
 
 // Fallback: ensure the loading overlay is not left visible
 // in case an error interrupts the boot sequence.
-window.addEventListener('load', ()=>{ try{ hideLoader(); }catch{} });
+window.addEventListener('load', ()=>{
+  try{
+    hideLoader();
+  }catch(err){
+    console.warn('[main] Failed to hide loader on load event:', err.message);
+  }
+});
 
 function initSettingsOverlay(cfg){
   const overlay = document.getElementById('settingsOverlay');
@@ -624,11 +681,9 @@ function initSettingsOverlay(cfg){
       const res = await svc.validateToken?.(raw);
       if(res && res.ok){
         setUseTmdbAvailability(true);
-        setUseTmdbAvailability(true);
         if(res.as==='bearer') setTmdbStatus('Token gültig (v4 Bearer).', 'success');
         else if(res.as==='apikey') setTmdbStatus('API Key gültig (v3). Tipp: dauerhaft in site/config.json unter "tmdbApiKey" eintragen.', 'success');
       }else{
-        setUseTmdbAvailability(false);
         setUseTmdbAvailability(false);
         if(res?.hint==='looksV3') setTmdbStatus('Eingegebener Wert sieht wie ein v3 API Key aus. Bitte in config.json als "tmdbApiKey" eintragen oder v4 Bearer Token verwenden.', 'error');
         else setTmdbStatus('Token ungültig oder keine Berechtigung (401).', 'error');
@@ -694,7 +749,12 @@ function initSettingsOverlay(cfg){
 }
 
 function applyReduceMotionPref(){
-  try{ const pref = localStorage.getItem('prefReduceMotion')==='1'; document.documentElement.classList.toggle('reduce-motion', pref); }catch{}
+  try{
+    const pref = localStorage.getItem('prefReduceMotion')==='1';
+    document.documentElement.classList.toggle('reduce-motion', pref);
+  }catch(err){
+    console.warn('[main] Failed to apply reduce motion preference:', err.message);
+  }
 }
 
 function initAdvancedToggle(){
