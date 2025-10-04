@@ -20,7 +20,13 @@ const jsOptions = {
   entryPoints: [path.join(siteDir, 'js', 'main.js')],
   format: 'esm',
   target: ['es2019'],
-  outfile: path.join(distDir, 'main.js')
+  outfile: path.join(distDir, 'main.js'),
+  treeShaking: true,
+  splitting: false, // Enable for code splitting if needed
+  metafile: true, // Generate bundle analysis
+  legalComments: 'none',
+  drop: watch ? [] : ['console', 'debugger'],
+  pure: ['console.log', 'console.debug']
 };
 
 const cssOptions = {
@@ -29,7 +35,8 @@ const cssOptions = {
   sourcemap: !watch,
   logLevel: 'info',
   entryPoints: [path.join(siteDir, 'css', 'app.css')],
-  outfile: path.join(distDir, 'app.css')
+  outfile: path.join(distDir, 'app.css'),
+  metafile: true
 };
 
 if(watch){
@@ -40,9 +47,20 @@ if(watch){
   await Promise.all([jsCtx.watch(), cssCtx.watch()]);
   console.log('Watching for changes...');
 }else{
-  await Promise.all([
+  const [jsResult, cssResult] = await Promise.all([
     build(jsOptions),
     build(cssOptions)
   ]);
+
+  // Log bundle sizes
+  if(jsResult.metafile){
+    const jsSize = Object.values(jsResult.metafile.outputs)[0]?.bytes || 0;
+    console.log(`JS Bundle: ${(jsSize / 1024).toFixed(2)} KB`);
+  }
+  if(cssResult.metafile){
+    const cssSize = Object.values(cssResult.metafile.outputs)[0]?.bytes || 0;
+    console.log(`CSS Bundle: ${(cssSize / 1024).toFixed(2)} KB`);
+  }
+
   console.log('Build completed.');
 }

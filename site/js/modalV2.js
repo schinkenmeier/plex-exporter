@@ -856,7 +856,10 @@ export function showModalV2Loading(message='Details werden geladen …'){
   const root = showOverlay();
   if(!root) return;
   root.hidden = false;
-  root.innerHTML = `<div class="modalv2-loading">${message}</div>`;
+  const loadingDiv = document.createElement('div');
+  loadingDiv.className = 'modalv2-loading';
+  loadingDiv.textContent = String(message || 'Details werden geladen …');
+  root.replaceChildren(loadingDiv);
 }
 
 export function renderModalV2(item){
@@ -947,7 +950,10 @@ export async function openMovieModalV2(idOrData){
   if(token !== renderToken) return;
   if(!data){
     root.hidden = false;
-    root.innerHTML = '<div class="modalv2-loading">Film konnte nicht geladen werden.</div>';
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'modalv2-loading';
+    errorDiv.textContent = 'Film konnte nicht geladen werden.';
+    root.replaceChildren(errorDiv);
     currentItem = null;
     currentKind = null;
     focusInitial();
@@ -967,7 +973,10 @@ export async function openSeriesModalV2(idOrData){
   if(token !== renderToken) return;
   if(!base){
     root.hidden = false;
-    root.innerHTML = '<div class="modalv2-loading">Seriendetails konnten nicht geladen werden.</div>';
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'modalv2-loading';
+    errorDiv.textContent = 'Seriendetails konnten nicht geladen werden.';
+    root.replaceChildren(errorDiv);
     currentItem = null;
     currentKind = null;
     focusInitial();

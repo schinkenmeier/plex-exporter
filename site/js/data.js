@@ -1,30 +1,88 @@
+import { getCache, setCache } from './cache.js';
+
 let lastSources = { movies: null, shows: null };
 const showDetailCache = new Map();
+let loadRetryCount = { movies: 0, shows: 0 };
+const MAX_RETRIES = 3;
+const DATA_CACHE_TTL = 1000 * 60 * 30; // 30 minutes for data files
 
 const MOVIE_THUMB_BASE = 'data/movies/';
 const SHOW_THUMB_BASE = 'data/series/';
 const SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i;
 
-async function fetchJson(url){
-  try{ const r = await fetch(url, { cache:'no-store' }); if(r && r.ok) return await r.json(); }
-  catch{}
+async function fetchJson(url, retries = 2, useCache = true){
+  // Try cache first if enabled
+  if(useCache){
+    const cached = getCache(url);
+    if(cached !== null) {
+      console.log(`[data] Cache hit for ${url}`);
+      return cached;
+    }
+  }
+
+  let lastError = null;
+  for(let attempt = 0; attempt <= retries; attempt++){
+    try{
+      const r = await fetch(url, { cache:'no-store' });
+      if(r && r.ok) {
+        const data = await r.json();
+        // Cache successful responses
+        if(useCache && data) {
+          setCache(url, data, DATA_CACHE_TTL);
+        }
+        return data;
+      }
+      if(r && r.status === 404) return null; // Don't retry 404s
+      lastError = new Error(`HTTP ${r.status}: ${r.statusText}`);
+    }
+    catch(err){
+      lastError = err;
+      console.warn(`[data] Fetch attempt ${attempt + 1}/${retries + 1} failed for ${url}:`, err.message);
+    }
+    if(attempt < retries){
+      // Exponential backoff
+      const delay = Math.min(1000 * Math.pow(2, attempt), 5000);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  if(lastError){
+    console.error(`[data] All fetch attempts failed for ${url}:`, lastError.message);
+  }
   return null;
 }
 
 function embeddedJsonById(id){
-  try{ const n = document.getElementById(id); if(n && n.textContent) return JSON.parse(n.textContent); }
-  catch{}
+  try{
+    const n = document.getElementById(id);
+    if(n && n.textContent) return JSON.parse(n.textContent);
+  }
+  catch(err){
+    console.warn(`[data] Failed to parse embedded JSON #${id}:`, err.message);
+  }
   return null;
 }
 
 function fromGlobalBag(key){
-  try{ const bag = window.__PLEX_EXPORTER__; const arr = bag && Array.isArray(bag[key]) ? bag[key] : null; return arr || null; }
-  catch{ return null; }
+  try{
+    const bag = window.__PLEX_EXPORTER__;
+    const arr = bag && Array.isArray(bag[key]) ? bag[key] : null;
+    return arr || null;
+  }
+  catch(err){
+    console.warn(`[data] Failed to access global bag[${key}]:`, err.message);
+    return null;
+  }
 }
 
 function fromWindow(varName){
-  try{ const arr = Array.isArray(window[varName]) ? window[varName] : null; return arr || null; }
-  catch{ return null; }
+  try{
+    const arr = Array.isArray(window[varName]) ? window[varName] : null;
+    return arr || null;
+  }
+  catch(err){
+    console.warn(`[data] Failed to access window.${varName}:`, err.message);
+    return null;
+  }
 }
 
 async function loadWithCompat(primaryUrl, opts){
@@ -126,37 +184,61 @@ function normalizeShowThumbs(list){
 }
 
 export async function loadMovies(){
-  const movies = await loadWithCompat('data/movies/movies.json', {
-    label: 'movies',
-    embedId: 'movies-json',
-    exportKey: 'movies',
-    globalVar: '__PLEX_MOVIES__',
-    altUrls: [
-      'movies/movies.json',
-      'data/movies.json',
-      'Filme/movies.json',
-      'movies.json',
-    ],
-  });
-  return normalizeMovieThumbs(movies);
+  try {
+    const movies = await loadWithCompat('data/movies/movies.json', {
+      label: 'movies',
+      embedId: 'movies-json',
+      exportKey: 'movies',
+      globalVar: '__PLEX_MOVIES__',
+      altUrls: [
+        'movies/movies.json',
+        'data/movies.json',
+        'Filme/movies.json',
+        'movies.json',
+      ],
+    });
+    loadRetryCount.movies = 0; // Reset on success
+    return normalizeMovieThumbs(movies);
+  } catch (error) {
+    console.error('[data] loadMovies failed:', error);
+    if (loadRetryCount.movies < MAX_RETRIES) {
+      loadRetryCount.movies++;
+      console.log(`[data] Retrying loadMovies (${loadRetryCount.movies}/${MAX_RETRIES})...`);
+      await new Promise(resolve => setTimeout(resolve, 1000 * loadRetryCount.movies));
+      return loadMovies();
+    }
+    throw error;
+  }
 }
 export async function loadShows(){
-  const shows = await loadWithCompat('data/series/series_index.json', {
-    label: 'shows',
-    embedId: 'series-json',
-    exportKey: 'shows',
-    globalVar: '__PLEX_SHOWS__',
-    altUrls: [
-      'series/series_index.json',
-      'data/shows.json',
-      'data/series.json',
-      'Serien/series.json',
-      'series/series.json',
-      'series.json',
-      'shows.json',
-    ],
-  });
-  return normalizeShowThumbs(shows);
+  try {
+    const shows = await loadWithCompat('data/series/series_index.json', {
+      label: 'shows',
+      embedId: 'series-json',
+      exportKey: 'shows',
+      globalVar: '__PLEX_SHOWS__',
+      altUrls: [
+        'series/series_index.json',
+        'data/shows.json',
+        'data/series.json',
+        'Serien/series.json',
+        'series/series.json',
+        'series.json',
+        'shows.json',
+      ],
+    });
+    loadRetryCount.shows = 0; // Reset on success
+    return normalizeShowThumbs(shows);
+  } catch (error) {
+    console.error('[data] loadShows failed:', error);
+    if (loadRetryCount.shows < MAX_RETRIES) {
+      loadRetryCount.shows++;
+      console.log(`[data] Retrying loadShows (${loadRetryCount.shows}/${MAX_RETRIES})...`);
+      await new Promise(resolve => setTimeout(resolve, 1000 * loadRetryCount.shows));
+      return loadShows();
+    }
+    throw error;
+  }
 }
 
 export async function loadShowDetail(item){
@@ -166,14 +248,26 @@ export async function loadShowDetail(item){
   if(cached !== undefined) return cached;
 
   const urls = detailUrlCandidates(item);
+  let lastError = null;
+
   for(const url of urls){
-    const data = await fetchJson(url);
-    if(data && typeof data === 'object'){
-      const normalized = normalizeShowDetail(data);
-      storeDetail(keys, normalized, item);
-      return cloneDetail(normalized);
+    try {
+      const data = await fetchJson(url);
+      if(data && typeof data === 'object'){
+        const normalized = normalizeShowDetail(data);
+        storeDetail(keys, normalized, item);
+        return cloneDetail(normalized);
+      }
+    } catch (error) {
+      lastError = error;
+      console.warn(`[data] Failed to load show detail from ${url}:`, error.message);
     }
   }
+
+  if(lastError) {
+    console.error(`[data] Could not load show detail for ${item.title || 'unknown'}`, lastError);
+  }
+
   storeDetail(keys, null, item);
   return null;
 }
