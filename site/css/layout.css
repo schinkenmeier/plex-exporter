@@ -221,10 +221,11 @@ header.site-header {
   position: sticky;
   top: clamp(72px, 9vw, 104px);
   z-index: 25;
-  backdrop-filter: blur(20px) saturate(160%);
-  background: linear-gradient(180deg, rgba(9, 12, 20, 0.92) 0%, rgba(7, 10, 18, 0.85) 100%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  box-shadow: 0 22px 40px rgba(4, 9, 18, 0.5);
+  backdrop-filter: blur(6px);
+  background: #0f121a;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: none;
 }
 
 .filters-wrap {
@@ -235,10 +236,23 @@ header.site-header {
 }
 
 .filters-main {
+  --filters-gap: 12px;
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) auto;
-  gap: 12px;
+  grid-template-columns:
+    minmax(0, calc(70% - var(--filters-gap) * 2 / 3))
+    minmax(0, calc(20% - var(--filters-gap) * 2 / 3))
+    minmax(0, calc(10% - var(--filters-gap) * 2 / 3));
+  grid-template-areas: "search sort actions";
+  gap: var(--filters-gap);
   align-items: stretch;
+}
+
+.filters-search {
+  grid-area: search;
+}
+
+.filters-sort {
+  grid-area: sort;
 }
 
 .filters-actions-primary {
@@ -250,6 +264,7 @@ header.site-header {
 }
 
 .filters-main .toggle-advanced {
+  grid-area: actions;
   align-self: stretch;
   justify-self: end;
 }
@@ -470,7 +485,11 @@ header.site-header {
   }
 
   .filters-main {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "search search"
+      "sort actions";
+    align-items: stretch;
   }
 
   .filters-actions-primary {
@@ -479,8 +498,9 @@ header.site-header {
   }
 
   .filters-main .toggle-advanced {
-    justify-self: stretch;
-    width: 100%;
+    justify-self: end;
+    align-self: center;
+    width: auto;
   }
 
   .advanced-row {
@@ -538,6 +558,10 @@ header.site-header {
     top: 0;
   }
 
+  .filters-main {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
   .advanced-quick {
     width: 100%;
     flex-direction: column;
@@ -547,6 +571,31 @@ header.site-header {
 
   .grid {
     grid-template-columns: repeat(auto-fit, minmax(clamp(160px, 44vw, 220px), 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .filters-main {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "search search"
+      "sort actions";
+  }
+
+  .filters-main .toggle-advanced {
+    min-height: 44px;
+    padding-inline: 12px;
+    gap: 6px;
+  }
+
+  .filters-main .toggle-advanced::before {
+    content: "";
+    display: inline-block;
+    width: 16px;
+    height: 2px;
+    border-radius: 999px;
+    background: currentColor;
+    box-shadow: 0 -5px 0 currentColor, 0 5px 0 currentColor;
   }
 }
 

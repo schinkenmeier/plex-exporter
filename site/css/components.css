@@ -286,19 +286,20 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  background: rgba(12, 18, 32, 0.78);
-  border: 1px solid var(--border);
+  background: rgba(12, 16, 24, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-md);
   padding: 10px 14px;
   min-height: 48px;
-  transition: border-color var(--transition-base), box-shadow var(--transition-base), background var(--transition-base);
+  opacity: 0.96;
+  transition: background-color var(--transition-base), border-color var(--transition-base), opacity var(--transition-base);
 }
 
 .field:hover,
 .field:focus-within {
-  border-color: var(--border-strong);
-  box-shadow: 0 0 0 1px rgba(126, 166, 255, 0.28);
-  background: rgba(16, 26, 44, 0.95);
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(14, 20, 30, 0.98);
+  opacity: 1;
 }
 
 .field .icon {
@@ -308,9 +309,9 @@
   width: 36px;
   height: 36px;
   border-radius: var(--radius-sm);
-  background: rgba(18, 27, 46, 0.9);
-  border: 1px solid var(--border);
-  color: rgba(201, 216, 248, 0.88);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(201, 216, 248, 0.82);
   transition: inherit;
 }
 
@@ -332,9 +333,9 @@
   width: 36px;
   height: 36px;
   border-radius: var(--radius-sm);
-  background: rgba(18, 27, 46, 0.9);
-  border: 1px solid var(--border);
-  color: rgba(201, 216, 248, 0.88);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(201, 216, 248, 0.82);
 }
 
 .filters-chips .icon svg {
@@ -360,18 +361,55 @@
 .field select {
   border-radius: var(--radius-sm);
   padding: 6px 10px;
-  border: 1px solid rgba(126, 166, 255, 0.16);
-  background: rgba(16, 22, 34, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(14, 20, 32, 0.88);
+  transition: border-color var(--transition-base), background-color var(--transition-base), opacity var(--transition-base);
+  opacity: 0.96;
+}
+
+.field select:hover,
+.field select:focus-visible {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(14, 20, 32, 0.96);
+  opacity: 1;
 }
 
 .field button {
   width: auto;
   color: var(--muted);
+  opacity: 0.85;
+  transition: color var(--transition-base), opacity var(--transition-base);
 }
 
 .field button:hover,
 .field button:focus-visible {
   color: var(--fg);
+  opacity: 1;
+}
+
+.toggle-advanced {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: var(--fg);
+  opacity: 0.92;
+  box-shadow: none;
+  transition: background-color var(--transition-base), border-color var(--transition-base), opacity var(--transition-base), color var(--transition-base);
+}
+
+.toggle-advanced:hover,
+.toggle-advanced:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+  opacity: 1;
+  box-shadow: none;
+}
+
+.toggle-advanced:focus-visible {
+  outline-offset: 3px;
+}
+
+.toggle-advanced:disabled {
+  opacity: 0.55;
 }
 
 .toggle-chip {
