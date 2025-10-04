@@ -308,8 +308,8 @@
   background: rgba(12, 16, 24, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-md);
-  padding: 10px 14px;
-  min-height: 48px;
+  padding: clamp(8px, 1.4vh, 10px) clamp(12px, 2vw, 14px);
+  min-height: clamp(40px, 5vh, 48px);
   opacity: 0.96;
   transition: background-color var(--transition-base), border-color var(--transition-base), opacity var(--transition-base);
 }
@@ -325,8 +325,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: clamp(26px, 4.2vh, 36px);
+  height: clamp(26px, 4.2vh, 36px);
   border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -335,8 +335,8 @@
 }
 
 .field .icon svg {
-  width: 18px;
-  height: 18px;
+  width: clamp(14px, 2.4vh, 18px);
+  height: clamp(14px, 2.4vh, 18px);
   stroke: currentColor;
   stroke-width: 1.8;
   fill: none;
@@ -349,8 +349,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: clamp(26px, 4.2vh, 36px);
+  height: clamp(26px, 4.2vh, 36px);
   border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -358,8 +358,8 @@
 }
 
 .filters-chips .icon svg {
-  width: 18px;
-  height: 18px;
+  width: clamp(14px, 2.4vh, 18px);
+  height: clamp(14px, 2.4vh, 18px);
   stroke: currentColor;
   stroke-width: 1.8;
   fill: none;
