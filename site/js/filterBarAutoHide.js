@@ -98,6 +98,7 @@ function hideFilterBar() {
   isScrollingDown = true;
   lastScrollY = window.scrollY;
   filterBar.classList.add('filters--hidden');
+  document.body.classList.add('filter-bar-hidden');
   filterBar.setAttribute('aria-hidden', 'true');
   if (supportsInert) {
     filterBar.setAttribute('inert', ''); // Prevent keyboard focus on hidden elements
@@ -124,6 +125,7 @@ function showFilterBar() {
   isScrollingDown = false;
   lastScrollY = window.scrollY;
   filterBar.classList.remove('filters--hidden');
+  document.body.classList.remove('filter-bar-hidden');
   filterBar.setAttribute('aria-hidden', 'false');
   if (supportsInert) {
     filterBar.removeAttribute('inert'); // Re-enable keyboard focus
