@@ -9,6 +9,7 @@ header.site-header {
   z-index: 20;
   background-color: #0f121a;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-block: 8px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -28,8 +29,8 @@ header.site-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: clamp(12px, 2vw, 28px);
-  padding: clamp(10px, 1.5vw, 16px) 0;
+  gap: clamp(12px, 2vw, 24px);
+  padding: 0;
 }
 
 .site-header__brand {
@@ -40,7 +41,7 @@ header.site-header {
 }
 
 .site-header__logo {
-  height: clamp(24px, 3.2vw, 36px);
+  height: clamp(20px, 2.4vw, 28px);
   width: auto;
   transition: transform var(--transition-base);
 }
@@ -53,10 +54,12 @@ header.site-header {
 }
 
 .site-header__label {
-  font-size: clamp(14px, 1.8vw, 16px);
+  font-size: 14px;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   white-space: nowrap;
+  font-weight: 500;
+  opacity: 0.85;
 }
 
 .site-nav {
@@ -89,29 +92,29 @@ header.site-header {
   align-items: center;
   justify-content: center;
   min-width: max-content;
-  padding: 9px 18px;
-  border-radius: var(--radius-pill);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   background: transparent;
-  color: var(--text-primary);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: none;
   transition: border-color var(--transition-base), background-color var(--transition-base), color var(--transition-base);
   scroll-snap-align: center;
 }
 
 .site-nav__tab:hover,
 .site-nav__tab:focus-visible {
-  border-color: rgba(255, 255, 255, 0.35);
-  background-color: rgba(255, 255, 255, 0.06);
-  color: #fff;
+  border-color: rgba(255, 255, 255, 0.24);
+  background-color: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .site-nav__tab.is-active {
-  background-color: rgba(30, 36, 50, 0.95);
-  border-color: rgba(255, 255, 255, 0.45);
+  background-color: #1d2130;
+  border-color: rgba(255, 255, 255, 0.2);
   color: #fff;
 }
 
@@ -121,18 +124,22 @@ header.site-header {
 
 .site-nav .watchlist-button {
   flex-shrink: 0;
-  background: rgba(30, 36, 50, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.16);
   box-shadow: none;
-  color: #fff;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 14px;
 }
 
 .site-nav .watchlist-button:hover,
 .site-nav .watchlist-button:focus-visible {
-  background: rgba(38, 44, 60, 1);
-  border-color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.28);
   box-shadow: none;
   transform: none;
+  color: #fff;
 }
 
 .site-nav .watchlist-button:focus-visible {
@@ -175,7 +182,7 @@ header.site-header {
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: clamp(20px, 4vw, 40px);
   align-items: center;
-  min-height: clamp(520px, 82vh, 880px);
+  min-height: clamp(420px, 55vh, 650px);
 }
 
 .hero__copy {
@@ -224,11 +231,12 @@ header.site-header {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: none;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+              opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .filters--hidden {
-  transform: translateY(-100%);
+  transform: translateY(calc(-100% - clamp(72px, 9vw, 104px)));
   opacity: 0;
   pointer-events: none;
 }
@@ -489,6 +497,10 @@ header.site-header {
     top: clamp(64px, 12vw, 96px);
   }
 
+  .filters--hidden {
+    transform: translateY(calc(-100% - clamp(64px, 12vw, 96px)));
+  }
+
   .filters-main {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
@@ -561,6 +573,10 @@ header.site-header {
   .filters {
     position: sticky;
     top: 0;
+  }
+
+  .filters--hidden {
+    transform: translateY(-100%);
   }
 
   .filters-main {
