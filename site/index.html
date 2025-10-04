@@ -29,7 +29,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://image.tmdb.org https://www.themoviedb.org; connect-src 'self' https://api.themoviedb.org https://image.tmdb.org; font-src 'self'; base-uri 'self'; form-action 'self';" />
 </head>
 <body>
-  <a href="#main" class="skip-link">Zum Inhalt springen</a>
+  
   <noscript class="noscript-warning">Diese App benötigt JavaScript, um Daten aus Plex zu laden. Mehr Informationen findest du im <a href="https://github.com/plexinc/plex-media-server" rel="noopener noreferrer">Plex-Handbuch</a>.</noscript>
   <svg class="svg-sprite" aria-hidden="true" focusable="false">
     <symbol id="icon-search" viewBox="0 0 24 24">
@@ -88,6 +88,9 @@
         <p class="hero__subtitle" id="heroSubtitle">Offline stöbern &amp; Wunschlisten teilen</p>
         <button type="button" class="hero__cta" id="heroCta" data-modal-target="modalV2">Film-Highlights anzeigen</button>
       </div>
+    </div>
+    <div id="heroTimer" class="hero-timer" aria-hidden="true">
+      <div class="hero-timer__bar"></div>
     </div>
   </section>
 
