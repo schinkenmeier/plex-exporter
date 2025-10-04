@@ -2,6 +2,8 @@
  * Auto-hide filter bar on scroll and when modals are open
  */
 
+const SCROLL_SHOW_THRESHOLD = 50;
+
 let lastScrollY = 0;
 let isScrollingDown = false;
 let scrollTicking = false;
@@ -65,18 +67,24 @@ function updateFilterBarVisibility() {
   const currentScrollY = window.scrollY;
 
   // Determine scroll direction
-  if (currentScrollY > lastScrollY && currentScrollY > 100) {
+  if (currentScrollY > lastScrollY && currentScrollY > SCROLL_SHOW_THRESHOLD) {
     // Scrolling down and past threshold
     if (!isScrollingDown) {
-      isScrollingDown = true;
       hideFilterBar();
     }
   } else if (currentScrollY < lastScrollY) {
     // Scrolling up
-    if (isScrollingDown) {
-      isScrollingDown = false;
+    if (isScrollingDown && currentScrollY <= SCROLL_SHOW_THRESHOLD) {
       showFilterBar();
     }
+  } else if (
+    currentScrollY <= SCROLL_SHOW_THRESHOLD &&
+    filterBar &&
+    filterBar.classList.contains('filters--hidden')
+  ) {
+    // Handle cases where the bar is hidden but scroll position was reset without
+    // triggering a scroll direction change (e.g. scroll-to-top button)
+    showFilterBar();
   }
 
   lastScrollY = currentScrollY;
@@ -87,6 +95,8 @@ function updateFilterBarVisibility() {
  */
 function hideFilterBar() {
   if (!filterBar) return;
+  isScrollingDown = true;
+  lastScrollY = window.scrollY;
   filterBar.classList.add('filters--hidden');
   filterBar.setAttribute('aria-hidden', 'true');
   if (supportsInert) {
@@ -111,6 +121,8 @@ function showFilterBar() {
     return; // Keep hidden if something is open
   }
 
+  isScrollingDown = false;
+  lastScrollY = window.scrollY;
   filterBar.classList.remove('filters--hidden');
   filterBar.setAttribute('aria-hidden', 'false');
   if (supportsInert) {
