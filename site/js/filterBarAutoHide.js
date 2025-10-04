@@ -6,6 +6,20 @@ let lastScrollY = 0;
 let isScrollingDown = false;
 let scrollTicking = false;
 let filterBar = null;
+const supportsInert = 'inert' in HTMLElement.prototype;
+const focusableSelectors = [
+  'a[href]',
+  'area[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  'iframe',
+  'object',
+  'embed',
+  '[contenteditable]',
+  '[tabindex]'
+].join(',');
 
 /**
  * Initialize auto-hide functionality
@@ -74,7 +88,11 @@ function hideFilterBar() {
   if (!filterBar) return;
   filterBar.classList.add('filters--hidden');
   filterBar.setAttribute('aria-hidden', 'true');
-  filterBar.setAttribute('inert', ''); // Prevent keyboard focus on hidden elements
+  if (supportsInert) {
+    filterBar.setAttribute('inert', ''); // Prevent keyboard focus on hidden elements
+  } else {
+    disableFilterBarFocus();
+  }
 }
 
 /**
@@ -94,7 +112,11 @@ function showFilterBar() {
 
   filterBar.classList.remove('filters--hidden');
   filterBar.setAttribute('aria-hidden', 'false');
-  filterBar.removeAttribute('inert'); // Re-enable keyboard focus
+  if (supportsInert) {
+    filterBar.removeAttribute('inert'); // Re-enable keyboard focus
+  } else {
+    restoreFilterBarFocus();
+  }
 }
 
 /**
@@ -109,4 +131,37 @@ export function forceShowFilterBar() {
  */
 export function forceHideFilterBar() {
   hideFilterBar();
+}
+
+function disableFilterBarFocus() {
+  if (!filterBar) return;
+
+  filterBar.querySelectorAll(focusableSelectors).forEach((element) => {
+    if (element.dataset.filterBarPrevTabindex !== undefined) return;
+
+    if (element.hasAttribute('tabindex')) {
+      element.dataset.filterBarPrevTabindex = element.getAttribute('tabindex');
+    } else {
+      element.dataset.filterBarPrevTabindex = '';
+    }
+
+    element.setAttribute('tabindex', '-1');
+  });
+}
+
+function restoreFilterBarFocus() {
+  if (!filterBar) return;
+
+  filterBar.querySelectorAll(focusableSelectors).forEach((element) => {
+    if (element.dataset.filterBarPrevTabindex === undefined) return;
+
+    const previous = element.dataset.filterBarPrevTabindex;
+    delete element.dataset.filterBarPrevTabindex;
+
+    if (previous === '') {
+      element.removeAttribute('tabindex');
+    } else {
+      element.setAttribute('tabindex', previous);
+    }
+  });
 }
