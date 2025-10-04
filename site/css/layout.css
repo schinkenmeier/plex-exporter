@@ -151,13 +151,11 @@ header.site-header {
 .hero::before {
   content: "";
   position: absolute;
-  inset: -30% -15% 10% -15%;
+  inset: -12% -10% -8% -10%;
   background:
-    radial-gradient(circle at 18% 28%, var(--hero-gradient-a) 0%, transparent 60%),
-    radial-gradient(circle at 82% 62%, var(--hero-gradient-b) 0%, transparent 66%),
-    radial-gradient(circle at 40% 88%, var(--hero-gradient-c) 0%, transparent 70%);
-  filter: blur(92px);
-  opacity: 0.92;
+    linear-gradient(140deg, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.72) 45%, rgba(0, 0, 0, 0.6) 100%),
+    radial-gradient(circle at left bottom, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.6) 45%, transparent 75%);
+  opacity: 0.88;
   pointer-events: none;
 }
 
@@ -165,10 +163,9 @@ header.site-header {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at center, rgba(5, 7, 14, 0.1) 0%, rgba(5, 7, 14, 0.82) 72%),
-    linear-gradient(135deg, rgba(4, 6, 12, 0.92) 0%, rgba(4, 6, 12, 0.84) 45%, rgba(3, 5, 10, 0.96) 100%);
-  mix-blend-mode: multiply;
-  opacity: 0.94;
+    linear-gradient(130deg, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.72) 40%, rgba(0, 0, 0, 0.65) 100%),
+    radial-gradient(circle at left bottom, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.6) 55%, transparent 85%);
+  opacity: 0.9;
   pointer-events: none;
 }
 
