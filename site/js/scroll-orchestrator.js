@@ -359,12 +359,54 @@ export function initScrollOrchestrator({
     applyState(newState);
   }
 
-  function clearHeroTransition() {
+  function detachHeroTransitionHandler() {
     if (heroTransitionHandler && heroEl) {
       heroEl.removeEventListener('transitionend', heroTransitionHandler);
+      heroEl.removeEventListener('transitioncancel', heroTransitionHandler);
     }
     heroTransitionHandler = null;
+  }
+
+  function clearHeroTransition() {
+    detachHeroTransitionHandler();
     heroTransitionMode = null;
+  }
+
+  function completeHeroTransition() {
+    if (!heroTransitionMode) {
+      detachHeroTransitionHandler();
+      return;
+    }
+
+    const mode = heroTransitionMode;
+    detachHeroTransitionHandler();
+    heroTransitionMode = null;
+
+    if (mode === 'expanding') {
+      if (heroEl) {
+        heroEl.classList.remove('is-collapsing');
+        heroEl.removeAttribute('aria-hidden');
+      }
+
+      if (filterEl) {
+        filterEl.classList.remove('is-collapsing', 'is-sticky', 'is-hidden');
+        filterEl.removeAttribute('aria-hidden');
+        removeInert(filterEl);
+      }
+    } else if (mode === 'collapsing') {
+      if (heroEl) {
+        heroEl.classList.remove('is-collapsing');
+        heroEl.classList.add('is-hidden');
+        heroEl.setAttribute('aria-hidden', 'true');
+      }
+
+      if (filterEl) {
+        filterEl.classList.remove('is-collapsing');
+        filterEl.classList.add('is-sticky');
+        filterEl.removeAttribute('aria-hidden');
+        removeInert(filterEl);
+      }
+    }
   }
 
   /**
@@ -420,18 +462,11 @@ export function initScrollOrchestrator({
             return;
           }
 
-          clearHeroTransition();
-          heroEl.removeAttribute('aria-hidden');
-
-          if (filterEl) {
-            filterEl.classList.remove('is-collapsing', 'is-sticky');
-            filterEl.classList.remove('is-hidden');
-            filterEl.removeAttribute('aria-hidden');
-            removeInert(filterEl);
-          }
+          completeHeroTransition();
         };
 
         heroEl.addEventListener('transitionend', heroTransitionHandler);
+        heroEl.addEventListener('transitioncancel', heroTransitionHandler);
 
         requestAnimationFrame(() => {
           if (heroTransitionMode !== 'expanding' || !heroEl) return;
@@ -485,21 +520,11 @@ export function initScrollOrchestrator({
             return;
           }
 
-          clearHeroTransition();
-
-          heroEl.classList.remove('is-collapsing');
-          heroEl.classList.add('is-hidden');
-          heroEl.setAttribute('aria-hidden', 'true');
-
-          if (filterEl) {
-            filterEl.classList.remove('is-collapsing');
-            filterEl.classList.add('is-sticky');
-            filterEl.removeAttribute('aria-hidden');
-            removeInert(filterEl);
-          }
+          completeHeroTransition();
         };
 
         heroEl.addEventListener('transitionend', heroTransitionHandler);
+        heroEl.addEventListener('transitioncancel', heroTransitionHandler);
 
         heroEl.classList.remove('is-hidden', 'is-collapsing');
 
@@ -630,6 +655,10 @@ export function initScrollOrchestrator({
   function setReduceMotion(reduce) {
     shouldReduceMotion = reduce;
     document.body.classList.toggle('reduce-motion', reduce);
+
+    if (reduce) {
+      completeHeroTransition();
+    }
   }
 
   /**
