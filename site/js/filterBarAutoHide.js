@@ -74,6 +74,7 @@ function hideFilterBar() {
   if (!filterBar) return;
   filterBar.classList.add('filters--hidden');
   filterBar.setAttribute('aria-hidden', 'true');
+  filterBar.setAttribute('inert', ''); // Prevent keyboard focus on hidden elements
 }
 
 /**
@@ -93,6 +94,7 @@ function showFilterBar() {
 
   filterBar.classList.remove('filters--hidden');
   filterBar.setAttribute('aria-hidden', 'false');
+  filterBar.removeAttribute('inert'); // Re-enable keyboard focus
 }
 
 /**
