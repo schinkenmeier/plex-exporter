@@ -17,7 +17,15 @@ function idFor(item){
 
 export function isSaved(item){ return saved.has(idFor(item)); }
 export function count(){ return saved.size; }
-export function toggle(item){ const k=idFor(item); if(!k) return; if(saved.has(k)) saved.delete(k); else saved.add(k); persist(); renderCount(); }
+export function toggle(item){
+  const k=idFor(item);
+  if(!k) return;
+  if(saved.has(k)) saved.delete(k); else saved.add(k);
+  persist();
+  renderCount();
+  const panel=document.getElementById('watchlistPanel');
+  if(panel && !panel.hidden) renderPanel();
+}
 
 export function renderCount(){ const el=document.getElementById('watchlistCount'); if(el) el.textContent = String(count()); }
 
