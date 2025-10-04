@@ -19,26 +19,37 @@ export function getGenreNames(genres){
   return names;
 }
 
-export function renderChipsLimited(container, values, limit=6){
+export function renderChipsLimited(container, values, limit=3){
   if(!container) return;
   const vals = (values||[]).filter(Boolean);
-  const head = vals.slice(0, limit);
-  const rest = vals.slice(limit);
-  const chips = head.map(text=>chip(text));
-  if(rest.length){
-    const more = chip(`+${rest.length} mehr`);
-    more.classList.add('more');
+
+  // If we have more values than the limit, show limit chips + aggregator
+  if(vals.length > limit){
+    const head = vals.slice(0, limit);
+    const rest = vals.slice(limit);
+    const chips = head.map(text=>chip(text));
+
+    const more = chip(`+ ${rest.length}`);
+    more.classList.add('more', 'card__chip--more');
+    more.setAttribute('data-more', rest.length);
+    more.setAttribute('title', `${rest.length} weitere Genres: ${rest.join(', ')}`);
     // store extra chips to reveal on click
     more._extraChips = rest.map(text=>chip(text));
     chips.push(more);
+
+    container.replaceChildren(...chips);
+  } else {
+    // Show all chips if we have limit or fewer
+    const chips = vals.map(text=>chip(text));
+    container.replaceChildren(...chips);
   }
-  container.replaceChildren(...chips);
+
   enableMoreChipBehavior(container);
 }
 
 export function enableMoreChipBehavior(root = document){
   try{
-    root.querySelectorAll('.chips .chip.more, .cardv2__tags .chip.more').forEach(btn=>{
+    root.querySelectorAll('.chip.more, .card__chip--more').forEach(btn=>{
       if(btn.dataset.bound) return;
       btn.dataset.bound = '1';
       btn.addEventListener('click', (e)=>{
@@ -46,7 +57,7 @@ export function enableMoreChipBehavior(root = document){
         e.stopPropagation();
 
         // Find the parent card element
-        const card = btn.closest('.cardv2, .card');
+        const card = btn.closest('.card');
         if(card) {
           // Trigger the card's click event to open the modal
           card.click();

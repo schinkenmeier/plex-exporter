@@ -14,12 +14,12 @@ button:not(:disabled):active,
 }
 
 /* Card hover animations – ruhig, dezenter Lift */
-.cardv2:hover {
-  transform: translateY(-3px);
+.card:hover {
+  transform: translateY(-2px);
   box-shadow: 0 12px 42px rgba(2, 6, 14, 0.45);
 }
 
-.cardv2 {
+.card {
   transition: transform var(--transition-smooth),
               box-shadow var(--transition-smooth);
 }
@@ -136,7 +136,7 @@ button:not(:disabled):active,
   }
 }
 
-.cardv2__badge {
+.card__badges .badge {
   animation: badgePopIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -231,7 +231,7 @@ html {
     scroll-behavior: auto !important;
   }
 
-  .cardv2:hover {
+  .card:hover {
     transform: none;
   }
 
@@ -276,7 +276,7 @@ img[loading="lazy"] {
 
 /* Override for specific performance-critical elements */
 .no-transition,
-.cardv2__thumb img,
+.card__img,
 .hero__backdrop {
   transition: none;
 }
