@@ -38,13 +38,24 @@ export function renderChipsLimited(container, values, limit=6){
 
 export function enableMoreChipBehavior(root = document){
   try{
-    root.querySelectorAll('.chips .chip.more').forEach(btn=>{
+    root.querySelectorAll('.chips .chip.more, .cardv2__tags .chip.more').forEach(btn=>{
       if(btn.dataset.bound) return;
       btn.dataset.bound = '1';
-      btn.addEventListener('click', ()=>{
-        const hidden = btn._extraChips || [];
-        try{ hidden.forEach(ch => btn.before(ch)); }catch{}
-        btn.remove();
+      btn.addEventListener('click', (e)=>{
+        // Stop propagation to prevent card click from opening modal
+        e.stopPropagation();
+
+        // Find the parent card element
+        const card = btn.closest('.cardv2, .card');
+        if(card) {
+          // Trigger the card's click event to open the modal
+          card.click();
+        } else {
+          // Fallback: expand inline if not in a card context
+          const hidden = btn._extraChips || [];
+          try{ hidden.forEach(ch => btn.before(ch)); }catch{}
+          btn.remove();
+        }
       });
     });
   }catch{}
