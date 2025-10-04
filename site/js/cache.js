@@ -257,11 +257,23 @@ export async function cachedFetch(url, options = {}, ttl = DEFAULT_TTL) {
   }
 }
 
-// Auto-cleanup on page load
-if (typeof window !== 'undefined') {
+// Auto-cleanup on page load (only in real browser environments)
+let cleanupInterval = null;
+
+if (typeof window !== 'undefined' && typeof window.document !== 'undefined' && window === globalThis) {
   // Clear expired entries on load
   clearExpiredCache();
 
   // Periodic cleanup every 5 minutes
-  setInterval(clearExpiredCache, 5 * 60 * 1000);
+  cleanupInterval = setInterval(clearExpiredCache, 5 * 60 * 1000);
+}
+
+/**
+ * Stop the periodic cleanup interval (useful for testing)
+ */
+export function stopCleanupInterval() {
+  if (cleanupInterval) {
+    clearInterval(cleanupInterval);
+    cleanupInterval = null;
+  }
 }
