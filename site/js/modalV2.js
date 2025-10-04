@@ -613,9 +613,25 @@ function updateDetails(root, item){
   if(studio) general.push(['Studio', studio]);
   const certification = (item?.contentRating || '').trim();
   if(certification) general.push(['Freigabe', certification]);
-  const critic = formatRating(item?.rating);
-  const audience = formatRating(item?.audienceRating);
-  const user = formatRating(item?.userRating);
+  const formatOptionalRating = (value)=>{
+    if(value instanceof Number){
+      return formatOptionalRating(value.valueOf());
+    }
+    if(typeof value === 'number'){
+      return Number.isFinite(value) ? formatRating(value) : '';
+    }
+    if(typeof value === 'string'){
+      const trimmed = value.trim();
+      if(!trimmed) return '';
+      const num = Number(trimmed);
+      return Number.isFinite(num) ? formatRating(num) : '';
+    }
+    return '';
+  };
+
+  const critic = formatOptionalRating(item?.rating);
+  const audience = formatOptionalRating(item?.audienceRating);
+  const user = formatOptionalRating(item?.userRating);
   if(critic){
     general.push(['Bewertung', `★ ${critic}`]);
     if(audience && audience !== critic) general.push(['Publikum', `★ ${audience}`]);

@@ -72,6 +72,16 @@ describe('Utils Module', () => {
       assert.strictEqual(formatRating(NaN), '0.0');
       assert.strictEqual(formatRating(null), '0.0');
       assert.strictEqual(formatRating(undefined), '0.0');
+      assert.strictEqual(formatRating(true), '0.0');
+      assert.strictEqual(formatRating(''), '0.0');
+      assert.strictEqual(formatRating('abc'), '0.0');
+    });
+
+    it('should support numeric strings and Number objects', () => {
+      assert.strictEqual(formatRating('8'), '8.0');
+      assert.strictEqual(formatRating('8.24'), '8.2');
+      assert.strictEqual(formatRating(' 9.99 '), '10.0');
+      assert.strictEqual(formatRating(new Number(6.75)), '6.8');
     });
   });
 
