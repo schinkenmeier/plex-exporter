@@ -1,6 +1,7 @@
 import { getState } from './state.js';
 import { openMovieModalV2, openSeriesModalV2 } from './modalV2.js';
 import { humanYear, formatRating, useTmdbOn } from './utils.js';
+import { recordHeroHistory } from './hero/storage.js';
 
 let currentHeroItem = null;
 let heroDefaults = null;
@@ -71,6 +72,12 @@ export function refreshHero(listOverride){
   setCurrentHeroItem(candidate);
   const kind = candidate.type === 'tv' ? 'show' : 'movie';
   const heroId = resolveHeroId(candidate);
+
+  try {
+    recordHeroHistory(kind === 'show' ? 'series' : 'movies', candidate);
+  } catch (err) {
+    console.warn('[hero] Failed to record hero history:', err?.message || err);
+  }
 
   title.textContent = candidate.title || defaults.title;
   subtitle.textContent = heroSubtitleText(candidate);
