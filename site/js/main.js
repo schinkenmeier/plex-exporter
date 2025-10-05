@@ -8,7 +8,7 @@ import { hydrateOptional } from './services/tmdb.js';
 import * as Watch from './watchlist.js';
 import * as Debug from './debug.js';
 import { initErrorHandler, showError, showRetryableError } from './errorHandler.js';
-import { initSettingsOverlay } from './settingsOverlay.js';
+import { initSettingsOverlay, setHeroRefreshHandler, setReduceMotionHandler } from './settingsOverlay.js';
 import { refreshHero, setHeroNavigation } from './hero.js';
 import { initHeroAutoplay } from './hero-autoplay.js';
 
@@ -318,26 +318,27 @@ function renderFooterMeta(){
   if(grid){ grid.setAttribute('aria-busy', 'false'); }
 }
 
-window.addEventListener('filters:updated', ev=>{
-  const detail = ev?.detail;
-  const items = Array.isArray(detail?.items) ? detail.items : null;
-  refreshHero(items);
-});
-
-window.addEventListener('settings:refresh-hero', ev=>{
+Filter.setFiltersUpdatedHandler(items => {
   try{
-    const items = ev?.detail?.items;
     refreshHero(items);
   }catch(err){
-    console.warn('[main] Failed to refresh hero from settings event:', err?.message);
+    console.warn('[main] Failed to refresh hero from filters handler:', err?.message);
   }
 });
 
-window.addEventListener('settings:reduce-motion', ev=>{
+setHeroRefreshHandler(items => {
   try{
-    setReduceMotionClass(!!ev?.detail?.enabled);
+    refreshHero(items);
   }catch(err){
-    console.warn('[main] Failed to apply reduce motion setting from event:', err?.message);
+    console.warn('[main] Failed to refresh hero from settings handler:', err?.message);
+  }
+});
+
+setReduceMotionHandler(enabled => {
+  try{
+    setReduceMotionClass(!!enabled);
+  }catch(err){
+    console.warn('[main] Failed to apply reduce motion setting from handler:', err?.message);
   }
 });
 
