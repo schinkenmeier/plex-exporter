@@ -11,6 +11,7 @@ import { initErrorHandler, showError, showRetryableError } from './errorHandler.
 import { initSettingsOverlay, setHeroRefreshHandler, setReduceMotionHandler } from './settingsOverlay.js';
 import { refreshHero, setHeroNavigation } from './hero.js';
 import { initHeroAutoplay } from './hero-autoplay.js';
+import * as HeroPolicy from './hero/policy.js';
 
 let taglineTicker = null;
 
@@ -127,12 +128,18 @@ export async function boot(){
   setLoader('Initialisiere …', 8);
   showSkeleton(18);
 
-  const cfg = await fetch('config.json').then(r=>r.json()).catch((err)=>{
+  const configPromise = fetch('config.json').then(r=>r.json()).catch((err)=>{
     console.warn('[main] Failed to load config.json, using defaults:', err.message);
     showError('Konfiguration konnte nicht geladen werden', 'Verwende Standardeinstellungen');
     return { startView:'movies', tmdbEnabled:false };
   });
-  setState({ cfg, view: cfg.startView || 'movies' });
+  const policyPromise = HeroPolicy.initHeroPolicy().catch((err)=>{
+    console.warn('[main] Failed to initialise hero policy:', err?.message || err);
+    return HeroPolicy.getHeroPolicy();
+  });
+
+  const [cfg, heroPolicy] = await Promise.all([configPromise, policyPromise]);
+  setState({ cfg, view: cfg.startView || 'movies', heroPolicy, heroPolicyIssues: HeroPolicy.getValidationIssues() });
 
   try {
     setFooterStatus('Filme laden …', true);
