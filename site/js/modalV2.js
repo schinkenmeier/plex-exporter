@@ -139,7 +139,10 @@ function focusInitial(){
   let target = (closeBtn && !closeBtn.hasAttribute('hidden')) ? closeBtn : focusables[0];
   if(!target) target = dialogEl;
   if(target){
-    const focus = ()=>{ try{ target.focus(); }catch{} };
+    const focus = ()=>{
+      try{ target.focus(); }
+      catch(err){ console.warn('[modalV2] Failed to focus target element:', err?.message || err); }
+    };
     (window.requestAnimationFrame || setTimeout)(focus, 0);
   }
 }
@@ -282,7 +285,10 @@ export async function openSeriesModalV2(idOrData){
     if(token !== renderToken) return;
     let detail = null;
     try{ detail = await loadShowDetail(working); }
-    catch{ detail = null; }
+    catch(err){
+      detail = null;
+      console.warn('[modalV2] Failed to load show detail in modal:', err?.message || err);
+    }
     if(token !== renderToken) return;
     if(detail){ mergeShowDetail(working, detail); currentItem = working; }
   }
@@ -305,7 +311,7 @@ export function closeModalV2(){
   if(scrollContainer) scrollContainer.scrollTop = 0;
   if(lastActiveElement && typeof lastActiveElement.focus === 'function'){
     try{ lastActiveElement.focus(); }
-    catch{}
+    catch(err){ console.warn('[modalV2] Failed to restore focus to last active element:', err?.message || err); }
   }
   lastActiveElement = null;
   currentItem = null;

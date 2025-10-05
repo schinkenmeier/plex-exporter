@@ -84,8 +84,18 @@ function render(){
 function copyReport(){
   const pre = document.getElementById('debugPre'); if(!pre) return;
   const txt = pre.textContent || '';
-  navigator.clipboard?.writeText(txt).catch(()=>{
-    try{ const ta=document.createElement('textarea'); ta.value=txt; document.body.append(ta); ta.select(); document.execCommand('copy'); ta.remove(); }catch{}
+  navigator.clipboard?.writeText(txt).catch(err=>{
+    console.warn('[debug] Clipboard API write failed, using fallback:', err?.message || err);
+    try{
+      const ta=document.createElement('textarea');
+      ta.value=txt;
+      document.body.append(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }catch(fallbackErr){
+      console.warn('[debug] Fallback clipboard copy failed:', fallbackErr?.message || fallbackErr);
+    }
   });
 }
 

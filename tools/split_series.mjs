@@ -311,7 +311,9 @@ for (const s of shows) {
       warnCount++;
       console.warn(`WARN: Detail file >10MB: ${fname} (${(size / (1024 * 1024)).toFixed(2)} MB)`);
     }
-  } catch {}
+  } catch (err) {
+    console.warn(`WARN: Unable to inspect detail file size for ${fname}:`, err?.message || err);
+  }
 }
 
 // Sort index by titleSort || title

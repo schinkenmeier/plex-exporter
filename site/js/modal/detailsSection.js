@@ -16,7 +16,9 @@ function releaseDateText(item){
     if(Number.isFinite(parsed.getTime())){
       try{
         return parsed.toLocaleDateString('de-DE', { year:'numeric', month:'2-digit', day:'2-digit' });
-      }catch{}
+      }catch(err){
+        console.warn('[modal/detailsSection] Failed to format release date:', err?.message || err);
+      }
     }
     const iso = str.match(/^\d{4}-\d{2}-\d{2}/);
     if(iso && iso[0]) return iso[0];

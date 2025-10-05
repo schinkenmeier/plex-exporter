@@ -4,10 +4,10 @@ function deepClone(value){
   if(value == null || typeof value !== 'object') return value;
   if(typeof structuredClone === 'function'){
     try{ return structuredClone(value); }
-    catch{}
+    catch(err){ console.warn('[modal/shared] structuredClone failed, falling back to JSON clone:', err?.message || err); }
   }
   try{ return JSON.parse(JSON.stringify(value)); }
-  catch{}
+  catch(err){ console.warn('[modal/shared] JSON clone failed, falling back to manual clone:', err?.message || err); }
   if(Array.isArray(value)) return value.map(entry => deepClone(entry));
   const out = {};
   for(const key of Object.keys(value)){
