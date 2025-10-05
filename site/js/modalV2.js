@@ -18,108 +18,16 @@ let renderToken = 0;
 let currentKind = null;
 let currentItem = null;
 
-const DEMO_MOVIE = {
-  type: 'movie',
-  title: 'Lumen: Der Aufbruch',
-  tagline: 'Eine cineastische Demo für das neue Modal',
-  overview: 'Die Crew der Lumen wagt den Sprung in unerforschte Welten und enthüllt dabei eine Energiequelle, die alles verändern könnte. Zwischen Loyalität, Intrigen und berauschenden Bildern entfaltet sich ein Abenteuer, das für das Cinematic-Layout entworfen wurde.',
-  summary: 'Die Crew der Lumen entdeckt eine Energiequelle, die das Schicksal der Menschheit verändern könnte.',
-  runtimeMin: 142,
-  contentRating: 'FSK 12',
-  studio: 'Aurora Pictures',
-  rating: 8.4,
-  audienceRating: 8.0,
-  userRating: 8.7,
-  originallyAvailableAt: '2024-05-17',
-  countries: [{ tag: 'Deutschland' }, { tag: 'Kanada' }],
-  genres: [{ tag: 'Science-Fiction' }, { tag: 'Drama' }, { tag: 'Abenteuer' }],
-  cast: [
-    { name: 'Mara Lenz', role: 'Captain Alys Vega', tmdbProfile: '/3rxeQHiuCYaXJqfyUG8yt0YdHtH.jpg' },
-    { name: 'Tariq Benassi', role: 'Navigator Elian Soh', tmdbProfile: '/wGl8DCycJ2U0FvJbLABd8R4FS3X.jpg' },
-    { name: 'Hannah Ko', role: 'Wissenschaftlerin Dr. Mira Han', tmdbProfile: '/hJuDvwzS0SPlsE6MN4pF2UYDGtt.jpg' },
-  ],
-  directors: [{ tag: 'Jonas Falk' }],
-  writers: [{ tag: 'Lea Winter' }],
-  producers: [{ tag: 'Studio Atlas' }],
-  labels: [{ tag: 'Dolby Atmos' }, { tag: '4K' }],
-  collections: [{ tag: 'Aurora-Saga' }],
-  trailer: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-  tmdbPoster: 'https://image.tmdb.org/t/p/w500/2lUYbD2C3XSuwqMUbDVDQuz9mqz.jpg',
-  ids: { tmdb: 'demo-lumen', imdb: 'tt0000001' },
-  addedAt: '2024-06-01T12:00:00Z',
-};
-
-const DEMO_SERIES = {
-  type: 'tv',
-  title: 'Aurora Station',
-  tagline: 'Neue Horizonte in Serie',
-  overview: 'Die Besatzung der Aurora Station schützt eine Außenposten an der Grenze des bekannten Raums. Jede Episode verbindet kosmische Rätsel mit persönlichen Geschichten – perfekt geeignet, um das Cinematic-Modal auszuprobieren.',
-  summary: 'Ein orbitaler Außenposten ringt um Hoffnung und Zusammenhalt, während eine fremde Macht erwacht.',
-  contentRating: 'TV-14',
-  studio: 'Nebula Network',
-  originallyAvailableAt: '2023-09-14',
-  seasonCount: 2,
-  genres: [{ tag: 'Science-Fiction' }, { tag: 'Drama' }],
-  countries: [{ tag: 'USA' }, { tag: 'Island' }],
-  creators: [{ tag: 'Elina Sørensen' }],
-  cast: [
-    { name: 'Noah Adler', role: 'Commander Ivar Hale', tmdbProfile: '/4MqUjb1SYrzHmFSVoKHSKP5MGGm.jpg' },
-    { name: 'Sofia Idris', role: 'Ingenieurin Kaia Rhee', tmdbProfile: '/tHMgWz6EpRdbgoMJ2JfzFzjg3QB.jpg' },
-    { name: 'Helena Ruiz', role: 'Strategin Tala Voss', tmdbProfile: '/ziEuG1ESSofxDCspotYlrwz3Tq.png' },
-  ],
-  seasons: [
-    {
-      title: 'Staffel 1',
-      seasonNumber: 1,
-      year: 2023,
-      thumbFile: 'https://image.tmdb.org/t/p/w300/4dO2YpC8S9nLmQAXoJLRV8LZRxn.jpg',
-      episodes: [
-        {
-          title: 'Kapitel Eins: Erwachen',
-          seasonNumber: 1,
-          episodeNumber: 1,
-          durationMin: 54,
-          originallyAvailableAt: '2023-09-14',
-          audienceRating: 8.6,
-        },
-        {
-          title: 'Kapitel Zwei: Grenzwelten',
-          seasonNumber: 1,
-          episodeNumber: 2,
-          durationMin: 52,
-          originallyAvailableAt: '2023-09-21',
-          audienceRating: 8.2,
-        },
-      ],
-    },
-    {
-      title: 'Staffel 2',
-      seasonNumber: 2,
-      year: 2024,
-      thumbFile: 'https://image.tmdb.org/t/p/w300/bSL4hY8SgdKzac8AUbWQm74y87C.jpg',
-      episodes: [
-        {
-          title: 'Kapitel Dreizehn: Resonanz',
-          seasonNumber: 2,
-          episodeNumber: 1,
-          durationMin: 56,
-          originallyAvailableAt: '2024-02-08',
-          audienceRating: 8.9,
-        },
-        {
-          title: 'Kapitel Vierzehn: Echo',
-          seasonNumber: 2,
-          episodeNumber: 2,
-          durationMin: 55,
-          originallyAvailableAt: '2024-02-15',
-          audienceRating: 8.7,
-        },
-      ],
-    },
-  ],
-  tmdbPoster: 'https://image.tmdb.org/t/p/w500/a4I481szRmycyreQTLrRe4f4YJe.jpg',
-  ids: { tmdb: 'demo-aurora-station', imdb: 'tt0000002' },
-};
+let demoDataModulePromise = null;
+function loadDemoDataModule(){
+  if(!demoDataModulePromise){
+    demoDataModulePromise = import('./modal/demoData.js').catch(err=>{
+      console.warn('[modalV2] Demo-Daten konnten nicht geladen werden.', err);
+      return { DEMO_MOVIE: null, DEMO_SERIES: null };
+    });
+  }
+  return demoDataModulePromise;
+}
 
 function resolveRoot(){
   if(rootEl) return rootEl;
@@ -963,7 +871,7 @@ export async function openMovieModalV2(idOrData){
   lastActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   const root = showOverlay();
   if(!root) return;
-  const data = resolveMovieData(idOrData);
+  const data = await resolveMovieData(idOrData);
   if(token !== renderToken) return;
   if(!data){
     root.hidden = false;
@@ -984,7 +892,7 @@ export async function openMovieModalV2(idOrData){
 export async function openSeriesModalV2(idOrData){
   const token = ++renderToken;
   lastActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-  const base = resolveSeriesData(idOrData);
+  const base = await resolveSeriesData(idOrData);
   const root = showOverlay();
   if(!root) return;
   if(token !== renderToken) return;
@@ -1045,8 +953,11 @@ export function getModalV2Context(){
   return currentItem ? { item: currentItem, kind: currentKind } : { item: null, kind: null };
 }
 
-function resolveMovieData(idOrData){
-  if(idOrData === 'demo') return mapMovie(DEMO_MOVIE);
+async function resolveMovieData(idOrData){
+  if(idOrData === 'demo'){
+    const { DEMO_MOVIE } = await loadDemoDataModule();
+    return mapMovie(DEMO_MOVIE);
+  }
   if(idOrData && typeof idOrData === 'object') return mapMovie(idOrData);
   const str = idOrData == null ? '' : String(idOrData).trim();
   if(!str) return null;
@@ -1056,8 +967,11 @@ function resolveMovieData(idOrData){
   return match ? mapMovie(match) : null;
 }
 
-function resolveSeriesData(idOrData){
-  if(idOrData === 'demo') return mapShow(DEMO_SERIES);
+async function resolveSeriesData(idOrData){
+  if(idOrData === 'demo'){
+    const { DEMO_SERIES } = await loadDemoDataModule();
+    return mapShow(DEMO_SERIES);
+  }
   if(idOrData && typeof idOrData === 'object') return mapShow(idOrData);
   const str = idOrData == null ? '' : String(idOrData).trim();
   if(!str) return null;
