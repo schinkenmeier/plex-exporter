@@ -8,6 +8,7 @@
  *
  * Respects:
  * - prefers-reduced-motion (OS & user toggle)
+ *   → disables hero/filter auto-hide to keep layout stable
  * - Focus safety (no hiding while interacting with filterbar)
  * - Advanced filters state (no auto-hide when open)
  * - Scroll direction (reverse transitions on scroll up)
@@ -49,12 +50,15 @@ export function initScrollOrchestrator({
   let heroHeight = 0;
   let filterHeight = 0;
   let isFilterbarInteractive = false;
-  let shouldReduceMotion = reduceMotionFlag;
+  let shouldReduceMotion = !!reduceMotionFlag;
+  let userReduceMotionPref = !!reduceMotionFlag;
+  let systemReduceMotionPref = false;
   let scrollTicking = false;
   let intersectionObserver = null;
   let resizeObserver = null;
   let heroTransitionHandler = null;
   let heroTransitionMode = null; // 'collapsing' | 'expanding'
+  let previousNonReducedState = STATE.HAS_HERO;
 
   // Focus selectors for interaction detection
   const focusableSelectors = [
@@ -260,18 +264,26 @@ export function initScrollOrchestrator({
    * Detect reduced motion preference changes
    */
   function setupMotionDetection() {
+    if (!('matchMedia' in window)) {
+      syncReduceMotionMode(true);
+      return;
+    }
+
     // Media query
     const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const updateMotionPref = () => {
-      shouldReduceMotion = motionQuery.matches || reduceMotionFlag;
-      document.body.classList.toggle('reduce-motion', shouldReduceMotion);
+    const updateMotionPref = event => {
+      systemReduceMotionPref = event.matches;
+      syncReduceMotionMode();
     };
 
     if (motionQuery.addEventListener) {
       motionQuery.addEventListener('change', updateMotionPref);
+    } else if (motionQuery.addListener) {
+      motionQuery.addListener(updateMotionPref);
     }
 
-    updateMotionPref();
+    systemReduceMotionPref = motionQuery.matches;
+    syncReduceMotionMode(true);
   }
 
   /**
@@ -302,12 +314,29 @@ export function initScrollOrchestrator({
 
     lastScrollY = currentScrollY;
 
-    // State transitions based on scroll position & direction
-    if (scrollDirection === 'down') {
-      handleScrollDown(currentScrollY);
-    } else {
-      handleScrollUp(currentScrollY);
+    if (shouldReduceMotion) {
+      if (currentState !== STATE.HAS_HERO) {
+        currentState = STATE.HAS_HERO;
+        applyState(STATE.HAS_HERO, true);
+      }
+      return;
     }
+
+    // State transitions based on scroll position & direction
+    let previousState;
+    let iterations = 0;
+
+    do {
+      previousState = currentState;
+
+      if (scrollDirection === 'down') {
+        handleScrollDown(currentScrollY);
+      } else {
+        handleScrollUp(currentScrollY);
+      }
+
+      iterations += 1;
+    } while (previousState !== currentState && iterations < 3);
   }
 
   /**
@@ -356,6 +385,9 @@ export function initScrollOrchestrator({
 
     console.log(`[scroll-orchestrator] Transition: ${currentState} → ${newState}`);
     currentState = newState;
+    if (!shouldReduceMotion) {
+      previousNonReducedState = newState;
+    }
     applyState(newState);
   }
 
@@ -652,13 +684,34 @@ export function initScrollOrchestrator({
   /**
    * Public API: Update reduce motion flag
    */
-  function setReduceMotion(reduce) {
-    shouldReduceMotion = reduce;
-    document.body.classList.toggle('reduce-motion', reduce);
+  function syncReduceMotionMode(forceReset = false) {
+    const nextReduceMotion = systemReduceMotionPref || userReduceMotionPref;
+    const modeChanged = nextReduceMotion !== shouldReduceMotion;
 
-    if (reduce) {
+    shouldReduceMotion = nextReduceMotion;
+    document.body.classList.toggle('reduce-motion', shouldReduceMotion);
+
+    if (shouldReduceMotion) {
+      previousNonReducedState = currentState;
       completeHeroTransition();
+      currentState = STATE.HAS_HERO;
+      applyState(STATE.HAS_HERO, true);
+      lastScrollY = window.scrollY || window.pageYOffset || 0;
+    } else {
+      if (previousNonReducedState) {
+        currentState = previousNonReducedState;
+      }
+      if (forceReset || modeChanged) {
+        applyState(currentState, true);
+      }
+      lastScrollY = window.scrollY || window.pageYOffset || 0;
+      updateScrollState();
     }
+  }
+
+  function setReduceMotion(reduce) {
+    userReduceMotionPref = !!reduce;
+    syncReduceMotionMode(true);
   }
 
   /**
