@@ -10,6 +10,14 @@ Dieses Verzeichnis enthält Unit Tests für kritische Funktionen der Plex-Katalo
 npm test
 ```
 
+### Integrationstest ausführen
+
+```bash
+npm run test:integration
+```
+
+Dieser Durchlauf benötigt Node.js >= 20 und installiert die Dev-Abhängigkeit [`linkedom`](https://github.com/WebReflection/linkedom), um ein leichtgewichtiges DOM im Test nachzubilden.
+
 ### Einzelne Test-Datei ausführen
 
 ```bash
