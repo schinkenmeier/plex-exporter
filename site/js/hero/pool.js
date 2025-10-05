@@ -116,19 +116,25 @@ function parseVoteCount(raw){
   return 0;
 }
 
-function resolveId(raw, kind){
+function resolveId(raw){
   if(!raw || typeof raw !== 'object') return null;
-  if(raw.guid) return String(raw.guid);
+  if(raw.heroId != null) return String(raw.heroId);
   if(raw.ids && typeof raw.ids === 'object'){
     if(raw.ids.imdb) return `imdb:${raw.ids.imdb}`;
     if(raw.ids.tmdb) return `tmdb:${raw.ids.tmdb}`;
     if(raw.ids.tvdb) return `tvdb:${raw.ids.tvdb}`;
   }
-  if(raw.ratingKey != null) return `${kind}:${raw.ratingKey}`;
-  if(raw.key) return `${kind}:${raw.key}`;
+  if(raw.guid) return String(raw.guid);
+  if(raw.ratingKey != null) return `rk:${raw.ratingKey}`;
+  if(raw.id != null) return String(raw.id);
+  if(raw.slug) return String(raw.slug);
+  if(raw.key != null){
+    const key = typeof raw.key === 'string' ? raw.key.trim() : String(raw.key);
+    if(key) return key;
+  }
   if(raw.title){
     const suffix = raw.year ? `:${raw.year}` : '';
-    return `${kind}:title:${raw.title}${suffix}`;
+    return `title:${raw.title}${suffix}`;
   }
   return null;
 }
@@ -170,14 +176,14 @@ function computeCaps(poolSize, diversity){
   return { perGenre: genreCap, perYear: yearCap };
 }
 
-function prepareCandidates(items, kind){
+function prepareCandidates(items){
   if(!Array.isArray(items) || !items.length) return [];
   const nowTs = now();
   const seen = new Set();
   const prepared = [];
   for(const raw of items){
     if(!raw || typeof raw !== 'object') continue;
-    const id = resolveId(raw, kind);
+    const id = resolveId(raw);
     if(!id) continue;
     if(seen.has(id)) continue;
     seen.add(id);
@@ -356,7 +362,7 @@ function classifyCandidates(items, plan, diversity, history){
     historySet: history?.set || new Set()
   };
 
-  const prepared = prepareCandidates(items, diversity?.kind || 'movie');
+  const prepared = prepareCandidates(items);
   const newList = sortNew(prepared);
   const topList = sortTopRated(prepared);
   const oldList = sortOld(prepared.filter(entry => entry.isOld));
