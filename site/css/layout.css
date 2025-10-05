@@ -330,7 +330,7 @@ header.site-header {
 
 /* iOS Safari sticky support */
 @supports (-webkit-overflow-scrolling: touch) {
-  .filters {
+  .filters.is-sticky {
     position: -webkit-sticky;
     position: sticky;
   }
