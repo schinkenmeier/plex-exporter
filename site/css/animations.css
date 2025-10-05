@@ -262,10 +262,13 @@ html {
   position: sticky;
   top: clamp(68px, 8vw, 88px);
   transition: transform var(--dur-ui) var(--ease-ui),
-              opacity var(--dur-ui) var(--ease-ui);
+              opacity var(--dur-ui) var(--ease-ui),
+              top var(--dur-ui) var(--ease-ui);
 }
 
 .filters.is-collapsing {
+  position: relative;
+  top: auto;
   will-change: opacity, transform;
   transition: opacity var(--dur-ui) var(--ease-ui),
               transform var(--dur-ui) var(--ease-ui);

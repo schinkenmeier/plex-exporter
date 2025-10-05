@@ -315,8 +315,8 @@ header.site-header {
 }
 
 .filters {
-  position: sticky;
-  top: clamp(68px, 8vw, 88px);
+  position: relative;
+  top: auto;
   z-index: 25;
   backdrop-filter: blur(16px) saturate(130%);
   -webkit-backdrop-filter: blur(16px) saturate(130%);
@@ -325,8 +325,7 @@ header.site-header {
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
   transition: transform var(--transition-smooth),
-              opacity var(--transition-smooth),
-              top var(--transition-smooth);
+              opacity var(--transition-smooth);
 }
 
 /* iOS Safari sticky support */
@@ -346,7 +345,8 @@ header.site-header {
 
 /* New orchestrator states (takes precedence) */
 .filters.is-sticky {
-  /* Handled by animations.css */
+  position: sticky;
+  top: clamp(68px, 8vw, 88px);
 }
 
 .filters.is-collapsing,
@@ -492,7 +492,7 @@ body.filter-bar-hidden .grid {
     padding: clamp(32px, 6vh, 64px) 0 clamp(40px, 8vh, 72px);
   }
 
-  .filters {
+  .filters.is-sticky {
     top: 60px;
   }
 }
@@ -645,7 +645,7 @@ body.filter-bar-hidden .grid {
     max-width: 100%;
   }
 
-  .filters {
+  .filters.is-sticky {
     top: clamp(64px, 12vw, 96px);
   }
 
@@ -718,7 +718,7 @@ body.filter-bar-hidden .grid {
     max-width: 100%;
   }
 
-  .filters {
+  .filters.is-sticky {
     position: sticky;
     top: 0;
   }
