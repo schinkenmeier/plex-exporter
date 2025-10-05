@@ -69,6 +69,7 @@ Dieser Leitfaden skizziert den Aufbau der Plex-Exporter-Weboberfläche sowie wic
   * Die Tab-Navigation (`applyTabs()`) setzt ARIA-Rollen, Tastatur-Shortcuts (Links/Rechts, Home/End) und steuert Sichtbarkeit/Focus der Pane-Inhalte (`data-pane`). Damit lassen sich Überblick, Detail-Gitter, Staffeln und Cast parallel vorhalten.
   * `updateDetails()` generiert das mehrspaltige „Details-Grid“ (Sektionen für Allgemein, Genres, Credits). `updateCast()` erstellt Cast-Karten inkl. TMDB/Thumb-Auflösung, fallback auf Initialen sowie Rollenbeschriftung. `populateHead()` liefert Schnellinfos, Chip-Gruppen und Poster-Handling inklusive Lazy-Loading-Indikator.
   * Einbettung externer Aktionen geschieht zentral in `setExternalLinks()`: Die Funktion aktiviert/deaktiviert TMDB-/IMDb-Links und Trailer-Button (öffnet neues Tab via `window.open`).
+  * Demo-Datensätze für Debug- und Showcase-Szenarien liegen ausgelagert in `site/js/modal/demoData.js` und werden erst bei Bedarf via Dynamic Import geladen (`openMovieModalV2('demo')`/`openSeriesModalV2('demo')`). Reguläre Builds werden so nicht mit den Beispielpayloads gebündelt.
 
 * **Hilfsmodule & Zusammenspiel:**
   * Staffel-/Episodenlisten rendert `site/js/modal/seasonsAccordion.js`, das aus Staffel-Objekten Akkordeon-Karten mit Lazy-Poster, Episoden-Badges und Toggle-Verhalten erzeugt. Das Cinematic-Modal bindet die Ausgabe im Tab „Staffeln“ über `renderSeasonsAccordion()` ein.
