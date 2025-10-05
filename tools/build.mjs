@@ -34,8 +34,12 @@ const cssOptions = {
   minify: true,
   sourcemap: !watch,
   logLevel: 'info',
-  entryPoints: [path.join(siteDir, 'css', 'app.css')],
-  outfile: path.join(distDir, 'app.css'),
+  entryPoints: [
+    path.join(siteDir, 'css', 'app.css'),
+    path.join(siteDir, 'css', 'hero.css')
+  ],
+  outdir: distDir,
+  entryNames: '[name]',
   metafile: true
 };
 
@@ -58,7 +62,9 @@ if(watch){
     console.log(`JS Bundle: ${(jsSize / 1024).toFixed(2)} KB`);
   }
   if(cssResult.metafile){
-    const cssSize = Object.values(cssResult.metafile.outputs)[0]?.bytes || 0;
+    const cssSize = Object.entries(cssResult.metafile.outputs)
+      .filter(([file]) => file.endsWith('.css'))
+      .reduce((total, [, output]) => total + (output.bytes || 0), 0);
     console.log(`CSS Bundle: ${(cssSize / 1024).toFixed(2)} KB`);
   }
 
