@@ -21,6 +21,7 @@ export class VirtualList {
     renderItem,
     getKey = noop,
     updateItem = null,
+    getSignature = null,
     overscan = 2,
     estimatedItemHeight = DEFAULT_ESTIMATED_HEIGHT,
     minItemWidth = DEFAULT_MIN_WIDTH
@@ -32,6 +33,7 @@ export class VirtualList {
     this.renderItem = renderItem;
     this.getKey = getKey;
     this.updateItem = typeof updateItem === 'function' ? updateItem : null;
+    this.getSignature = typeof getSignature === 'function' ? getSignature : null;
     this.overscan = Math.max(0, overscan|0);
     this.estimatedItemHeight = estimatedItemHeight;
     this.minItemWidth = minItemWidth;
@@ -54,6 +56,7 @@ export class VirtualList {
 
     this.nodeCache = new Map();
     this.renderedKeys = new Set();
+    this.itemSignatures = new Map();
 
     this.spacer = document.createElement('div');
     this.spacer.className = 'grid-virtual__spacer';
@@ -105,6 +108,7 @@ export class VirtualList {
     }
     this.nodeCache.clear();
     this.renderedKeys.clear();
+    this.itemSignatures.clear();
     this.items = [];
     this.spacer.remove();
     this.windowEl.remove();
@@ -136,8 +140,8 @@ export class VirtualList {
   setItems(list){
     this.items = Array.isArray(list) ? list.slice() : [];
     this.metricsDirty = true;
-    this.measureItems();
     this.pruneCache();
+    this.measureItems();
     this.update();
   }
 
@@ -167,19 +171,44 @@ export class VirtualList {
     if(!this.items.length){
       this.nodeCache.forEach(node=> node.remove());
       this.nodeCache.clear();
+      this.itemSignatures.clear();
+      this.renderedKeys.clear();
       return;
     }
     const allowed = new Set();
+    const nextSignatures = this.getSignature ? new Map() : null;
+
     this.items.forEach((item, idx)=>{
       const key = this.keyFor(item, idx);
       allowed.add(key);
+      if(nextSignatures){
+        const signature = this.signatureFor(item, idx);
+        nextSignatures.set(key, signature);
+        const prev = this.itemSignatures.get(key);
+        if(prev !== undefined && prev !== signature){
+          const node = this.nodeCache.get(key);
+          if(node){
+            if(node.parentNode) node.parentNode.removeChild(node);
+            this.nodeCache.delete(key);
+            this.renderedKeys.delete(key);
+          }
+        }
+      }
     });
+
     this.nodeCache.forEach((node, key)=>{
       if(!allowed.has(key)){
         if(node.parentNode) node.parentNode.removeChild(node);
         this.nodeCache.delete(key);
+        this.renderedKeys.delete(key);
       }
     });
+
+    if(nextSignatures){
+      this.itemSignatures = nextSignatures;
+    } else {
+      this.itemSignatures.clear();
+    }
   }
 
   keyFor(item, index){
@@ -188,6 +217,15 @@ export class VirtualList {
       return `index-${index}`;
     }
     return String(raw);
+  }
+
+  signatureFor(item, index){
+    if(!this.getSignature) return undefined;
+    try {
+      return this.getSignature(item, index);
+    } catch (err) {
+      return undefined;
+    }
   }
 
   refreshMetrics(){
@@ -264,7 +302,17 @@ export class VirtualList {
     const end = Math.max(start, Math.min(this.items.length, (endRow + 1) * this.columns));
 
     if(start === this.range.start && end === this.range.end){
-      return;
+      let needsRefresh = false;
+      for(let i=start; i<end; i++){
+        const key = this.keyFor(this.items[i], i);
+        if(!this.renderedKeys.has(key)){
+          needsRefresh = true;
+          break;
+        }
+      }
+      if(!needsRefresh){
+        return;
+      }
     }
 
     this.range = { start, end };
@@ -280,7 +328,15 @@ export class VirtualList {
       const key = this.keyFor(item, i);
       let node = this.nodeCache.get(key);
       if(node){
-        if(this.updateItem) this.updateItem(node, item, i);
+        if(this.updateItem){
+          const updated = this.updateItem(node, item, i);
+          if(updated instanceof HTMLElement && updated !== node){
+            node = updated;
+            this.nodeCache.set(key, node);
+          } else if(!(updated instanceof HTMLElement)){
+            continue;
+          }
+        }
       } else {
         node = this.renderItem(item, i);
         if(!(node instanceof HTMLElement)) continue;

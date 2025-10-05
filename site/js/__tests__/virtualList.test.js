@@ -368,6 +368,58 @@ describe('VirtualList', () => {
       vlist.destroy();
     }
   });
+
+  it('invalidates cached nodes when signature changes', () => {
+    const container = document.createElement('div');
+    container.setAttribute('id', 'grid');
+    container.setComputedStyle({ paddingTop: '16px', paddingBottom: '16px' });
+    container.setBoundingRect({ top: 0, width: 400 });
+    Object.defineProperty(container, 'clientWidth', { value: 400, writable: true });
+    document.body.append(container);
+
+    let renderCount = 0;
+
+    const vlist = new VirtualList({
+      container,
+      overscan: 0,
+      estimatedItemHeight: 250,
+      minItemWidth: 180,
+      getKey: (item) => item.id,
+      getSignature: (item) => `${item.id}:${item.version}`,
+      renderItem: (item) => {
+        renderCount += 1;
+        const node = document.createElement('article');
+        node.setBoundingRect({ width: 200, height: 250 });
+        node.dataset.version = item.version;
+        return node;
+      }
+    });
+
+    try {
+      vlist.itemsHost.setComputedStyle({ rowGap: '16px', columnGap: '16px', gap: '16px' });
+      vlist.measureItems = function(){ this.itemHeight = 250; };
+
+      const initial = [{ id: 'id-1', version: 'v1' }];
+      vlist.setItems(initial);
+      vlist.update();
+
+      const cached = vlist.nodeCache.get('id-1');
+      assert.ok(cached, 'stores initial node');
+      assert.strictEqual(renderCount, 1, 'renders initial node once');
+
+      const updated = [{ id: 'id-1', version: 'v2' }];
+      vlist.setItems(updated);
+      vlist.update();
+
+      const next = vlist.nodeCache.get('id-1');
+      assert.ok(next, 'keeps cached node for key');
+      assert.notStrictEqual(next, cached, 'replaces cached node when signature changes');
+      assert.strictEqual(renderCount, 2, 'renders a fresh node after signature change');
+      assert.strictEqual(next.dataset.version, 'v2');
+    } finally {
+      vlist.destroy();
+    }
+  });
   after(() => {
     if(originalWindow === undefined) delete globalThis.window; else globalThis.window = originalWindow;
     if(originalDocument === undefined) delete globalThis.document; else globalThis.document = originalDocument;

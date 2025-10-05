@@ -6,6 +6,8 @@ import { openMovieModalV2, openSeriesModalV2 } from './modalV2.js';
 import { navigateToHash } from './main.js';
 import { VirtualList } from './grid/virtualList.js';
 
+const CARD_SIGNATURE_PROP = '__gridVirtualSignature';
+
 function cardEl(item){
   const card = el('article','card');
   card.style.contentVisibility = 'auto';
@@ -164,8 +166,7 @@ function collectionCardEl(entry){
   if(entry?.title) title.setAttribute('title', entry.title);
 
   const sub = el('div','card__meta');
-  const pieces = [entry.year, `${entry.itemCount} Titel`];
-  if(Number.isFinite(entry.rating)) pieces.push(`★ ${formatRating(entry.rating)}`);
+  const pieces = collectionMetaPieces(entry);
   sub.textContent = pieces.filter(Boolean).join(' • ');
 
   body.append(title, sub);
@@ -211,8 +212,13 @@ function ensureVirtualList(grid){
     estimatedItemHeight: 460,
     minItemWidth: 190,
     getKey: itemKey,
+    getSignature: gridItemSignature,
     renderItem(item){
-      return item?.isCollectionGroup ? collectionCardEl(item) : cardEl(item);
+      const node = renderGridItemNode(item);
+      return node;
+    },
+    updateItem(node, item){
+      return refreshGridItemNode(node, item);
     }
   });
   return virtualListInstance;
@@ -225,6 +231,27 @@ function itemKey(item, index){
   }
   const id = resolveItemId(item);
   return id ? `item:${id}` : `item-index-${index}`;
+}
+
+function renderGridItemNode(item){
+  const node = item?.isCollectionGroup ? collectionCardEl(item) : cardEl(item);
+  if(node instanceof HTMLElement){
+    node[CARD_SIGNATURE_PROP] = gridItemSignature(item);
+  }
+  return node;
+}
+
+function refreshGridItemNode(current, item){
+  if(current instanceof HTMLElement){
+    const signature = gridItemSignature(item);
+    if(current[CARD_SIGNATURE_PROP] === signature){
+      current[CARD_SIGNATURE_PROP] = signature;
+      return current;
+    }
+  }
+  const replacement = renderGridItemNode(item);
+  if(!(replacement instanceof HTMLElement)) return current;
+  return replaceCardNode(current, replacement);
 }
 
 export function renderGrid(view){
@@ -267,21 +294,29 @@ function resolvePoster(item){
   return tmdbPoster || fallback || '';
 }
 
-function buildItemBadges(item){
+function itemBadgeTexts(item){
   const badges = [];
-  if(isNew(item)) badges.push(createBadge('Neu'));
+  if(isNew(item)) badges.push('Neu');
   const contentRating = String(item?.contentRating || '').trim();
-  if(contentRating) badges.push(createBadge(contentRating));
+  if(contentRating) badges.push(contentRating);
   const ratingNum = Number(item?.rating ?? item?.audienceRating);
-  if(Number.isFinite(ratingNum)) badges.push(createBadge(`★ ${formatRating(ratingNum)}`));
+  if(Number.isFinite(ratingNum)) badges.push(`★ ${formatRating(ratingNum)}`);
   return badges.slice(0, 3);
 }
 
-function buildCollectionBadges(entry){
+function buildItemBadges(item){
+  return itemBadgeTexts(item).map(createBadge);
+}
+
+function collectionBadgeTexts(entry){
   const badges = [];
-  if(Number.isFinite(entry?.itemCount) && entry.itemCount > 0) badges.push(createBadge(`${entry.itemCount} Titel`));
-  if(entry?.year) badges.push(createBadge(String(entry.year)));
+  if(Number.isFinite(entry?.itemCount) && entry.itemCount > 0) badges.push(`${entry.itemCount} Titel`);
+  if(entry?.year) badges.push(String(entry.year));
   return badges;
+}
+
+function buildCollectionBadges(entry){
+  return collectionBadgeTexts(entry).map(createBadge);
 }
 
 function createBadge(text){
@@ -312,6 +347,16 @@ function buildMetaPieces(item){
   return pieces;
 }
 
+function collectionMetaPieces(entry){
+  const pieces = [];
+  if(entry?.year) pieces.push(String(entry.year));
+  const count = Number(entry?.itemCount);
+  if(Number.isFinite(count)) pieces.push(`${count} Titel`);
+  const rating = Number(entry?.rating);
+  if(Number.isFinite(rating)) pieces.push(`★ ${formatRating(rating)}`);
+  return pieces;
+}
+
 function formatRuntime(item){
   const raw = item?.runtimeMin ?? item?.durationMin ?? (item?.duration ? Math.round(Number(item.duration) / 60000) : null);
   const minutes = Number(raw);
@@ -333,6 +378,67 @@ function resolveItemId(item){
   if(preferred) return String(preferred);
   if(item?.ratingKey) return String(item.ratingKey);
   return '';
+}
+
+function gridItemSignature(entry){
+  if(entry?.isCollectionGroup) return collectionSignature(entry);
+  return itemSignature(entry);
+}
+
+function itemSignature(item){
+  const genres = getGenreNames(item?.genres).slice(0, 3);
+  const badges = itemBadgeTexts(item);
+  const meta = buildMetaPieces(item);
+  return JSON.stringify({
+    id: resolveItemId(item),
+    title: item?.title || '',
+    poster: resolvePoster(item),
+    badges,
+    meta,
+    progress: progressPercent(item),
+    watch: Watch.isSaved(item),
+    genres
+  });
+}
+
+function collectionSignature(entry){
+  const baseItem = entry?.posterItem || null;
+  const genres = Array.isArray(entry?.genres) ? entry.genres.slice(0, 3).map(String) : [];
+  const badges = collectionBadgeTexts(entry);
+  const meta = collectionMetaPieces(entry);
+  const count = Number(entry?.itemCount);
+  const ratingValue = Number(entry?.rating);
+  return JSON.stringify({
+    name: entry?.collectionName || entry?.title || '',
+    title: entry?.title || '',
+    itemCount: Number.isFinite(count) ? count : null,
+    year: entry?.year || '',
+    rating: Number.isFinite(ratingValue) ? ratingValue : null,
+    poster: resolvePoster(baseItem),
+    badges,
+    meta,
+    genres
+  });
+}
+
+function replaceCardNode(current, replacement){
+  if(!(replacement instanceof HTMLElement)) return current;
+  if(!(current instanceof HTMLElement)) return replacement;
+  const parent = current.parentNode;
+  const hadFocus = document.activeElement === current;
+  if(parent){
+    parent.replaceChild(replacement, current);
+  }
+  if(hadFocus && typeof replacement.focus === 'function'){
+    requestAnimationFrame(()=>{
+      try {
+        replacement.focus({ preventScroll: true });
+      } catch (err) {
+        replacement.focus();
+      }
+    });
+  }
+  return replacement;
 }
 
 function updateHash(kind, id){
