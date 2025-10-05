@@ -131,19 +131,24 @@ function renderGridForCurrentView(){
   }).catch(console.error);
 }
 
+let filtersUpdatedHandler = null;
+
+export function setFiltersUpdatedHandler(handler){
+  filtersUpdatedHandler = typeof handler === 'function' ? handler : null;
+}
+
 export function updateFiltersAndGrid(){
   const result = applyFilters();
   renderGridForCurrentView();
-  notifyFiltersUpdated(result);
+  if(filtersUpdatedHandler){
+    try{
+      const payload = Array.isArray(result) ? result.slice() : [];
+      filtersUpdatedHandler(payload, getState().view);
+    }catch(err){
+      console.warn('[filter] Failed to notify filters handler:', err?.message);
+    }
+  }
   return result;
-}
-
-function notifyFiltersUpdated(items){
-  try{
-    const payload = Array.isArray(items) ? items.slice() : [];
-    const detail = { items: payload, view: getState().view };
-    window.dispatchEvent(new CustomEvent('filters:updated', { detail }));
-  }catch{}
 }
 
 function updateGenreFilterState(){

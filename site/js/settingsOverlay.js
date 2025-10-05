@@ -1,21 +1,34 @@
 import { getState } from './state.js';
 import { renderGrid } from './grid.js';
 
-function dispatchHeroRefresh(items){
-  try{
-    const event = new CustomEvent('settings:refresh-hero', { detail: { items } });
-    window.dispatchEvent(event);
-  }catch(err){
-    console.warn('[settingsOverlay] Failed to dispatch hero refresh event:', err?.message);
+let heroRefreshHandler = null;
+let reduceMotionHandler = null;
+
+export function setHeroRefreshHandler(handler){
+  heroRefreshHandler = typeof handler === 'function' ? handler : null;
+}
+
+export function setReduceMotionHandler(handler){
+  reduceMotionHandler = typeof handler === 'function' ? handler : null;
+}
+
+function notifyHeroRefresh(items){
+  if(heroRefreshHandler){
+    try{
+      heroRefreshHandler(items);
+    }catch(err){
+      console.warn('[settingsOverlay] Failed to trigger hero refresh handler:', err?.message);
+    }
   }
 }
 
-function dispatchReduceMotion(enabled){
-  try{
-    const event = new CustomEvent('settings:reduce-motion', { detail: { enabled } });
-    window.dispatchEvent(event);
-  }catch(err){
-    console.warn('[settingsOverlay] Failed to dispatch reduce motion event:', err?.message);
+function notifyReduceMotion(enabled){
+  if(reduceMotionHandler){
+    try{
+      reduceMotionHandler(enabled);
+    }catch(err){
+      console.warn('[settingsOverlay] Failed to trigger reduce motion handler:', err?.message);
+    }
   }
 }
 
@@ -176,7 +189,7 @@ export function initSettingsOverlay(cfg){
       try{ localStorage.setItem('useTmdb', '0'); }catch{}
       useTmdb.checked = false;
       renderGrid(getState().view);
-      dispatchHeroRefresh();
+      notifyHeroRefresh();
     }
   }
 
@@ -253,7 +266,7 @@ export function initSettingsOverlay(cfg){
   tmdbClear && tmdbClear.addEventListener('click', ()=>{ import('./services/tmdb.js').then(m=>m.clearCache?.()); });
   reduce && reduce.addEventListener('change', ()=>{
     try{ localStorage.setItem('prefReduceMotion', reduce.checked ? '1' : '0'); }catch{}
-    dispatchReduceMotion(reduce.checked);
+    notifyReduceMotion(reduce.checked);
   });
   useTmdb && useTmdb.addEventListener('change', ()=>{
     try{ localStorage.setItem('useTmdb', useTmdb.checked ? '1' : '0'); }catch{}
@@ -269,7 +282,7 @@ export function initSettingsOverlay(cfg){
       setTimeout(()=>{ if(useTmdb.checked) renderGrid(getState().view); }, 3000);
     }
     renderGrid(getState().view);
-    dispatchHeroRefresh();
+    notifyHeroRefresh();
   });
   resetFilters && resetFilters.addEventListener('click', ()=>{
     const search = document.getElementById('search'); if(search) search.value='';
@@ -286,7 +299,7 @@ export function initSettingsOverlay(cfg){
     import('./filter.js').then(F=>{
       const result = F.applyFilters();
       renderGrid(getState().view);
-      dispatchHeroRefresh(result);
+      notifyHeroRefresh(result);
     });
   });
 }
