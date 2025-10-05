@@ -194,15 +194,21 @@ async function settle(times = 3){
 }
 
 test('boot flow integrates view switch, filtering and modal opening', async () => {
-  globalThis.__PLEX_TEST_MODE__ = true;
-  createDom();
+  const hadTestModeFlag = Object.prototype.hasOwnProperty.call(globalThis, '__PLEX_TEST_MODE__');
+  const originalTestMode = globalThis.__PLEX_TEST_MODE__;
+  const hadFetch = Object.prototype.hasOwnProperty.call(globalThis, 'fetch');
+  const originalFetch = globalThis.fetch;
 
-  globalThis.fetch = async (url) => {
-    if(typeof url === 'string' && url.endsWith('config.json')){
-      return { ok: true, json: async () => ({ startView: 'movies', tmdbEnabled: false }) };
-    }
-    if(typeof url === 'string' && url.endsWith('data/movies/movies.json')){
-      return { ok: true, json: async () => MOVIES_FIXTURE };
+  try {
+    globalThis.__PLEX_TEST_MODE__ = true;
+    createDom();
+
+    globalThis.fetch = async (url) => {
+      if(typeof url === 'string' && url.endsWith('config.json')){
+        return { ok: true, json: async () => ({ startView: 'movies', tmdbEnabled: false }) };
+      }
+      if(typeof url === 'string' && url.endsWith('data/movies/movies.json')){
+        return { ok: true, json: async () => MOVIES_FIXTURE };
     }
     if(typeof url === 'string' && url.endsWith('data/series/series_index.json')){
       return { ok: true, json: async () => SHOWS_FIXTURE };
@@ -210,52 +216,65 @@ test('boot flow integrates view switch, filtering and modal opening', async () =
     throw new Error(`Unexpected fetch call for ${url}`);
   };
 
-  const stateModule = await import('../state.js');
-  const main = await import('../main.js');
-  const Filter = await import('../filter.js');
-  const { getState } = stateModule;
+    const stateModule = await import('../state.js');
+    const main = await import('../main.js');
+    const Filter = await import('../filter.js');
+    const { getState } = stateModule;
 
-  await main.boot();
-  await settle();
+    await main.boot();
+    await settle();
 
-  const grid = document.getElementById('grid');
-  assert.equal(getState().view, 'movies');
-  assert.equal(cardNodes().length, MOVIES_FIXTURE.length);
+    const grid = document.getElementById('grid');
+    assert.equal(getState().view, 'movies');
+    assert.equal(cardNodes().length, MOVIES_FIXTURE.length);
 
-  const showsBtn = document.querySelector('#libraryTabs [data-lib="series"]');
-  showsBtn.click();
-  await settle();
-  assert.equal(getState().view, 'shows');
-  assert.equal(cardNodes().length, SHOWS_FIXTURE.length);
+    const showsBtn = document.querySelector('#libraryTabs [data-lib="series"]');
+    showsBtn.click();
+    await settle();
+    assert.equal(getState().view, 'shows');
+    assert.equal(cardNodes().length, SHOWS_FIXTURE.length);
 
-  const moviesBtn = document.querySelector('#libraryTabs [data-lib="movies"]');
-  moviesBtn.click();
-  await settle();
-  assert.equal(getState().view, 'movies');
+    const moviesBtn = document.querySelector('#libraryTabs [data-lib="movies"]');
+    moviesBtn.click();
+    await settle();
+    assert.equal(getState().view, 'movies');
 
-  const searchInput = document.getElementById('search');
-  searchInput.value = 'Drama';
-  searchInput.dispatchEvent(new window.Event('input', { bubbles: true }));
+    const searchInput = document.getElementById('search');
+    searchInput.value = 'Drama';
+    searchInput.dispatchEvent(new window.Event('input', { bubbles: true }));
 
-  await settle();
+    await settle();
 
-  const filtered = Filter.applyFilters();
-  assert.equal(filtered.length, 1);
-  assert.equal(filtered[0].title, 'Drama Piece');
-  await settle();
+    const filtered = Filter.applyFilters();
+    assert.equal(filtered.length, 1);
+    assert.equal(filtered[0].title, 'Drama Piece');
+    await settle();
 
-  const currentCards = cardNodes();
-  assert.equal(currentCards.length, 1);
-  const firstCard = currentCards[0];
-  const titleNode = firstCard?.querySelector('.card__title');
-  assert.equal(titleNode?.textContent, 'Drama Piece');
+    const currentCards = cardNodes();
+    assert.equal(currentCards.length, 1);
+    const firstCard = currentCards[0];
+    const titleNode = firstCard?.querySelector('.card__title');
+    assert.equal(titleNode?.textContent, 'Drama Piece');
 
-  firstCard.click();
-  await settle();
+    firstCard.click();
+    await settle();
 
-  const modalRoot = document.getElementById('modal-root-v2');
-  const titleEl = document.getElementById('modalV2Title');
-  assert.equal(modalRoot.hidden, false);
-  assert.ok(document.body.classList.contains('modalv2-open'));
-  assert.equal(titleEl?.textContent?.trim(), 'Drama Piece');
+    const modalRoot = document.getElementById('modal-root-v2');
+    const titleEl = document.getElementById('modalV2Title');
+    assert.equal(modalRoot.hidden, false);
+    assert.ok(document.body.classList.contains('modalv2-open'));
+    assert.equal(titleEl?.textContent?.trim(), 'Drama Piece');
+  } finally {
+    if(hadTestModeFlag){
+      globalThis.__PLEX_TEST_MODE__ = originalTestMode;
+    }else{
+      delete globalThis.__PLEX_TEST_MODE__;
+    }
+
+    if(hadFetch){
+      globalThis.fetch = originalFetch;
+    }else{
+      delete globalThis.fetch;
+    }
+  }
 });
