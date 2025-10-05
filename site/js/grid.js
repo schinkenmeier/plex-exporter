@@ -4,6 +4,7 @@ import { el } from './dom.js';
 import { humanYear, formatRating, renderChipsLimited, useTmdbOn, isNew, getGenreNames, collectionTags } from './utils.js';
 import * as Watch from './watchlist.js';
 import { openMovieModalV2, openSeriesModalV2 } from './modalV2.js';
+import { navigateToHash } from './main.js';
 
 function cardEl(item){
   const card = el('article','card');
@@ -311,16 +312,8 @@ function resolveItemId(item){
 function updateHash(kind, id){
   if(!kind || !id) return;
   const hash = `#/${kind}/${id}`;
-  try{
-    if(history && typeof history.pushState === 'function'){
-      if(location.hash === hash && typeof history.replaceState === 'function') history.replaceState(null, '', hash);
-      else history.pushState(null, '', hash);
-      return;
-    }
-  }catch{}
-  try{ window.__skipNextHashNavigation = true; }
-  catch{}
-  location.hash = hash;
+  const replace = (window.location.hash || '') === hash;
+  navigateToHash(hash, { silent: true, replace });
 }
 
 function openDetail(item){
