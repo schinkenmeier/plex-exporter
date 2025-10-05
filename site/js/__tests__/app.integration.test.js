@@ -55,9 +55,15 @@ function createDom(){
           <img id="siteLogo" />
           <div class="site-header__brand-text"><span class="site-header__label"></span></div>
         </div>
-        <section id="hero" data-hero-kind="" data-hero-id="">
+        <section id="hero" data-hero-kind="" data-hero-id="" data-state="empty">
           <h1 id="heroTitle">Meine Bibliothek</h1>
-          <p id="heroSubtitle"></p>
+          <p id="heroTagline"></p>
+          <p id="heroOverview"></p>
+          <div id="heroMeta" hidden>
+            <div id="heroMetaPrimary"></div>
+            <div id="heroMetaSecondary"></div>
+            <div id="heroMetaTertiary"></div>
+          </div>
           <button id="heroCta" type="button">Details</button>
         </section>
         <div id="heroStats">
@@ -66,8 +72,8 @@ function createDom(){
         </div>
         <div class="filters">
           <div id="libraryTabs">
-            <button type="button" data-lib="movies" aria-pressed="false">Filme</button>
-            <button type="button" data-lib="series" aria-pressed="false">Serien</button>
+            <button type="button" data-lib="movies" aria-pressed="false">Movies</button>
+            <button type="button" data-lib="series" aria-pressed="false">Shows</button>
           </div>
           <input id="search" type="search" />
           <input id="q" type="search" />
@@ -121,6 +127,14 @@ function createDom(){
       const height = Number(this.style?.height?.replace('px','')) || this.clientHeight || 0;
       return { top: 0, left: 0, right: width, bottom: height, width, height };
     };
+    Object.defineProperty(window.HTMLElement.prototype, 'offsetParent', {
+      configurable: true,
+      get(){ return this.parentNode || document.body; }
+    });
+    Object.defineProperty(window.HTMLElement.prototype, 'offsetTop', {
+      configurable: true,
+      get(){ return Number(this.dataset?.offsetTop ?? 0); }
+    });
   }
 
   globalThis.window = window;

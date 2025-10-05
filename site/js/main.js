@@ -485,25 +485,28 @@ function initHeaderInteractions(){
       if(titleEl) titleEl.classList.remove('sr-only');
     });
   }
-  const subtitle = document.getElementById('heroSubtitle');
+  const subtitle = document.getElementById('heroTagline');
   const TAGLINES = [
-    'Offline stöbern & Wunschlisten teilen',
-    'Filter. Finden. Freuen.',
-    'Filme & Serien – stressfrei sichtbar',
-    'Schneller als jeder SMB-Share',
-    'Merkliste zuerst, Streit später'
+    'Curated spotlights and smart filters for every mood.',
+    'Bring Plex highlights on the road with offline browsing.',
+    'Plan your next movie night with shareable watchlists.'
   ];
-  let idx = 0; if(subtitle) subtitle.textContent = TAGLINES[idx];
+  let idx = 0;
+  if(subtitle && !subtitle.textContent){
+    subtitle.textContent = TAGLINES[idx];
+  }
   function rotate(){
-    if(!subtitle || subtitle.dataset.taglinePaused==='1') return;
+    if(!subtitle || subtitle.dataset.taglinePaused === '1') return;
     subtitle.classList.add('is-fading');
     setTimeout(()=>{
-      if(!subtitle || subtitle.dataset.taglinePaused==='1'){ subtitle && subtitle.classList.remove('is-fading'); return; }
-      idx = (idx+1)%TAGLINES.length; subtitle.textContent = TAGLINES[idx]; subtitle.classList.remove('is-fading');
+      if(!subtitle || subtitle.dataset.taglinePaused === '1'){ subtitle && subtitle.classList.remove('is-fading'); return; }
+      idx = (idx + 1) % TAGLINES.length;
+      subtitle.textContent = TAGLINES[idx];
+      subtitle.classList.remove('is-fading');
     }, 280);
   }
   if(subtitle){
-    subtitle.dataset.taglinePaused='0';
+    subtitle.dataset.taglinePaused = subtitle.dataset.taglinePaused === '1' ? '1' : '0';
     if(taglineTicker){
       clearInterval(taglineTicker);
     }

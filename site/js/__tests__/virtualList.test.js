@@ -20,6 +20,14 @@ class FakeNode {
     });
   }
 
+  get firstChild(){
+    return this.children.length ? this.children[0] : null;
+  }
+
+  get lastChild(){
+    return this.children.length ? this.children[this.children.length - 1] : null;
+  }
+
   _appendNode(node){
     if(!node) return;
     if(node.parentNode){
@@ -33,6 +41,37 @@ class FakeNode {
     }
     this.children.push(node);
     node.parentNode = this;
+  }
+
+  insertBefore(node, before){
+    if(node == null) return null;
+    if(node.isFragment){
+      const copy = [...node.children];
+      node.children = [];
+      copy.forEach(child=> this.insertBefore(child, before));
+      return node;
+    }
+    if(!before){
+      this.append(node);
+      return node;
+    }
+    const index = this.children.indexOf(before);
+    if(index < 0){
+      this.append(node);
+      return node;
+    }
+    if(node.parentNode){
+      const parent = node.parentNode;
+      if(typeof parent.removeChild === 'function') parent.removeChild(node);
+      else {
+        const idx = parent.children.indexOf(node);
+        if(idx >= 0) parent.children.splice(idx, 1);
+        node.parentNode = null;
+      }
+    }
+    this.children.splice(index, 0, node);
+    node.parentNode = this;
+    return node;
   }
 
   replaceChildren(...nodes){
@@ -130,6 +169,15 @@ class FakeElement extends FakeNode {
 
   setBoundingRect(rect){
     this._rect = { ...this._rect, ...rect };
+  }
+
+  get offsetParent(){
+    return this.parentNode || null;
+  }
+
+  get offsetTop(){
+    const parentTop = this.parentNode instanceof FakeElement ? this.parentNode.offsetTop : 0;
+    return parentTop + (this._rect.top || 0);
   }
 
   addEventListener(type, handler){
@@ -305,13 +353,13 @@ describe('VirtualList', () => {
       assert.ok(expectedCount < items.length, 'virtualizes by limiting rendered nodes');
       assert.ok(expectedCount >= columns, 'covers at least a full row of cards');
 
-      assert.strictEqual(vlist.windowEl.style.transform, 'translateY(0px)');
+      assert.strictEqual(vlist.windowEl.style.transform, 'translate3d(0, 0px, 0)');
 
       fakeWindow.scrollY = 1500;
       vlist.handleScroll();
       vlist.update();
 
-      assert.notStrictEqual(vlist.windowEl.style.transform, 'translateY(0px)');
+      assert.notStrictEqual(vlist.windowEl.style.transform, 'translate3d(0, 0px, 0)');
       const scrolledCount = vlist.itemsHost.children.length;
       assert.ok(scrolledCount === (vlist.range.end - vlist.range.start));
       assert.ok(vlist.range.start > 0, 'range starts after scrolling');
