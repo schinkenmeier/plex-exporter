@@ -169,7 +169,8 @@ export function initSettingsOverlay(cfg){
         const stored = String(localStorage.getItem('tmdbToken')||'').trim();
         const currentInput = String(tmdbInput?.value||'').trim();
         if(stored && currentInput){
-          try{ localStorage.removeItem('tmdbToken'); }catch{}
+          try{ localStorage.removeItem('tmdbToken'); }
+          catch(err){ console.warn('[settingsOverlay] Failed to remove tmdbToken from storage:', err?.message || err); }
           if(tmdbInput) tmdbInput.value = '';
           setUseTmdbAvailability(true);
           const m = 'Ungültiger Token entfernt. Verwende API Key aus config.json.';
@@ -178,7 +179,7 @@ export function initSettingsOverlay(cfg){
           if(tmdbBadge){ tmdbBadge.dataset.kind = 'info'; tmdbBadge.title = m; }
         }
       }
-    }catch{}
+    }catch(err){ console.warn('[settingsOverlay] Failed to reset TMDB status state:', err?.message || err); }
   }
 
   function setUseTmdbAvailability(allowed){
@@ -186,7 +187,8 @@ export function initSettingsOverlay(cfg){
     useTmdb.disabled = !allowed;
     useTmdb.title = useTmdb.disabled ? 'Nur verfügbar mit gültigem Token oder API Key.' : '';
     if(!allowed && useTmdb.checked){
-      try{ localStorage.setItem('useTmdb', '0'); }catch{}
+      try{ localStorage.setItem('useTmdb', '0'); }
+      catch(err){ console.warn('[settingsOverlay] Failed to persist TMDB toggle state:', err?.message || err); }
       useTmdb.checked = false;
       renderGrid(getState().view);
       notifyHeroRefresh();
@@ -195,14 +197,18 @@ export function initSettingsOverlay(cfg){
 
   function syncSettingsUi(){
     let token = '';
-    try{ tmdbInput && (tmdbInput.value = token = (localStorage.getItem('tmdbToken')||'')); }catch{}
-    try{ reduce && (reduce.checked = localStorage.getItem('prefReduceMotion')==='1'); }catch{}
+    try{ tmdbInput && (tmdbInput.value = token = (localStorage.getItem('tmdbToken')||'')); }
+    catch(err){ console.warn('[settingsOverlay] Failed to read stored tmdbToken:', err?.message || err); }
+    try{ reduce && (reduce.checked = localStorage.getItem('prefReduceMotion')==='1'); }
+    catch(err){ console.warn('[settingsOverlay] Failed to read reduce-motion preference:', err?.message || err); }
     try{ if(useTmdb){
       useTmdb.checked = localStorage.getItem('useTmdb')==='1';
       useTmdb.disabled = !token;
       useTmdb.title = useTmdb.disabled ? 'Nur verfügbar mit gültigem Token.' : '';
-    } }catch{}
-    try{ setUseTmdbAvailability(!!token || !!(cfg&&cfg.tmdbApiKey)); }catch{}
+    } }
+    catch(err){ console.warn('[settingsOverlay] Failed to sync TMDB toggle from storage:', err?.message || err); }
+    try{ setUseTmdbAvailability(!!token || !!(cfg&&cfg.tmdbApiKey)); }
+    catch(err){ console.warn('[settingsOverlay] Failed to update TMDB availability:', err?.message || err); }
     setTmdbStatus('', '');
     if(!token){ setTmdbStatus('Kein Token hinterlegt. TMDB ist deaktiviert.', 'info'); }
     if(!cfg?.tmdbEnabled){ setTmdbStatus('Hinweis: TMDB in config.json deaktiviert (tmdbEnabled=false).', 'info'); }
@@ -229,7 +235,8 @@ export function initSettingsOverlay(cfg){
 
   tmdbSave && tmdbSave.addEventListener('click', async ()=>{
     const raw = String(tmdbInput?.value||'').trim();
-    try{ localStorage.setItem('tmdbToken', raw); }catch{}
+    try{ localStorage.setItem('tmdbToken', raw); }
+    catch(err){ console.warn('[settingsOverlay] Failed to persist tmdbToken:', err?.message || err); }
     if(!raw){ setTmdbStatus('Kein Token hinterlegt. TMDB ist deaktiviert.', 'info'); setUseTmdbAvailability(!!(cfg&&cfg.tmdbApiKey)); return; }
     setTmdbStatus('Prüfe Token...', 'pending');
     try{
@@ -265,18 +272,20 @@ export function initSettingsOverlay(cfg){
   });
   tmdbClear && tmdbClear.addEventListener('click', ()=>{ import('./services/tmdb.js').then(m=>m.clearCache?.()); });
   reduce && reduce.addEventListener('change', ()=>{
-    try{ localStorage.setItem('prefReduceMotion', reduce.checked ? '1' : '0'); }catch{}
+    try{ localStorage.setItem('prefReduceMotion', reduce.checked ? '1' : '0'); }
+    catch(err){ console.warn('[settingsOverlay] Failed to store reduce-motion preference:', err?.message || err); }
     notifyReduceMotion(reduce.checked);
   });
   useTmdb && useTmdb.addEventListener('change', ()=>{
-    try{ localStorage.setItem('useTmdb', useTmdb.checked ? '1' : '0'); }catch{}
+    try{ localStorage.setItem('useTmdb', useTmdb.checked ? '1' : '0'); }
+    catch(err){ console.warn('[settingsOverlay] Failed to store TMDB usage preference:', err?.message || err); }
     // Start TMDB hydration when enabling the toggle (if not already started)
     if(useTmdb.checked && !window.__tmdbHydrationStarted){
       window.__tmdbHydrationStarted = 1;
       import('./services/tmdb.js').then(m=>{
         const s = getState();
         m.hydrateOptional?.(s.movies, s.shows, s.cfg);
-      }).catch(()=>{});
+      }).catch(err=>{ console.warn('[settingsOverlay] Failed to hydrate TMDB data:', err?.message || err); });
       // Re-render a bit later to reflect incoming posters
       setTimeout(()=>{ if(useTmdb.checked) renderGrid(getState().view); }, 1200);
       setTimeout(()=>{ if(useTmdb.checked) renderGrid(getState().view); }, 3000);

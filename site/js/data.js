@@ -4,15 +4,13 @@ const LOG_PREFIX = '[data]';
 
 let lastSources = { movies: null, shows: null };
 const showDetailCache = new Map();
-let loadRetryCount = { movies: 0, shows: 0 };
-const MAX_RETRIES = 3;
 const DATA_CACHE_TTL = 1000 * 60 * 30; // 30 minutes for data files
 
 const MOVIE_THUMB_BASE = 'data/movies/';
 const SHOW_THUMB_BASE = 'data/series/';
 const SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i;
 
-async function fetchJson(url, retries = 2, useCache = true){
+export async function fetchJson(url, retries = 2, useCache = true){
   // Try cache first if enabled
   if(useCache){
     const cached = getCache(url);
@@ -47,10 +45,13 @@ async function fetchJson(url, retries = 2, useCache = true){
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
-  if(lastError){
-    console.error(`${LOG_PREFIX} All fetch attempts failed for ${url}:`, lastError.message);
+  const message = lastError?.message || 'Unbekannter Fehler';
+  console.error(`${LOG_PREFIX} All fetch attempts failed for ${url}:`, message);
+  const error = new Error(`Daten konnten nicht geladen werden: ${url} (${message})`);
+  if(lastError && typeof lastError === 'object'){
+    error.cause = lastError;
   }
-  return null;
+  throw error;
 }
 
 function embeddedJsonById(id){
@@ -89,7 +90,13 @@ function fromWindow(varName){
 
 async function loadWithCompat(primaryUrl, opts){
   // default: try site/data first
-  let data = await fetchJson(primaryUrl);
+  let data = null;
+  try{
+    data = await fetchJson(primaryUrl);
+  }catch(err){
+    console.warn(`${LOG_PREFIX} Primary source failed for ${primaryUrl}:`, err.message);
+    data = null;
+  }
   if(Array.isArray(data) && data.length){ markSource(opts?.label, `primary:${primaryUrl}`); return data; }
   // fallback: embedded <script id="..."> JSON
   if(opts?.embedId){ const emb = embeddedJsonById(opts.embedId); if(Array.isArray(emb) && emb.length){ markSource(opts?.label, `embedded:${opts.embedId}`); return emb; } }
@@ -99,11 +106,34 @@ async function loadWithCompat(primaryUrl, opts){
   if(opts?.globalVar){ const win = fromWindow(opts.globalVar); if(Array.isArray(win) && win.length){ markSource(opts?.label, `window:${opts.globalVar}`); return win; } }
   // alt paths (legacy)
   for(const alt of (opts?.altUrls||[])){
-    const j = await fetchJson(alt); if(Array.isArray(j) && j.length){ markSource(opts?.label, `alt:${alt}`); return j; }
+    let altData = null;
+    try{
+      altData = await fetchJson(alt);
+    }catch(err){
+      console.warn(`${LOG_PREFIX} Alternate source failed for ${alt}:`, err.message);
+      altData = null;
+    }
+    if(Array.isArray(altData) && altData.length){ markSource(opts?.label, `alt:${alt}`); return altData; }
   }
   // last resort: empty array
   markSource(opts?.label, 'empty');
   return Array.isArray(data) ? data : [];
+}
+
+function notifyUiError(title, message){
+  if(typeof window === 'undefined' || typeof document === 'undefined' || typeof document.createElement !== 'function'){
+    console.warn(`${LOG_PREFIX} Skipping UI error feedback (environment missing DOM APIs): ${title} - ${message}`);
+    return;
+  }
+  import('./errorHandler.js').then(mod=>{
+    try{
+      mod.showError?.(title, message, 8000);
+    }catch(err){
+      console.warn(`${LOG_PREFIX} Failed to display UI error message:`, err?.message || err);
+    }
+  }).catch(err=>{
+    console.warn(`${LOG_PREFIX} Failed to load error handler for UI feedback:`, err?.message || err);
+  });
 }
 
 export function prefixThumbValue(value, base){
@@ -214,18 +244,10 @@ export async function loadMovies(){
         'movies.json',
       ],
     });
-    loadRetryCount.movies = 0; // Reset on success
     return normalizeMovieThumbs(movies);
   } catch (error) {
     console.error(`${LOG_PREFIX} loadMovies failed:`, error);
-    if (loadRetryCount.movies < MAX_RETRIES) {
-      loadRetryCount.movies++;
-      console.log(`${LOG_PREFIX} Retrying loadMovies (${loadRetryCount.movies}/${MAX_RETRIES})...`);
-      await new Promise(resolve => setTimeout(resolve, 1000 * loadRetryCount.movies));
-      return loadMovies();
-    }
-    console.warn(`${LOG_PREFIX} loadMovies exhausted retries, returning empty array.`);
-    loadRetryCount.movies = 0;
+    notifyUiError('Filme konnten nicht geladen werden', error?.message || 'Unbekannter Fehler');
     return [];
   }
 }
@@ -246,18 +268,10 @@ export async function loadShows(){
         'shows.json',
       ],
     });
-    loadRetryCount.shows = 0; // Reset on success
     return normalizeShowThumbs(shows);
   } catch (error) {
     console.error(`${LOG_PREFIX} loadShows failed:`, error);
-    if (loadRetryCount.shows < MAX_RETRIES) {
-      loadRetryCount.shows++;
-      console.log(`${LOG_PREFIX} Retrying loadShows (${loadRetryCount.shows}/${MAX_RETRIES})...`);
-      await new Promise(resolve => setTimeout(resolve, 1000 * loadRetryCount.shows));
-      return loadShows();
-    }
-    console.warn(`${LOG_PREFIX} loadShows exhausted retries, returning empty array.`);
-    loadRetryCount.shows = 0;
+    notifyUiError('Serien konnten nicht geladen werden', error?.message || 'Unbekannter Fehler');
     return [];
   }
 }
@@ -287,6 +301,7 @@ export async function loadShowDetail(item){
 
   if(lastError) {
     console.error(`${LOG_PREFIX} Could not load show detail for ${item.title || 'unknown'}`, lastError);
+    notifyUiError('Details konnten nicht geladen werden', lastError?.message || 'Bitte später erneut versuchen.');
   }
 
   storeDetail(keys, null, item);
