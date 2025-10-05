@@ -156,10 +156,19 @@ function ensureNormalizedList(list){
   if(!Array.isArray(list)) return [];
   const normalized = [];
   list.forEach(item => {
+    if(!isPlayableHeroItem(item)) return;
     const entry = ensureNormalizedEntry(item);
     if(entry) normalized.push(entry);
   });
   return normalized;
+}
+
+function isPlayableHeroItem(item){
+  if(!item || typeof item !== 'object') return false;
+  if(item.isCollectionGroup) return false;
+  const type = typeof item.type === 'string' ? item.type.toLowerCase() : '';
+  if(type === 'collection') return false;
+  return true;
 }
 
 function chooseHeroCandidate(list){
