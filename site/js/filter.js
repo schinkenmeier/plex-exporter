@@ -1,27 +1,6 @@
 import { getState, setState } from './state.js';
 import { qs } from './dom.js';
-import { getGenreNames } from './utils.js';
-
-function humanYear(item){
-  if(item.year) return item.year;
-  if(item.originallyAvailableAt) return String(item.originallyAvailableAt).slice(0,4);
-  return '';
-}
-
-function collectionTags(item){
-  return ((item && item.collections) || [])
-    .map(entry=>entry && (entry.tag || entry.title || entry.name || ''))
-    .filter(Boolean);
-}
-
-function isNew(item){
-  if(!item?.addedAt) return false;
-  const added = new Date(item.addedAt).getTime();
-  if(!Number.isFinite(added)) return false;
-  const cfg = getState().cfg || {};
-  const days = Number(cfg.newDays || 30);
-  return Date.now() - added <= days * 24*60*60*1000;
-}
+import { getGenreNames, humanYear, collectionTags, isNew } from './utils.js';
 
 function norm(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
 
@@ -152,19 +131,24 @@ function renderGridForCurrentView(){
   }).catch(console.error);
 }
 
+let filtersUpdatedHandler = null;
+
+export function setFiltersUpdatedHandler(handler){
+  filtersUpdatedHandler = typeof handler === 'function' ? handler : null;
+}
+
 export function updateFiltersAndGrid(){
   const result = applyFilters();
   renderGridForCurrentView();
-  notifyFiltersUpdated(result);
+  if(filtersUpdatedHandler){
+    try{
+      const payload = Array.isArray(result) ? result.slice() : [];
+      filtersUpdatedHandler(payload, getState().view);
+    }catch(err){
+      console.warn('[filter] Failed to notify filters handler:', err?.message);
+    }
+  }
   return result;
-}
-
-function notifyFiltersUpdated(items){
-  try{
-    const payload = Array.isArray(items) ? items.slice() : [];
-    const detail = { items: payload, view: getState().view };
-    window.dispatchEvent(new CustomEvent('filters:updated', { detail }));
-  }catch{}
 }
 
 function updateGenreFilterState(){

@@ -1,12 +1,24 @@
 import { getState } from './state.js';
 
 const STORAGE_KEY = 'watchlist:v1';
+const LOG_PREFIX = '[watchlist]';
 let saved = new Set();
 
 function load(){
-  try{ saved = new Set(JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]')); }catch{ saved = new Set(); }
+  try{
+    saved = new Set(JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]'));
+  }catch(err){
+    console.warn(`${LOG_PREFIX} Failed to load entries from storage:`, err?.message || err);
+    saved = new Set();
+  }
 }
-function persist(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(saved.values()))); }catch{} }
+function persist(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(saved.values())));
+  }catch(err){
+    console.warn(`${LOG_PREFIX} Failed to persist entries to storage:`, err?.message || err);
+  }
+}
 
 function idFor(item){
   if(!item) return '';
@@ -35,8 +47,6 @@ export function openPanel(){
     p.hidden=false;
     p.setAttribute('aria-hidden','false');
     renderPanel();
-    // Dispatch event for filter bar auto-hide
-    document.dispatchEvent(new CustomEvent('watchlist:open'));
   }
 }
 
@@ -45,8 +55,6 @@ export function closePanel(){
   if(p){
     p.hidden=true;
     p.setAttribute('aria-hidden','true');
-    // Dispatch event for filter bar auto-hide
-    document.dispatchEvent(new CustomEvent('watchlist:close'));
   }
   setExpanded(false);
 }

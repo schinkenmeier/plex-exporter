@@ -1,5 +1,7 @@
 import { getState } from './state.js';
 
+const LOG_PREFIX = '[utils]';
+
 export function getGenreNames(genres){
   const seen = new Set();
   const names = [];
@@ -64,17 +66,43 @@ export function enableMoreChipBehavior(root = document){
         } else {
           // Fallback: expand inline if not in a card context
           const hidden = btn._extraChips || [];
-          try{ hidden.forEach(ch => btn.before(ch)); }catch{}
+          try{
+            hidden.forEach(ch => btn.before(ch));
+          }catch(err){
+            console.warn(`${LOG_PREFIX} Failed to expand inline chips:`, err);
+          }
           btn.remove();
         }
       });
     });
-  }catch{}
+  }catch(err){
+    console.warn(`${LOG_PREFIX} Failed to enable more chip behaviour:`, err);
+  }
+}
+
+export function collectionTags(item){
+  return ((item && item.collections) || [])
+    .map(entry=>entry && (entry.tag || entry.title || entry.name || ''))
+    .filter(Boolean);
 }
 
 export function humanYear(item){
-  if(item?.year) return item.year;
-  if(item?.originallyAvailableAt) return String(item.originallyAvailableAt).slice(0,4);
+  if(!item) return '';
+  const candidates = [
+    item.originallyAvailableAt,
+    item.year,
+    item.releaseDate,
+    item.premiereDate,
+  ];
+
+  for(const value of candidates){
+    if(value === undefined || value === null) continue;
+    const str = String(value);
+    if(!str) continue;
+    const match = str.match(/\d{4}/);
+    if(match) return match[0];
+  }
+
   return '';
 }
 
@@ -108,4 +136,11 @@ export function isNew(item){
   return Date.now() - added <= days * 24*60*60*1000;
 }
 
-export function useTmdbOn(){ try{ return localStorage.getItem('useTmdb')==='1'; }catch{ return false; } }
+export function useTmdbOn(){
+  try{
+    return localStorage.getItem('useTmdb')==='1';
+  }catch(err){
+    console.warn(`${LOG_PREFIX} Unable to read TMDB preference from storage:`, err);
+    return false;
+  }
+}

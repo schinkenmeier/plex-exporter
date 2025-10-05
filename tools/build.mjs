@@ -10,6 +10,19 @@ const distDir = path.join(siteDir, 'dist');
 
 const watch = process.argv.includes('--watch');
 
+const getLimit = (envKey, defaultValue) => {
+  const raw = process.env[envKey];
+  if (!raw) {
+    return defaultValue;
+  }
+
+  const parsed = Number.parseFloat(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
+};
+
+const maxJsKb = getLimit('MAX_JS_KB', 250);
+const maxCssKb = getLimit('MAX_CSS_KB', 150);
+
 await mkdir(distDir, { recursive: true });
 
 const jsOptions = {
@@ -34,8 +47,12 @@ const cssOptions = {
   minify: true,
   sourcemap: !watch,
   logLevel: 'info',
-  entryPoints: [path.join(siteDir, 'css', 'app.css')],
-  outfile: path.join(distDir, 'app.css'),
+  entryPoints: [
+    path.join(siteDir, 'css', 'app.css'),
+    path.join(siteDir, 'css', 'hero.css')
+  ],
+  outdir: distDir,
+  entryNames: '[name]',
   metafile: true
 };
 
@@ -52,14 +69,35 @@ if(watch){
     build(cssOptions)
   ]);
 
-  // Log bundle sizes
+  let limitExceeded = false;
+
   if(jsResult.metafile){
-    const jsSize = Object.values(jsResult.metafile.outputs)[0]?.bytes || 0;
-    console.log(`JS Bundle: ${(jsSize / 1024).toFixed(2)} KB`);
+    const jsSize = Object.entries(jsResult.metafile.outputs)
+      .filter(([file]) => file.endsWith('.js'))
+      .reduce((total, [, output]) => total + (output.bytes || 0), 0);
+    const jsSizeKb = jsSize / 1024;
+    console.log(`JS Bundle: ${jsSizeKb.toFixed(2)} KB`);
+    if(jsSizeKb > maxJsKb){
+      console.error(`JS Bundle überschreitet Limit (${jsSizeKb.toFixed(2)} KB > ${maxJsKb} KB). Passe MAX_JS_KB an, um das Limit zu ändern.`);
+      limitExceeded = true;
+    }
   }
+
   if(cssResult.metafile){
-    const cssSize = Object.values(cssResult.metafile.outputs)[0]?.bytes || 0;
-    console.log(`CSS Bundle: ${(cssSize / 1024).toFixed(2)} KB`);
+    const cssSize = Object.entries(cssResult.metafile.outputs)
+      .filter(([file]) => file.endsWith('.css'))
+      .reduce((total, [, output]) => total + (output.bytes || 0), 0);
+    const cssSizeKb = cssSize / 1024;
+    console.log(`CSS Bundle: ${cssSizeKb.toFixed(2)} KB`);
+    if(cssSizeKb > maxCssKb){
+      console.error(`CSS Bundle überschreitet Limit (${cssSizeKb.toFixed(2)} KB > ${maxCssKb} KB). Passe MAX_CSS_KB an, um das Limit zu ändern.`);
+      limitExceeded = true;
+    }
+  }
+
+  if(limitExceeded){
+    console.error('Abbruch, da mindestens ein Bundle-Limit überschritten wurde.');
+    process.exit(1);
   }
 
   console.log('Build completed.');

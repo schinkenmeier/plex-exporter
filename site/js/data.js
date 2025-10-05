@@ -1,21 +1,38 @@
 import { getCache, setCache } from './cache.js';
+import { validateLibraryList } from './data/validators.js';
+
+const LOG_PREFIX = '[data]';
 
 let lastSources = { movies: null, shows: null };
 const showDetailCache = new Map();
-let loadRetryCount = { movies: 0, shows: 0 };
-const MAX_RETRIES = 3;
 const DATA_CACHE_TTL = 1000 * 60 * 30; // 30 minutes for data files
+
+const EXPORTER_BAG_KEY = '__PLEX_EXPORTER__';
+
+const globalExporterBag = (()=>{
+  try{
+    if(typeof globalThis !== 'undefined'){
+      if(globalThis[EXPORTER_BAG_KEY]) return globalThis[EXPORTER_BAG_KEY];
+      if(globalThis.window && globalThis.window[EXPORTER_BAG_KEY]){
+        return globalThis.window[EXPORTER_BAG_KEY];
+      }
+    }
+  }catch(err){
+    console.warn(`${LOG_PREFIX} Failed to resolve global exporter bag:`, err?.message || err);
+  }
+  return null;
+})();
 
 const MOVIE_THUMB_BASE = 'data/movies/';
 const SHOW_THUMB_BASE = 'data/series/';
 const SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i;
 
-async function fetchJson(url, retries = 2, useCache = true){
+export async function fetchJson(url, retries = 2, useCache = true){
   // Try cache first if enabled
   if(useCache){
     const cached = getCache(url);
     if(cached !== null) {
-      console.log(`[data] Cache hit for ${url}`);
+      console.log(`${LOG_PREFIX} Cache hit for ${url}`);
       return cached;
     }
   }
@@ -37,7 +54,7 @@ async function fetchJson(url, retries = 2, useCache = true){
     }
     catch(err){
       lastError = err;
-      console.warn(`[data] Fetch attempt ${attempt + 1}/${retries + 1} failed for ${url}:`, err.message);
+      console.warn(`${LOG_PREFIX} Fetch attempt ${attempt + 1}/${retries + 1} failed for ${url}:`, err.message);
     }
     if(attempt < retries){
       // Exponential backoff
@@ -45,10 +62,13 @@ async function fetchJson(url, retries = 2, useCache = true){
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
-  if(lastError){
-    console.error(`[data] All fetch attempts failed for ${url}:`, lastError.message);
+  const message = lastError?.message || 'Unbekannter Fehler';
+  console.error(`${LOG_PREFIX} All fetch attempts failed for ${url}:`, message);
+  const error = new Error(`Daten konnten nicht geladen werden: ${url} (${message})`);
+  if(lastError && typeof lastError === 'object'){
+    error.cause = lastError;
   }
-  return null;
+  throw error;
 }
 
 function embeddedJsonById(id){
@@ -57,19 +77,19 @@ function embeddedJsonById(id){
     if(n && n.textContent) return JSON.parse(n.textContent);
   }
   catch(err){
-    console.warn(`[data] Failed to parse embedded JSON #${id}:`, err.message);
+    console.warn(`${LOG_PREFIX} Failed to parse embedded JSON #${id}:`, err.message);
   }
   return null;
 }
 
 function fromGlobalBag(key){
   try{
-    const bag = window.__PLEX_EXPORTER__;
+    const bag = globalExporterBag;
     const arr = bag && Array.isArray(bag[key]) ? bag[key] : null;
     return arr || null;
   }
   catch(err){
-    console.warn(`[data] Failed to access global bag[${key}]:`, err.message);
+    console.warn(`${LOG_PREFIX} Failed to access global bag[${key}]:`, err.message);
     return null;
   }
 }
@@ -80,14 +100,20 @@ function fromWindow(varName){
     return arr || null;
   }
   catch(err){
-    console.warn(`[data] Failed to access window.${varName}:`, err.message);
+    console.warn(`${LOG_PREFIX} Failed to access window.${varName}:`, err.message);
     return null;
   }
 }
 
 async function loadWithCompat(primaryUrl, opts){
   // default: try site/data first
-  let data = await fetchJson(primaryUrl);
+  let data = null;
+  try{
+    data = await fetchJson(primaryUrl);
+  }catch(err){
+    console.warn(`${LOG_PREFIX} Primary source failed for ${primaryUrl}:`, err.message);
+    data = null;
+  }
   if(Array.isArray(data) && data.length){ markSource(opts?.label, `primary:${primaryUrl}`); return data; }
   // fallback: embedded <script id="..."> JSON
   if(opts?.embedId){ const emb = embeddedJsonById(opts.embedId); if(Array.isArray(emb) && emb.length){ markSource(opts?.label, `embedded:${opts.embedId}`); return emb; } }
@@ -97,11 +123,34 @@ async function loadWithCompat(primaryUrl, opts){
   if(opts?.globalVar){ const win = fromWindow(opts.globalVar); if(Array.isArray(win) && win.length){ markSource(opts?.label, `window:${opts.globalVar}`); return win; } }
   // alt paths (legacy)
   for(const alt of (opts?.altUrls||[])){
-    const j = await fetchJson(alt); if(Array.isArray(j) && j.length){ markSource(opts?.label, `alt:${alt}`); return j; }
+    let altData = null;
+    try{
+      altData = await fetchJson(alt);
+    }catch(err){
+      console.warn(`${LOG_PREFIX} Alternate source failed for ${alt}:`, err.message);
+      altData = null;
+    }
+    if(Array.isArray(altData) && altData.length){ markSource(opts?.label, `alt:${alt}`); return altData; }
   }
   // last resort: empty array
   markSource(opts?.label, 'empty');
   return Array.isArray(data) ? data : [];
+}
+
+function notifyUiError(title, message){
+  if(typeof window === 'undefined' || typeof document === 'undefined' || typeof document.createElement !== 'function'){
+    console.warn(`${LOG_PREFIX} Skipping UI error feedback (environment missing DOM APIs): ${title} - ${message}`);
+    return;
+  }
+  import('./errorHandler.js').then(mod=>{
+    try{
+      mod.showError?.(title, message, 8000);
+    }catch(err){
+      console.warn(`${LOG_PREFIX} Failed to display UI error message:`, err?.message || err);
+    }
+  }).catch(err=>{
+    console.warn(`${LOG_PREFIX} Failed to load error handler for UI feedback:`, err?.message || err);
+  });
 }
 
 export function prefixThumbValue(value, base){
@@ -110,11 +159,16 @@ export function prefixThumbValue(value, base){
   if(raw.startsWith('//') || raw.startsWith('/') || SCHEME_RE.test(raw)) return raw;
   const normalizedRaw = raw.replace(/\\/g, '/');
   const normalizedBase = base ? (base.endsWith('/') ? base : `${base}/`) : '';
+  let decodeWarned = false;
   const encodePath = path => path.split('/').map(segment => {
     if(!segment) return '';
     try{
       return encodeURIComponent(decodeURIComponent(segment));
-    }catch{
+    }catch(err){
+      if(!decodeWarned){
+        decodeWarned = true;
+        console.warn(`${LOG_PREFIX} Failed to normalize thumb segment "${segment}":`, err);
+      }
       return encodeURIComponent(segment);
     }
   }).join('/');
@@ -195,7 +249,7 @@ function normalizeShowThumbs(list){
 
 export async function loadMovies(){
   try {
-    const movies = await loadWithCompat('data/movies/movies.json', {
+    const rawMovies = await loadWithCompat('data/movies/movies.json', {
       label: 'movies',
       embedId: 'movies-json',
       exportKey: 'movies',
@@ -207,22 +261,28 @@ export async function loadMovies(){
         'movies.json',
       ],
     });
-    loadRetryCount.movies = 0; // Reset on success
+    let movies;
+    try{
+      movies = validateLibraryList(rawMovies, 'movie');
+    }catch(validationError){
+      const message = validationError?.message || 'Unbekannte Validierungsfehler';
+      console.warn(`${LOG_PREFIX} Movie validation failed:`, validationError);
+      const error = new Error(`Ungültige Filmdaten: ${message}`);
+      if(validationError instanceof Error){
+        error.cause = validationError;
+      }
+      throw error;
+    }
     return normalizeMovieThumbs(movies);
   } catch (error) {
-    console.error('[data] loadMovies failed:', error);
-    if (loadRetryCount.movies < MAX_RETRIES) {
-      loadRetryCount.movies++;
-      console.log(`[data] Retrying loadMovies (${loadRetryCount.movies}/${MAX_RETRIES})...`);
-      await new Promise(resolve => setTimeout(resolve, 1000 * loadRetryCount.movies));
-      return loadMovies();
-    }
-    throw error;
+    console.error(`${LOG_PREFIX} loadMovies failed:`, error);
+    notifyUiError('Filme konnten nicht geladen werden', error?.message || 'Unbekannter Fehler');
+    return [];
   }
 }
 export async function loadShows(){
   try {
-    const shows = await loadWithCompat('data/series/series_index.json', {
+    const rawShows = await loadWithCompat('data/series/series_index.json', {
       label: 'shows',
       embedId: 'series-json',
       exportKey: 'shows',
@@ -237,17 +297,23 @@ export async function loadShows(){
         'shows.json',
       ],
     });
-    loadRetryCount.shows = 0; // Reset on success
+    let shows;
+    try{
+      shows = validateLibraryList(rawShows, 'show');
+    }catch(validationError){
+      const message = validationError?.message || 'Unbekannte Validierungsfehler';
+      console.warn(`${LOG_PREFIX} Show validation failed:`, validationError);
+      const error = new Error(`Ungültige Seriendaten: ${message}`);
+      if(validationError instanceof Error){
+        error.cause = validationError;
+      }
+      throw error;
+    }
     return normalizeShowThumbs(shows);
   } catch (error) {
-    console.error('[data] loadShows failed:', error);
-    if (loadRetryCount.shows < MAX_RETRIES) {
-      loadRetryCount.shows++;
-      console.log(`[data] Retrying loadShows (${loadRetryCount.shows}/${MAX_RETRIES})...`);
-      await new Promise(resolve => setTimeout(resolve, 1000 * loadRetryCount.shows));
-      return loadShows();
-    }
-    throw error;
+    console.error(`${LOG_PREFIX} loadShows failed:`, error);
+    notifyUiError('Serien konnten nicht geladen werden', error?.message || 'Unbekannter Fehler');
+    return [];
   }
 }
 
@@ -270,12 +336,13 @@ export async function loadShowDetail(item){
       }
     } catch (error) {
       lastError = error;
-      console.warn(`[data] Failed to load show detail from ${url}:`, error.message);
+      console.warn(`${LOG_PREFIX} Failed to load show detail from ${url}:`, error.message);
     }
   }
 
   if(lastError) {
-    console.error(`[data] Could not load show detail for ${item.title || 'unknown'}`, lastError);
+    console.error(`${LOG_PREFIX} Could not load show detail for ${item.title || 'unknown'}`, lastError);
+    notifyUiError('Details konnten nicht geladen werden', lastError?.message || 'Bitte später erneut versuchen.');
   }
 
   storeDetail(keys, null, item);
@@ -284,22 +351,14 @@ export async function loadShowDetail(item){
 
 function markSource(label, src){
   if(!label) return;
-  try{ lastSources[label] = src; }catch{}
+  try{
+    lastSources[label] = src;
+  }catch(err){
+    console.warn(`${LOG_PREFIX} Failed to record source for ${label}:`, err);
+  }
 }
 
 export function getSources(){ return { ...lastSources }; }
-export function buildFacets(movies, shows){
-  // kept for compatibility; filter.js provides a richer computeFacets
-  const genres = new Set();
-  const years = new Set();
-  (movies||[]).concat(shows||[]).forEach(x=>{
-    (x.genres||[]).forEach(g=>{ if(g&&g.tag) genres.add(g.tag); });
-    const y = x.year || (x.originallyAvailableAt?String(x.originallyAvailableAt).slice(0,4):'');
-    if(y) years.add(Number(y));
-  });
-  return { genres:[...genres].sort(), years:[...years].sort((a,b)=>a-b), collections: [] };
-}
-
 function cacheKeys(item){
   const keys = [];
   if(item?.ratingKey !== undefined && item?.ratingKey !== null && item?.ratingKey !== ''){
@@ -439,7 +498,15 @@ function normalizePeople(list){
 
 function cloneDetail(detail){
   if(detail === null || detail === undefined) return detail;
-  try{ return structuredClone(detail); }catch{}
-  try{ return JSON.parse(JSON.stringify(detail)); }catch{}
+  try{
+    return structuredClone(detail);
+  }catch(err){
+    console.warn(`${LOG_PREFIX} structuredClone failed for show detail:`, err);
+  }
+  try{
+    return JSON.parse(JSON.stringify(detail));
+  }catch(err){
+    console.warn(`${LOG_PREFIX} JSON clone failed for show detail:`, err);
+  }
   return detail;
 }

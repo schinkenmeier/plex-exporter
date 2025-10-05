@@ -9,9 +9,11 @@
     "split:series": "node tools/split_series.mjs site/data/series/series_full.json site/data/series",
     "test": "node --test site/js/__tests__/*.test.js",
     "test:coverage": "node --test --experimental-test-coverage site/js/__tests__/*.test.js",
+    "test:integration": "node --test site/js/__tests__/app.integration.test.js",
     "analyze": "node tools/analyze-bundle.mjs"
   },
   "devDependencies": {
-    "esbuild": "^0.19.12"
+    "esbuild": "^0.19.12",
+    "linkedom": "^0.18.12"
   }
 }

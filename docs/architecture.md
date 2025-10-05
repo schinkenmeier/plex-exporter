@@ -14,7 +14,6 @@ Dieser Leitfaden skizziert den Aufbau der Plex-Exporter-Weboberfläche sowie wic
 * `loadMovies()` und `loadShows()` laden JSON-Daten bevorzugt aus `site/data/...` und fallen bei Bedarf auf eingebettete `<script>`-Tags, globale Variablen oder alternative Legacy-Pfade zurück. Jede erfolgreiche Quelle wird in `lastSources` protokolliert (`getSources()`).
 * `loadShowDetail(item)` lädt Detailseiten für Serien lazy nach und cached Ergebnisse per `cacheKeys()` in `showDetailCache`, damit Modals nicht erneut angefragt werden müssen.
 * `prefixMovieThumb()`, `prefixShowThumb()` und `prefixShowTree()` normalisieren Poster-Pfade (inkl. URL-Encoding), sodass das Grid konsistent auf `thumbFile` zugreifen kann.
-* `buildFacets()` existiert aus Kompatibilitätsgründen; die aktuelle UI verwendet `Filter.computeFacets()` für erweiterte Aggregationen.
 
 ## Filter- und Rendering-Layer (`site/js/filter.js`, `site/js/grid.js`)
 
@@ -56,7 +55,7 @@ Dieser Leitfaden skizziert den Aufbau der Plex-Exporter-Weboberfläche sowie wic
 3. Ruft sequentiell `Data.loadMovies()` und `Data.loadShows()` auf; Fortschrittstexte werden via `setLoader()` aktualisiert.
 4. Berechnet Facetten (`Filter.computeFacets()`), speichert Kataloge & Facetten im State und initialisiert Filter-UI (`Filter.renderFacets()`, `Filter.initFilters()`).
 5. Baut die Ansicht (`renderSwitch()`, `renderStats(true)`, `renderFooterMeta()`, `renderGrid()`) und versteckt anschließend den Loader.
-6. Startet optionale Module: TMDB-Hydration (per `requestIdleCallback`), Watchlist (`Watch.initUi()`), Settings-Overlay, Advanced-Filter-Toggle, Header/Scroll-Helfer sowie Debug-Overlay. Der Scroll-Orchestrator respektiert `prefers-reduced-motion` bzw. den Einstellungen-Toggle und deaktiviert in diesem Fall das automatische Ausblenden von Hero & Filterbar.
+6. Startet optionale Module: TMDB-Hydration (per `requestIdleCallback`), Watchlist (`Watch.initUi()`), Settings-Overlay, Advanced-Filter-Toggle, Header/Scroll-Helfer sowie Debug-Overlay. Das automatische Ausblenden von Hero und Filterbar läuft primär über Scroll-Driven CSS-Animationen (`animation-timeline: scroll`); `initFilterBarAutoHideFallback()` aktiviert ein rAF-basiertes JS-Fallback in Browsern ohne Scroll-Timeline-Unterstützung und respektiert dabei Fokus-/Pointer-Interaktionen sowie die Reduce-Motion-Präferenz.
 7. Ein `hashchange`-Listener unterstützt View-Wechsel (`#/movies`, `#/shows`) und öffnet bei `#/movie/<id>` bzw. `#/show/<id>` die Detail-Modal (`openMovieModalV2()`/`openSeriesModalV2()`).
 
 ## Modal-System (`site/js/modalV2.js`)
@@ -69,6 +68,7 @@ Dieser Leitfaden skizziert den Aufbau der Plex-Exporter-Weboberfläche sowie wic
   * Die Tab-Navigation (`applyTabs()`) setzt ARIA-Rollen, Tastatur-Shortcuts (Links/Rechts, Home/End) und steuert Sichtbarkeit/Focus der Pane-Inhalte (`data-pane`). Damit lassen sich Überblick, Detail-Gitter, Staffeln und Cast parallel vorhalten.
   * `updateDetails()` generiert das mehrspaltige „Details-Grid“ (Sektionen für Allgemein, Genres, Credits). `updateCast()` erstellt Cast-Karten inkl. TMDB/Thumb-Auflösung, fallback auf Initialen sowie Rollenbeschriftung. `populateHead()` liefert Schnellinfos, Chip-Gruppen und Poster-Handling inklusive Lazy-Loading-Indikator.
   * Einbettung externer Aktionen geschieht zentral in `setExternalLinks()`: Die Funktion aktiviert/deaktiviert TMDB-/IMDb-Links und Trailer-Button (öffnet neues Tab via `window.open`).
+  * Demo-Datensätze für Debug- und Showcase-Szenarien liegen ausgelagert in `site/js/modal/demoData.js` und werden erst bei Bedarf via Dynamic Import geladen (`openMovieModalV2('demo')`/`openSeriesModalV2('demo')`). Reguläre Builds werden so nicht mit den Beispielpayloads gebündelt.
 
 * **Hilfsmodule & Zusammenspiel:**
   * Staffel-/Episodenlisten rendert `site/js/modal/seasonsAccordion.js`, das aus Staffel-Objekten Akkordeon-Karten mit Lazy-Poster, Episoden-Badges und Toggle-Verhalten erzeugt. Das Cinematic-Modal bindet die Ausgabe im Tab „Staffeln“ über `renderSeasonsAccordion()` ein.

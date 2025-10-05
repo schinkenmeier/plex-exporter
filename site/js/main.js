@@ -7,12 +7,102 @@ import { openMovieModalV2, openSeriesModalV2 } from './modalV2.js';
 import { hydrateOptional } from './services/tmdb.js';
 import * as Watch from './watchlist.js';
 import * as Debug from './debug.js';
-import { humanYear, formatRating, useTmdbOn } from './utils.js';
 import { initErrorHandler, showError, showRetryableError } from './errorHandler.js';
-// Scroll orchestration now handled by pure CSS - see animations.css
+import { initSettingsOverlay, setHeroRefreshHandler, setReduceMotionHandler } from './settingsOverlay.js';
+import { refreshHero, setHeroNavigation } from './hero.js';
+import { initHeroAutoplay } from './hero-autoplay.js';
 
-let currentHeroItem = null;
-let heroDefaults = null;
+let taglineTicker = null;
+
+const hashNavigation = (() => {
+  let lastHash = window.location.hash || '';
+  let suppressedHash = null;
+
+  function normalizeHash(raw){
+    if(typeof raw !== 'string') return '';
+    const trimmed = raw.trim();
+    if(!trimmed) return '';
+    return trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
+  }
+
+  function updateHash(targetHash, options={}){
+    const { replace=false, silent=false } = options;
+    const hash = normalizeHash(targetHash);
+    if(!hash) return;
+
+    const current = window.location.hash || '';
+    if(hash === current){
+      if(replace && history && typeof history.replaceState === 'function'){
+        try{
+          history.replaceState(null, '', hash);
+        }catch(err){
+          console.warn('[main] Failed to replace hash via history:', err.message);
+        }
+      }
+      if(silent){
+        suppressedHash = hash;
+        lastHash = hash;
+      }
+      return;
+    }
+
+    const method = replace ? 'replaceState' : 'pushState';
+    let usedHistory = false;
+    try{
+      if(history && typeof history[method] === 'function'){
+        history[method](null, '', hash);
+        usedHistory = true;
+      }
+    }catch(err){
+      console.warn(`[main] Failed to ${replace ? 'replace' : 'push'} hash via history:`, err.message);
+    }
+
+    if(!usedHistory){
+      window.location.hash = hash;
+      if(silent){
+        suppressedHash = hash;
+        lastHash = hash;
+      }
+      return;
+    }
+
+    if(silent){
+      suppressedHash = hash;
+      lastHash = hash;
+      return;
+    }
+
+    try{
+      const event = typeof HashChangeEvent === 'function' ? new HashChangeEvent('hashchange') : new Event('hashchange');
+      window.dispatchEvent(event);
+    }catch(err){
+      console.warn('[main] Failed to dispatch hashchange event:', err.message);
+    }
+  }
+
+  function shouldHandle(hash){
+    const current = typeof hash === 'string' ? hash : '';
+    if(suppressedHash && current === suppressedHash){
+      suppressedHash = null;
+      return false;
+    }
+    suppressedHash = null;
+    if(current === lastHash) return false;
+    lastHash = current;
+    return true;
+  }
+
+  function markProcessed(hash){
+    lastHash = typeof hash === 'string' ? hash : '';
+    suppressedHash = null;
+  }
+
+  return { navigate: updateHash, shouldHandle, markProcessed };
+})();
+
+export const navigateToHash = (hash, options) => hashNavigation.navigate(hash, options);
+
+setHeroNavigation(navigateToHash);
 
 function setFooterStatus(message, busy=true){
   const footer = document.getElementById('footerMeta');
@@ -28,7 +118,8 @@ function setFooterStatus(message, busy=true){
   }
 }
 
-async function boot(){
+export async function boot(){
+  const isTestEnv = !!globalThis.__PLEX_TEST_MODE__;
   initErrorHandler();
   applyReduceMotionPref();
   showLoader();
@@ -72,17 +163,25 @@ async function boot(){
 
     if(cfg.tmdbEnabled) (window.requestIdleCallback || setTimeout)(()=> hydrateOptional?.(movies, shows, cfg), 400);
 
-    Watch.initUi();
-    initSettingsOverlay(cfg);
-    initAdvancedToggle();
-    initHeaderInteractions();
-    initScrollProgress();
-    initScrollTop();
-    // Scroll orchestrator temporarily disabled for pure CSS approach
-    // initFilterBarAutoHide();
-    // initScrollOrchestratorWithSettings();
-    renderHeroHighlight();
-    Debug.initDebugUi();
+    if(!isTestEnv){
+      Watch.initUi();
+      initSettingsOverlay(cfg);
+      initAdvancedToggle();
+      initHeaderInteractions();
+      initScrollProgress();
+      initScrollTop();
+      initFilterBarAutoHideFallback();
+      refreshHero();
+      initHeroAutoplay();
+      Debug.initDebugUi();
+    }else{
+      try{
+        refreshHero();
+      }catch(err){
+        console.warn('[main] Test env hero refresh skipped:', err?.message || err);
+      }
+    }
+    handleHashChange(true);
   } catch (error) {
     console.error('[main] Boot failed:', error);
     hideLoader();
@@ -99,7 +198,7 @@ async function boot(){
       try{
         if(localStorage.getItem('useTmdb')==='1'){
           renderGrid(getState().view);
-          renderHeroHighlight();
+          refreshHero();
         }
       }catch(err){
         console.warn('[main] TMDB chunk render failed:', err.message);
@@ -110,7 +209,7 @@ async function boot(){
     try{
       if(localStorage.getItem('useTmdb')==='1'){
         renderGrid(getState().view);
-        renderHeroHighlight();
+        refreshHero();
       }
     }catch(err){
       console.warn('[main] TMDB done render failed:', err.message);
@@ -120,52 +219,41 @@ async function boot(){
 
 // Debounced hashchange handler to prevent race conditions
 let hashchangeTimeout = null;
-let lastProcessedHash = '';
+
+function applyHashNavigation(hash){
+  if(/^#\/(movies|shows)$/.test(hash)){
+    const view = hash.includes('shows') ? 'shows' : 'movies';
+    setState({ view });
+    const result = Filter.applyFilters();
+    renderSwitch();
+    renderGrid(view);
+    refreshHero(result);
+    return true;
+  }
+  const match = hash.match(/^#\/(movie|show)\/(.+)/);
+  if(!match) return false;
+  const [, kind, id ] = match;
+  const pool = kind === 'movie' ? getState().movies : getState().shows;
+  const item = (pool||[]).find(x => (x?.ids?.imdb===id || x?.ids?.tmdb===id || String(x?.ratingKey)===id));
+  if(!item) return false;
+  if(kind === 'show') openSeriesModalV2(item);
+  else openMovieModalV2(item);
+  return true;
+}
+
+function handleHashChange(force=false){
+  const currentHash = window.location.hash || '';
+  if(!force && !hashNavigation.shouldHandle(currentHash)) return;
+  if(force) hashNavigation.markProcessed(currentHash);
+  applyHashNavigation(currentHash);
+}
 
 window.addEventListener('hashchange', ()=>{
-  if(window.__skipNextHashNavigation){
-    try{
-      window.__skipNextHashNavigation = false;
-      lastProcessedHash = location.hash || '';
-    }
-    catch(err){
-      console.warn('[main] Failed to reset skip navigation flag:', err.message);
-    }
-    return;
-  }
-
-  const currentHash = location.hash || '';
-
-  // Debounce rapid hash changes
   if(hashchangeTimeout){
     clearTimeout(hashchangeTimeout);
   }
-
   hashchangeTimeout = setTimeout(()=>{
-    // Skip if we already processed this hash
-    if(currentHash === lastProcessedHash) return;
-    lastProcessedHash = currentHash;
-
-    const hash = currentHash;
-    // deep link to views
-    if(/^#\/(movies|shows)$/.test(hash)){
-      const view = hash.includes('shows') ? 'shows' : 'movies';
-      setState({ view });
-      const result = Filter.applyFilters();
-      renderSwitch();
-      renderGrid(view);
-      renderHeroHighlight(result);
-      return;
-    }
-    // item details
-    const m = hash.match(/^#\/(movie|show)\/(.+)/);
-    if(!m) return;
-    const [ , kind, id ] = m;
-    const pool = kind==='movie' ? getState().movies : getState().shows;
-    const item = (pool||[]).find(x => (x?.ids?.imdb===id || x?.ids?.tmdb===id || String(x?.ratingKey)===id));
-    if(!item) return;
-    if(kind === 'show') openSeriesModalV2(item);
-    else openMovieModalV2(item);
+    handleHashChange(false);
   }, 50);
 });
 
@@ -184,16 +272,12 @@ function renderSwitch(){
       const view = btn.dataset.lib === 'series' ? 'shows' : 'movies';
       if(getState().view === view) return;
       setState({ view });
-      try{
-        window.__skipNextHashNavigation = true;
-      }catch(err){
-        console.warn('[main] Failed to set skip navigation flag:', err.message);
-      }
-      location.hash = view === 'movies' ? '#/movies' : '#/shows';
+      const target = view === 'movies' ? '#/movies' : '#/shows';
+      navigateToHash(target, { silent: true });
       renderSwitch();
       const result = Filter.applyFilters();
       renderGrid(view);
-      renderHeroHighlight(result);
+      refreshHero(result);
     });
     btn.dataset.bound = 'true';
   });
@@ -245,236 +329,33 @@ function renderFooterMeta(){
   if(grid){ grid.setAttribute('aria-busy', 'false'); }
 }
 
-function renderHeroHighlight(listOverride){
-  const hero = document.getElementById('hero');
-  const title = document.getElementById('heroTitle');
-  const subtitle = document.getElementById('heroSubtitle');
-  const cta = document.getElementById('heroCta');
-  if(!hero || !title || !subtitle || !cta) return;
-
-  ensureHeroDefaults();
-  const candidate = selectHeroItem(listOverride);
-
-  if(!candidate){
-    currentHeroItem = null;
-    title.textContent = heroDefaults.title;
-    subtitle.textContent = heroDefaults.subtitle;
-    subtitle.dataset.taglinePaused = '0';
-    delete subtitle.dataset.heroBound;
-    subtitle.classList.remove('is-fading');
-    cta.textContent = heroDefaults.cta;
-    cta.disabled = true;
-    cta.setAttribute('aria-disabled', 'true');
-    cta.removeAttribute('aria-label');
-    cta.onclick = null;
-    hero.style.backgroundImage = '';
-    hero.classList.remove('has-poster');
-    hero.dataset.heroKind = '';
-    hero.dataset.heroId = '';
-    return;
-  }
-
-  currentHeroItem = candidate;
-  const kind = candidate.type === 'tv' ? 'show' : 'movie';
-  const heroId = resolveHeroId(candidate);
-
-  title.textContent = candidate.title || heroDefaults.title;
-  subtitle.textContent = heroSubtitleText(candidate);
-  subtitle.dataset.taglinePaused = '1';
-  subtitle.dataset.heroBound = '1';
-  subtitle.classList.remove('is-fading');
-
-  const ctaLabel = kind === 'show' ? 'Serien-Details öffnen' : 'Film-Details öffnen';
-  cta.textContent = ctaLabel;
-  cta.disabled = false;
-  cta.setAttribute('aria-disabled', 'false');
-  cta.setAttribute('aria-label', candidate.title ? `${ctaLabel}: ${candidate.title}` : ctaLabel);
-  cta.onclick = ()=> openHeroModal(candidate, kind, heroId);
-
-  hero.dataset.heroKind = kind;
-  hero.dataset.heroId = heroId || '';
-
-  const background = resolveHeroBackdrop(candidate);
-  if(background){
-    hero.style.backgroundImage = `url(${background})`;
-    hero.classList.add('has-poster');
-  }else{
-    hero.style.backgroundImage = '';
-    hero.classList.remove('has-poster');
-  }
-}
-
-// Expose for hero autoplay timer
-window.__heroRefresh = renderHeroHighlight;
-
-function ensureHeroDefaults(){
-  if(heroDefaults) return;
-  heroDefaults = {
-    title: document.getElementById('heroTitle')?.textContent || '',
-    subtitle: document.getElementById('heroSubtitle')?.textContent || '',
-    cta: document.getElementById('heroCta')?.textContent || '',
-  };
-}
-
-function selectHeroItem(listOverride){
-  if(Array.isArray(listOverride)){
-    const playableOverride = listOverride.filter(isPlayableHeroItem);
-    if(!playableOverride.length) return null;
-    return chooseHeroCandidate(playableOverride);
-  }
-  const source = heroCandidatesFromState();
-  const playable = source.filter(isPlayableHeroItem);
-  if(!playable.length) return null;
-  return chooseHeroCandidate(playable);
-}
-
-function chooseHeroCandidate(list){
-  if(list.length === 1) return list[0];
-  const index = Math.floor(Math.random() * list.length);
-  const candidate = list[index];
-  if(currentHeroItem && list.length > 1 && candidate === currentHeroItem){
-    const alt = list.find(item=> item !== currentHeroItem);
-    return alt || candidate;
-  }
-  return candidate;
-}
-
-function heroCandidatesFromState(){
-  const state = getState();
-  const view = state.view === 'shows' ? 'shows' : 'movies';
-  const filtered = Array.isArray(state.filtered) && state.filtered.length ? state.filtered : null;
-  const list = filtered || (view === 'shows' ? state.shows : state.movies) || [];
-  return Array.isArray(list) ? list : [];
-}
-
-function isPlayableHeroItem(item){
-  return Boolean(item) && typeof item === 'object' && !item.isCollectionGroup && item.type !== 'collection';
-}
-
-function heroSubtitleText(item){
-  const meta = [];
-  const year = humanYear(item);
-  if(year) meta.push(String(year));
-  const runtime = heroRuntimeText(item);
-  if(runtime) meta.push(runtime);
-  const rating = Number(item?.rating ?? item?.audienceRating);
-  if(Number.isFinite(rating)) meta.push(`★ ${formatRating(rating)}`);
-  const genres = heroGenres(item, 2);
-  if(genres.length) meta.push(genres.join(', '));
-  const summary = heroSummaryText(item);
-  if(summary) return meta.length ? `${meta.join(' • ')} — ${summary}` : summary;
-  return meta.length ? meta.join(' • ') : heroDefaults?.subtitle || '';
-}
-
-function heroRuntimeText(item){
-  const raw = item?.runtimeMin ?? item?.durationMin ?? (item?.duration ? Math.round(Number(item.duration) / 60000) : null);
-  const minutes = Number(raw);
-  if(!Number.isFinite(minutes) || minutes <= 0) return '';
-  if(item?.type === 'tv') return `~${minutes} min/Ep`;
-  return `${minutes} min`;
-}
-
-function heroGenres(item, limit=3){
-  const list = Array.isArray(item?.genres) ? item.genres : [];
-  const names = [];
-  list.forEach(entry=>{
-    if(!entry) return;
-    if(typeof entry === 'string'){ names.push(entry); return; }
-    const name = entry.tag || entry.title || entry.name || entry.label || '';
-    if(name) names.push(name);
-  });
-  const unique = Array.from(new Set(names));
-  return unique.slice(0, Math.max(0, limit));
-}
-
-function heroSummaryText(item){
-  const sources = [item?.tagline, item?.summary, item?.plot, item?.overview];
-  for(const raw of sources){
-    if(typeof raw !== 'string') continue;
-    const text = raw.trim();
-    if(text) return truncateText(text, 220);
-  }
-  return '';
-}
-
-function truncateText(text, maxLength){
-  const str = String(text || '').trim();
-  if(!str) return '';
-  if(str.length <= maxLength) return str;
-  return `${str.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
-}
-
-function resolveHeroId(item){
-  if(!item) return '';
-  if(item?.ids?.imdb) return String(item.ids.imdb);
-  if(item?.ids?.tmdb) return String(item.ids.tmdb);
-  if(item?.ratingKey != null) return String(item.ratingKey);
-  return '';
-}
-
-function openHeroModal(item, kind, heroId){
-  if(heroId) navigateToItemHash(kind, heroId);
-  if(kind === 'show') openSeriesModalV2(item);
-  else openMovieModalV2(item);
-}
-
-function navigateToItemHash(kind, id){
-  if(!kind || !id) return;
-  const hash = `#/${kind}/${id}`;
+Filter.setFiltersUpdatedHandler(items => {
   try{
-    if(history && typeof history.pushState === 'function'){
-      if(location.hash === hash && typeof history.replaceState === 'function') history.replaceState(null, '', hash);
-      else history.pushState(null, '', hash);
-      return;
-    }
+    refreshHero(items);
   }catch(err){
-    console.warn('[main] Failed to navigate hash (pushState):', err.message);
+    console.warn('[main] Failed to refresh hero from filters handler:', err?.message);
   }
-  try{
-    window.__skipNextHashNavigation = true;
-  }catch(err){
-    console.warn('[main] Failed to set skip navigation flag:', err.message);
-  }
-  location.hash = hash;
-}
-
-function resolveHeroBackdrop(item){
-  if(!item) return '';
-  const tmdbEnabled = useTmdbOn();
-  const tmdbCandidates = [
-    item?.tmdb?.backdrop,
-    item?.tmdb?.backdrop_path,
-    item?.tmdb?.backdropPath,
-    item?.tmdb?.background,
-    item?.tmdb?.art,
-  ];
-  const localCandidates = [
-    item?.art,
-    item?.background,
-    item?.thumbBackground,
-    item?.coverArt,
-    item?.thumb,
-    item?.thumbFile,
-  ];
-  if(tmdbEnabled){
-    const tmdb = tmdbCandidates.find(isValidMediaPath);
-    if(tmdb) return tmdb;
-  }
-  const local = localCandidates.find(isValidMediaPath);
-  return local || '';
-}
-
-function isValidMediaPath(value){
-  return typeof value === 'string' && value.trim().length > 0;
-}
-
-window.addEventListener('filters:updated', ev=>{
-  const detail = ev?.detail;
-  const items = Array.isArray(detail?.items) ? detail.items : null;
-  renderHeroHighlight(items);
 });
 
-boot();
+setHeroRefreshHandler(items => {
+  try{
+    refreshHero(items);
+  }catch(err){
+    console.warn('[main] Failed to refresh hero from settings handler:', err?.message);
+  }
+});
+
+setReduceMotionHandler(enabled => {
+  try{
+    setReduceMotionClass(!!enabled);
+  }catch(err){
+    console.warn('[main] Failed to apply reduce motion setting from handler:', err?.message);
+  }
+});
+
+if(!globalThis.__PLEX_TEST_MODE__){
+  boot();
+}
 
 // Fallback: ensure the loading overlay is not left visible
 // in case an error interrupts the boot sequence.
@@ -485,284 +366,6 @@ window.addEventListener('load', ()=>{
     console.warn('[main] Failed to hide loader on load event:', err.message);
   }
 });
-
-function initSettingsOverlay(cfg){
-  const overlay = document.getElementById('settingsOverlay');
-  const dialog = overlay?.querySelector('.settings-dialog');
-  const open1 = document.getElementById('settingsBtn');
-  const open2 = document.getElementById('openSettings');
-  const headerSettingsBtn = document.getElementById('headerSettingsBtn');
-  const close2 = document.getElementById('settingsClose2');
-  const tmdbInput = document.getElementById('tmdbTokenInput');
-  const tmdbSave = document.getElementById('tmdbSave');
-  const tmdbTest = document.getElementById('tmdbTest');
-  const tmdbStatus = document.getElementById('tmdbStatus');
-  const tmdbClear = document.getElementById('tmdbClearCache');
-  const tmdbBadge = document.getElementById('tmdbStatusBadge');
-  const reduce = document.getElementById('prefReduceMotion');
-  const useTmdb = document.getElementById('useTmdbSetting');
-  const resetFilters = document.getElementById('resetFilters');
-
-  if(overlay && overlay.hidden) overlay.setAttribute('aria-hidden', 'true');
-
-  let restoreFocus = null;
-  let previousOverflow = '';
-  let isOpen = false;
-  const backgroundState = new Map();
-  const focusSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
-  function getFocusable(){
-    if(!overlay) return [];
-    return Array.from(overlay.querySelectorAll(focusSelector)).filter(el=> !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true');
-  }
-
-  function focusDialog(){
-    if(dialog && typeof dialog.focus === 'function') dialog.focus({ preventScroll:true });
-    else if(overlay && typeof overlay.focus === 'function') overlay.focus({ preventScroll:true });
-  }
-
-  function setBackgroundInert(active){
-    if(!overlay) return;
-    const nodes = Array.from(document.body.children).filter(node=> node !== overlay);
-    if(active){
-      nodes.forEach(node=>{
-        if(!backgroundState.has(node)){
-          backgroundState.set(node, {
-            ariaHidden: node.hasAttribute('aria-hidden') ? node.getAttribute('aria-hidden') : null,
-            inert: node.hasAttribute('inert')
-          });
-        }
-        node.setAttribute('aria-hidden', 'true');
-        node.setAttribute('inert', '');
-      });
-    }else{
-      nodes.forEach(node=>{
-        const state = backgroundState.get(node);
-        if(state){
-          if(state.ariaHidden === null || state.ariaHidden === undefined) node.removeAttribute('aria-hidden');
-          else node.setAttribute('aria-hidden', state.ariaHidden);
-          if(state.inert) node.setAttribute('inert', '');
-          else node.removeAttribute('inert');
-          backgroundState.delete(node);
-        }else{
-          node.removeAttribute('aria-hidden');
-          node.removeAttribute('inert');
-        }
-      });
-      backgroundState.clear();
-    }
-  }
-
-  function openOverlay(){
-    if(!overlay || isOpen) return;
-    isOpen = true;
-    overlay.hidden = false;
-    overlay.setAttribute('aria-hidden', 'false');
-    restoreFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    setBackgroundInert(true);
-    syncSettingsUi();
-    requestAnimationFrame(focusDialog);
-
-    // Dispatch event for filter bar auto-hide
-    document.dispatchEvent(new CustomEvent('settings:open'));
-  }
-
-  function closeOverlay(){
-    if(!overlay || !isOpen) return;
-    isOpen = false;
-    overlay.hidden = true;
-    overlay.setAttribute('aria-hidden', 'true');
-    setBackgroundInert(false);
-    document.body.style.overflow = previousOverflow;
-    if(restoreFocus && typeof restoreFocus.focus === 'function'){ restoreFocus.focus(); }
-    restoreFocus = null;
-
-    // Dispatch event for filter bar auto-hide
-    document.dispatchEvent(new CustomEvent('settings:close'));
-  }
-
-  function handleKeydown(ev){
-    if(!isOpen) return;
-    if(ev.key === 'Escape'){
-      ev.preventDefault();
-      closeOverlay();
-      return;
-    }
-    if(ev.key !== 'Tab') return;
-    const focusable = getFocusable();
-    if(!focusable.length){
-      ev.preventDefault();
-      focusDialog();
-      return;
-    }
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    const active = document.activeElement;
-    if(ev.shiftKey){
-      if(active === first || !overlay.contains(active)){
-        ev.preventDefault();
-        last.focus();
-      }
-    }else if(active === last){
-      ev.preventDefault();
-      first.focus();
-    }
-  }
-
-  open1 && open1.addEventListener('click', openOverlay);
-  open2 && open2.addEventListener('click', ()=>{ openOverlay(); });
-  headerSettingsBtn && headerSettingsBtn.addEventListener('click', openOverlay);
-  close2 && close2.addEventListener('click', closeOverlay);
-  overlay && overlay.addEventListener('click', (ev)=>{ if(ev.target===overlay) closeOverlay(); });
-  overlay && overlay.addEventListener('keydown', handleKeydown);
-
-  function setTmdbStatus(msg='', kind=''){
-    if(!tmdbStatus) return;
-    tmdbStatus.textContent = msg;
-    tmdbStatus.dataset.kind = kind; // kind: success|error|info|pending
-    if(tmdbBadge){ tmdbBadge.dataset.kind = kind || ''; tmdbBadge.title = msg || ''; }
-    // Auto-Fallback: Bei Fehler und vorhandenem v3 API Key, gespeicherten ungültigen Token entfernen
-    try{
-      if(kind==='error' && cfg && cfg.tmdbApiKey){
-        const stored = String(localStorage.getItem('tmdbToken')||'').trim();
-        const currentInput = String(tmdbInput?.value||'').trim();
-        if(stored && currentInput){
-          try{ localStorage.removeItem('tmdbToken'); }catch{}
-          if(tmdbInput) tmdbInput.value = '';
-          setUseTmdbAvailability(true);
-          const m = 'Ungültiger Token entfernt. Verwende API Key aus config.json.';
-          tmdbStatus.textContent = m;
-          tmdbStatus.dataset.kind = 'info';
-          if(tmdbBadge){ tmdbBadge.dataset.kind = 'info'; tmdbBadge.title = m; }
-        }
-      }
-    }catch{}
-  }
-
-  function setUseTmdbAvailability(allowed){
-    if(!useTmdb) return;
-    useTmdb.disabled = !allowed;
-    useTmdb.title = useTmdb.disabled ? 'Nur verfügbar mit gültigem Token oder API Key.' : '';
-    if(!allowed && useTmdb.checked){
-      try{ localStorage.setItem('useTmdb', '0'); }catch{}
-      useTmdb.checked = false;
-      renderGrid(getState().view);
-    }
-  }
-
-  function syncSettingsUi(){
-    let token = '';
-    try{ tmdbInput && (tmdbInput.value = token = (localStorage.getItem('tmdbToken')||'')); }catch{}
-    try{ reduce && (reduce.checked = localStorage.getItem('prefReduceMotion')==='1'); }catch{}
-    try{ if(useTmdb){
-      useTmdb.checked = localStorage.getItem('useTmdb')==='1';
-      useTmdb.disabled = !token;
-      useTmdb.title = useTmdb.disabled ? 'Nur verfügbar mit gültigem Token.' : '';
-    } }catch{}
-    try{ setUseTmdbAvailability(!!token || !!(cfg&&cfg.tmdbApiKey)); }catch{}
-    setTmdbStatus('', '');
-    if(!token){ setTmdbStatus('Kein Token hinterlegt. TMDB ist deaktiviert.', 'info'); }
-    if(!cfg?.tmdbEnabled){ setTmdbStatus('Hinweis: TMDB in config.json deaktiviert (tmdbEnabled=false).', 'info'); }
-    // Optional: Auto-Check bei geöffnetem Dialog
-    if(token){
-      (async()=>{
-        setTmdbStatus('Prüfe Token...', 'pending');
-        try{
-          const svc = await import('./services/tmdb.js');
-          const res = await svc.validateToken?.(token);
-          if(res && res.ok){
-            setUseTmdbAvailability(true);
-            if(res.as==='bearer') setTmdbStatus('Token gültig (v4 Bearer).', 'success');
-            else if(res.as==='apikey') setTmdbStatus('API Key gültig (v3). Tipp: dauerhaft in site/config.json unter "tmdbApiKey" eintragen.', 'success');
-          }else{
-            setUseTmdbAvailability(false);
-            if(res?.hint==='looksV3') setTmdbStatus('Eingegebener Wert sieht wie ein v3 API Key aus. Bitte in config.json als "tmdbApiKey" eintragen oder v4 Bearer Token verwenden.', 'error');
-            else setTmdbStatus('Token ungültig oder keine Berechtigung (401).', 'error');
-          }
-        }catch(e){ setTmdbStatus('Prüfung fehlgeschlagen. Netzwerk/Browser-Konsole prüfen.', 'error'); }
-      })();
-    } else { setUseTmdbAvailability(!!(cfg&&cfg.tmdbApiKey)); }
-  }
-
-  tmdbSave && tmdbSave.addEventListener('click', async ()=>{
-    const raw = String(tmdbInput?.value||'').trim();
-    try{ localStorage.setItem('tmdbToken', raw); }catch{}
-    if(!raw){ setTmdbStatus('Kein Token hinterlegt. TMDB ist deaktiviert.', 'info'); setUseTmdbAvailability(!!(cfg&&cfg.tmdbApiKey)); return; }
-    setTmdbStatus('Prüfe Token...', 'pending');
-    try{
-      const svc = await import('./services/tmdb.js');
-      const res = await svc.validateToken?.(raw);
-      if(res && res.ok){
-        setUseTmdbAvailability(true);
-        if(res.as==='bearer') setTmdbStatus('Token gültig (v4 Bearer).', 'success');
-        else if(res.as==='apikey') setTmdbStatus('API Key gültig (v3). Tipp: dauerhaft in site/config.json unter "tmdbApiKey" eintragen.', 'success');
-      }else{
-        setUseTmdbAvailability(false);
-        if(res?.hint==='looksV3') setTmdbStatus('Eingegebener Wert sieht wie ein v3 API Key aus. Bitte in config.json als "tmdbApiKey" eintragen oder v4 Bearer Token verwenden.', 'error');
-        else setTmdbStatus('Token ungültig oder keine Berechtigung (401).', 'error');
-      }
-    }catch(e){ setTmdbStatus('Prüfung fehlgeschlagen. Netzwerk/Browser-Konsole prüfen.', 'error'); }
-  });
-
-  tmdbTest && tmdbTest.addEventListener('click', async ()=>{
-    const raw = String(tmdbInput?.value||'').trim();
-    if(!raw){ setTmdbStatus('Bitte Token eingeben.', 'error'); return; }
-    setTmdbStatus('Prüfe Token...', 'pending');
-    try{
-      const svc = await import('./services/tmdb.js');
-      const res = await svc.validateToken?.(raw);
-      if(res && res.ok){
-        if(res.as==='bearer') setTmdbStatus('Token gültig (v4 Bearer).', 'success');
-        else if(res.as==='apikey') setTmdbStatus('API Key gültig (v3). Tipp: dauerhaft in site/config.json unter "tmdbApiKey" eintragen.', 'success');
-      }else{
-        if(res?.hint==='looksV3') setTmdbStatus('Eingegebener Wert sieht wie ein v3 API Key aus. Dieser funktioniert hier nicht als Bearer. Bitte in config.json als "tmdbApiKey" eintragen oder v4 Bearer Token verwenden.', 'error');
-        else setTmdbStatus('Token ungültig oder keine Berechtigung (401).', 'error');
-      }
-    }catch(e){ setTmdbStatus('Prüfung fehlgeschlagen. Netzwerk/Browser-Konsole prüfen.', 'error'); }
-  });
-  tmdbClear && tmdbClear.addEventListener('click', ()=>{ import('./services/tmdb.js').then(m=>m.clearCache?.()); });
-  reduce && reduce.addEventListener('change', ()=>{
-    try{ localStorage.setItem('prefReduceMotion', reduce.checked ? '1' : '0'); }catch{}
-    setReduceMotionClass(reduce.checked);
-  });
-  useTmdb && useTmdb.addEventListener('change', ()=>{
-    try{ localStorage.setItem('useTmdb', useTmdb.checked ? '1' : '0'); }catch{}
-    // Start TMDB hydration when enabling the toggle (if not already started)
-    if(useTmdb.checked && !window.__tmdbHydrationStarted){
-      window.__tmdbHydrationStarted = 1;
-      import('./services/tmdb.js').then(m=>{
-        const s = getState();
-        m.hydrateOptional?.(s.movies, s.shows, s.cfg);
-      }).catch(()=>{});
-      // Re-render a bit later to reflect incoming posters
-      setTimeout(()=>{ if(useTmdb.checked) renderGrid(getState().view); }, 1200);
-      setTimeout(()=>{ if(useTmdb.checked) renderGrid(getState().view); }, 3000);
-    }
-    renderGrid(getState().view);
-    renderHeroHighlight();
-  });
-  resetFilters && resetFilters.addEventListener('click', ()=>{
-    const search = document.getElementById('search'); if(search) search.value='';
-    const q = document.getElementById('q'); if(q) q.value='';
-    const onlyNew = document.getElementById('onlyNew'); if(onlyNew) onlyNew.checked=false;
-    const yf = document.getElementById('yearFrom'); const yt = document.getElementById('yearTo'); if(yf) yf.value=''; if(yt) yt.value='';
-    const col = document.getElementById('collectionFilter'); if(col) col.value='';
-    document.querySelectorAll('#genreFilters .chip.active').forEach(n=>n.classList.remove('active'));
-    const genreRoot = document.getElementById('genreFilters');
-    if(genreRoot){
-      genreRoot.dataset.state = 'empty';
-      genreRoot.dataset.count = '0';
-    }
-    import('./filter.js').then(F=>{
-      const result = F.applyFilters();
-      renderGrid(getState().view);
-      renderHeroHighlight(result);
-    });
-  });
-
-}
 
 function setReduceMotionClass(pref){
   try{
@@ -892,7 +495,17 @@ function initHeaderInteractions(){
       idx = (idx+1)%TAGLINES.length; subtitle.textContent = TAGLINES[idx]; subtitle.classList.remove('is-fading');
     }, 280);
   }
-  if(subtitle){ subtitle.dataset.taglinePaused='0'; if(!window.__taglineTicker){ window.__taglineTicker = setInterval(rotate, 6000); setTimeout(rotate, 3000); } }
+  if(subtitle){
+    subtitle.dataset.taglinePaused='0';
+    if(taglineTicker){
+      clearInterval(taglineTicker);
+    }
+    taglineTicker = setInterval(rotate, 6000);
+    setTimeout(rotate, 3000);
+  }else if(taglineTicker){
+    clearInterval(taglineTicker);
+    taglineTicker = null;
+  }
 }
 
 function initScrollProgress(){
@@ -917,5 +530,61 @@ function initScrollTop(){
   btn.addEventListener('click', ()=> window.scrollTo({ top:0, behavior:'smooth' }));
 }
 
-// Scroll orchestrator removed - using pure CSS scroll-driven animations instead
-// See animations.css for the new implementation
+function initFilterBarAutoHideFallback(){
+  const filters = document.querySelector('.filters');
+  if(!filters) return;
+
+  const supportsScrollTimeline = typeof CSS !== 'undefined'
+    && typeof CSS.supports === 'function'
+    && CSS.supports('animation-timeline: scroll()');
+
+  if(supportsScrollTimeline) return;
+
+  let lastY = window.scrollY || window.pageYOffset || 0;
+  let isHidden = false;
+  let ticking = false;
+  const MIN_SCROLL = 120;
+  const DELTA_HIDE = 8;
+
+  const setHidden = (nextHidden)=>{
+    if(isHidden === nextHidden) return;
+    isHidden = nextHidden;
+    filters.classList.toggle('is-hidden', isHidden);
+  };
+
+  const update = ()=>{
+    ticking = false;
+    const currentY = window.scrollY || window.pageYOffset || 0;
+
+    if(currentY <= MIN_SCROLL){
+      setHidden(false);
+      lastY = currentY;
+      return;
+    }
+
+    const delta = currentY - lastY;
+    lastY = currentY;
+
+    if(delta > DELTA_HIDE){
+      setHidden(true);
+    }else if(delta < -DELTA_HIDE){
+      setHidden(false);
+    }
+  };
+
+  const onScroll = ()=>{
+    if(ticking) return;
+    ticking = true;
+    requestAnimationFrame(update);
+  };
+
+  window.addEventListener('scroll', onScroll, { passive:true });
+  window.addEventListener('resize', update);
+
+  const reveal = ()=> setHidden(false);
+  filters.addEventListener('focusin', reveal);
+  filters.addEventListener('pointerenter', reveal, { passive:true });
+  filters.addEventListener('pointerdown', reveal, { passive:true });
+
+  update();
+}

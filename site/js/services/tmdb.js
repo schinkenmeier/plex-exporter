@@ -5,19 +5,41 @@ const IMG = 'https://image.tmdb.org/t/p/';
 const POSTER_W = 'w342';
 const BACKDROP_W = 'w780';
 
+const LOG_PREFIX = '[tmdb]';
+
 let cache;
 
 function loadCache(){
-  try{ return new Map(JSON.parse(localStorage.getItem('tmdbCache')||'[]')); }catch{ return new Map(); }
+  try{
+    return new Map(JSON.parse(localStorage.getItem('tmdbCache')||'[]'));
+  }catch(err){
+    console.warn(`${LOG_PREFIX} Failed to load persisted TMDB cache:`, err);
+    return new Map();
+  }
 }
-function persist(){ try{ localStorage.setItem('tmdbCache', JSON.stringify(Array.from(cache.entries()))); }catch{} }
-export function clearCache(){ try{ localStorage.removeItem('tmdbCache'); cache = new Map(); }catch{} }
+function persist(){
+  try{
+    localStorage.setItem('tmdbCache', JSON.stringify(Array.from(cache.entries())));
+  }catch(err){
+    console.warn(`${LOG_PREFIX} Failed to persist TMDB cache:`, err);
+  }
+}
+export function clearCache(){
+  try{
+    localStorage.removeItem('tmdbCache');
+  }catch(err){
+    console.warn(`${LOG_PREFIX} Failed to clear TMDB cache from storage:`, err);
+  }
+  cache = new Map();
+}
 
 function tokenFromEnv(cfg){
   try{
     const t = localStorage.getItem('tmdbToken');
     if(t) return { kind:'bearer', value: t };
-  }catch{}
+  }catch(err){
+    console.warn(`${LOG_PREFIX} Failed to read TMDB token from storage:`, err);
+  }
   if(cfg?.tmdbApiKey) return { kind:'apikey', value: String(cfg.tmdbApiKey) };
   return { kind:'none', value: '' };
 }
@@ -51,7 +73,10 @@ function pickBestBackdrop(p){ return p?.file_path ? IMG+BACKDROP_W+p.file_path :
 
 async function byId(type, id, lang, auth){
   const inf = await getJson(`${API_V3}/${type}/${id}?language=${encodeURIComponent(lang||'de-DE')}`, auth);
-  const images = await getJson(`${API_V3}/${type}/${id}/images`, auth).catch(()=>({ posters:[], backdrops:[] }));
+  const images = await getJson(`${API_V3}/${type}/${id}/images`, auth).catch((err)=>{
+    console.warn(`${LOG_PREFIX} Failed to fetch TMDB images for ${type}#${id}:`, err);
+    return { posters:[], backdrops:[] };
+  });
   const poster = pickBestPoster((images.posters||[])[0]) || (inf.poster_path ? IMG+POSTER_W+inf.poster_path : '');
   const backdrop = pickBestBackdrop((images.backdrops||[])[0]) || (inf.backdrop_path ? IMG+BACKDROP_W+inf.backdrop_path : '');
   return { id: inf.id, poster, backdrop, url: `https://www.themoviedb.org/${type}/${inf.id}` };
@@ -81,7 +106,10 @@ async function hydrateItem(item, cfg, auth){
     }else{
       out = await bySearch(type, item.title, item.year, cfg.lang, auth);
     }
-  }catch(e){ out = null; }
+  }catch(e){
+    console.warn(`${LOG_PREFIX} Hydration failed for ${type} ${item?.title || item?.ids?.tmdb || 'unknown'}:`, e);
+    out = null;
+  }
   cache.set(k, out);
   persist();
   return out;
@@ -103,12 +131,24 @@ export async function hydrateOptional(movies, shows, cfg={}){
           it.ids = it.ids||{}; if(!it.ids.tmdb && data.id) it.ids.tmdb = String(data.id);
         }
       }));
-      try{ window.dispatchEvent(new CustomEvent('tmdb:chunk', { detail: { updated: chunk.length, index: i } })); }catch{}
+      try{
+        window.dispatchEvent(new CustomEvent('tmdb:chunk', { detail: { updated: chunk.length, index: i } }));
+      }catch(err){
+        console.warn(`${LOG_PREFIX} Failed to dispatch tmdb:chunk event:`, err);
+      }
       if(i < Math.min(work.length, limit)) (window.requestIdleCallback||setTimeout)(next, 250);
-      else{ try{ window.dispatchEvent(new CustomEvent('tmdb:done', { detail: { total: Math.min(work.length, limit) } })); }catch{} }
+      else{
+        try{
+          window.dispatchEvent(new CustomEvent('tmdb:done', { detail: { total: Math.min(work.length, limit) } }));
+        }catch(err){
+          console.warn(`${LOG_PREFIX} Failed to dispatch tmdb:done event:`, err);
+        }
+      }
     };
     next();
-  }catch{}
+  }catch(err){
+    console.warn(`${LOG_PREFIX} hydrateOptional failed to start:`, err);
+  }
 }
 
 // Lightweight token validation used by settings UI
@@ -123,7 +163,10 @@ export async function validateToken(raw){
       const pad = (s)=> s + '='.repeat((4 - (s.length % 4)) % 4);
       const json = atob(pad(part.replace(/-/g,'+').replace(/_/g,'/')));
       return JSON.parse(json);
-    }catch{ return null; }
+    }catch(err){
+      console.warn(`${LOG_PREFIX} Failed to decode TMDB JWT payload:`, err);
+      return null;
+    }
   };
 
   // If it looks like a v3 API key, validate it against a protected v3 config endpoint
@@ -149,7 +192,9 @@ export async function validateToken(raw){
     try{
       const res = await fetch(url, init);
       if(res.ok) return { ok:true, as:'bearer', hint:null };
-    }catch{}
+    }catch(err){
+      console.warn(`${LOG_PREFIX} Bearer token validation request failed:`, err);
+    }
     // Some public endpoints ignore invalid Authorization headers; fall back to structural pass
     return { ok:true, as:'bearer', hint:'structOnly' };
   }
