@@ -1,10 +1,12 @@
-(function(){
+import { refreshHero } from './hero.js';
+
+export function initHeroAutoplay({ onRefresh = refreshHero } = {}){
   const hero = document.getElementById('hero');
   const timer = document.getElementById('heroTimer');
   const bar = timer ? timer.querySelector('.hero-timer__bar') : null;
-  if(!hero || !timer || !bar) return;
+  if(!hero || !timer || !bar) return null;
   const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if(reduce) { timer.hidden = true; return; }
+  if(reduce) { timer.hidden = true; return null; }
   timer.removeAttribute('aria-hidden');
   timer.dataset.state = 'running';
 
@@ -48,7 +50,11 @@
     if(prog >= 1){
       // reset and ask app to refresh hero gently
       elapsed = 0; lastTs = ts; bar.style.setProperty('--p','0');
-      try { if(window.__heroRefresh) window.__heroRefresh(); } catch(_e) {}
+      try {
+        onRefresh?.();
+      } catch(_e) {
+        // no-op
+      }
     }
     raf = requestAnimationFrame(step);
   }
@@ -68,10 +74,10 @@
   }
 
   start();
-  // Expose a tiny control for debugging (no global pollution)
-  window.__heroTimerCtl = {
+
+  return {
     pause(){ setPaused('manual', true); },
     resume(){ setPaused('manual', false); },
     reset(){ elapsed = 0; bar.style.setProperty('--p','0'); }
   };
-})();
+}

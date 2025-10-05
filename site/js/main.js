@@ -7,12 +7,10 @@ import { openMovieModalV2, openSeriesModalV2 } from './modalV2.js';
 import { hydrateOptional } from './services/tmdb.js';
 import * as Watch from './watchlist.js';
 import * as Debug from './debug.js';
-import { humanYear, formatRating, useTmdbOn } from './utils.js';
 import { initErrorHandler, showError, showRetryableError } from './errorHandler.js';
 import { initSettingsOverlay } from './settingsOverlay.js';
-
-let currentHeroItem = null;
-let heroDefaults = null;
+import { refreshHero, setHeroNavigation } from './hero.js';
+import { initHeroAutoplay } from './hero-autoplay.js';
 
 const hashNavigation = (() => {
   let lastHash = window.location.hash || '';
@@ -102,6 +100,8 @@ const hashNavigation = (() => {
 
 export const navigateToHash = (hash, options) => hashNavigation.navigate(hash, options);
 
+setHeroNavigation(navigateToHash);
+
 function setFooterStatus(message, busy=true){
   const footer = document.getElementById('footerMeta');
   if(footer){
@@ -167,7 +167,8 @@ async function boot(){
     initScrollProgress();
     initScrollTop();
     initFilterBarAutoHideFallback();
-    renderHeroHighlight();
+    refreshHero();
+    initHeroAutoplay();
     Debug.initDebugUi();
     handleHashChange(true);
   } catch (error) {
@@ -186,7 +187,7 @@ async function boot(){
       try{
         if(localStorage.getItem('useTmdb')==='1'){
           renderGrid(getState().view);
-          renderHeroHighlight();
+          refreshHero();
         }
       }catch(err){
         console.warn('[main] TMDB chunk render failed:', err.message);
@@ -197,7 +198,7 @@ async function boot(){
     try{
       if(localStorage.getItem('useTmdb')==='1'){
         renderGrid(getState().view);
-        renderHeroHighlight();
+        refreshHero();
       }
     }catch(err){
       console.warn('[main] TMDB done render failed:', err.message);
@@ -215,7 +216,7 @@ function applyHashNavigation(hash){
     const result = Filter.applyFilters();
     renderSwitch();
     renderGrid(view);
-    renderHeroHighlight(result);
+    refreshHero(result);
     return true;
   }
   const match = hash.match(/^#\/(movie|show)\/(.+)/);
@@ -265,7 +266,7 @@ function renderSwitch(){
       renderSwitch();
       const result = Filter.applyFilters();
       renderGrid(view);
-      renderHeroHighlight(result);
+      refreshHero(result);
     });
     btn.dataset.bound = 'true';
   });
@@ -317,226 +318,16 @@ function renderFooterMeta(){
   if(grid){ grid.setAttribute('aria-busy', 'false'); }
 }
 
-function renderHeroHighlight(listOverride){
-  const hero = document.getElementById('hero');
-  const title = document.getElementById('heroTitle');
-  const subtitle = document.getElementById('heroSubtitle');
-  const cta = document.getElementById('heroCta');
-  if(!hero || !title || !subtitle || !cta) return;
-
-  ensureHeroDefaults();
-  const candidate = selectHeroItem(listOverride);
-
-  if(!candidate){
-    currentHeroItem = null;
-    title.textContent = heroDefaults.title;
-    subtitle.textContent = heroDefaults.subtitle;
-    subtitle.dataset.taglinePaused = '0';
-    delete subtitle.dataset.heroBound;
-    subtitle.classList.remove('is-fading');
-    cta.textContent = heroDefaults.cta;
-    cta.disabled = true;
-    cta.setAttribute('aria-disabled', 'true');
-    cta.removeAttribute('aria-label');
-    cta.onclick = null;
-    hero.style.backgroundImage = '';
-    hero.classList.remove('has-poster');
-    hero.dataset.heroKind = '';
-    hero.dataset.heroId = '';
-    return;
-  }
-
-  currentHeroItem = candidate;
-  const kind = candidate.type === 'tv' ? 'show' : 'movie';
-  const heroId = resolveHeroId(candidate);
-
-  title.textContent = candidate.title || heroDefaults.title;
-  subtitle.textContent = heroSubtitleText(candidate);
-  subtitle.dataset.taglinePaused = '1';
-  subtitle.dataset.heroBound = '1';
-  subtitle.classList.remove('is-fading');
-
-  const ctaLabel = kind === 'show' ? 'Serien-Details öffnen' : 'Film-Details öffnen';
-  cta.textContent = ctaLabel;
-  cta.disabled = false;
-  cta.setAttribute('aria-disabled', 'false');
-  cta.setAttribute('aria-label', candidate.title ? `${ctaLabel}: ${candidate.title}` : ctaLabel);
-  cta.onclick = ()=> openHeroModal(candidate, kind, heroId);
-
-  hero.dataset.heroKind = kind;
-  hero.dataset.heroId = heroId || '';
-
-  const background = resolveHeroBackdrop(candidate);
-  if(background){
-    hero.style.backgroundImage = `url(${background})`;
-    hero.classList.add('has-poster');
-  }else{
-    hero.style.backgroundImage = '';
-    hero.classList.remove('has-poster');
-  }
-}
-
-// Expose for hero autoplay timer
-window.__heroRefresh = renderHeroHighlight;
-
-function ensureHeroDefaults(){
-  if(heroDefaults) return;
-  heroDefaults = {
-    title: document.getElementById('heroTitle')?.textContent || '',
-    subtitle: document.getElementById('heroSubtitle')?.textContent || '',
-    cta: document.getElementById('heroCta')?.textContent || '',
-  };
-}
-
-function selectHeroItem(listOverride){
-  if(Array.isArray(listOverride)){
-    const playableOverride = listOverride.filter(isPlayableHeroItem);
-    if(!playableOverride.length) return null;
-    return chooseHeroCandidate(playableOverride);
-  }
-  const source = heroCandidatesFromState();
-  const playable = source.filter(isPlayableHeroItem);
-  if(!playable.length) return null;
-  return chooseHeroCandidate(playable);
-}
-
-function chooseHeroCandidate(list){
-  if(list.length === 1) return list[0];
-  const index = Math.floor(Math.random() * list.length);
-  const candidate = list[index];
-  if(currentHeroItem && list.length > 1 && candidate === currentHeroItem){
-    const alt = list.find(item=> item !== currentHeroItem);
-    return alt || candidate;
-  }
-  return candidate;
-}
-
-function heroCandidatesFromState(){
-  const state = getState();
-  const view = state.view === 'shows' ? 'shows' : 'movies';
-  const filtered = Array.isArray(state.filtered) && state.filtered.length ? state.filtered : null;
-  const list = filtered || (view === 'shows' ? state.shows : state.movies) || [];
-  return Array.isArray(list) ? list : [];
-}
-
-function isPlayableHeroItem(item){
-  return Boolean(item) && typeof item === 'object' && !item.isCollectionGroup && item.type !== 'collection';
-}
-
-function heroSubtitleText(item){
-  const meta = [];
-  const year = humanYear(item);
-  if(year) meta.push(String(year));
-  const runtime = heroRuntimeText(item);
-  if(runtime) meta.push(runtime);
-  const rating = Number(item?.rating ?? item?.audienceRating);
-  if(Number.isFinite(rating)) meta.push(`★ ${formatRating(rating)}`);
-  const genres = heroGenres(item, 2);
-  if(genres.length) meta.push(genres.join(', '));
-  const summary = heroSummaryText(item);
-  if(summary) return meta.length ? `${meta.join(' • ')} — ${summary}` : summary;
-  return meta.length ? meta.join(' • ') : heroDefaults?.subtitle || '';
-}
-
-function heroRuntimeText(item){
-  const raw = item?.runtimeMin ?? item?.durationMin ?? (item?.duration ? Math.round(Number(item.duration) / 60000) : null);
-  const minutes = Number(raw);
-  if(!Number.isFinite(minutes) || minutes <= 0) return '';
-  if(item?.type === 'tv') return `~${minutes} min/Ep`;
-  return `${minutes} min`;
-}
-
-function heroGenres(item, limit=3){
-  const list = Array.isArray(item?.genres) ? item.genres : [];
-  const names = [];
-  list.forEach(entry=>{
-    if(!entry) return;
-    if(typeof entry === 'string'){ names.push(entry); return; }
-    const name = entry.tag || entry.title || entry.name || entry.label || '';
-    if(name) names.push(name);
-  });
-  const unique = Array.from(new Set(names));
-  return unique.slice(0, Math.max(0, limit));
-}
-
-function heroSummaryText(item){
-  const sources = [item?.tagline, item?.summary, item?.plot, item?.overview];
-  for(const raw of sources){
-    if(typeof raw !== 'string') continue;
-    const text = raw.trim();
-    if(text) return truncateText(text, 220);
-  }
-  return '';
-}
-
-function truncateText(text, maxLength){
-  const str = String(text || '').trim();
-  if(!str) return '';
-  if(str.length <= maxLength) return str;
-  return `${str.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
-}
-
-function resolveHeroId(item){
-  if(!item) return '';
-  if(item?.ids?.imdb) return String(item.ids.imdb);
-  if(item?.ids?.tmdb) return String(item.ids.tmdb);
-  if(item?.ratingKey != null) return String(item.ratingKey);
-  return '';
-}
-
-function openHeroModal(item, kind, heroId){
-  if(heroId) navigateToItemHash(kind, heroId);
-  if(kind === 'show') openSeriesModalV2(item);
-  else openMovieModalV2(item);
-}
-
-function navigateToItemHash(kind, id){
-  if(!kind || !id) return;
-  const hash = `#/${kind}/${id}`;
-  const replace = (window.location.hash || '') === hash;
-  navigateToHash(hash, { silent: true, replace });
-}
-
-function resolveHeroBackdrop(item){
-  if(!item) return '';
-  const tmdbEnabled = useTmdbOn();
-  const tmdbCandidates = [
-    item?.tmdb?.backdrop,
-    item?.tmdb?.backdrop_path,
-    item?.tmdb?.backdropPath,
-    item?.tmdb?.background,
-    item?.tmdb?.art,
-  ];
-  const localCandidates = [
-    item?.art,
-    item?.background,
-    item?.thumbBackground,
-    item?.coverArt,
-    item?.thumb,
-    item?.thumbFile,
-  ];
-  if(tmdbEnabled){
-    const tmdb = tmdbCandidates.find(isValidMediaPath);
-    if(tmdb) return tmdb;
-  }
-  const local = localCandidates.find(isValidMediaPath);
-  return local || '';
-}
-
-function isValidMediaPath(value){
-  return typeof value === 'string' && value.trim().length > 0;
-}
-
 window.addEventListener('filters:updated', ev=>{
   const detail = ev?.detail;
   const items = Array.isArray(detail?.items) ? detail.items : null;
-  renderHeroHighlight(items);
+  refreshHero(items);
 });
 
 window.addEventListener('settings:refresh-hero', ev=>{
   try{
     const items = ev?.detail?.items;
-    renderHeroHighlight(items);
+    refreshHero(items);
   }catch(err){
     console.warn('[main] Failed to refresh hero from settings event:', err?.message);
   }
