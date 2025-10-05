@@ -22,8 +22,10 @@ const STATE = {
 };
 
 // Thresholds
-const HERO_HIDE_THRESHOLD = 50; // px from top – hero hides instantly
-const FILTERS_HIDE_THRESHOLD = 200; // Additional scroll after hero hidden
+const HERO_HIDE_THRESHOLD = 80; // px from top – hero starts collapsing
+const FILTERS_HIDE_THRESHOLD = 280; // Additional scroll after hero hidden
+const HERO_SHOW_HYSTERESIS = 40; // px hysteresis when scrolling up to show hero
+const FILTERS_SHOW_HYSTERESIS = 100; // px hysteresis when scrolling up to show filters
 
 // Animation config
 const EASE_UI = 'cubic-bezier(0.18, 0.67, 0.32, 1)';
@@ -124,34 +126,37 @@ export function initScrollOrchestrator({
 
   /**
    * Setup IntersectionObserver to detect when hero leaves viewport
+   * NOTE: This is now primarily used as a helper; scroll-based logic in handleScrollDown/Up
+   * provides the main state transitions to avoid issues when hero is collapsed (max-height: 0)
    */
   function setupIntersectionObserver() {
     if (!('IntersectionObserver' in window)) {
-      console.warn('[scroll-orchestrator] IntersectionObserver not supported, using fallback');
+      console.warn('[scroll-orchestrator] IntersectionObserver not supported, using scroll-based fallback');
       return;
     }
 
     // Observer for when hero top edge passes threshold
+    // Only used when hero is visible (has-hero state) to trigger initial collapse
     intersectionObserver = new IntersectionObserver(
       entries => {
         entries.forEach(entry => {
+          // Only react when hero is actually visible (not collapsed)
+          const heroVisible = currentState === STATE.HAS_HERO;
+
           // Hero is leaving viewport (scrolling down past threshold)
-          if (!entry.isIntersecting && scrollDirection === 'down') {
-            if (currentState === STATE.HAS_HERO) {
-              transitionToState(STATE.HERO_HIDDEN);
-            }
+          if (!entry.isIntersecting && scrollDirection === 'down' && heroVisible) {
+            transitionToState(STATE.HERO_HIDDEN);
           }
-          // Hero is entering viewport (scrolling up)
-          else if (entry.isIntersecting && scrollDirection === 'up') {
-            if (currentState === STATE.HERO_HIDDEN || currentState === STATE.FILTERS_HIDDEN) {
-              transitionToState(STATE.HAS_HERO);
-            }
+          // Hero is entering viewport (scrolling up) - only if hero not collapsed
+          else if (entry.isIntersecting && scrollDirection === 'up' && !heroVisible) {
+            // Let scroll-based logic handle this to avoid loops
+            // IntersectionObserver can't reliably detect collapsed elements
           }
         });
       },
       {
         rootMargin: `-${HERO_HIDE_THRESHOLD}px 0px 0px 0px`,
-        threshold: 0
+        threshold: [0, 0.1]
       }
     );
 
@@ -323,20 +328,11 @@ export function initScrollOrchestrator({
     }
 
     // State transitions based on scroll position & direction
-    let previousState;
-    let iterations = 0;
-
-    do {
-      previousState = currentState;
-
-      if (scrollDirection === 'down') {
-        handleScrollDown(currentScrollY);
-      } else {
-        handleScrollUp(currentScrollY);
-      }
-
-      iterations += 1;
-    } while (previousState !== currentState && iterations < 3);
+    if (scrollDirection === 'down') {
+      handleScrollDown(currentScrollY);
+    } else {
+      handleScrollUp(currentScrollY);
+    }
   }
 
   /**
@@ -362,16 +358,23 @@ export function initScrollOrchestrator({
    * Handle upward scroll transitions (reverse order)
    */
   function handleScrollUp(scrollY) {
+    // Always show hero when at top (0px)
+    if (scrollY === 0 && currentState !== STATE.HAS_HERO) {
+      transitionToState(STATE.HAS_HERO);
+      return;
+    }
+
     // Transition: filters-hidden → hero-hidden
     if (currentState === STATE.FILTERS_HIDDEN) {
       const filterThreshold = HERO_HIDE_THRESHOLD + FILTERS_HIDE_THRESHOLD;
-      if (scrollY < filterThreshold - 80) { // 80px hysteresis
+      if (scrollY < filterThreshold - FILTERS_SHOW_HYSTERESIS) {
         transitionToState(STATE.HERO_HIDDEN);
       }
     }
     // Transition: hero-hidden → has-hero
     else if (currentState === STATE.HERO_HIDDEN) {
-      if (scrollY < HERO_HIDE_THRESHOLD - 20) { // 20px hysteresis
+      // Show hero when scrolling back near top
+      if (scrollY <= HERO_SHOW_HYSTERESIS) {
         transitionToState(STATE.HAS_HERO);
       }
     }
@@ -384,11 +387,28 @@ export function initScrollOrchestrator({
     if (currentState === newState) return;
 
     console.log(`[scroll-orchestrator] Transition: ${currentState} → ${newState}`);
+
+    // Store scroll position before transition
+    const scrollBefore = window.scrollY;
+
     currentState = newState;
     if (!shouldReduceMotion) {
       previousNonReducedState = newState;
     }
     applyState(newState);
+
+    // Prevent browser from auto-adjusting scroll when hero collapses
+    if (newState === STATE.HERO_HIDDEN || newState === STATE.HAS_HERO) {
+      requestAnimationFrame(() => {
+        const scrollAfter = window.scrollY;
+        const scrollDelta = scrollAfter - scrollBefore;
+
+        // If browser auto-scrolled significantly (more than 50px), correct it
+        if (Math.abs(scrollDelta) > 50) {
+          window.scrollTo(0, scrollBefore);
+        }
+      });
+    }
   }
 
   function detachHeroTransitionHandler() {
@@ -490,9 +510,9 @@ export function initScrollOrchestrator({
         heroTransitionMode = 'expanding';
 
         heroTransitionHandler = event => {
-          if (!heroEl || event.target !== heroEl || event.propertyName !== 'max-height') {
-            return;
-          }
+          if (!heroEl || event.target !== heroEl) return;
+          // Listen for transform transition (primary animation now)
+          if (event.propertyName !== 'transform') return;
 
           completeHeroTransition();
         };
@@ -500,8 +520,10 @@ export function initScrollOrchestrator({
         heroEl.addEventListener('transitionend', heroTransitionHandler);
         heroEl.addEventListener('transitioncancel', heroTransitionHandler);
 
+        // Force reflow only once to trigger CSS transition
         requestAnimationFrame(() => {
           if (heroTransitionMode !== 'expanding' || !heroEl) return;
+          // Read layout to force reflow (necessary for CSS transition to work)
           void heroEl.offsetHeight;
         });
       } else {
@@ -540,17 +562,19 @@ export function initScrollOrchestrator({
       if (heroWillAnimate) {
         heroTransitionMode = 'collapsing';
 
+        // During hero collapse, filterbar should prepare to become sticky
         if (filterEl) {
-          filterEl.classList.remove('is-hidden', 'is-sticky');
+          filterEl.classList.remove('is-hidden');
+          // Keep is-collapsing during transition to coordinate animation
           filterEl.classList.add('is-collapsing');
           filterEl.removeAttribute('aria-hidden');
           removeInert(filterEl);
         }
 
         heroTransitionHandler = event => {
-          if (!heroEl || event.target !== heroEl || event.propertyName !== 'max-height') {
-            return;
-          }
+          if (!heroEl || event.target !== heroEl) return;
+          // Listen for transform transition (primary animation now)
+          if (event.propertyName !== 'transform') return;
 
           completeHeroTransition();
         };
@@ -573,6 +597,7 @@ export function initScrollOrchestrator({
 
     if (filterEl) {
       if (!heroWillAnimate) {
+        // No animation: directly apply sticky state
         filterEl.classList.remove('is-hidden', 'is-collapsing');
         filterEl.classList.add('is-sticky');
         filterEl.removeAttribute('aria-hidden');

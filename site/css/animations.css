@@ -230,57 +230,77 @@ html {
   --dur-ui: 360ms;
 }
 
-/* Hero collapse & hide states – simple and smooth */
+/* Pure CSS scroll-based hero fade - NO JAVASCRIPT STATE MACHINE */
 .hero {
-  transform-origin: top center;
-  transition: opacity calc(var(--dur-ui) * 0.7) var(--ease-ui),
-              max-height var(--dur-ui) var(--ease-ui),
-              min-height var(--dur-ui) var(--ease-ui),
-              margin-bottom var(--dur-ui) var(--ease-ui);
-  will-change: opacity, max-height, margin-bottom;
-  max-height: var(--hero-h, 600px);
+  position: relative;
+  overflow: hidden;
+  /* Smooth fade out as you scroll - pure CSS */
+  animation: hero-fade-scroll linear both;
+  animation-timeline: scroll(root);
+  animation-range: 0px 400px;
 }
 
-.hero.is-collapsing {
-  opacity: 0;
-  max-height: 0;
-  min-height: 0;
-  margin-bottom: 0;
-  pointer-events: auto;
+@keyframes hero-fade-scroll {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-20%) scale(0.95);
+  }
 }
 
-.hero.is-hidden {
-  opacity: 0;
-  max-height: 0;
-  min-height: 0;
-  pointer-events: none;
-  margin-bottom: 0;
+/* Fallback for browsers without animation-timeline support */
+@supports not (animation-timeline: scroll()) {
+  .hero {
+    animation: none;
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+  }
+
+  /* JavaScript will add these classes as fallback */
+  .hero.is-collapsing,
+  .hero.is-hidden {
+    opacity: 0;
+    transform: translateY(-20%) scale(0.95);
+  }
 }
 
-/* Filterbar sticky & hide states */
-.filters.is-sticky {
+/* Filterbar - simple sticky behavior */
+.filters {
   position: sticky;
   top: clamp(68px, 8vw, 88px);
-  transition: transform var(--dur-ui) var(--ease-ui),
-              opacity var(--dur-ui) var(--ease-ui),
-              top var(--dur-ui) var(--ease-ui);
+  z-index: 26;
+  /* Smooth scroll-based fade */
+  animation: filters-fade-scroll linear both;
+  animation-timeline: scroll(root);
+  animation-range: 500px 800px;
 }
 
-.filters.is-collapsing {
-  position: relative;
-  top: auto;
-  will-change: opacity, transform;
-  transition: opacity var(--dur-ui) var(--ease-ui),
-              transform var(--dur-ui) var(--ease-ui);
-  pointer-events: auto;
+@keyframes filters-fade-scroll {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-100%);
+    pointer-events: none;
+  }
 }
 
-.filters.is-hidden {
-  opacity: 0;
-  transform: translateY(-12px);
-  pointer-events: none;
-  transition: opacity calc(var(--dur-ui) * 0.7) var(--ease-ui),
-              transform var(--dur-ui) var(--ease-ui);
+/* Fallback for browsers without animation-timeline support */
+@supports not (animation-timeline: scroll()) {
+  .filters {
+    animation: none;
+    transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+  }
+
+  .filters.is-hidden {
+    opacity: 0;
+    transform: translateY(-100%);
+    pointer-events: none;
+  }
 }
 
 /* Body state classes for scroll orchestration */
@@ -323,8 +343,12 @@ body:not(.filters-hidden) .scroll-progress {
 
 /* Grid adjustment when filterbar hidden – smooth shift */
 body.filters-hidden .grid {
-  padding-top: clamp(8px, 2vw, 16px);
-  transition: padding var(--dur-ui) var(--ease-ui);
+  --grid-padding-top: clamp(8px, 2vw, 16px);
+}
+
+/* Grid adjustment when hero hidden – maintain spacing */
+body.hero-hidden .grid {
+  --grid-padding-top: clamp(20px, 3vw, 32px);
 }
 
 /* Reduce motion preferences */

@@ -80,8 +80,9 @@ async function boot(){
     initHeaderInteractions();
     initScrollProgress();
     initScrollTop();
-    initFilterBarAutoHide();
-    initScrollOrchestratorWithSettings();
+    // Scroll orchestrator temporarily disabled for pure CSS approach
+    // initFilterBarAutoHide();
+    // initScrollOrchestratorWithSettings();
     renderHeroHighlight();
     Debug.initDebugUi();
   } catch (error) {

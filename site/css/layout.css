@@ -212,25 +212,6 @@ header.site-header {
   /* Transitions handled by animations.css */
 }
 
-/* Legacy states – kept for backward compatibility with filterBarAutoHide.js */
-.hero.hero--fading {
-  /* Opacity and transform set via JS for smooth scroll-linked animation */
-  pointer-events: auto;
-}
-
-.hero.hero--hidden {
-  opacity: 0;
-  min-height: 0;
-  pointer-events: none;
-  transition: opacity 0.4s ease, min-height 0.4s cubic-bezier(0.18, 0.68, 0.32, 1);
-}
-
-/* New orchestrator states (takes precedence) */
-.hero.is-collapsing,
-.hero.is-hidden {
-  /* Handled by animations.css with --dur-ui and --ease-ui */
-}
-
 .hero::before {
   content: "";
   position: absolute;
@@ -315,8 +296,7 @@ header.site-header {
 }
 
 .filters {
-  position: relative;
-  top: auto;
+  /* Position sticky is now set in animations.css for smooth scroll behavior */
   z-index: 25;
   backdrop-filter: blur(16px) saturate(130%);
   -webkit-backdrop-filter: blur(16px) saturate(130%);
@@ -324,34 +304,14 @@ header.site-header {
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-  transition: transform var(--transition-smooth),
-              opacity var(--transition-smooth);
 }
 
 /* iOS Safari sticky support */
 @supports (-webkit-overflow-scrolling: touch) {
-  .filters.is-sticky {
+  .filters {
     position: -webkit-sticky;
     position: sticky;
   }
-}
-
-/* Legacy state – kept for backward compatibility */
-.filters--hidden {
-  transform: translateY(calc(-100% - clamp(72px, 9vw, 104px)));
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* New orchestrator states (takes precedence) */
-.filters.is-sticky {
-  position: sticky;
-  top: clamp(68px, 8vw, 88px);
-}
-
-.filters.is-collapsing,
-.filters.is-hidden {
-  /* Handled by animations.css with --dur-ui and --ease-ui */
 }
 
 .filters-wrap {
@@ -446,13 +406,10 @@ header.site-header {
   gap: clamp(18px, 2vw, 28px);
   padding: var(--grid-padding-top) 0;
   grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  transition: opacity var(--transition-smooth), transform var(--transition-smooth),
+  transition: opacity var(--transition-smooth),
     padding var(--transition-smooth);
-}
-
-body.filter-bar-hidden .grid {
-  --grid-padding-top: clamp(8px, 2vw, 16px);
-  transform: translateY(-60px);
+  /* Ensure grid doesn't jump under sticky filterbar */
+  scroll-margin-top: clamp(140px, 16vw, 200px);
 }
 
 .grid.is-leaving {
@@ -469,10 +426,6 @@ body.filter-bar-hidden .grid {
 @media (prefers-reduced-motion: reduce) {
   .grid {
     transition: opacity var(--transition-smooth);
-    transform: none;
-  }
-
-  body.filter-bar-hidden .grid {
     transform: none;
   }
 
@@ -649,10 +602,6 @@ body.filter-bar-hidden .grid {
     top: clamp(64px, 12vw, 96px);
   }
 
-  .filters--hidden {
-    transform: translateY(calc(-100% - clamp(64px, 12vw, 96px)));
-  }
-
   .filters-main {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
@@ -721,10 +670,6 @@ body.filter-bar-hidden .grid {
   .filters.is-sticky {
     position: sticky;
     top: 0;
-  }
-
-  .filters--hidden {
-    transform: translateY(-100%);
   }
 
   .filters-main {
