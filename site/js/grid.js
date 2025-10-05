@@ -1,10 +1,10 @@
 import { getState } from './state.js';
-import * as Filter from './filter.js';
 import { el } from './dom.js';
 import { humanYear, formatRating, renderChipsLimited, useTmdbOn, isNew, getGenreNames, collectionTags } from './utils.js';
 import * as Watch from './watchlist.js';
 import { openMovieModalV2, openSeriesModalV2 } from './modalV2.js';
 import { navigateToHash } from './main.js';
+import { VirtualList } from './grid/virtualList.js';
 
 function cardEl(item){
   const card = el('article','card');
@@ -201,6 +201,32 @@ function collectionCardEl(entry){
   return card;
 }
 
+let virtualListInstance = null;
+
+function ensureVirtualList(grid){
+  if(virtualListInstance) return virtualListInstance;
+  virtualListInstance = new VirtualList({
+    container: grid,
+    overscan: 2,
+    estimatedItemHeight: 460,
+    minItemWidth: 190,
+    getKey: itemKey,
+    renderItem(item){
+      return item?.isCollectionGroup ? collectionCardEl(item) : cardEl(item);
+    }
+  });
+  return virtualListInstance;
+}
+
+function itemKey(item, index){
+  if(item?.isCollectionGroup){
+    const key = item.collectionName || item.title || '';
+    return key ? `collection:${key}` : `collection-index-${index}`;
+  }
+  const id = resolveItemId(item);
+  return id ? `item:${id}` : `item-index-${index}`;
+}
+
 export function renderGrid(view){
   const { movies, shows, filtered } = getState();
   const base = (view==='shows' ? shows : movies) || [];
@@ -209,12 +235,12 @@ export function renderGrid(view){
   const grid = document.getElementById('grid');
   if(!grid) return;
   beginGridTransition(grid);
-  const frag = document.createDocumentFragment();
-  items.forEach(x=>frag.append(x.isCollectionGroup ? collectionCardEl(x) : cardEl(x)));
-  grid.replaceChildren(frag);
+  const vlist = ensureVirtualList(grid);
+  vlist.setItems(items);
   finishGridTransition(grid);
   const empty = document.getElementById('empty');
   if(empty) empty.hidden = items.length > 0;
+  grid.setAttribute('aria-busy', 'false');
 }
 
 function beginGridTransition(grid){
