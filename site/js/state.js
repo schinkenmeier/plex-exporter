@@ -1,4 +1,4 @@
-const S = { view: 'movies', movies: [], shows: [], facets: {}, filtered: [], cfg: {} };
+const S = { view: 'movies', movies: [], shows: [], facets: {}, filtered: [], cfg: {}, heroPolicy: null, heroPolicyIssues: [] };
 const listeners = new Set();
 
 export const getState = () => S;

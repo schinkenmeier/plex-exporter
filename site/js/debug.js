@@ -1,6 +1,7 @@
 import { getState } from './state.js';
 import { getSources } from './data.js';
 import { getCacheStats, clearAllCache, clearExpiredCache } from './cache.js';
+import * as HeroPolicy from './hero/policy.js';
 
 export function initDebugUi(){
   const open = document.getElementById('openDebug');
@@ -56,12 +57,27 @@ function render(){
   const src = getSources();
   const cfg = s.cfg||{};
   const cacheStats = getCacheStats();
+  const heroPolicy = HeroPolicy.getHeroPolicy();
+  const heroPolicyIssues = HeroPolicy.getValidationIssues();
 
   const report = {
     view: s.view,
     counts: { movies: (s.movies||[]).length, shows: (s.shows||[]).length, filtered: (s.filtered||[]).length },
     dataSources: src,
     cache: cacheStats,
+    heroPolicy: {
+      policy: heroPolicy,
+      language: HeroPolicy.getPolicyLanguage(),
+      pools: HeroPolicy.getPoolSizes(),
+      slots: HeroPolicy.getSlotConfig(),
+      diversity: HeroPolicy.getDiversityWeights(),
+      rotation: HeroPolicy.getRotationConfig(),
+      textClamp: HeroPolicy.getTextClampConfig(),
+      fallback: HeroPolicy.getFallbackPreference(),
+      cache: HeroPolicy.getCacheTtl(),
+      loadedAt: HeroPolicy.getPolicyLoadedAt(),
+      issues: heroPolicyIssues
+    },
     tmdb: { enabled: !!cfg.tmdbEnabled, lang: cfg.lang, tokenPresent: !!(localStorage.getItem('tmdbToken')||cfg.tmdbApiKey) },
     useTmdbImages: localStorage.getItem('useTmdb')==='1',
     reduceMotion: localStorage.getItem('prefReduceMotion')==='1',
