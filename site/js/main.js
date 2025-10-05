@@ -13,6 +13,94 @@ import { initErrorHandler, showError, showRetryableError } from './errorHandler.
 let currentHeroItem = null;
 let heroDefaults = null;
 
+const hashNavigation = (() => {
+  let lastHash = window.location.hash || '';
+  let suppressedHash = null;
+
+  function normalizeHash(raw){
+    if(typeof raw !== 'string') return '';
+    const trimmed = raw.trim();
+    if(!trimmed) return '';
+    return trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
+  }
+
+  function updateHash(targetHash, options={}){
+    const { replace=false, silent=false } = options;
+    const hash = normalizeHash(targetHash);
+    if(!hash) return;
+
+    const current = window.location.hash || '';
+    if(hash === current){
+      if(replace && history && typeof history.replaceState === 'function'){
+        try{
+          history.replaceState(null, '', hash);
+        }catch(err){
+          console.warn('[main] Failed to replace hash via history:', err.message);
+        }
+      }
+      if(silent){
+        suppressedHash = hash;
+        lastHash = hash;
+      }
+      return;
+    }
+
+    const method = replace ? 'replaceState' : 'pushState';
+    let usedHistory = false;
+    try{
+      if(history && typeof history[method] === 'function'){
+        history[method](null, '', hash);
+        usedHistory = true;
+      }
+    }catch(err){
+      console.warn(`[main] Failed to ${replace ? 'replace' : 'push'} hash via history:`, err.message);
+    }
+
+    if(!usedHistory){
+      window.location.hash = hash;
+      if(silent){
+        suppressedHash = hash;
+        lastHash = hash;
+      }
+      return;
+    }
+
+    if(silent){
+      suppressedHash = hash;
+      lastHash = hash;
+      return;
+    }
+
+    try{
+      const event = typeof HashChangeEvent === 'function' ? new HashChangeEvent('hashchange') : new Event('hashchange');
+      window.dispatchEvent(event);
+    }catch(err){
+      console.warn('[main] Failed to dispatch hashchange event:', err.message);
+    }
+  }
+
+  function shouldHandle(hash){
+    const current = typeof hash === 'string' ? hash : '';
+    if(suppressedHash && current === suppressedHash){
+      suppressedHash = null;
+      return false;
+    }
+    suppressedHash = null;
+    if(current === lastHash) return false;
+    lastHash = current;
+    return true;
+  }
+
+  function markProcessed(hash){
+    lastHash = typeof hash === 'string' ? hash : '';
+    suppressedHash = null;
+  }
+
+  return { navigate: updateHash, shouldHandle, markProcessed };
+})();
+
+export const navigateToHash = (hash, options) => hashNavigation.navigate(hash, options);
+
 function setFooterStatus(message, busy=true){
   const footer = document.getElementById('footerMeta');
   if(footer){
@@ -80,6 +168,7 @@ async function boot(){
     initFilterBarAutoHideFallback();
     renderHeroHighlight();
     Debug.initDebugUi();
+    handleHashChange(true);
   } catch (error) {
     console.error('[main] Boot failed:', error);
     hideLoader();
@@ -117,52 +206,41 @@ async function boot(){
 
 // Debounced hashchange handler to prevent race conditions
 let hashchangeTimeout = null;
-let lastProcessedHash = '';
+
+function applyHashNavigation(hash){
+  if(/^#\/(movies|shows)$/.test(hash)){
+    const view = hash.includes('shows') ? 'shows' : 'movies';
+    setState({ view });
+    const result = Filter.applyFilters();
+    renderSwitch();
+    renderGrid(view);
+    renderHeroHighlight(result);
+    return true;
+  }
+  const match = hash.match(/^#\/(movie|show)\/(.+)/);
+  if(!match) return false;
+  const [, kind, id ] = match;
+  const pool = kind === 'movie' ? getState().movies : getState().shows;
+  const item = (pool||[]).find(x => (x?.ids?.imdb===id || x?.ids?.tmdb===id || String(x?.ratingKey)===id));
+  if(!item) return false;
+  if(kind === 'show') openSeriesModalV2(item);
+  else openMovieModalV2(item);
+  return true;
+}
+
+function handleHashChange(force=false){
+  const currentHash = window.location.hash || '';
+  if(!force && !hashNavigation.shouldHandle(currentHash)) return;
+  if(force) hashNavigation.markProcessed(currentHash);
+  applyHashNavigation(currentHash);
+}
 
 window.addEventListener('hashchange', ()=>{
-  if(window.__skipNextHashNavigation){
-    try{
-      window.__skipNextHashNavigation = false;
-      lastProcessedHash = location.hash || '';
-    }
-    catch(err){
-      console.warn('[main] Failed to reset skip navigation flag:', err.message);
-    }
-    return;
-  }
-
-  const currentHash = location.hash || '';
-
-  // Debounce rapid hash changes
   if(hashchangeTimeout){
     clearTimeout(hashchangeTimeout);
   }
-
   hashchangeTimeout = setTimeout(()=>{
-    // Skip if we already processed this hash
-    if(currentHash === lastProcessedHash) return;
-    lastProcessedHash = currentHash;
-
-    const hash = currentHash;
-    // deep link to views
-    if(/^#\/(movies|shows)$/.test(hash)){
-      const view = hash.includes('shows') ? 'shows' : 'movies';
-      setState({ view });
-      const result = Filter.applyFilters();
-      renderSwitch();
-      renderGrid(view);
-      renderHeroHighlight(result);
-      return;
-    }
-    // item details
-    const m = hash.match(/^#\/(movie|show)\/(.+)/);
-    if(!m) return;
-    const [ , kind, id ] = m;
-    const pool = kind==='movie' ? getState().movies : getState().shows;
-    const item = (pool||[]).find(x => (x?.ids?.imdb===id || x?.ids?.tmdb===id || String(x?.ratingKey)===id));
-    if(!item) return;
-    if(kind === 'show') openSeriesModalV2(item);
-    else openMovieModalV2(item);
+    handleHashChange(false);
   }, 50);
 });
 
@@ -181,12 +259,8 @@ function renderSwitch(){
       const view = btn.dataset.lib === 'series' ? 'shows' : 'movies';
       if(getState().view === view) return;
       setState({ view });
-      try{
-        window.__skipNextHashNavigation = true;
-      }catch(err){
-        console.warn('[main] Failed to set skip navigation flag:', err.message);
-      }
-      location.hash = view === 'movies' ? '#/movies' : '#/shows';
+      const target = view === 'movies' ? '#/movies' : '#/shows';
+      navigateToHash(target, { silent: true });
       renderSwitch();
       const result = Filter.applyFilters();
       renderGrid(view);
@@ -418,21 +492,8 @@ function openHeroModal(item, kind, heroId){
 function navigateToItemHash(kind, id){
   if(!kind || !id) return;
   const hash = `#/${kind}/${id}`;
-  try{
-    if(history && typeof history.pushState === 'function'){
-      if(location.hash === hash && typeof history.replaceState === 'function') history.replaceState(null, '', hash);
-      else history.pushState(null, '', hash);
-      return;
-    }
-  }catch(err){
-    console.warn('[main] Failed to navigate hash (pushState):', err.message);
-  }
-  try{
-    window.__skipNextHashNavigation = true;
-  }catch(err){
-    console.warn('[main] Failed to set skip navigation flag:', err.message);
-  }
-  location.hash = hash;
+  const replace = (window.location.hash || '') === hash;
+  navigateToHash(hash, { silent: true, replace });
 }
 
 function resolveHeroBackdrop(item){
