@@ -303,52 +303,10 @@ html {
   }
 }
 
-/* Body state classes for scroll orchestration */
-body.has-hero .hero {
+/* Scroll progress bar - always hidden for now (pure CSS scroll doesn't need states) */
+.scroll-progress {
   opacity: 1;
-  max-height: var(--hero-h, 600px);
-  margin-bottom: 0;
-}
-
-body.hero-hidden .hero {
-  pointer-events: none;
-}
-
-body.hero-hidden .hero.is-hidden {
-  opacity: 0;
-  max-height: 0;
-  min-height: 0;
-  margin-bottom: 0;
-}
-
-body.hero-hidden .hero.is-collapsing {
-  pointer-events: auto;
-}
-
-body.filters-hidden .filters {
-  opacity: 0;
-  transform: translateY(-12px);
-  pointer-events: none;
-}
-
-/* Scroll progress bar – only visible when filters hidden */
-body.filters-hidden .scroll-progress {
-  opacity: 1;
-  transition: opacity calc(var(--dur-ui) * 1.2) var(--ease-ui);
-}
-
-body:not(.filters-hidden) .scroll-progress {
-  opacity: 0;
-}
-
-/* Grid adjustment when filterbar hidden – smooth shift */
-body.filters-hidden .grid {
-  --grid-padding-top: clamp(8px, 2vw, 16px);
-}
-
-/* Grid adjustment when hero hidden – maintain spacing */
-body.hero-hidden .grid {
-  --grid-padding-top: clamp(20px, 3vw, 32px);
+  transition: opacity 0.3s ease;
 }
 
 /* Reduce motion preferences */
@@ -371,65 +329,20 @@ body.hero-hidden .grid {
     transform: none;
   }
 
-  /* Disable orchestration animations */
+  /* Disable scroll-driven animations */
   .hero,
-  .hero.is-hidden,
-  .hero.is-collapsing,
-  .filters.is-collapsing,
-  .filters.is-hidden {
-    transition: none !important;
-    will-change: auto;
-  }
-
-  body.has-hero .hero {
-    max-height: var(--hero-h, 600px);
-    margin-bottom: 0;
-  }
-
-  body.hero-hidden .hero {
-    pointer-events: none;
-  }
-
-  body.hero-hidden .hero.is-hidden {
-    max-height: 0;
-    min-height: 0;
-    margin-bottom: 0;
-  }
-
-  body.filters-hidden .filters {
-    transform: none;
+  .filters {
+    animation: none !important;
   }
 }
 
 /* User reduce-motion toggle (body.reduce-motion) */
 body.reduce-motion .hero,
-body.reduce-motion .hero.is-hidden,
-body.reduce-motion .hero.is-collapsing,
-body.reduce-motion .filters.is-collapsing,
-body.reduce-motion .filters.is-hidden,
+body.reduce-motion .filters,
 body.reduce-motion .grid {
-  transition: none !important;
   animation: none !important;
+  transition: none !important;
   will-change: auto;
-}
-
-body.reduce-motion.has-hero .hero {
-  max-height: var(--hero-h, 600px);
-  margin-bottom: 0;
-}
-
-body.reduce-motion.hero-hidden .hero {
-  pointer-events: none;
-}
-
-body.reduce-motion.hero-hidden .hero.is-hidden {
-  max-height: 0;
-  min-height: 0;
-  margin-bottom: 0;
-}
-
-body.reduce-motion.filters-hidden .filters {
-  transform: none;
 }
 
 /* Loading state for images */
