@@ -14,7 +14,6 @@ Dieser Leitfaden skizziert den Aufbau der Plex-Exporter-Weboberfläche sowie wic
 * `loadMovies()` und `loadShows()` laden JSON-Daten bevorzugt aus `site/data/...` und fallen bei Bedarf auf eingebettete `<script>`-Tags, globale Variablen oder alternative Legacy-Pfade zurück. Jede erfolgreiche Quelle wird in `lastSources` protokolliert (`getSources()`).
 * `loadShowDetail(item)` lädt Detailseiten für Serien lazy nach und cached Ergebnisse per `cacheKeys()` in `showDetailCache`, damit Modals nicht erneut angefragt werden müssen.
 * `prefixMovieThumb()`, `prefixShowThumb()` und `prefixShowTree()` normalisieren Poster-Pfade (inkl. URL-Encoding), sodass das Grid konsistent auf `thumbFile` zugreifen kann.
-* `buildFacets()` existiert aus Kompatibilitätsgründen; die aktuelle UI verwendet `Filter.computeFacets()` für erweiterte Aggregationen.
 
 ## Filter- und Rendering-Layer (`site/js/filter.js`, `site/js/grid.js`)
 
