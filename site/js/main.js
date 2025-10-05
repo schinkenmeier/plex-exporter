@@ -118,7 +118,8 @@ function setFooterStatus(message, busy=true){
   }
 }
 
-async function boot(){
+export async function boot(){
+  const isTestEnv = !!globalThis.__PLEX_TEST_MODE__;
   initErrorHandler();
   applyReduceMotionPref();
   showLoader();
@@ -162,16 +163,24 @@ async function boot(){
 
     if(cfg.tmdbEnabled) (window.requestIdleCallback || setTimeout)(()=> hydrateOptional?.(movies, shows, cfg), 400);
 
-    Watch.initUi();
-    initSettingsOverlay(cfg);
-    initAdvancedToggle();
-    initHeaderInteractions();
-    initScrollProgress();
-    initScrollTop();
-    initFilterBarAutoHideFallback();
-    refreshHero();
-    initHeroAutoplay();
-    Debug.initDebugUi();
+    if(!isTestEnv){
+      Watch.initUi();
+      initSettingsOverlay(cfg);
+      initAdvancedToggle();
+      initHeaderInteractions();
+      initScrollProgress();
+      initScrollTop();
+      initFilterBarAutoHideFallback();
+      refreshHero();
+      initHeroAutoplay();
+      Debug.initDebugUi();
+    }else{
+      try{
+        refreshHero();
+      }catch(err){
+        console.warn('[main] Test env hero refresh skipped:', err?.message || err);
+      }
+    }
     handleHashChange(true);
   } catch (error) {
     console.error('[main] Boot failed:', error);
@@ -344,7 +353,9 @@ setReduceMotionHandler(enabled => {
   }
 });
 
-boot();
+if(!globalThis.__PLEX_TEST_MODE__){
+  boot();
+}
 
 // Fallback: ensure the loading overlay is not left visible
 // in case an error interrupts the boot sequence.
