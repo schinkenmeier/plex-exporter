@@ -6,43 +6,75 @@ import * as Watch from './watchlist.js';
 import { openMovieModalV2, openSeriesModalV2 } from './modalV2.js';
 
 function cardEl(item){
-  const card = el('article','cardv2');
+  const card = el('article','card');
   card.style.contentVisibility = 'auto';
   card.dataset.kind = (item?.type === 'tv') ? 'show' : 'movie';
   card.tabIndex = 0;
   card.setAttribute('role', 'button');
   if(item?.title) card.setAttribute('aria-label', item.title);
 
+  // 1) Media Block
+  const media = el('div','card__media');
+  const img = new Image();
+  img.loading = 'lazy';
+  img.decoding = 'async';
+  img.className = 'card__img';
+  img.alt = item?.title || '';
+  const src = resolvePoster(item);
+  if(src) img.src = src;
+
+  const gradient = el('div','card__media-gradient');
+  gradient.setAttribute('aria-hidden','true');
+
   const badges = buildItemBadges(item);
-  const poster = createPoster(item, badges, progressPercent(item));
+  const badgeContainer = el('div','card__badges');
+  badges.forEach(badge=>{ if(badge instanceof HTMLElement) badgeContainer.append(badge); });
 
-  const body = el('div','cardv2__body');
+  media.append(img, gradient);
+  if(badgeContainer.childElementCount) media.append(badgeContainer);
+
+  const pct = progressPercent(item);
+  if(pct > 0){
+    const track = el('div','card__progress');
+    const fill = document.createElement('span');
+    fill.style.width = `${Math.max(0, Math.min(100, pct))}%`;
+    track.append(fill);
+    media.append(track);
+  }
+
+  // 2) Info Block
+  const body = el('div','card__body');
   const title = document.createElement('h3');
-  title.className = 'cardv2__title';
+  title.className = 'card__title';
   title.textContent = item?.title || '';
+  if(item?.title) title.setAttribute('title', item.title);
 
-  const sub = el('div','cardv2__meta');
+  const sub = el('div','card__meta');
   const metaPieces = buildMetaPieces(item);
   sub.textContent = metaPieces.join(' • ');
 
-  const tags = el('div','cardv2__tags');
-  const genres = getGenreNames(item?.genres);
-  renderChipsLimited(tags, genres, 3);
+  body.append(title, sub);
 
-  const actions = el('div','cardv2__actions');
+  // 3) Actions Block
+  const actions = el('div','card__actions');
+
+  const chips = el('div','card__chips');
+  const genres = getGenreNames(item?.genres);
+  renderChipsLimited(chips, genres, 3);
+
   const watchBtn = document.createElement('button');
   watchBtn.type = 'button';
-  watchBtn.className = 'watch-btn btn';
+  watchBtn.className = 'card__primary';
   updateWatchButtonState(watchBtn, item);
   watchBtn.addEventListener('click', ev=>{
     ev.stopPropagation();
     Watch.toggle(item);
     updateWatchButtonState(watchBtn, item);
   });
-  actions.append(watchBtn);
 
-  body.append(title, sub, tags, actions);
-  card.append(poster, body);
+  actions.append(chips, watchBtn);
+
+  card.append(media, body, actions);
 
   card.addEventListener('click', ()=> openDetail(item));
   card.addEventListener('keydown', ev=>{
@@ -101,31 +133,55 @@ function groupCollectionsIfEnabled(items){
 }
 
 function collectionCardEl(entry){
-  const card = el('article','cardv2 collection');
+  const card = el('article','card card--collection');
   card.style.contentVisibility='auto';
   card.dataset.kind = 'collection';
   card.tabIndex = 0;
   card.setAttribute('role', 'button');
   if(entry?.title) card.setAttribute('aria-label', entry.title);
 
+  // 1) Media Block
+  const media = el('div','card__media');
   const baseItem = entry.posterItem || {};
-  const poster = createPoster(baseItem, buildCollectionBadges(entry), 0, entry.title || '');
+  const img = new Image();
+  img.loading = 'lazy';
+  img.decoding = 'async';
+  img.className = 'card__img';
+  img.alt = entry?.title || '';
+  const src = resolvePoster(baseItem);
+  if(src) img.src = src;
 
-  const body = el('div','cardv2__body');
+  const gradient = el('div','card__media-gradient');
+  gradient.setAttribute('aria-hidden','true');
+
+  const badges = buildCollectionBadges(entry);
+  const badgeContainer = el('div','card__badges');
+  badges.forEach(badge=>{ if(badge instanceof HTMLElement) badgeContainer.append(badge); });
+
+  media.append(img, gradient);
+  if(badgeContainer.childElementCount) media.append(badgeContainer);
+
+  // 2) Info Block
+  const body = el('div','card__body');
   const title = document.createElement('h3');
-  title.className = 'cardv2__title';
+  title.className = 'card__title';
   title.textContent = entry.title || '';
+  if(entry?.title) title.setAttribute('title', entry.title);
 
-  const sub = el('div','cardv2__meta');
+  const sub = el('div','card__meta');
   const pieces = [entry.year, `${entry.itemCount} Titel`];
   if(Number.isFinite(entry.rating)) pieces.push(`★ ${formatRating(entry.rating)}`);
   sub.textContent = pieces.filter(Boolean).join(' • ');
 
-  const tags = el('div','cardv2__tags');
-  renderChipsLimited(tags, entry.genres||[], 3);
+  body.append(title, sub);
 
-  body.append(title, sub, tags);
-  card.append(poster, body);
+  // 3) Actions Block
+  const actions = el('div','card__actions');
+  const chips = el('div','card__chips');
+  renderChipsLimited(chips, entry.genres||[], 3);
+  actions.append(chips);
+
+  card.append(media, body, actions);
 
   card.addEventListener('click', ()=>{
     const sel = document.getElementById('collectionFilter');
@@ -182,38 +238,6 @@ function finishGridTransition(grid){
   });
 }
 
-function createPoster(item, badges=[], progress=0, altOverride=''){
-  const poster = el('div','cardv2__thumb');
-  const img = new Image();
-  img.loading = 'lazy';
-  img.decoding = 'async';
-  img.alt = altOverride || item?.title || '';
-  const src = resolvePoster(item);
-  if(src) img.src = src;
-  poster.append(img);
-
-  if(Array.isArray(badges) && badges.length){
-    const badgeGroup = el('div','cardv2__badge-group');
-    badges.forEach(badge=>{ if(badge instanceof HTMLElement) badgeGroup.append(badge); });
-    if(badgeGroup.childElementCount) poster.append(badgeGroup);
-  }
-
-  const overlay = document.createElement('div');
-  overlay.className = 'cardv2__thumb-overlay';
-  overlay.setAttribute('aria-hidden','true');
-  poster.append(overlay);
-
-  const pct = Number(progress) || 0;
-  if(pct > 0){
-    const track = el('div','cardv2__progress');
-    const fill = document.createElement('span');
-    fill.style.width = `${Math.max(0, Math.min(100, pct))}%`;
-    track.append(fill);
-    poster.append(track);
-  }
-
-  return poster;
-}
 
 function resolvePoster(item){
   if(!item) return '';

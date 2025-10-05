@@ -9,7 +9,7 @@ import * as Watch from './watchlist.js';
 import * as Debug from './debug.js';
 import { humanYear, formatRating, useTmdbOn } from './utils.js';
 import { initErrorHandler, showError, showRetryableError } from './errorHandler.js';
-import { initFilterBarAutoHide } from './filterBarAutoHide.js';
+// Scroll orchestration now handled by pure CSS - see animations.css
 
 let currentHeroItem = null;
 let heroDefaults = null;
@@ -78,7 +78,9 @@ async function boot(){
     initHeaderInteractions();
     initScrollProgress();
     initScrollTop();
-    initFilterBarAutoHide();
+    // Scroll orchestrator temporarily disabled for pure CSS approach
+    // initFilterBarAutoHide();
+    // initScrollOrchestratorWithSettings();
     renderHeroHighlight();
     Debug.initDebugUi();
   } catch (error) {
@@ -302,6 +304,9 @@ function renderHeroHighlight(listOverride){
   }
 }
 
+// Expose for hero autoplay timer
+window.__heroRefresh = renderHeroHighlight;
+
 function ensureHeroDefaults(){
   if(heroDefaults) return;
   heroDefaults = {
@@ -486,6 +491,7 @@ function initSettingsOverlay(cfg){
   const dialog = overlay?.querySelector('.settings-dialog');
   const open1 = document.getElementById('settingsBtn');
   const open2 = document.getElementById('openSettings');
+  const headerSettingsBtn = document.getElementById('headerSettingsBtn');
   const close2 = document.getElementById('settingsClose2');
   const tmdbInput = document.getElementById('tmdbTokenInput');
   const tmdbSave = document.getElementById('tmdbSave');
@@ -607,6 +613,7 @@ function initSettingsOverlay(cfg){
 
   open1 && open1.addEventListener('click', openOverlay);
   open2 && open2.addEventListener('click', ()=>{ openOverlay(); });
+  headerSettingsBtn && headerSettingsBtn.addEventListener('click', openOverlay);
   close2 && close2.addEventListener('click', closeOverlay);
   overlay && overlay.addEventListener('click', (ev)=>{ if(ev.target===overlay) closeOverlay(); });
   overlay && overlay.addEventListener('keydown', handleKeydown);
@@ -718,7 +725,7 @@ function initSettingsOverlay(cfg){
   tmdbClear && tmdbClear.addEventListener('click', ()=>{ import('./services/tmdb.js').then(m=>m.clearCache?.()); });
   reduce && reduce.addEventListener('change', ()=>{
     try{ localStorage.setItem('prefReduceMotion', reduce.checked ? '1' : '0'); }catch{}
-    document.documentElement.classList.toggle('reduce-motion', reduce.checked);
+    setReduceMotionClass(reduce.checked);
   });
   useTmdb && useTmdb.addEventListener('change', ()=>{
     try{ localStorage.setItem('useTmdb', useTmdb.checked ? '1' : '0'); }catch{}
@@ -754,12 +761,29 @@ function initSettingsOverlay(cfg){
       renderHeroHighlight(result);
     });
   });
+
+}
+
+function setReduceMotionClass(pref){
+  try{
+    const body = document.body;
+    if(body){
+      document.documentElement?.classList.remove('reduce-motion', 'reduced-motion');
+      body.classList.remove('reduced-motion');
+      body.classList.toggle('reduce-motion', pref);
+    } else {
+      document.documentElement?.classList.toggle('reduce-motion', pref);
+      window.addEventListener('DOMContentLoaded', ()=> setReduceMotionClass(pref), { once: true });
+    }
+  }catch(err){
+    console.warn('[main] Failed to update reduce motion class:', err.message);
+  }
 }
 
 function applyReduceMotionPref(){
   try{
     const pref = localStorage.getItem('prefReduceMotion')==='1';
-    document.documentElement.classList.toggle('reduce-motion', pref);
+    setReduceMotionClass(pref);
   }catch(err){
     console.warn('[main] Failed to apply reduce motion preference:', err.message);
   }
@@ -892,3 +916,6 @@ function initScrollTop(){
   toggle();
   btn.addEventListener('click', ()=> window.scrollTo({ top:0, behavior:'smooth' }));
 }
+
+// Scroll orchestrator removed - using pure CSS scroll-driven animations instead
+// See animations.css for the new implementation

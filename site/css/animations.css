@@ -1,41 +1,42 @@
 /* Enhanced Micro-Interactions and Animations */
 
-/* Button hover effects */
+/* Button hover effects – sanft und dezent */
 button:not(:disabled):hover,
 .btn:not(:disabled):hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
 }
 
 button:not(:disabled):active,
 .btn:not(:disabled):active {
   transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
-/* Card hover animations */
-.cardv2:hover {
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+/* Card hover animations – ruhig, dezenter Lift */
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 42px rgba(2, 6, 14, 0.45);
 }
 
-.cardv2 {
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+.card {
+  transition: transform var(--transition-smooth),
+              box-shadow var(--transition-smooth);
 }
 
-/* Focus visible for keyboard navigation */
+/* Focus visible for keyboard navigation – cineastisch */
 *:focus-visible {
-  outline: 2px solid var(--color-primary, #7ea6ff);
-  outline-offset: 2px;
-  border-radius: 4px;
+  outline: 2px solid var(--accent, #6b94e0);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+  transition: outline-color var(--transition-base);
 }
 
-/* Stagger animation for grid items */
+/* Stagger animation for grid items – sanft und cineastisch */
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
@@ -44,15 +45,15 @@ button:not(:disabled):active,
 }
 
 .grid.is-entering > * {
-  animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+  animation: fadeInUp 0.5s cubic-bezier(0.22, 0.68, 0.36, 0.98) backwards;
 }
 
-.grid.is-entering > *:nth-child(1) { animation-delay: 0.05s; }
-.grid.is-entering > *:nth-child(2) { animation-delay: 0.1s; }
-.grid.is-entering > *:nth-child(3) { animation-delay: 0.15s; }
-.grid.is-entering > *:nth-child(4) { animation-delay: 0.2s; }
-.grid.is-entering > *:nth-child(5) { animation-delay: 0.25s; }
-.grid.is-entering > *:nth-child(6) { animation-delay: 0.3s; }
+.grid.is-entering > *:nth-child(1) { animation-delay: 0.04s; }
+.grid.is-entering > *:nth-child(2) { animation-delay: 0.08s; }
+.grid.is-entering > *:nth-child(3) { animation-delay: 0.12s; }
+.grid.is-entering > *:nth-child(4) { animation-delay: 0.16s; }
+.grid.is-entering > *:nth-child(5) { animation-delay: 0.2s; }
+.grid.is-entering > *:nth-child(6) { animation-delay: 0.24s; }
 
 /* Skeleton loading shimmer */
 @keyframes shimmer {
@@ -135,7 +136,7 @@ button:not(:disabled):active,
   }
 }
 
-.cardv2__badge {
+.card__badges .badge {
   animation: badgePopIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -219,6 +220,95 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Scroll Orchestration – Hero & Filterbar State Transitions */
+
+/* CSS Variables for smooth orchestration */
+:root {
+  --hero-h: 720px;
+  --filters-h: 80px;
+  --ease-ui: cubic-bezier(0.18, 0.67, 0.32, 1);
+  --dur-ui: 360ms;
+}
+
+/* Pure CSS scroll-based hero fade - NO JAVASCRIPT STATE MACHINE */
+.hero {
+  position: relative;
+  overflow: hidden;
+  /* Smooth fade out as you scroll - pure CSS */
+  animation: hero-fade-scroll linear both;
+  animation-timeline: scroll(root);
+  animation-range: 0px 400px;
+}
+
+@keyframes hero-fade-scroll {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-20%) scale(0.95);
+  }
+}
+
+/* Fallback for browsers without animation-timeline support */
+@supports not (animation-timeline: scroll()) {
+  .hero {
+    animation: none;
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+  }
+
+  /* JavaScript will add these classes as fallback */
+  .hero.is-collapsing,
+  .hero.is-hidden {
+    opacity: 0;
+    transform: translateY(-20%) scale(0.95);
+  }
+}
+
+/* Filterbar - simple sticky behavior */
+.filters {
+  position: sticky;
+  top: clamp(68px, 8vw, 88px);
+  z-index: 26;
+  /* Smooth scroll-based fade */
+  animation: filters-fade-scroll linear both;
+  animation-timeline: scroll(root);
+  animation-range: 500px 800px;
+}
+
+@keyframes filters-fade-scroll {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-100%);
+    pointer-events: none;
+  }
+}
+
+/* Fallback for browsers without animation-timeline support */
+@supports not (animation-timeline: scroll()) {
+  .filters {
+    animation: none;
+    transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+  }
+
+  .filters.is-hidden {
+    opacity: 0;
+    transform: translateY(-100%);
+    pointer-events: none;
+  }
+}
+
+/* Scroll progress bar - always hidden for now (pure CSS scroll doesn't need states) */
+.scroll-progress {
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
 /* Reduce motion preferences */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -230,7 +320,7 @@ html {
     scroll-behavior: auto !important;
   }
 
-  .cardv2:hover {
+  .card:hover {
     transform: none;
   }
 
@@ -238,6 +328,21 @@ html {
   .btn:hover {
     transform: none;
   }
+
+  /* Disable scroll-driven animations */
+  .hero,
+  .filters {
+    animation: none !important;
+  }
+}
+
+/* User reduce-motion toggle (body.reduce-motion) */
+body.reduce-motion .hero,
+body.reduce-motion .filters,
+body.reduce-motion .grid {
+  animation: none !important;
+  transition: none !important;
+  will-change: auto;
 }
 
 /* Loading state for images */
@@ -266,16 +371,16 @@ img[loading="lazy"] {
   animation: highlight 1s ease-in-out;
 }
 
-/* Smooth color transitions */
+/* Smooth color transitions – sanft */
 * {
   transition-property: background-color, border-color, color, fill, stroke;
-  transition-duration: 0.2s;
-  transition-timing-function: ease-in-out;
+  transition-duration: 0.28s;
+  transition-timing-function: cubic-bezier(0.22, 0.68, 0.36, 0.98);
 }
 
 /* Override for specific performance-critical elements */
 .no-transition,
-.cardv2__thumb img,
+.card__img,
 .hero__backdrop {
   transition: none;
 }
