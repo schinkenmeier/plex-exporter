@@ -63,4 +63,10 @@ Der Plex Exporter stellt einen statischen Katalog deiner Plex-Bibliotheken berei
 | --- | --- |
 | `npm run split:series` | Ruft `tools/split_series.mjs` auf, verarbeitet `site/data/series/series_full.json` und erzeugt `series_index.json` sowie Detaildateien. |
 
+### Bundle-Größen-Limits
+- `npm run build` bzw. das Skript `tools/build.mjs` überprüft die Größe der erzeugten Bundles.
+- Standardlimits: maximal **250 KB** für JavaScript (`main.js`) und **150 KB** für die kombinierten CSS-Dateien.
+- Passe die Limits bei Bedarf über Umgebungsvariablen an, z. B. `MAX_JS_KB=300 MAX_CSS_KB=180 npm run build`.
+- Die gleichen Standardwerte gelten lokal und in der CI, solange keine Variablen gesetzt werden.
+
 Viel Spaß beim Verteilen deines Plex-Katalogs!
