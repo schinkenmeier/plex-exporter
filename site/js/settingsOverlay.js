@@ -3,6 +3,7 @@ import { renderGrid } from './grid.js';
 
 let heroRefreshHandler = null;
 let reduceMotionHandler = null;
+let tmdbHydrationStarted = false;
 
 export function setHeroRefreshHandler(handler){
   heroRefreshHandler = typeof handler === 'function' ? handler : null;
@@ -280,8 +281,8 @@ export function initSettingsOverlay(cfg){
     try{ localStorage.setItem('useTmdb', useTmdb.checked ? '1' : '0'); }
     catch(err){ console.warn('[settingsOverlay] Failed to store TMDB usage preference:', err?.message || err); }
     // Start TMDB hydration when enabling the toggle (if not already started)
-    if(useTmdb.checked && !window.__tmdbHydrationStarted){
-      window.__tmdbHydrationStarted = 1;
+    if(useTmdb.checked && !tmdbHydrationStarted){
+      tmdbHydrationStarted = true;
       import('./services/tmdb.js').then(m=>{
         const s = getState();
         m.hydrateOptional?.(s.movies, s.shows, s.cfg);

@@ -7,6 +7,22 @@ let lastSources = { movies: null, shows: null };
 const showDetailCache = new Map();
 const DATA_CACHE_TTL = 1000 * 60 * 30; // 30 minutes for data files
 
+const EXPORTER_BAG_KEY = '__PLEX_EXPORTER__';
+
+const globalExporterBag = (()=>{
+  try{
+    if(typeof globalThis !== 'undefined'){
+      if(globalThis[EXPORTER_BAG_KEY]) return globalThis[EXPORTER_BAG_KEY];
+      if(globalThis.window && globalThis.window[EXPORTER_BAG_KEY]){
+        return globalThis.window[EXPORTER_BAG_KEY];
+      }
+    }
+  }catch(err){
+    console.warn(`${LOG_PREFIX} Failed to resolve global exporter bag:`, err?.message || err);
+  }
+  return null;
+})();
+
 const MOVIE_THUMB_BASE = 'data/movies/';
 const SHOW_THUMB_BASE = 'data/series/';
 const SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i;
@@ -68,7 +84,7 @@ function embeddedJsonById(id){
 
 function fromGlobalBag(key){
   try{
-    const bag = window.__PLEX_EXPORTER__;
+    const bag = globalExporterBag;
     const arr = bag && Array.isArray(bag[key]) ? bag[key] : null;
     return arr || null;
   }
