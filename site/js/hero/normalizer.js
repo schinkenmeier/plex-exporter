@@ -102,7 +102,9 @@ function collectGenres(raw, tmdb){
 function extractIds(raw){
   const ids = {};
   const set = (key, value)=>{
-    const str = nonEmptyString(value);
+    if(value == null) return;
+    const input = typeof value === 'string' ? value : String(value);
+    const str = nonEmptyString(input);
     if(str) ids[key] = str;
   };
   if(raw && typeof raw === 'object'){
