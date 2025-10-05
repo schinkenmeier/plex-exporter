@@ -12,6 +12,8 @@ import { initSettingsOverlay, setHeroRefreshHandler, setReduceMotionHandler } fr
 import { refreshHero, setHeroNavigation } from './hero.js';
 import { initHeroAutoplay } from './hero-autoplay.js';
 
+let taglineTicker = null;
+
 const hashNavigation = (() => {
   let lastHash = window.location.hash || '';
   let suppressedHash = null;
@@ -482,7 +484,17 @@ function initHeaderInteractions(){
       idx = (idx+1)%TAGLINES.length; subtitle.textContent = TAGLINES[idx]; subtitle.classList.remove('is-fading');
     }, 280);
   }
-  if(subtitle){ subtitle.dataset.taglinePaused='0'; if(!window.__taglineTicker){ window.__taglineTicker = setInterval(rotate, 6000); setTimeout(rotate, 3000); } }
+  if(subtitle){
+    subtitle.dataset.taglinePaused='0';
+    if(taglineTicker){
+      clearInterval(taglineTicker);
+    }
+    taglineTicker = setInterval(rotate, 6000);
+    setTimeout(rotate, 3000);
+  }else if(taglineTicker){
+    clearInterval(taglineTicker);
+    taglineTicker = null;
+  }
 }
 
 function initScrollProgress(){
