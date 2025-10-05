@@ -1,7 +1,7 @@
 import { getState } from './state.js';
 import * as Filter from './filter.js';
 import { el } from './dom.js';
-import { humanYear, formatRating, renderChipsLimited, useTmdbOn, isNew, getGenreNames } from './utils.js';
+import { humanYear, formatRating, renderChipsLimited, useTmdbOn, isNew, getGenreNames, collectionTags } from './utils.js';
 import * as Watch from './watchlist.js';
 import { openMovieModalV2, openSeriesModalV2 } from './modalV2.js';
 
@@ -86,12 +86,6 @@ function cardEl(item){
   });
 
   return card;
-}
-
-function collectionTags(item){
-  return ((item && item.collections) || [])
-    .map(entry=>entry && (entry.tag || entry.title || entry.name || ''))
-    .filter(Boolean);
 }
 
 function createCollectionGroup(name, members){

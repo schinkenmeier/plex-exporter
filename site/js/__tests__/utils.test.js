@@ -13,7 +13,7 @@ global.localStorage = {
   setItem(key, value) { this.data[key] = value; }
 };
 
-const { humanYear, formatRating, isNew, getGenreNames } = await import('../utils.js');
+const { humanYear, formatRating, isNew, getGenreNames, collectionTags } = await import('../utils.js');
 
 describe('Utils Module', () => {
   describe('humanYear', () => {
@@ -168,6 +168,36 @@ describe('Utils Module', () => {
         { tag: 'Drama\n' }
       ];
       assert.deepStrictEqual(getGenreNames(genres), ['Action', 'Drama']);
+    });
+  });
+
+  describe('collectionTags', () => {
+    it('should extract tag-like properties', () => {
+      const item = {
+        collections: [
+          { tag: 'Marvel' },
+          { title: 'Star Wars' },
+          { name: 'DC' }
+        ]
+      };
+      assert.deepStrictEqual(collectionTags(item), ['Marvel', 'Star Wars', 'DC']);
+    });
+
+    it('should filter falsy values', () => {
+      const item = {
+        collections: [
+          null,
+          { tag: '' },
+          undefined,
+          { title: 'Pixar' }
+        ]
+      };
+      assert.deepStrictEqual(collectionTags(item), ['Pixar']);
+    });
+
+    it('should handle missing collections', () => {
+      assert.deepStrictEqual(collectionTags({}), []);
+      assert.deepStrictEqual(collectionTags(null), []);
     });
   });
 });

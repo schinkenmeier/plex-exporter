@@ -55,6 +55,10 @@ export function getCache(key) {
     if (!cached) return null;
 
     const item = JSON.parse(cached);
+    if(typeof item.timestamp !== 'number' || typeof item.ttl !== 'number'){
+      localStorage.removeItem(cacheKey);
+      return null;
+    }
     const now = Date.now();
 
     // Check if expired
