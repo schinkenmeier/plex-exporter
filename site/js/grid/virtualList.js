@@ -57,6 +57,7 @@ export class VirtualList {
     this.nodeCache = new Map();
     this.renderedKeys = new Set();
     this.itemSignatures = new Map();
+    this.scrollTicking = false;
 
     this.spacer = document.createElement('div');
     this.spacer.className = 'grid-virtual__spacer';
@@ -125,7 +126,12 @@ export class VirtualList {
   }
 
   handleScroll(){
+    if(this.scrollTicking) return;
+    this.scrollTicking = true;
     this.schedule(false);
+    raf(()=>{
+      this.scrollTicking = false;
+    });
   }
 
   handleResize(){
@@ -248,13 +254,22 @@ export class VirtualList {
     this.rowCount = this.columns > 0 ? Math.ceil(this.items.length / this.columns) : this.items.length;
     this.totalHeight = Math.max(0, this.rowCount * this.rowHeight);
 
-    const rect = this.container.getBoundingClientRect();
-    this.containerTop = window.scrollY + rect.top;
+    this.updateContainerPosition();
 
     this.spacer.style.height = `${this.totalHeight}px`;
     this.windowEl.style.top = `${this.paddingTop}px`;
     this.windowEl.style.paddingBottom = `${this.paddingBottom}px`;
     this.metricsDirty = false;
+  }
+
+  updateContainerPosition(){
+    let el = this.container;
+    let top = 0;
+    while(el && el !== document.body){
+      top += el.offsetTop;
+      el = el.offsetParent;
+    }
+    this.containerTop = top;
   }
 
   update(){
@@ -266,7 +281,7 @@ export class VirtualList {
 
   syncVisibleRange(){
     if(!this.items.length){
-      this.windowEl.style.transform = 'translateY(0px)';
+      this.windowEl.style.transform = 'translate3d(0, 0, 0)';
       this.itemsHost.replaceChildren();
       this.range = { start: 0, end: 0 };
       return;
@@ -276,6 +291,17 @@ export class VirtualList {
     const viewportBottom = viewportTop + window.innerHeight;
     const listStart = this.containerTop + this.paddingTop;
     const listEnd = listStart + this.totalHeight;
+
+    if(window.__VLIST_DEBUG){
+      console.log('📊 VirtualList Debug:', {
+        'Scroll-Position': Math.round(window.scrollY) + 'px',
+        'Grid startet bei': Math.round(this.containerTop) + 'px',
+        'Zeilen-Höhe': Math.round(this.rowHeight) + 'px',
+        'Spalten': this.columns,
+        'Gesamt-Höhe': Math.round(this.totalHeight) + 'px',
+        'Sichtbarer Bereich': `Row ${Math.floor((viewportTop - listStart) / this.rowHeight)} - ${Math.ceil((viewportBottom - listStart) / this.rowHeight)}`
+      });
+    }
 
     let startRow;
     if(viewportTop <= listStart){
@@ -318,10 +344,10 @@ export class VirtualList {
     this.range = { start, end };
     const offsetRow = Math.floor(start / this.columns);
     const offsetY = offsetRow * this.rowHeight;
-    this.windowEl.style.transform = `translateY(${offsetY}px)`;
+    this.windowEl.style.transform = `translate3d(0, ${offsetY}px, 0)`;
 
-    const fragment = document.createDocumentFragment();
     const nextRendered = new Set();
+    const toRender = [];
 
     for(let i=start; i<end; i++){
       const item = this.items[i];
@@ -343,10 +369,54 @@ export class VirtualList {
         this.nodeCache.set(key, node);
       }
       nextRendered.add(key);
-      fragment.append(node);
+      toRender.push(node);
     }
 
-    this.itemsHost.replaceChildren(fragment);
+    // Reconcile DOM with minimal operations
+    const currentChildren = this.itemsHost.children;
+
+    // Quick path: exact same content
+    if(currentChildren.length === toRender.length){
+      let same = true;
+      for(let i = 0; i < toRender.length; i++){
+        if(currentChildren[i] !== toRender[i]){
+          same = false;
+          break;
+        }
+      }
+      if(same){
+        this.renderedKeys = nextRendered;
+        return;
+      }
+    }
+
+    // Build a map of current positions
+    const currentMap = new Map();
+    for(let i = 0; i < currentChildren.length; i++){
+      currentMap.set(currentChildren[i], i);
+    }
+
+    // Update nodes position by position
+    for(let i = 0; i < toRender.length; i++){
+      const desired = toRender[i];
+      const current = currentChildren[i];
+
+      if(current !== desired){
+        if(currentMap.has(desired)){
+          // Node exists somewhere - move it
+          this.itemsHost.insertBefore(desired, current || null);
+        } else {
+          // New node - insert it
+          this.itemsHost.insertBefore(desired, current || null);
+        }
+      }
+    }
+
+    // Remove any extra nodes at the end
+    while(this.itemsHost.children.length > toRender.length){
+      this.itemsHost.lastChild.remove();
+    }
+
     this.renderedKeys = nextRendered;
   }
 }

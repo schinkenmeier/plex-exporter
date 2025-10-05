@@ -10,7 +10,6 @@ const CARD_SIGNATURE_PROP = '__gridVirtualSignature';
 
 function cardEl(item){
   const card = el('article','card');
-  card.style.contentVisibility = 'auto';
   card.dataset.kind = (item?.type === 'tv') ? 'show' : 'movie';
   card.tabIndex = 0;
   card.setAttribute('role', 'button');
@@ -23,6 +22,7 @@ function cardEl(item){
   img.decoding = 'async';
   img.className = 'card__img';
   img.alt = item?.title || '';
+  img.style.aspectRatio = '2 / 3';
   const src = resolvePoster(item);
   if(src) img.src = src;
 
@@ -131,7 +131,6 @@ function groupCollectionsIfEnabled(items){
 
 function collectionCardEl(entry){
   const card = el('article','card card--collection');
-  card.style.contentVisibility='auto';
   card.dataset.kind = 'collection';
   card.tabIndex = 0;
   card.setAttribute('role', 'button');
@@ -145,6 +144,7 @@ function collectionCardEl(entry){
   img.decoding = 'async';
   img.className = 'card__img';
   img.alt = entry?.title || '';
+  img.style.aspectRatio = '2 / 3';
   const src = resolvePoster(baseItem);
   if(src) img.src = src;
 
@@ -208,7 +208,7 @@ function ensureVirtualList(grid){
   if(virtualListInstance) return virtualListInstance;
   virtualListInstance = new VirtualList({
     container: grid,
-    overscan: 2,
+    overscan: 1,
     estimatedItemHeight: 460,
     minItemWidth: 190,
     getKey: itemKey,
@@ -254,6 +254,8 @@ function refreshGridItemNode(current, item){
   return replaceCardNode(current, replacement);
 }
 
+let lastRenderedView = null;
+
 export function renderGrid(view){
   const { movies, shows, filtered } = getState();
   const base = (view==='shows' ? shows : movies) || [];
@@ -261,10 +263,14 @@ export function renderGrid(view){
   const items = groupCollectionsIfEnabled(list);
   const grid = document.getElementById('grid');
   if(!grid) return;
-  beginGridTransition(grid);
+
+  const shouldAnimate = lastRenderedView !== view;
+  lastRenderedView = view;
+
+  if(shouldAnimate) beginGridTransition(grid);
   const vlist = ensureVirtualList(grid);
   vlist.setItems(items);
-  finishGridTransition(grid);
+  if(shouldAnimate) finishGridTransition(grid);
   const empty = document.getElementById('empty');
   if(empty) empty.hidden = items.length > 0;
   grid.setAttribute('aria-busy', 'false');

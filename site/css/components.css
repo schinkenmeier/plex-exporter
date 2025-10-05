@@ -574,6 +574,8 @@
   /* Fixed height to ensure all cards align at bottom */
   height: 100%;
   max-height: 580px;
+  /* Optimize rendering performance */
+  contain: layout style paint;
 }
 
 .card::before {
@@ -608,7 +610,6 @@
   object-fit: cover;
   object-position: center;
   transition: transform var(--transition-base);
-  will-change: transform;
 }
 
 .card__media-gradient {

@@ -30,7 +30,7 @@ const MOVIE_ITEM_SCHEMA = Object.freeze({
     summary: { type: 'string', nullable: true },
     href: { type: 'string', nullable: true },
     tagline: { type: 'string', nullable: true },
-    genres: { type: 'array', items: { type: 'string' }, nullable: true },
+    genres: { type: 'array', items: { type: ['string', 'object'] }, nullable: true },
   },
 });
 
@@ -54,7 +54,7 @@ const SHOW_ITEM_SCHEMA = Object.freeze({
     summary: { type: 'string', nullable: true },
     href: { type: 'string', nullable: true },
     tagline: { type: 'string', nullable: true },
-    genres: { type: 'array', items: { type: 'string' }, nullable: true },
+    genres: { type: 'array', items: { type: ['string', 'object'] }, nullable: true },
     seasons: { type: 'array', items: SEASON_SCHEMA, nullable: true },
   },
 });
@@ -96,7 +96,14 @@ function validateAgainstSchema(value, schema, path = 'value'){
       throw new Error(`${path} erwartet eine Liste.`);
     }
     if(schema.items){
-      value.forEach((item, index) => validateAgainstSchema(item, schema.items, `${path}[${index}]`));
+      value.forEach((item, index) => {
+        // Skip validation for genre items - they can be string or object with tag
+        if(path.includes('.genres') || path.includes('List') && schema.items.type &&
+           Array.isArray(schema.items.type) && schema.items.type.includes('string') && schema.items.type.includes('object')) {
+          return;
+        }
+        validateAgainstSchema(item, schema.items, `${path}[${index}]`);
+      });
     }
     return;
   }
@@ -123,7 +130,13 @@ function validateAgainstSchema(value, schema, path = 'value'){
 
 function ensureArrayOfStrings(list){
   if(!Array.isArray(list)) return [];
-  return list.filter(item => typeof item === 'string' && item.trim()).map(item => item.trim());
+  return list
+    .map(item => {
+      if(typeof item === 'string') return item.trim();
+      if(item && typeof item === 'object' && typeof item.tag === 'string') return item.tag.trim();
+      return null;
+    })
+    .filter(item => item && item.length > 0);
 }
 
 function cloneWithDefaults(entry, defaults){
