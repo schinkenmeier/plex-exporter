@@ -78,6 +78,7 @@ async function boot(){
     initHeaderInteractions();
     initScrollProgress();
     initScrollTop();
+    initFilterBarAutoHideFallback();
     // Scroll orchestrator temporarily disabled for pure CSS approach
     // initFilterBarAutoHide();
     // initScrollOrchestratorWithSettings();
@@ -915,6 +916,65 @@ function initScrollTop(){
   addEventListener('scroll', toggle, { passive:true });
   toggle();
   btn.addEventListener('click', ()=> window.scrollTo({ top:0, behavior:'smooth' }));
+}
+
+function initFilterBarAutoHideFallback(){
+  const filters = document.querySelector('.filters');
+  if(!filters) return;
+
+  const supportsScrollTimeline = typeof CSS !== 'undefined'
+    && typeof CSS.supports === 'function'
+    && CSS.supports('animation-timeline: scroll()');
+
+  if(supportsScrollTimeline) return;
+
+  let lastY = window.scrollY || window.pageYOffset || 0;
+  let isHidden = false;
+  let ticking = false;
+  const MIN_SCROLL = 120;
+  const DELTA_HIDE = 8;
+
+  const setHidden = (nextHidden)=>{
+    if(isHidden === nextHidden) return;
+    isHidden = nextHidden;
+    filters.classList.toggle('is-hidden', isHidden);
+  };
+
+  const update = ()=>{
+    ticking = false;
+    const currentY = window.scrollY || window.pageYOffset || 0;
+
+    if(currentY <= MIN_SCROLL){
+      setHidden(false);
+      lastY = currentY;
+      return;
+    }
+
+    const delta = currentY - lastY;
+    lastY = currentY;
+
+    if(delta > DELTA_HIDE){
+      setHidden(true);
+    }else if(delta < -DELTA_HIDE){
+      setHidden(false);
+    }
+  };
+
+  const onScroll = ()=>{
+    if(ticking) return;
+    ticking = true;
+    requestAnimationFrame(update);
+  };
+
+  window.addEventListener('scroll', onScroll, { passive:true });
+  window.addEventListener('resize', update);
+
+  const reveal = ()=> setHidden(false);
+  filters.addEventListener('focusin', reveal);
+  filters.addEventListener('pointerenter', reveal, { passive:true });
+  filters.addEventListener('pointerdown', reveal, { passive:true });
+
+  update();
 }
 
 // Scroll orchestrator removed - using pure CSS scroll-driven animations instead
