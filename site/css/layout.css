@@ -402,14 +402,35 @@ header.site-header {
 
 .grid {
   --grid-padding-top: clamp(28px, 4vw, 40px);
-  display: grid;
-  gap: clamp(18px, 2vw, 28px);
+  position: relative;
+  display: block;
   padding: var(--grid-padding-top) 0;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   transition: opacity var(--transition-smooth),
     padding var(--transition-smooth);
   /* Ensure grid doesn't jump under sticky filterbar */
   scroll-margin-top: clamp(140px, 16vw, 200px);
+}
+
+.grid-virtual__window {
+  position: absolute;
+  left: 0;
+  right: 0;
+  will-change: transform;
+}
+
+.grid-virtual__items {
+  display: grid;
+  gap: clamp(18px, 2vw, 28px);
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+}
+
+.grid-virtual__spacer {
+  width: 1px;
+  pointer-events: none;
+}
+
+.grid-virtual__measure {
+  width: 100%;
 }
 
 .grid.is-leaving {
