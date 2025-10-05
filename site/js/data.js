@@ -1,4 +1,5 @@
 import { getCache, setCache } from './cache.js';
+import { validateLibraryList } from './data/validators.js';
 
 const LOG_PREFIX = '[data]';
 
@@ -232,7 +233,7 @@ function normalizeShowThumbs(list){
 
 export async function loadMovies(){
   try {
-    const movies = await loadWithCompat('data/movies/movies.json', {
+    const rawMovies = await loadWithCompat('data/movies/movies.json', {
       label: 'movies',
       embedId: 'movies-json',
       exportKey: 'movies',
@@ -244,6 +245,18 @@ export async function loadMovies(){
         'movies.json',
       ],
     });
+    let movies;
+    try{
+      movies = validateLibraryList(rawMovies, 'movie');
+    }catch(validationError){
+      const message = validationError?.message || 'Unbekannte Validierungsfehler';
+      console.warn(`${LOG_PREFIX} Movie validation failed:`, validationError);
+      const error = new Error(`Ungültige Filmdaten: ${message}`);
+      if(validationError instanceof Error){
+        error.cause = validationError;
+      }
+      throw error;
+    }
     return normalizeMovieThumbs(movies);
   } catch (error) {
     console.error(`${LOG_PREFIX} loadMovies failed:`, error);
@@ -253,7 +266,7 @@ export async function loadMovies(){
 }
 export async function loadShows(){
   try {
-    const shows = await loadWithCompat('data/series/series_index.json', {
+    const rawShows = await loadWithCompat('data/series/series_index.json', {
       label: 'shows',
       embedId: 'series-json',
       exportKey: 'shows',
@@ -268,6 +281,18 @@ export async function loadShows(){
         'shows.json',
       ],
     });
+    let shows;
+    try{
+      shows = validateLibraryList(rawShows, 'show');
+    }catch(validationError){
+      const message = validationError?.message || 'Unbekannte Validierungsfehler';
+      console.warn(`${LOG_PREFIX} Show validation failed:`, validationError);
+      const error = new Error(`Ungültige Seriendaten: ${message}`);
+      if(validationError instanceof Error){
+        error.cause = validationError;
+      }
+      throw error;
+    }
     return normalizeShowThumbs(shows);
   } catch (error) {
     console.error(`${LOG_PREFIX} loadShows failed:`, error);

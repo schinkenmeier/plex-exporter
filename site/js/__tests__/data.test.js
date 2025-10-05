@@ -19,6 +19,7 @@ if(typeof global.localStorage === 'undefined'){
 }
 
 const { prefixThumbValue, prefixMovieThumb, prefixShowThumb, fetchJson, loadMovies } = await import('../data.js');
+const { isMovieEntry, isShowEntry, validateLibraryList } = await import('../data/validators.js');
 
 if(originalWindow === undefined) delete global.window; else global.window = originalWindow;
 if(originalDocument === undefined) delete global.document; else global.document = originalDocument;
@@ -113,7 +114,7 @@ describe('data loading resilience', () => {
   });
 
   it('falls back to embedded JSON when fetching movies fails', async () => {
-    const fallbackMovies = [{ title: 'Fallback Film', thumb: 'poster.jpg' }];
+    const fallbackMovies = [{ title: 'Fallback Film', ratingKey: '1', thumb: 'poster.jpg' }];
     let callCount = 0;
     global.fetch = async () => {
       callCount++;
@@ -132,5 +133,37 @@ describe('data loading resilience', () => {
     assert.strictEqual(result[0].title, 'Fallback Film');
     assert.ok(result[0].thumb?.startsWith('data/movies/'));
     assert.ok(callCount >= 1);
+  });
+});
+
+describe('data validators', () => {
+  it('isMovieEntry rejects entries without title', () => {
+    assert.strictEqual(isMovieEntry({ ratingKey: '123' }), false);
+  });
+
+  it('validateLibraryList throws when movie entries miss title', () => {
+    assert.throws(
+      () => validateLibraryList([{ ratingKey: '123' }], 'movie'),
+      /title/i
+    );
+  });
+
+  it('validateLibraryList throws when ratingKey has wrong type', () => {
+    assert.throws(
+      () => validateLibraryList([{ title: 'Test', ratingKey: {} }], 'movie'),
+      /ratingKey/i
+    );
+  });
+
+  it('validateLibraryList normalizes optional show fields', () => {
+    const sanitized = validateLibraryList([
+      { title: ' Show ', ratingKey: 42, seasons: [{ episodes: [{}] }, { thumb: null }] },
+    ], 'show');
+    assert.strictEqual(sanitized[0].title, 'Show');
+    assert.strictEqual(sanitized[0].ratingKey, '42');
+    assert.ok(Array.isArray(sanitized[0].seasons));
+    assert.strictEqual(sanitized[0].seasons[0].episodes.length, 1);
+    assert.deepStrictEqual(sanitized[0].seasons[0].episodes[0], {});
+    assert.strictEqual(sanitized[0].thumb, '');
   });
 });
