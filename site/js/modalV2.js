@@ -219,9 +219,6 @@ function showOverlay(){
   bindFocusTrap();
   bindEscape();
 
-  // Dispatch event for filter bar auto-hide
-  document.dispatchEvent(new CustomEvent('modal:open'));
-
   return root;
 }
 
@@ -1038,9 +1035,6 @@ export function closeModalV2(){
   lastActiveElement = null;
   currentItem = null;
   currentKind = null;
-
-  // Dispatch event for filter bar auto-hide
-  document.dispatchEvent(new CustomEvent('modal:close'));
 }
 
 export function isModalV2Open(){
