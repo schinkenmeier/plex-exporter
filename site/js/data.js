@@ -1,5 +1,7 @@
 import { getCache, setCache } from './cache.js';
 
+const LOG_PREFIX = '[data]';
+
 let lastSources = { movies: null, shows: null };
 const showDetailCache = new Map();
 let loadRetryCount = { movies: 0, shows: 0 };
@@ -15,7 +17,7 @@ async function fetchJson(url, retries = 2, useCache = true){
   if(useCache){
     const cached = getCache(url);
     if(cached !== null) {
-      console.log(`[data] Cache hit for ${url}`);
+      console.log(`${LOG_PREFIX} Cache hit for ${url}`);
       return cached;
     }
   }
@@ -37,7 +39,7 @@ async function fetchJson(url, retries = 2, useCache = true){
     }
     catch(err){
       lastError = err;
-      console.warn(`[data] Fetch attempt ${attempt + 1}/${retries + 1} failed for ${url}:`, err.message);
+      console.warn(`${LOG_PREFIX} Fetch attempt ${attempt + 1}/${retries + 1} failed for ${url}:`, err.message);
     }
     if(attempt < retries){
       // Exponential backoff
@@ -46,7 +48,7 @@ async function fetchJson(url, retries = 2, useCache = true){
     }
   }
   if(lastError){
-    console.error(`[data] All fetch attempts failed for ${url}:`, lastError.message);
+    console.error(`${LOG_PREFIX} All fetch attempts failed for ${url}:`, lastError.message);
   }
   return null;
 }
@@ -57,7 +59,7 @@ function embeddedJsonById(id){
     if(n && n.textContent) return JSON.parse(n.textContent);
   }
   catch(err){
-    console.warn(`[data] Failed to parse embedded JSON #${id}:`, err.message);
+    console.warn(`${LOG_PREFIX} Failed to parse embedded JSON #${id}:`, err.message);
   }
   return null;
 }
@@ -69,7 +71,7 @@ function fromGlobalBag(key){
     return arr || null;
   }
   catch(err){
-    console.warn(`[data] Failed to access global bag[${key}]:`, err.message);
+    console.warn(`${LOG_PREFIX} Failed to access global bag[${key}]:`, err.message);
     return null;
   }
 }
@@ -80,7 +82,7 @@ function fromWindow(varName){
     return arr || null;
   }
   catch(err){
-    console.warn(`[data] Failed to access window.${varName}:`, err.message);
+    console.warn(`${LOG_PREFIX} Failed to access window.${varName}:`, err.message);
     return null;
   }
 }
@@ -110,11 +112,16 @@ export function prefixThumbValue(value, base){
   if(raw.startsWith('//') || raw.startsWith('/') || SCHEME_RE.test(raw)) return raw;
   const normalizedRaw = raw.replace(/\\/g, '/');
   const normalizedBase = base ? (base.endsWith('/') ? base : `${base}/`) : '';
+  let decodeWarned = false;
   const encodePath = path => path.split('/').map(segment => {
     if(!segment) return '';
     try{
       return encodeURIComponent(decodeURIComponent(segment));
-    }catch{
+    }catch(err){
+      if(!decodeWarned){
+        decodeWarned = true;
+        console.warn(`${LOG_PREFIX} Failed to normalize thumb segment "${segment}":`, err);
+      }
       return encodeURIComponent(segment);
     }
   }).join('/');
@@ -210,14 +217,16 @@ export async function loadMovies(){
     loadRetryCount.movies = 0; // Reset on success
     return normalizeMovieThumbs(movies);
   } catch (error) {
-    console.error('[data] loadMovies failed:', error);
+    console.error(`${LOG_PREFIX} loadMovies failed:`, error);
     if (loadRetryCount.movies < MAX_RETRIES) {
       loadRetryCount.movies++;
-      console.log(`[data] Retrying loadMovies (${loadRetryCount.movies}/${MAX_RETRIES})...`);
+      console.log(`${LOG_PREFIX} Retrying loadMovies (${loadRetryCount.movies}/${MAX_RETRIES})...`);
       await new Promise(resolve => setTimeout(resolve, 1000 * loadRetryCount.movies));
       return loadMovies();
     }
-    throw error;
+    console.warn(`${LOG_PREFIX} loadMovies exhausted retries, returning empty array.`);
+    loadRetryCount.movies = 0;
+    return [];
   }
 }
 export async function loadShows(){
@@ -240,14 +249,16 @@ export async function loadShows(){
     loadRetryCount.shows = 0; // Reset on success
     return normalizeShowThumbs(shows);
   } catch (error) {
-    console.error('[data] loadShows failed:', error);
+    console.error(`${LOG_PREFIX} loadShows failed:`, error);
     if (loadRetryCount.shows < MAX_RETRIES) {
       loadRetryCount.shows++;
-      console.log(`[data] Retrying loadShows (${loadRetryCount.shows}/${MAX_RETRIES})...`);
+      console.log(`${LOG_PREFIX} Retrying loadShows (${loadRetryCount.shows}/${MAX_RETRIES})...`);
       await new Promise(resolve => setTimeout(resolve, 1000 * loadRetryCount.shows));
       return loadShows();
     }
-    throw error;
+    console.warn(`${LOG_PREFIX} loadShows exhausted retries, returning empty array.`);
+    loadRetryCount.shows = 0;
+    return [];
   }
 }
 
@@ -270,12 +281,12 @@ export async function loadShowDetail(item){
       }
     } catch (error) {
       lastError = error;
-      console.warn(`[data] Failed to load show detail from ${url}:`, error.message);
+      console.warn(`${LOG_PREFIX} Failed to load show detail from ${url}:`, error.message);
     }
   }
 
   if(lastError) {
-    console.error(`[data] Could not load show detail for ${item.title || 'unknown'}`, lastError);
+    console.error(`${LOG_PREFIX} Could not load show detail for ${item.title || 'unknown'}`, lastError);
   }
 
   storeDetail(keys, null, item);
@@ -284,7 +295,11 @@ export async function loadShowDetail(item){
 
 function markSource(label, src){
   if(!label) return;
-  try{ lastSources[label] = src; }catch{}
+  try{
+    lastSources[label] = src;
+  }catch(err){
+    console.warn(`${LOG_PREFIX} Failed to record source for ${label}:`, err);
+  }
 }
 
 export function getSources(){ return { ...lastSources }; }
@@ -427,7 +442,15 @@ function normalizePeople(list){
 
 function cloneDetail(detail){
   if(detail === null || detail === undefined) return detail;
-  try{ return structuredClone(detail); }catch{}
-  try{ return JSON.parse(JSON.stringify(detail)); }catch{}
+  try{
+    return structuredClone(detail);
+  }catch(err){
+    console.warn(`${LOG_PREFIX} structuredClone failed for show detail:`, err);
+  }
+  try{
+    return JSON.parse(JSON.stringify(detail));
+  }catch(err){
+    console.warn(`${LOG_PREFIX} JSON clone failed for show detail:`, err);
+  }
   return detail;
 }
