@@ -3,47 +3,84 @@ import { useTmdbOn } from '../utils.js';
 const TMDB_PROFILE_BASE = 'https://image.tmdb.org/t/p/';
 const TMDB_PROFILE_SIZE = 'w185';
 
-export function buildCastList(item){
-  const source = Array.isArray(item?.cast) ? item.cast : Array.isArray(item?.roles) ? item.roles : [];
-  return source.map(person=>{
-    if(!person) return null;
-    if(typeof person === 'string'){
-      const name = String(person).trim();
-      if(!name) return null;
-      return { name, role:'', thumb:'', tmdbProfile:'', raw:null };
-    }
-    const name = String(person.tag || person.name || person.role || '').trim();
+function normalizeLocalCast(person){
+  if(!person) return null;
+  if(typeof person === 'string'){
+    const name = String(person).trim();
     if(!name) return null;
-    const role = (()=>{
-      const rawRole = String(person.role || '').trim();
-      if(!rawRole) return '';
-      return rawRole.toLowerCase() === name.toLowerCase() ? '' : rawRole;
-    })();
-    const tmdbProfile = [
-      person?.tmdb?.profile,
-      person?.tmdb?.profile_path,
-      person?.tmdb?.profilePath,
-      person?.tmdbProfile,
-      person?.profile,
-      person?.profile_path,
-      person?.profilePath,
-    ].find(val => typeof val === 'string' && val.trim());
-    const thumb = [person?.thumb, person?.photo, person?.image].find(val => typeof val === 'string' && val.trim()) || '';
-    return {
-      name,
-      role,
-      thumb,
-      tmdbProfile: tmdbProfile ? String(tmdbProfile).trim() : '',
-      raw: person,
-    };
-  }).filter(Boolean);
+    return { name, role:'', thumb:'', tmdbProfile:'', raw:null };
+  }
+  const name = String(person.tag || person.name || person.role || '').trim();
+  if(!name) return null;
+  const role = (()=>{
+    const rawRole = String(person.role || '').trim();
+    if(!rawRole) return '';
+    return rawRole.toLowerCase() === name.toLowerCase() ? '' : rawRole;
+  })();
+  const tmdbProfile = [
+    person?.tmdb?.profile,
+    person?.tmdb?.profile_path,
+    person?.tmdb?.profilePath,
+    person?.tmdbProfile,
+    person?.profile,
+    person?.profile_path,
+    person?.profilePath,
+  ].find(val => typeof val === 'string' && val.trim());
+  const thumb = [person?.thumb, person?.photo, person?.image].find(val => typeof val === 'string' && val.trim()) || '';
+  return {
+    name,
+    role,
+    thumb,
+    tmdbProfile: tmdbProfile ? String(tmdbProfile).trim() : '',
+    raw: person,
+  };
+}
+
+function normalizeTmdbCast(person){
+  if(!person) return null;
+  const name = String(person.name || person.original_name || '').trim();
+  if(!name) return null;
+  const role = String(person.character || '').trim();
+  return {
+    name,
+    role,
+    thumb: '',
+    tmdbProfile: person.profile || person.profile_path || person.profilePath || '',
+    raw: { tmdb: person },
+  };
+}
+
+export function buildCastList(item){
+  const seen = new Set();
+  const combined = [];
+  const localSource = Array.isArray(item?.cast) ? item.cast : Array.isArray(item?.roles) ? item.roles : [];
+  localSource.map(normalizeLocalCast).filter(Boolean).forEach(entry => {
+    const key = entry.name.toLowerCase();
+    if(seen.has(key)) return;
+    seen.add(key);
+    combined.push(entry);
+  });
+  const tmdbSource = Array.isArray(item?.tmdbDetail?.credits?.cast) ? item.tmdbDetail.credits.cast : [];
+  tmdbSource.map(normalizeTmdbCast).filter(Boolean).forEach(entry => {
+    const key = entry.name.toLowerCase();
+    if(seen.has(key)) return;
+    seen.add(key);
+    combined.push(entry);
+  });
+  return combined;
 }
 
 export function updateCast(root, cast){
   const pane = root.querySelector('.v2-cast');
   if(!pane) return;
-  pane.innerHTML = '<div class="v2-cast-scroll"></div>';
-  const scroll = pane.querySelector('.v2-cast-scroll');
+  let scroll = pane.querySelector('.v2-cast-scroll');
+  if(!scroll){
+    scroll = document.createElement('div');
+    scroll.className = 'v2-cast-scroll';
+    pane.prepend(scroll);
+  }else{
+    scroll.innerHTML = '';
+  }
   if(!scroll) return;
   const limited = Array.isArray(cast) ? cast.slice(0, 12) : [];
   if(!limited.length){
@@ -111,6 +148,51 @@ export function updateCast(root, cast){
     scroll.innerHTML = '<span class="modalv2-loading">Keine Besetzungsdaten verfügbar.</span>';
     scroll.removeAttribute('role');
   }
+  ensureCastStatusPosition(pane);
+}
+
+export function setCastLoading(root, loading){
+  const pane = resolveCastPane(root);
+  if(!pane) return;
+  pane.dataset.loading = loading ? 'true' : 'false';
+  if(loading){
+    pane.setAttribute('aria-busy', 'true');
+  }else{
+    pane.removeAttribute('aria-busy');
+  }
+}
+
+export function setCastStatus(root, status){
+  const pane = resolveCastPane(root);
+  if(!pane) return;
+  let statusEl = pane.querySelector('.v2-cast-status');
+  if(!status || !status.message){
+    if(statusEl) statusEl.remove();
+    pane.dataset.status = '';
+    return;
+  }
+  if(!statusEl){
+    statusEl = document.createElement('p');
+    statusEl.className = 'v2-cast-status';
+    pane.appendChild(statusEl);
+  }
+  statusEl.dataset.state = status.state || '';
+  statusEl.textContent = status.message;
+  pane.dataset.status = status.state || '';
+  ensureCastStatusPosition(pane);
+}
+
+function ensureCastStatusPosition(pane){
+  const statusEl = pane.querySelector('.v2-cast-status');
+  const scroll = pane.querySelector('.v2-cast-scroll');
+  if(statusEl && scroll && statusEl.previousElementSibling !== scroll){
+    pane.appendChild(statusEl);
+  }
+}
+
+function resolveCastPane(root){
+  if(root instanceof HTMLElement) return root.querySelector('.v2-cast');
+  return document.querySelector('.v2-pane.v2-cast');
 }
 
 function normalizeTmdbProfile(path){
