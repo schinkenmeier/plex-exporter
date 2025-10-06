@@ -24,7 +24,7 @@ beforeEach(() => {
   originalLocalStorage = global.localStorage;
   global.localStorage = {
     getItem(key) {
-      if(key === 'tmdbCache') return 'not-json';
+      if(key === 'tmdbCache' || key === 'tmdb.metadata.cache.v1') return 'not-json';
       return null;
     },
     setItem() {
@@ -78,17 +78,17 @@ describe('tmdb service fallbacks', () => {
     await new Promise(resolve => setTimeout(resolve, 25));
 
     assert.ok(
-      warnMessages.some(msg => msg.includes('[tmdb] Failed to load persisted TMDB cache')),
+      warnMessages.some(msg => msg.includes('[cacheStore] Failed to parse persisted cache payload')),
       'expected warning for cache load fallback'
     );
     assert.ok(
-      warnMessages.some(msg => msg.includes('[tmdb] Failed to persist TMDB cache')),
+      warnMessages.some(msg => msg.includes('[cacheStore] Failed to persist cache')),
       'expected warning for cache persist failure'
     );
 
     assert.doesNotThrow(() => clearCache());
     assert.ok(
-      warnMessages.some(msg => msg.includes('[tmdb] Failed to clear TMDB cache from storage')),
+      warnMessages.some(msg => msg.includes('[cacheStore] Failed to persist cache')),
       'expected warning when clearing cache fails'
     );
   });
