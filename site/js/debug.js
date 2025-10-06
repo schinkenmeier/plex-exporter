@@ -2,6 +2,7 @@ import { getState } from './state.js';
 import { getSources } from './data.js';
 import { getCacheStats, clearAllCache, clearExpiredCache } from './cache.js';
 import * as HeroPolicy from './hero/policy.js';
+import * as HeroPipeline from './hero/pipeline.js';
 
 export function initDebugUi(){
   const open = document.getElementById('openDebug');
@@ -59,6 +60,7 @@ function render(){
   const cacheStats = getCacheStats();
   const heroPolicy = HeroPolicy.getHeroPolicy();
   const heroPolicyIssues = HeroPolicy.getValidationIssues();
+  const heroPipeline = HeroPipeline.getDebugSnapshot();
 
   const report = {
     view: s.view,
@@ -78,6 +80,7 @@ function render(){
       loadedAt: HeroPolicy.getPolicyLoadedAt(),
       issues: heroPolicyIssues
     },
+    heroCache: heroPipeline,
     tmdb: { enabled: !!cfg.tmdbEnabled, lang: cfg.lang, tokenPresent: !!(localStorage.getItem('tmdbToken')||cfg.tmdbApiKey) },
     useTmdbImages: localStorage.getItem('useTmdb')==='1',
     reduceMotion: localStorage.getItem('prefReduceMotion')==='1',
@@ -89,10 +92,21 @@ function render(){
   // Update cache stats display
   const statsEl = document.getElementById('cacheStats');
   if(statsEl && cacheStats){
+    const heroMovies = heroPipeline?.status?.movies || {};
+    const heroSeries = heroPipeline?.status?.series || {};
+    const formatTs = (ts)=>{
+      if(!Number.isFinite(ts) || ts <= 0) return 'n/a';
+      try{ return new Date(ts).toLocaleString(); }
+      catch(_err){ return 'n/a'; }
+    };
+    const heroFeature = heroPipeline?.enabled ? `aktiv (Quelle: ${heroPipeline.featureSource || 'default'})` : `deaktiviert (Quelle: ${heroPipeline?.featureSource || 'default'})`;
     statsEl.innerHTML = `
       <p>Einträge gesamt: <strong>${cacheStats.totalEntries}</strong></p>
       <p>Gültig: <strong>${cacheStats.validEntries}</strong> | Abgelaufen: <strong>${cacheStats.expiredEntries}</strong></p>
       <p>Größe: <strong>${cacheStats.totalSizeMB} MB</strong></p>
+      <p>Hero-Pipeline: <strong>${heroFeature}</strong></p>
+      <p>Filme: <strong>${heroMovies.size ?? heroPipeline?.poolSizes?.movies ?? 0}</strong> Einträge · Update: <strong>${formatTs(heroMovies.updatedAt)}</strong> · Ablauf: <strong>${formatTs(heroMovies.expiresAt)}</strong></p>
+      <p>Serien: <strong>${heroSeries.size ?? heroPipeline?.poolSizes?.series ?? 0}</strong> Einträge · Update: <strong>${formatTs(heroSeries.updatedAt)}</strong> · Ablauf: <strong>${formatTs(heroSeries.expiresAt)}</strong></p>
     `;
   }
 }

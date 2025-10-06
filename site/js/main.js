@@ -12,6 +12,7 @@ import { initSettingsOverlay, setHeroRefreshHandler, setReduceMotionHandler } fr
 import { refreshHero, setHeroNavigation } from './hero.js';
 import { initHeroAutoplay } from './hero-autoplay.js';
 import * as HeroPolicy from './hero/policy.js';
+import * as HeroPipeline from './hero/pipeline.js';
 
 let taglineTicker = null;
 
@@ -105,6 +106,29 @@ export const navigateToHash = (hash, options) => hashNavigation.navigate(hash, o
 
 setHeroNavigation(navigateToHash);
 
+function refreshHeroWithPipeline(listOverride){
+  if(Array.isArray(listOverride) && listOverride.length){
+    refreshHero(listOverride);
+    return;
+  }
+  if(HeroPipeline.isEnabled()){
+    const currentView = getState().view === 'shows' ? 'series' : 'movies';
+    const plan = HeroPipeline.getRotationPlan(currentView);
+    const status = plan?.snapshot?.status?.[currentView];
+    const ready = HeroPipeline.isReady();
+    const busy = status?.regenerating;
+    if(ready && !busy && Array.isArray(plan?.items) && plan.items.length){
+      const index = plan.startIndex % plan.items.length;
+      const entry = plan.items[index];
+      if(entry){
+        refreshHero([entry]);
+        return;
+      }
+    }
+  }
+  refreshHero(listOverride);
+}
+
 function setFooterStatus(message, busy=true){
   const footer = document.getElementById('footerMeta');
   if(footer){
@@ -139,7 +163,15 @@ export async function boot(){
   });
 
   const [cfg, heroPolicy] = await Promise.all([configPromise, policyPromise]);
-  setState({ cfg, view: cfg.startView || 'movies', heroPolicy, heroPolicyIssues: HeroPolicy.getValidationIssues() });
+  const heroPipelineInfo = HeroPipeline.configure({ cfg, policy: heroPolicy });
+  setState({
+    cfg,
+    view: cfg.startView || 'movies',
+    heroPolicy,
+    heroPolicyIssues: HeroPolicy.getValidationIssues(),
+    heroPipelineEnabled: heroPipelineInfo.enabled,
+    heroPipelineSource: heroPipelineInfo.source
+  });
 
   try {
     setFooterStatus('Filme laden …', true);
@@ -154,6 +186,18 @@ export async function boot(){
     // build facets (richer set via Filter)
     const facets = Filter.computeFacets(movies, shows);
     setState({ movies, shows, facets });
+    HeroPipeline.setSources({ movies, shows });
+    HeroPipeline.setActiveView(getState().view);
+
+    if(HeroPipeline.isEnabled()){
+      setFooterStatus('Highlights vorbereiten …', true);
+      setLoader('Highlights vorbereiten …', 70);
+      try {
+        await HeroPipeline.primeAll();
+      } catch (err) {
+        console.warn('[main] Hero pipeline initial prime failed:', err?.message || err);
+      }
+    }
 
     setFooterStatus('Ansicht aufbauen …', true);
     setLoader('Ansicht aufbauen …', 85);
@@ -161,7 +205,7 @@ export async function boot(){
     renderSwitch();
     Filter.renderFacets(facets);
     Filter.initFilters();
-    Filter.applyFilters();
+    const filtered = Filter.applyFilters();
     renderStats(true);
     renderGrid(getState().view);
     renderFooterMeta();
@@ -178,12 +222,12 @@ export async function boot(){
       initScrollProgress();
       initScrollTop();
       initFilterBarAutoHideFallback();
-      refreshHero();
-      initHeroAutoplay();
+      refreshHeroWithPipeline(filtered);
+      initHeroAutoplay({ onRefresh: refreshHeroWithPipeline });
       Debug.initDebugUi();
     }else{
       try{
-        refreshHero();
+        refreshHeroWithPipeline(filtered);
       }catch(err){
         console.warn('[main] Test env hero refresh skipped:', err?.message || err);
       }
@@ -205,7 +249,7 @@ export async function boot(){
       try{
         if(localStorage.getItem('useTmdb')==='1'){
           renderGrid(getState().view);
-          refreshHero();
+          refreshHeroWithPipeline();
         }
       }catch(err){
         console.warn('[main] TMDB chunk render failed:', err.message);
@@ -216,7 +260,7 @@ export async function boot(){
     try{
       if(localStorage.getItem('useTmdb')==='1'){
         renderGrid(getState().view);
-        refreshHero();
+        refreshHeroWithPipeline();
       }
     }catch(err){
       console.warn('[main] TMDB done render failed:', err.message);
@@ -231,10 +275,14 @@ function applyHashNavigation(hash){
   if(/^#\/(movies|shows)$/.test(hash)){
     const view = hash.includes('shows') ? 'shows' : 'movies';
     setState({ view });
+    HeroPipeline.setActiveView(view);
+    HeroPipeline.ensureKind(view === 'shows' ? 'series' : 'movies').catch(err => {
+      console.warn('[main] Failed to ensure hero pool on hash navigation:', err?.message || err);
+    });
     const result = Filter.applyFilters();
     renderSwitch();
     renderGrid(view);
-    refreshHero(result);
+    refreshHeroWithPipeline(result);
     return true;
   }
   const match = hash.match(/^#\/(movie|show)\/(.+)/);
@@ -279,12 +327,16 @@ function renderSwitch(){
       const view = btn.dataset.lib === 'series' ? 'shows' : 'movies';
       if(getState().view === view) return;
       setState({ view });
+      HeroPipeline.setActiveView(view);
+      HeroPipeline.ensureKind(view === 'shows' ? 'series' : 'movies').catch(err => {
+        console.warn('[main] Failed to ensure hero pool on view switch:', err?.message || err);
+      });
       const target = view === 'movies' ? '#/movies' : '#/shows';
       navigateToHash(target, { silent: true });
       renderSwitch();
       const result = Filter.applyFilters();
       renderGrid(view);
-      refreshHero(result);
+      refreshHeroWithPipeline(result);
     });
     btn.dataset.bound = 'true';
   });
@@ -338,7 +390,7 @@ function renderFooterMeta(){
 
 Filter.setFiltersUpdatedHandler(items => {
   try{
-    refreshHero(items);
+    refreshHeroWithPipeline(items);
   }catch(err){
     console.warn('[main] Failed to refresh hero from filters handler:', err?.message);
   }
@@ -346,7 +398,7 @@ Filter.setFiltersUpdatedHandler(items => {
 
 setHeroRefreshHandler(items => {
   try{
-    refreshHero(items);
+    refreshHeroWithPipeline(items);
   }catch(err){
     console.warn('[main] Failed to refresh hero from settings handler:', err?.message);
   }
