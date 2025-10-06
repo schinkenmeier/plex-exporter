@@ -328,9 +328,14 @@ function renderSwitch(){
       if(getState().view === view) return;
       setState({ view });
       HeroPipeline.setActiveView(view);
-      HeroPipeline.ensureKind(view === 'shows' ? 'series' : 'movies').catch(err => {
-        console.warn('[main] Failed to ensure hero pool on view switch:', err?.message || err);
-      });
+      if(HeroPipeline.isEnabled()){
+        const ensure = HeroPipeline.ensureKind(view === 'shows' ? 'series' : 'movies');
+        if(ensure && typeof ensure.catch === 'function'){
+          ensure.catch(err => {
+            console.warn('[main] Failed to ensure hero pool on view switch:', err?.message || err);
+          });
+        }
+      }
       const target = view === 'movies' ? '#/movies' : '#/shows';
       navigateToHash(target, { silent: true });
       renderSwitch();
