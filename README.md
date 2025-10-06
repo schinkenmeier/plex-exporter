@@ -17,6 +17,8 @@ Der Plex Exporter stellt einen statischen Katalog deiner Plex-Bibliotheken berei
 | `site/index.html` | Einstiegspunkt und UI-Markup für den Katalog. |
 | `site/config.json` | Laufzeitkonfiguration (Startansicht, TMDB-Schalter, Sprache). |
 | `site/js/main.js` | Bootstrapping der Anwendung, Initialisierung von Filtern, Watchlist, Debug und Einstellungen. |
+| `site/hero.policy.json` | Steuerdatei für die Hero-Rotation (Poolgrößen, Slots, Cache-Laufzeiten). |
+| `site/js/hero/…` | Pipeline für Hero-Highlights (Policy, Pooling, Normalisierung, Storage, TMDB-Anbindung). |
 | `site/js/data.js` | Datenlader mit Unterstützung für lokale Dateien (`site/data/...`) und Legacy-Fallbacks. |
 | `site/js/…` | Weitere Module für Filter, Grid, Modals, Services, Utils und Watchlist. |
 | `site/data/movies/` | Exportierte Filmdaten (`movies.json`) und optionale Posterordner (`Movie - … .images`). |
@@ -53,9 +55,24 @@ Der Plex Exporter stellt einen statischen Katalog deiner Plex-Bibliotheken berei
 - Die Watchlist speichert Einträge in `localStorage` (`watchlist:v1`). Über die Buttons im UI kannst du Einträge hinzufügen, entfernen, exportieren oder die Liste leeren. Beim Export wird eine `watchlist.json` im Browser heruntergeladen.
 - Das Debug-Overlay (Button "Debug" in den Einstellungen) zeigt Informationen über aktuelle Filter, Datenquellen und TMDB-Status. Die Ausgabe lässt sich direkt kopieren, um Fehlerberichte zu erleichtern.
 
+## Hero-Rotation & Policy-Datei
+- Die Hero-Fläche liest ihre Steuerung aus `site/hero.policy.json`. Die Datei definiert Poolgrößen (`poolSizeMovies`, `poolSizeSeries`), Slot-Quoten (`slots.*`), Diversitäts-Gewichte, Rotations-Intervalle sowie bevorzugte Fallback-Quellen und Text-Limits.
+- `cache.ttlHours` und `cache.graceMinutes` steuern die Wiederverwendung bereits berechneter Hero-Pools. Innerhalb der TTL (Standard 24 Stunden) wird ein vorhandener Pool aus `localStorage`/`sessionStorage` erneut genutzt; die Grace-Periode erlaubt einen sanften Übergang, bevor ein Neuaufbau erzwungen wird.
+- `site/js/hero/policy.js` lädt die Policy (mit Fallback auf eingebaute Defaults), validiert Werte und stellt abgeleitete Helfer (`getPoolSizes()`, `getCacheTtl()`, …) bereit. Die Datei akzeptiert Hot-Reload ohne Seitenneustart: Änderungen an `hero.policy.json` werden beim nächsten `initHeroPolicy()`-Aufruf übernommen.
+- `site/js/hero/pool.js` baut – gesteuert von Policy und Feature-Flags – Bibliotheksübergreifende Kandidatenpools. Die Ergebnisse werden per `site/js/hero/storage.js` sowohl im aktuellen Tab (`sessionStorage`) als auch Browser-weit (`localStorage`) abgelegt, inklusive Policy-Hash, Laufzeit-Metadaten und Fehlerhistorie.
+- `site/js/hero/normalizer.js` aggregiert Plex-Daten, führt optionale TMDb-Anreicherungen durch und harmonisiert Titel, Taglines, Laufzeiten, Zertifizierungen und Backdrops. Dadurch kann das Hero-Modul (`site/js/hero.js`) sofort renderbare Einträge verarbeiten.
+- Ein Feature-Flag steuert den gesamten Pipeline-Pfad: `site/js/hero/pipeline.js` liest zuerst einen lokalen Override (`localStorage.feature.heroPipeline`), fällt dann auf `site/config.json` (`heroPipelineEnabled` oder `features.heroPipeline`) zurück und aktiviert die Pipeline standardmäßig, wenn kein Flag gesetzt ist. Wird die Pipeline deaktiviert, blendet das Frontend automatisch das statische Fallback-Hero ein.
+
+## Einstellungs-Overlay & TMDB-Zugangsdaten
+- Der Einstellungsdialog verwaltet TMDb-Zugänge getrennt nach Laufzeit-Token (v4 Bearer) und dauerhaftem API Key (v3). Ein eingetragener Token wird ausschließlich im Browser (`localStorage.tmdbToken`) gespeichert und eignet sich für persönliche Setups oder temporäre Freigaben. Ein API Key gehört in `site/config.json` (`tmdbApiKey`), damit er beim Bauen/Verteilen des statischen Katalogs berücksichtigt wird.
+- Empfehlung: Teile das veröffentlichte Archiv ohne Browser-Token. Hinterlege falls nötig einen v3 API Key im Build (`config.json`) und ergänze persönliche v4 Token erst lokal im Overlay, sodass sie nicht in Repos oder Deployments landen.
+- Statusmeldungen im Overlay unterscheiden automatisch zwischen Token (`as: 'token'`) und API Key (`as: 'apikey'`). Wird ein v3 Key irrtümlich als Token eingegeben, informiert das UI und verweist auf die `config.json`.
+- Der Abschnitt „TMDb Cache“ enthält Schaltflächen zum Testen und Leeren: `Cache leeren` ruft `site/js/services/tmdb.js#clearCache()` auf und entfernt heruntergeladene Metadaten aus `localStorage`. Bei Problemen mit veralteten Postern lohnt sich das Löschen des Caches sowie ein erneutes Speichern/Testen des Tokens.
+- Weitere Troubleshooting-Hinweise blendet das Overlay automatisch ein, etwa wenn `tmdbEnabled=false` gesetzt ist oder wenn ein gespeicherter Token ungültig wurde (der Token wird dann gelöscht und die Eingabe geleert).
+
 ## TMDB-Integration
 - Setze `tmdbEnabled` in `site/config.json` auf `true`, um TMDB-Aufrufe zu erlauben. Standardmäßig bleiben alle Anfragen deaktiviert.
-- Hinterlege einen TMDB v4 Bearer Token zur Laufzeit im Einstellungsdialog (`TMDB Token`) oder trage deinen API Key dauerhaft im Feld `tmdbApiKey` ein. Tokens werden im Browser in `localStorage` gespeichert.
+- Hinterlege einen TMDB v4 Bearer Token zur Laufzeit im Einstellungsdialog oder trage deinen API Key dauerhaft im Feld `tmdbApiKey` ein. Tokens werden im Browser in `localStorage` gespeichert.
 - Sobald TMDB aktiviert ist, lädt das Frontend Cover und Backdrops nach (`site/js/services/tmdb.js`). Die Nutzung ist optional und kann jederzeit über den UI-Toggle abgeschaltet werden.
 
 ## Nützliche Befehle
