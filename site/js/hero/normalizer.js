@@ -251,16 +251,30 @@ function chooseCertification(raw, tmdb, type){
   return '';
 }
 
-function extractBackdrops(tmdb){
-  const list = Array.isArray(tmdb?.images?.backdrops) ? tmdb.images.backdrops : [];
+function extractBackdrops(tmdb, raw){
   const urls = [];
-  for(const backdrop of list){
+
+  // Primary: TMDB backdrops (best quality)
+  const tmdbList = Array.isArray(tmdb?.images?.backdrops) ? tmdb.images.backdrops : [];
+  for(const backdrop of tmdbList){
     if(!backdrop || !backdrop.file_path) continue;
     if(backdrop.width && backdrop.width < BACKDROP_MIN_WIDTH) continue;
     const url = tmdbImageUrl(backdrop.file_path, TMDB_BACKDROP_SIZE);
     if(!url) continue;
     if(!urls.includes(url)) urls.push(url);
   }
+
+  // Fallback: Plex images if no TMDB backdrops available
+  if(urls.length === 0 && raw){
+    const plexBackdrop = raw.art || raw.thumb || raw.thumbFile || raw.backdrop;
+    if(plexBackdrop && typeof plexBackdrop === 'string'){
+      const trimmed = plexBackdrop.trim();
+      if(trimmed && !urls.includes(trimmed)){
+        urls.push(trimmed);
+      }
+    }
+  }
+
   return urls;
 }
 
@@ -378,7 +392,7 @@ export async function normalizeItem(raw, options = {}){
   const certification = chooseCertification(raw, tmdbData, type);
   if(certification) normalized.certification = certification;
 
-  const backdrops = extractBackdrops(tmdbData);
+  const backdrops = extractBackdrops(tmdbData, raw);
   if(backdrops.length) normalized.backdrops = backdrops;
 
   if(type === 'tv'){

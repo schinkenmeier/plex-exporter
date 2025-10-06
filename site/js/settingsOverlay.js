@@ -326,8 +326,13 @@ export function initSettingsOverlay(cfg){
     try{ setUseTmdbAvailability(!!token || !!(cfg&&cfg.tmdbApiKey)); }
     catch(err){ console.warn('[settingsOverlay] Failed to update TMDB availability:', err?.message || err); }
     setTmdbStatus('', '');
-    if(!token){ setTmdbStatus('Kein Token hinterlegt. TMDB ist deaktiviert.', 'info'); }
-    if(!cfg?.tmdbEnabled){ setTmdbStatus('Hinweis: TMDB in config.json deaktiviert (tmdbEnabled=false).', 'info'); }
+
+    // Check if TMDB is disabled in config
+    if(cfg && cfg.tmdbEnabled === false){
+      setTmdbStatus('⚠️ TMDB ist in config.json deaktiviert (tmdbEnabled: false). Hero-Banner benötigt TMDB!', 'error');
+    }else if(!token){
+      setTmdbStatus('Kein Token hinterlegt. TMDB ist deaktiviert.', 'info');
+    }
     // Optional: Auto-Check bei geöffnetem Dialog
     if(token){
       (async()=>{
@@ -384,6 +389,12 @@ export function initSettingsOverlay(cfg){
         else setTmdbStatus('Token ungültig oder keine Berechtigung (401).', 'error');
       }
     }catch(e){ setTmdbStatus('Prüfung fehlgeschlagen. Netzwerk/Browser-Konsole prüfen.', 'error'); }
+
+    // Check if tmdbEnabled is false and warn user
+    if(cfg && cfg.tmdbEnabled === false && raw){
+      setTmdbStatus('⚠️ Token gespeichert, aber TMDB in config.json deaktiviert. Bitte "tmdbEnabled": true setzen!', 'error');
+    }
+
     // Hero uses TMDB automatically when token is available - update pipeline state
     HeroPipeline.updateTmdbActive(true);
     runHeroRegeneration('all', 'Highlights aktualisieren (Token geändert)…');
@@ -406,6 +417,15 @@ export function initSettingsOverlay(cfg){
     }catch(e){ setTmdbStatus('Prüfung fehlgeschlagen. Netzwerk/Browser-Konsole prüfen.', 'error'); }
   });
   tmdbClear && tmdbClear.addEventListener('click', ()=>{
+    // Use safe clear utility that preserves user settings
+    import('./utils.js').then(m=>{
+      const result = m.clearHeroCache?.();
+      if(result && !result.error){
+        console.log('[settingsOverlay] Cleared hero cache:', result);
+        setTmdbStatus(`Cache geleert: ${result.heroEntries} Hero-Einträge, ${result.tmdbCacheEntries} TMDB-Einträge. Token erhalten.`, 'success');
+      }
+    });
+    // Also clear the TMDB service cache
     import('./services/tmdb.js').then(m=>m.clearCache?.());
     runHeroRegeneration('all', 'Highlights aktualisieren (TMDB-Cache geleert)…');
   });
