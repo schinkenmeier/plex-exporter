@@ -1,7 +1,8 @@
 {
   "startView": "movies",
-  "tmdbEnabled": false,
+  "tmdbEnabled": true,
   "tmdbApiKey": "",
-  "lang": "de-DE"
+  "lang": "de-DE",
+  "_note": "tmdbEnabled muss true sein für Hero-Banner und optionale Card-Bilder. Token in Einstellungen speichern."
 }
 

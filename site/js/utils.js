@@ -136,11 +136,96 @@ export function isNew(item){
   return Date.now() - added <= days * 24*60*60*1000;
 }
 
-export function useTmdbOn(){
+/**
+ * Check if TMDB credentials are available
+ * @returns {boolean}
+ */
+function hasTmdbCredentials(){
+  try{
+    const token = localStorage.getItem('tmdbToken');
+    if(token && token.trim()) return true;
+    const state = getState();
+    if(state.cfg?.tmdbToken || state.cfg?.tmdbApiKey) return true;
+    return false;
+  }catch(err){
+    console.warn(`${LOG_PREFIX} Unable to check TMDB credentials:`, err);
+    return false;
+  }
+}
+
+/**
+ * Check if TMDB images should be used for grid cards
+ * User-controlled toggle (default: off)
+ * @returns {boolean}
+ */
+export function useTmdbForCards(){
   try{
     return localStorage.getItem('useTmdb')==='1';
   }catch(err){
-    console.warn(`${LOG_PREFIX} Unable to read TMDB preference from storage:`, err);
+    console.warn(`${LOG_PREFIX} Unable to read TMDB card preference from storage:`, err);
     return false;
+  }
+}
+
+/**
+ * Check if TMDB should be used for Hero banner
+ * Always enabled when credentials are available
+ * @returns {boolean}
+ */
+export function useTmdbForHero(){
+  return hasTmdbCredentials();
+}
+
+/**
+ * Legacy alias for backwards compatibility
+ * @deprecated Use useTmdbForCards() instead
+ */
+export function useTmdbOn(){
+  return useTmdbForCards();
+}
+
+/**
+ * Safely clear hero cache while preserving user settings
+ * @returns {Object} Summary of cleared items
+ */
+export function clearHeroCache(){
+  try{
+    // Backup important user data
+    const backup = {
+      tmdbToken: localStorage.getItem('tmdbToken'),
+      useTmdb: localStorage.getItem('useTmdb'),
+      prefReduceMotion: localStorage.getItem('prefReduceMotion'),
+      watchlist: localStorage.getItem('watchlist:v1'),
+      modalLayout: localStorage.getItem('modalLayout'),
+      scrollOrchestratorEnabled: localStorage.getItem('scrollOrchestratorEnabled')
+    };
+
+    // Count items before clearing
+    const heroKeys = Object.keys(localStorage).filter(k =>
+      k.startsWith('hero') || k.startsWith('Hero')
+    );
+    const tmdbCacheKeys = Object.keys(localStorage).filter(k =>
+      k.includes('tmdbCache') || k === 'hero.tmdbCache.v1'
+    );
+
+    // Clear hero-related data
+    heroKeys.forEach(key => localStorage.removeItem(key));
+    tmdbCacheKeys.forEach(key => localStorage.removeItem(key));
+
+    // Restore user settings
+    Object.entries(backup).forEach(([key, value]) => {
+      if(value !== null) localStorage.setItem(key, value);
+    });
+
+    console.log(`${LOG_PREFIX} Cleared ${heroKeys.length} hero entries and ${tmdbCacheKeys.length} TMDB cache entries`);
+
+    return {
+      heroEntries: heroKeys.length,
+      tmdbCacheEntries: tmdbCacheKeys.length,
+      preserved: Object.keys(backup).filter(k => backup[k] !== null)
+    };
+  }catch(err){
+    console.warn(`${LOG_PREFIX} Failed to clear hero cache:`, err);
+    return { error: err.message };
   }
 }

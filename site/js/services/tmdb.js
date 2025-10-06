@@ -136,7 +136,13 @@ export async function hydrateOptional(movies, shows, cfg={}){
       }catch(err){
         console.warn(`${LOG_PREFIX} Failed to dispatch tmdb:chunk event:`, err);
       }
-      if(i < Math.min(work.length, limit)) (window.requestIdleCallback||setTimeout)(next, 250);
+      if(i < Math.min(work.length, limit)){
+        if(window.requestIdleCallback){
+          window.requestIdleCallback(next, { timeout: 500 });
+        }else{
+          setTimeout(next, 250);
+        }
+      }
       else{
         try{
           window.dispatchEvent(new CustomEvent('tmdb:done', { detail: { total: Math.min(work.length, limit) } }));

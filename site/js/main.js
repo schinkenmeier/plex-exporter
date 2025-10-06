@@ -9,10 +9,30 @@ import * as Watch from './watchlist.js';
 import * as Debug from './debug.js';
 import { initErrorHandler, showError, showRetryableError } from './errorHandler.js';
 import { initSettingsOverlay, setHeroRefreshHandler, setReduceMotionHandler } from './settingsOverlay.js';
-import { refreshHero, setHeroNavigation } from './hero.js';
+import { refreshHero, setHeroNavigation, showHeroFallback } from './hero.js';
 import { initHeroAutoplay } from './hero-autoplay.js';
+import * as HeroPolicy from './hero/policy.js';
+import * as HeroPipeline from './hero/pipeline.js';
 
 let taglineTicker = null;
+const heroFallbackNotice = { reason: null };
+
+const HERO_FALLBACK_MESSAGES = {
+  'rate-limit': () => showError('TMDb drosselt Anfragen', 'Highlights werden kurzzeitig langsamer aktualisiert.'),
+  error: detail => showError('Highlights vorübergehend nicht verfügbar', detail?.status?.lastError || 'TMDb-Daten konnten nicht geladen werden.'),
+  default: () => showError('Highlights vorübergehend nicht verfügbar', 'TMDb-Daten konnten nicht geladen werden.')
+};
+
+function announceHeroFallback(reason, detail){
+  if(heroFallbackNotice.reason === reason) return;
+  heroFallbackNotice.reason = reason;
+  const handler = HERO_FALLBACK_MESSAGES[reason] || HERO_FALLBACK_MESSAGES.default;
+  try {
+    handler(detail);
+  } catch (err) {
+    console.warn('[main] Failed to show hero fallback notification:', err?.message || err);
+  }
+}
 
 const hashNavigation = (() => {
   let lastHash = window.location.hash || '';
@@ -104,6 +124,45 @@ export const navigateToHash = (hash, options) => hashNavigation.navigate(hash, o
 
 setHeroNavigation(navigateToHash);
 
+function refreshHeroWithPipeline(listOverride){
+  if(Array.isArray(listOverride) && listOverride.length){
+    heroFallbackNotice.reason = null;
+    refreshHero(listOverride);
+    return;
+  }
+  if(HeroPipeline.isEnabled()){
+    const currentView = getState().view === 'shows' ? 'series' : 'movies';
+    const plan = HeroPipeline.getRotationPlan(currentView);
+    const status = plan?.snapshot?.status?.[currentView];
+    const ready = HeroPipeline.isReady();
+    const busy = status?.regenerating;
+    const items = Array.isArray(plan?.items) ? plan.items : [];
+    const tmdbRateLimit = plan?.snapshot?.tmdb?.rateLimit;
+    const rateLimited = !!tmdbRateLimit?.active;
+    const pipelineError = status?.state === 'error';
+    const shouldFallback = (!items.length && (pipelineError || (rateLimited && ready && !busy)));
+    if(shouldFallback){
+      const reason = pipelineError ? 'error' : 'rate-limit';
+      const applied = showHeroFallback(reason);
+      if(applied){
+        announceHeroFallback(reason, { status, rateLimit: tmdbRateLimit });
+      }
+      return;
+    }
+    if(ready && !busy && items.length){
+      const index = plan.startIndex % items.length;
+      const entry = items[index];
+      if(entry){
+        heroFallbackNotice.reason = null;
+        refreshHero([entry]);
+        return;
+      }
+    }
+  }
+  heroFallbackNotice.reason = null;
+  refreshHero(listOverride);
+}
+
 function setFooterStatus(message, busy=true){
   const footer = document.getElementById('footerMeta');
   if(footer){
@@ -127,12 +186,26 @@ export async function boot(){
   setLoader('Initialisiere …', 8);
   showSkeleton(18);
 
-  const cfg = await fetch('config.json').then(r=>r.json()).catch((err)=>{
+  const configPromise = fetch('config.json').then(r=>r.json()).catch((err)=>{
     console.warn('[main] Failed to load config.json, using defaults:', err.message);
     showError('Konfiguration konnte nicht geladen werden', 'Verwende Standardeinstellungen');
     return { startView:'movies', tmdbEnabled:false };
   });
-  setState({ cfg, view: cfg.startView || 'movies' });
+  const policyPromise = HeroPolicy.initHeroPolicy().catch((err)=>{
+    console.warn('[main] Failed to initialise hero policy:', err?.message || err);
+    return HeroPolicy.getHeroPolicy();
+  });
+
+  const [cfg, heroPolicy] = await Promise.all([configPromise, policyPromise]);
+  const heroPipelineInfo = HeroPipeline.configure({ cfg, policy: heroPolicy });
+  setState({
+    cfg,
+    view: cfg.startView || 'movies',
+    heroPolicy,
+    heroPolicyIssues: HeroPolicy.getValidationIssues(),
+    heroPipelineEnabled: heroPipelineInfo.enabled,
+    heroPipelineSource: heroPipelineInfo.source
+  });
 
   try {
     setFooterStatus('Filme laden …', true);
@@ -147,6 +220,18 @@ export async function boot(){
     // build facets (richer set via Filter)
     const facets = Filter.computeFacets(movies, shows);
     setState({ movies, shows, facets });
+    HeroPipeline.setSources({ movies, shows });
+    HeroPipeline.setActiveView(getState().view);
+
+    if(HeroPipeline.isEnabled()){
+      setFooterStatus('Highlights vorbereiten …', true);
+      setLoader('Highlights vorbereiten …', 70);
+      try {
+        await HeroPipeline.primeAll();
+      } catch (err) {
+        console.warn('[main] Hero pipeline initial prime failed:', err?.message || err);
+      }
+    }
 
     setFooterStatus('Ansicht aufbauen …', true);
     setLoader('Ansicht aufbauen …', 85);
@@ -154,14 +239,20 @@ export async function boot(){
     renderSwitch();
     Filter.renderFacets(facets);
     Filter.initFilters();
-    Filter.applyFilters();
+    const filtered = Filter.applyFilters();
     renderStats(true);
     renderGrid(getState().view);
     renderFooterMeta();
 
     hideLoader();
 
-    if(cfg.tmdbEnabled) (window.requestIdleCallback || setTimeout)(()=> hydrateOptional?.(movies, shows, cfg), 400);
+    if(cfg.tmdbEnabled){
+      if(window.requestIdleCallback){
+        window.requestIdleCallback(()=> hydrateOptional?.(movies, shows, cfg), { timeout: 600 });
+      }else{
+        setTimeout(()=> hydrateOptional?.(movies, shows, cfg), 400);
+      }
+    }
 
     if(!isTestEnv){
       Watch.initUi();
@@ -171,12 +262,12 @@ export async function boot(){
       initScrollProgress();
       initScrollTop();
       initFilterBarAutoHideFallback();
-      refreshHero();
-      initHeroAutoplay();
+      refreshHeroWithPipeline(filtered);
+      initHeroAutoplay({ onRefresh: refreshHeroWithPipeline });
       Debug.initDebugUi();
     }else{
       try{
-        refreshHero();
+        refreshHeroWithPipeline(filtered);
       }catch(err){
         console.warn('[main] Test env hero refresh skipped:', err?.message || err);
       }
@@ -189,17 +280,21 @@ export async function boot(){
     showRetryableError('Fehler beim Laden der Daten', () => window.location.reload());
     throw error;
   }
-  // Re-render grid on TMDB hydration progress to reveal new posters
+  // Re-render grid on TMDB hydration progress to reveal new posters/data
+  // Note: Grid cards only re-render if user has enabled TMDB images
+  // Hero banner always uses TMDB data when credentials are available
   let tmdbRaf;
   window.addEventListener('tmdb:chunk', ()=>{
     if(tmdbRaf) return; // throttle to animation frame
     tmdbRaf = requestAnimationFrame(()=>{
       tmdbRaf = null;
       try{
-        if(localStorage.getItem('useTmdb')==='1'){
+        const useTmdbCards = localStorage.getItem('useTmdb')==='1';
+        if(useTmdbCards){
           renderGrid(getState().view);
-          refreshHero();
         }
+        // Always refresh hero when new TMDB data arrives (hero uses TMDB automatically)
+        refreshHeroWithPipeline();
       }catch(err){
         console.warn('[main] TMDB chunk render failed:', err.message);
       }
@@ -207,10 +302,12 @@ export async function boot(){
   });
   window.addEventListener('tmdb:done', ()=>{
     try{
-      if(localStorage.getItem('useTmdb')==='1'){
+      const useTmdbCards = localStorage.getItem('useTmdb')==='1';
+      if(useTmdbCards){
         renderGrid(getState().view);
-        refreshHero();
       }
+      // Always refresh hero when TMDB hydration is complete
+      refreshHeroWithPipeline();
     }catch(err){
       console.warn('[main] TMDB done render failed:', err.message);
     }
@@ -224,10 +321,14 @@ function applyHashNavigation(hash){
   if(/^#\/(movies|shows)$/.test(hash)){
     const view = hash.includes('shows') ? 'shows' : 'movies';
     setState({ view });
+    HeroPipeline.setActiveView(view);
+    HeroPipeline.ensureKind(view === 'shows' ? 'series' : 'movies').catch(err => {
+      console.warn('[main] Failed to ensure hero pool on hash navigation:', err?.message || err);
+    });
     const result = Filter.applyFilters();
     renderSwitch();
     renderGrid(view);
-    refreshHero(result);
+    refreshHeroWithPipeline(result);
     return true;
   }
   const match = hash.match(/^#\/(movie|show)\/(.+)/);
@@ -272,12 +373,21 @@ function renderSwitch(){
       const view = btn.dataset.lib === 'series' ? 'shows' : 'movies';
       if(getState().view === view) return;
       setState({ view });
+      HeroPipeline.setActiveView(view);
+      if(HeroPipeline.isEnabled()){
+        const ensure = HeroPipeline.ensureKind(view === 'shows' ? 'series' : 'movies');
+        if(ensure && typeof ensure.catch === 'function'){
+          ensure.catch(err => {
+            console.warn('[main] Failed to ensure hero pool on view switch:', err?.message || err);
+          });
+        }
+      }
       const target = view === 'movies' ? '#/movies' : '#/shows';
       navigateToHash(target, { silent: true });
       renderSwitch();
       const result = Filter.applyFilters();
       renderGrid(view);
-      refreshHero(result);
+      refreshHeroWithPipeline(result);
     });
     btn.dataset.bound = 'true';
   });
@@ -331,7 +441,7 @@ function renderFooterMeta(){
 
 Filter.setFiltersUpdatedHandler(items => {
   try{
-    refreshHero(items);
+    refreshHeroWithPipeline(items);
   }catch(err){
     console.warn('[main] Failed to refresh hero from filters handler:', err?.message);
   }
@@ -339,7 +449,7 @@ Filter.setFiltersUpdatedHandler(items => {
 
 setHeroRefreshHandler(items => {
   try{
-    refreshHero(items);
+    refreshHeroWithPipeline(items);
   }catch(err){
     console.warn('[main] Failed to refresh hero from settings handler:', err?.message);
   }
@@ -478,25 +588,28 @@ function initHeaderInteractions(){
       if(titleEl) titleEl.classList.remove('sr-only');
     });
   }
-  const subtitle = document.getElementById('heroSubtitle');
+  const subtitle = document.getElementById('heroTagline');
   const TAGLINES = [
-    'Offline stöbern & Wunschlisten teilen',
-    'Filter. Finden. Freuen.',
-    'Filme & Serien – stressfrei sichtbar',
-    'Schneller als jeder SMB-Share',
-    'Merkliste zuerst, Streit später'
+    'Curated spotlights and smart filters for every mood.',
+    'Bring Plex highlights on the road with offline browsing.',
+    'Plan your next movie night with shareable watchlists.'
   ];
-  let idx = 0; if(subtitle) subtitle.textContent = TAGLINES[idx];
+  let idx = 0;
+  if(subtitle && !subtitle.textContent){
+    subtitle.textContent = TAGLINES[idx];
+  }
   function rotate(){
-    if(!subtitle || subtitle.dataset.taglinePaused==='1') return;
+    if(!subtitle || subtitle.dataset.taglinePaused === '1') return;
     subtitle.classList.add('is-fading');
     setTimeout(()=>{
-      if(!subtitle || subtitle.dataset.taglinePaused==='1'){ subtitle && subtitle.classList.remove('is-fading'); return; }
-      idx = (idx+1)%TAGLINES.length; subtitle.textContent = TAGLINES[idx]; subtitle.classList.remove('is-fading');
+      if(!subtitle || subtitle.dataset.taglinePaused === '1'){ subtitle && subtitle.classList.remove('is-fading'); return; }
+      idx = (idx + 1) % TAGLINES.length;
+      subtitle.textContent = TAGLINES[idx];
+      subtitle.classList.remove('is-fading');
     }, 280);
   }
   if(subtitle){
-    subtitle.dataset.taglinePaused='0';
+    subtitle.dataset.taglinePaused = subtitle.dataset.taglinePaused === '1' ? '1' : '0';
     if(taglineTicker){
       clearInterval(taglineTicker);
     }

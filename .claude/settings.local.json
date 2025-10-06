@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(echo \"// Prüfe localStorage für Hero-Pool-Daten mit korrektem Key\nconst heroMovies = localStorage.getItem(''heroPool:movies'');\nconst heroSeries = localStorage.getItem(''heroPool:series'');\n\nconsole.log(''Hero Movies exists:'', !!heroMovies);\nconsole.log(''Hero Series exists:'', !!heroSeries);\n\nif(heroMovies) {\n  const parsed = JSON.parse(heroMovies);\n  console.log(''Hero Movies Pool:'', parsed);\n  if(parsed.items?.[0]) {\n    console.log(''First item:'', parsed.items[0]);\n    console.log(''Has backdrops?'', parsed.items[0]?.backdrops?.length || 0);\n    console.log(''Backdrops:'', parsed.items[0]?.backdrops);\n    console.log(''Language:'', parsed.items[0]?.language);\n  }\n}\n\n// Liste alle Hero-Keys\nconst allKeys = Object.keys(localStorage).filter(k => k.includes(''hero'') || k.includes(''Hero''));\nconsole.log(''All hero-related keys:'', allKeys);\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

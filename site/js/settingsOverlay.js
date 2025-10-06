@@ -1,5 +1,6 @@
 import { getState } from './state.js';
 import { renderGrid } from './grid.js';
+import * as HeroPipeline from './hero/pipeline.js';
 
 let heroRefreshHandler = null;
 let reduceMotionHandler = null;
@@ -49,6 +50,120 @@ export function initSettingsOverlay(cfg){
   const reduce = document.getElementById('prefReduceMotion');
   const useTmdb = document.getElementById('useTmdbSetting');
   const resetFilters = document.getElementById('resetFilters');
+  const body = overlay?.querySelector('.settings-body');
+
+  let heroStatus = document.getElementById('heroCacheStatus');
+  let heroRefreshMovies = document.getElementById('heroRefreshMovies');
+  let heroRefreshShows = document.getElementById('heroRefreshShows');
+  let heroRefreshAll = document.getElementById('heroRefreshAll');
+
+  if(!heroStatus && body){
+    const heroRow = document.createElement('div');
+    heroRow.className = 'settings-row';
+    heroRow.innerHTML = `
+      <div class="settings-inline" id="heroRefreshControls">
+        <button type="button" id="heroRefreshMovies" class="secondary">Highlights Filme aktualisieren</button>
+        <button type="button" id="heroRefreshShows" class="secondary">Highlights Serien aktualisieren</button>
+        <button type="button" id="heroRefreshAll" class="secondary">Alle Highlights aktualisieren</button>
+      </div>
+      <p class="settings-help" id="heroCacheStatus" aria-live="polite"></p>
+    `;
+    body.append(heroRow);
+    heroStatus = heroRow.querySelector('#heroCacheStatus');
+    heroRefreshMovies = heroRow.querySelector('#heroRefreshMovies');
+    heroRefreshShows = heroRow.querySelector('#heroRefreshShows');
+    heroRefreshAll = heroRow.querySelector('#heroRefreshAll');
+  }
+
+  const heroButtons = [heroRefreshMovies, heroRefreshShows, heroRefreshAll].filter(Boolean);
+  let heroTask = null;
+
+  function setHeroButtonsDisabled(disabled, reason){
+    heroButtons.forEach(btn => {
+      if(!btn) return;
+      btn.disabled = disabled || !HeroPipeline.isEnabled();
+      if(btn.disabled && reason){ btn.dataset.heroBusy = reason; }
+      else { btn.removeAttribute('data-hero-busy'); }
+    });
+  }
+
+  function formatUpdated(ts){
+    if(!Number.isFinite(ts) || ts <= 0) return 'unbekannt';
+    try {
+      return new Date(ts).toLocaleString(undefined, { hour: '2-digit', minute: '2-digit' });
+    } catch (_err) {
+      return 'unbekannt';
+    }
+  }
+
+  function formatExpiry(ts){
+    if(!Number.isFinite(ts) || ts <= 0) return 'kein Ablauf';
+    const diff = ts - Date.now();
+    if(diff <= 0) return 'abgelaufen';
+    const minutes = diff / 60000;
+    if(minutes < 1) return 'läuft in <1 Min ab';
+    if(minutes < 60) return `läuft in ${Math.round(minutes)} Min ab`;
+    const hours = minutes / 60;
+    if(hours < 24) return `läuft in ${Math.round(hours)} Std ab`;
+    const days = hours / 24;
+    return `läuft in ${Math.round(days)} Tg ab`;
+  }
+
+  function describeHeroStatus(label, status){
+    if(!status) return `${label}: keine Daten`;
+    if(status.state === 'disabled') return `${label}: deaktiviert`;
+    if(status.state === 'loading' || status.regenerating) return `${label}: wird aktualisiert …`;
+    if(status.state === 'error') return `${label}: Fehler (${status.lastError || 'unbekannt'})`;
+    if(status.state === 'stale'){
+      return `${label}: ${status.size} Einträge (Cache abgelaufen)`;
+    }
+    const updated = formatUpdated(status.updatedAt);
+    const expiry = formatExpiry(status.expiresAt);
+    return `${label}: ${status.size} Einträge (Update ${updated}, ${expiry})`;
+  }
+
+  function updateHeroStatus(snapshot){
+    if(!heroStatus) return;
+    if(!snapshot || !HeroPipeline.isEnabled() || snapshot.enabled === false){
+      heroStatus.textContent = 'Hero-Pipeline deaktiviert – Legacy-Hero aktiv.';
+      setHeroButtonsDisabled(true, 'disabled');
+      return;
+    }
+    const busy = !!(snapshot.status?.movies?.regenerating || snapshot.status?.series?.regenerating);
+    setHeroButtonsDisabled(busy, busy ? 'busy' : '');
+    const segments = [];
+    segments.push(describeHeroStatus('Filme', snapshot.status?.movies));
+    segments.push(describeHeroStatus('Serien', snapshot.status?.series));
+    if(snapshot.tmdb){
+      if(!snapshot.tmdb.allowed) segments.push('TMDb deaktiviert');
+      else segments.push(`TMDb ${snapshot.tmdb.active ? 'aktiv' : 'aus (Toggle)'}`);
+    }
+    if(snapshot.featureSource){
+      segments.push(`Feature-Flag: ${snapshot.featureSource}`);
+    }
+    heroStatus.textContent = segments.join(' • ');
+  }
+
+  async function runHeroRegeneration(kind='all', label='Highlights aktualisieren …'){
+    if(!HeroPipeline.isEnabled()) return;
+    if(heroTask){
+      try{ await heroTask; }catch(_err){}
+    }
+    if(heroStatus && label){ heroStatus.textContent = label; }
+    setHeroButtonsDisabled(true, 'busy');
+    const action = (kind === 'movies' || kind === 'series') ? HeroPipeline.refreshKind(kind) : HeroPipeline.refreshAll();
+    heroTask = action.then(()=>{
+      notifyHeroRefresh();
+    }).catch(err => {
+      console.warn('[settingsOverlay] Hero regeneration failed:', err?.message || err);
+    }).finally(()=>{
+      heroTask = null;
+      setHeroButtonsDisabled(false);
+    });
+    return heroTask;
+  }
+
+  HeroPipeline.subscribe(updateHeroStatus);
 
   if(overlay && overlay.hidden) overlay.setAttribute('aria-hidden', 'true');
 
@@ -211,8 +326,13 @@ export function initSettingsOverlay(cfg){
     try{ setUseTmdbAvailability(!!token || !!(cfg&&cfg.tmdbApiKey)); }
     catch(err){ console.warn('[settingsOverlay] Failed to update TMDB availability:', err?.message || err); }
     setTmdbStatus('', '');
-    if(!token){ setTmdbStatus('Kein Token hinterlegt. TMDB ist deaktiviert.', 'info'); }
-    if(!cfg?.tmdbEnabled){ setTmdbStatus('Hinweis: TMDB in config.json deaktiviert (tmdbEnabled=false).', 'info'); }
+
+    // Check if TMDB is disabled in config
+    if(cfg && cfg.tmdbEnabled === false){
+      setTmdbStatus('⚠️ TMDB ist in config.json deaktiviert (tmdbEnabled: false). Hero-Banner benötigt TMDB!', 'error');
+    }else if(!token){
+      setTmdbStatus('Kein Token hinterlegt. TMDB ist deaktiviert.', 'info');
+    }
     // Optional: Auto-Check bei geöffnetem Dialog
     if(token){
       (async()=>{
@@ -234,11 +354,27 @@ export function initSettingsOverlay(cfg){
     } else { setUseTmdbAvailability(!!(cfg&&cfg.tmdbApiKey)); }
   }
 
+  heroRefreshMovies && heroRefreshMovies.addEventListener('click', ()=>{
+    runHeroRegeneration('movies', 'Aktualisiere Film-Highlights …');
+  });
+  heroRefreshShows && heroRefreshShows.addEventListener('click', ()=>{
+    runHeroRegeneration('series', 'Aktualisiere Serien-Highlights …');
+  });
+  heroRefreshAll && heroRefreshAll.addEventListener('click', ()=>{
+    runHeroRegeneration('all', 'Aktualisiere alle Highlights …');
+  });
+
   tmdbSave && tmdbSave.addEventListener('click', async ()=>{
     const raw = String(tmdbInput?.value||'').trim();
     try{ localStorage.setItem('tmdbToken', raw); }
     catch(err){ console.warn('[settingsOverlay] Failed to persist tmdbToken:', err?.message || err); }
-    if(!raw){ setTmdbStatus('Kein Token hinterlegt. TMDB ist deaktiviert.', 'info'); setUseTmdbAvailability(!!(cfg&&cfg.tmdbApiKey)); return; }
+    if(!raw){
+      setTmdbStatus('Kein Token hinterlegt. TMDB ist deaktiviert.', 'info');
+      setUseTmdbAvailability(!!(cfg&&cfg.tmdbApiKey));
+      HeroPipeline.updateTmdbActive(useTmdb?.checked ?? false);
+      runHeroRegeneration('all', 'Highlights aktualisieren (Token entfernt)…');
+      return;
+    }
     setTmdbStatus('Prüfe Token...', 'pending');
     try{
       const svc = await import('./services/tmdb.js');
@@ -253,6 +389,15 @@ export function initSettingsOverlay(cfg){
         else setTmdbStatus('Token ungültig oder keine Berechtigung (401).', 'error');
       }
     }catch(e){ setTmdbStatus('Prüfung fehlgeschlagen. Netzwerk/Browser-Konsole prüfen.', 'error'); }
+
+    // Check if tmdbEnabled is false and warn user
+    if(cfg && cfg.tmdbEnabled === false && raw){
+      setTmdbStatus('⚠️ Token gespeichert, aber TMDB in config.json deaktiviert. Bitte "tmdbEnabled": true setzen!', 'error');
+    }
+
+    // Hero uses TMDB automatically when token is available - update pipeline state
+    HeroPipeline.updateTmdbActive(true);
+    runHeroRegeneration('all', 'Highlights aktualisieren (Token geändert)…');
   });
 
   tmdbTest && tmdbTest.addEventListener('click', async ()=>{
@@ -271,7 +416,19 @@ export function initSettingsOverlay(cfg){
       }
     }catch(e){ setTmdbStatus('Prüfung fehlgeschlagen. Netzwerk/Browser-Konsole prüfen.', 'error'); }
   });
-  tmdbClear && tmdbClear.addEventListener('click', ()=>{ import('./services/tmdb.js').then(m=>m.clearCache?.()); });
+  tmdbClear && tmdbClear.addEventListener('click', ()=>{
+    // Use safe clear utility that preserves user settings
+    import('./utils.js').then(m=>{
+      const result = m.clearHeroCache?.();
+      if(result && !result.error){
+        console.log('[settingsOverlay] Cleared hero cache:', result);
+        setTmdbStatus(`Cache geleert: ${result.heroEntries} Hero-Einträge, ${result.tmdbCacheEntries} TMDB-Einträge. Token erhalten.`, 'success');
+      }
+    });
+    // Also clear the TMDB service cache
+    import('./services/tmdb.js').then(m=>m.clearCache?.());
+    runHeroRegeneration('all', 'Highlights aktualisieren (TMDB-Cache geleert)…');
+  });
   reduce && reduce.addEventListener('change', ()=>{
     try{ localStorage.setItem('prefReduceMotion', reduce.checked ? '1' : '0'); }
     catch(err){ console.warn('[settingsOverlay] Failed to store reduce-motion preference:', err?.message || err); }
@@ -291,6 +448,11 @@ export function initSettingsOverlay(cfg){
       setTimeout(()=>{ if(useTmdb.checked) renderGrid(getState().view); }, 1200);
       setTimeout(()=>{ if(useTmdb.checked) renderGrid(getState().view); }, 3000);
     }
+    // Note: Hero TMDB is automatic based on token, not card toggle
+    // But we still notify pipeline to refresh state
+    HeroPipeline.updateTmdbActive(true);
+    // Only regenerate hero if card toggle changed (cards don't affect hero)
+    // Actually, no need to regenerate hero for card toggle - it uses its own logic
     renderGrid(getState().view);
     notifyHeroRefresh();
   });

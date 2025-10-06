@@ -76,12 +76,12 @@
           <h1 class="site-header__label">Plex-Katalog</h1>
         </div>
       </div>
-      <nav class="site-nav" aria-label="Bibliotheken">
+      <nav class="site-nav" aria-label="Libraries">
         <div class="site-nav__tabs" id="libraryTabs">
-          <button type="button" class="site-nav__tab" data-lib="movies" aria-pressed="true">Filme</button>
-          <button type="button" class="site-nav__tab" data-lib="series" aria-pressed="false">Serien</button>
+          <button type="button" class="site-nav__tab" data-lib="movies" aria-pressed="true">Movies</button>
+          <button type="button" class="site-nav__tab" data-lib="series" aria-pressed="false">Shows</button>
         </div>
-        <button id="watchlistToggle" type="button" class="watchlist-button" aria-expanded="false" aria-controls="watchlistPanel">Merkliste <span class="count" id="watchlistCount">0</span></button>
+        <button id="watchlistToggle" type="button" class="watchlist-button" aria-expanded="false" aria-controls="watchlistPanel">Watchlist <span class="count" id="watchlistCount">0</span></button>
         <button id="headerSettingsBtn" type="button" class="header-settings-button" aria-haspopup="dialog" aria-controls="settingsOverlay" aria-label="Einstellungen öffnen">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-settings"></use></svg>
         </button>
@@ -89,13 +89,27 @@
     </div>
   </header>
 
-  <section class="hero" id="hero">
-    <div class="hero__backdrop" aria-hidden="true"></div>
-    <div class="wrap hero__content">
-      <div class="hero__copy">
-        <h2 class="hero__title" id="heroTitle">Entdecke Plex wie im Kino</h2>
-        <p class="hero__subtitle" id="heroSubtitle">Offline stöbern &amp; Wunschlisten teilen</p>
-        <button type="button" class="hero__cta" id="heroCta" data-modal-target="modalV2">Film-Highlights anzeigen</button>
+  <section class="hero" id="hero" data-state="empty">
+    <div class="hero__media" aria-hidden="true">
+      <picture class="hero__picture" id="heroPicture" hidden>
+        <source id="heroBackdropLarge" media="(min-width: 75rem)" />
+        <source id="heroBackdropMedium" media="(min-width: 48rem)" />
+        <img id="heroBackdropImage" src="" alt="" loading="lazy" decoding="async" hidden />
+      </picture>
+      <div class="hero__media-overlay"></div>
+    </div>
+    <div class="wrap hero__inner">
+      <div class="hero__body">
+        <p class="hero__eyebrow">Featured highlight</p>
+        <h2 class="hero__title" id="heroTitle">Discover Plex like it&rsquo;s premiere night</h2>
+        <p class="hero__tagline" id="heroTagline">Curated spotlights and smart filters for every mood.</p>
+        <p class="hero__overview" id="heroOverview">Browse your Plex library offline, keep personal watchlists, and open cinematic detail views without leaving the couch.</p>
+        <div class="hero__meta" id="heroMeta" hidden>
+          <div class="hero__meta-row" data-row="primary" id="heroMetaPrimary"></div>
+          <div class="hero__meta-row" data-row="secondary" id="heroMetaSecondary"></div>
+          <div class="hero__meta-row" data-row="tertiary" id="heroMetaTertiary"></div>
+        </div>
+        <button type="button" class="hero__cta" id="heroCta" data-modal-target="modalV2">Browse featured titles</button>
       </div>
     </div>
     <div id="heroTimer" class="hero-timer" aria-hidden="true">
@@ -194,6 +208,12 @@
         <button type="button" id="openWatchlist" class="btn-link">Merkliste anzeigen</button>
         <button type="button" id="openDebug" class="btn-link">Debug</button>
       </nav>
+      <div class="footer-credits">
+        <a class="footer-credits__link" href="https://www.themoviedb.org/" target="_blank" rel="noopener noreferrer">
+          <img src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_long_2.svg" alt="TMDb" width="120" height="22" loading="lazy" decoding="async">
+        </a>
+        <p class="footer-credits__text">This product uses the TMDb API but is not endorsed or certified by TMDb.</p>
+      </div>
     </div>
   </footer>
 
@@ -226,8 +246,8 @@
           <p class="settings-help">Deaktiviert scroll-basierte Animationen von Hero und Filterbar.</p>
         </div>
         <div class="settings-row">
-          <label class="settings-inline"><input id="useTmdbSetting" type="checkbox" /> TMDB-Bilder nutzen <span id="tmdbStatusBadge" class="status-badge" aria-hidden="true"></span></label>
-          <p class="settings-help">Nur verfügbar mit gültigem Token.</p>
+          <label class="settings-inline"><input id="useTmdbSetting" type="checkbox" /> TMDB-Bilder für Kartengalerie nutzen <span id="tmdbStatusBadge" class="status-badge" aria-hidden="true"></span></label>
+          <p class="settings-help">Zeigt TMDB-Poster in der Kartengalerie statt Plex-Bilder. Nur verfügbar mit gültigem Token. <strong>Hinweis:</strong> Das Hero-Banner nutzt automatisch TMDB-Daten, wenn ein Token vorhanden ist.</p>
         </div>
         <div class="settings-row">
           <p class="settings-help">Das Cinematic-Modal ist standardmäßig aktiv.</p>

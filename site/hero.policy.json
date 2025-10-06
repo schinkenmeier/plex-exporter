@@ -1,0 +1,33 @@
+{
+  "poolSizeMovies": 10,
+  "poolSizeSeries": 10,
+  "slots": {
+    "new": { "quota": 0.3 },
+    "topRated": { "quota": 0.3 },
+    "oldButGold": { "quota": 0.2 },
+    "random": { "quota": 0.2 }
+  },
+  "diversity": {
+    "genre": 0.45,
+    "year": 0.35,
+    "antiRepeat": 0.2
+  },
+  "rotation": {
+    "intervalMinutes": 360,
+    "minPoolSize": 8
+  },
+  "textClamp": {
+    "title": 96,
+    "subtitle": 240,
+    "summary": 220
+  },
+  "fallback": {
+    "prefer": "movies",
+    "allowDuplicates": false
+  },
+  "language": "en-US",
+  "cache": {
+    "ttlHours": 24,
+    "graceMinutes": 30
+  }
+}
