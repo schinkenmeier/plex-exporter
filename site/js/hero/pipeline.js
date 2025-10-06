@@ -1,12 +1,14 @@
 import { ensureHeroPool, forceRegeneratePool } from './pool.js';
 import { getStoredPool } from './storage.js';
 import { useTmdbOn } from '../utils.js';
+import { addRateLimitListener, getRateLimitState } from './tmdbClient.js';
 
 const LOG_PREFIX = '[hero:pipeline]';
 const FEATURE_FLAG_KEY = 'feature.heroPipeline';
 const UPDATE_EVENT = 'hero:pipeline-update';
 
 const listeners = new Set();
+let detachRateLimitListener = null;
 
 const state = {
   cfg: {},
@@ -22,7 +24,14 @@ const state = {
   },
   tmdb: {
     allowed: false,
-    active: false
+    active: false,
+    rateLimit: {
+      active: false,
+      until: 0,
+      retryAfterMs: 0,
+      lastStatus: null,
+      strikes: 0
+    }
   },
   activeKind: 'movies',
   inFlight: new Map()
@@ -43,6 +52,32 @@ function now(){
 function normalizeKind(kind){
   if(kind === 'show' || kind === 'shows' || kind === 'series') return 'series';
   return 'movies';
+}
+
+function rateLimitEquals(a, b){
+  if(a === b) return true;
+  if(!a || !b) return false;
+  return a.active === b.active
+    && a.until === b.until
+    && a.retryAfterMs === b.retryAfterMs
+    && a.lastStatus === b.lastStatus
+    && a.strikes === b.strikes;
+}
+
+function attachRateLimitListener(){
+  if(detachRateLimitListener) return;
+  try {
+    state.tmdb.rateLimit = { ...getRateLimitState() };
+  } catch (_err) {
+    state.tmdb.rateLimit = { active: false, until: 0, retryAfterMs: 0, lastStatus: null, strikes: 0 };
+  }
+  const handler = info => {
+    const next = info ? { ...info } : { active: false, until: 0, retryAfterMs: 0, lastStatus: null, strikes: 0 };
+    if(rateLimitEquals(state.tmdb.rateLimit, next)) return;
+    state.tmdb.rateLimit = next;
+    notify();
+  };
+  detachRateLimitListener = addRateLimitListener(handler);
 }
 
 function createStatus(kind){
@@ -102,7 +137,11 @@ function buildSnapshot(){
     featureSource: state.featureSource,
     ready: state.ready,
     activeKind: state.activeKind,
-    tmdb: { ...state.tmdb },
+    tmdb: {
+      allowed: state.tmdb.allowed,
+      active: state.tmdb.active,
+      rateLimit: state.tmdb.rateLimit ? { ...state.tmdb.rateLimit } : { active: false, until: 0, retryAfterMs: 0, lastStatus: null, strikes: 0 }
+    },
     status: {
       movies: cloneStatus(state.status.movies),
       series: cloneStatus(state.status.series)
@@ -307,6 +346,7 @@ export function configure({ cfg, policy } = {}){
   state.featureSource = feature.source;
   state.tmdb.allowed = !!cfg?.tmdbEnabled;
   state.tmdb.active = state.tmdb.allowed && useTmdbOn();
+  attachRateLimitListener();
   loadStored('movies');
   loadStored('series');
   refreshReadyState();

@@ -5,7 +5,14 @@ const STORAGE_KEY = 'hero.tmdbCache.v1';
 const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours
 const MAX_CACHE_ENTRIES = 60;
 const MIN_REQUEST_INTERVAL = 400; // ms
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 4;
+const BASE_RETRY_DELAY = 400; // ms
+const RETRY_DELAY_CAP = 8000; // ms
+const RATE_LIMIT_BASE_DELAY = 1200; // ms
+const RATE_LIMIT_CAP = 60000; // ms
+const MAX_RATE_LIMIT_STRIKES = 5;
+const RATE_LIMIT_RECOVERY_WINDOW = 90_000; // ms
+const PENALTY_DECAY_STEP = 1;
 const LOG_PREFIX = '[hero:tmdbClient]';
 
 let memoryCache = new Map();
@@ -14,6 +21,16 @@ let persistTimer = null;
 let lastRequestAt = 0;
 let configPromise = null;
 let cachedConfig = {};
+let throttlePenaltyUntil = 0;
+let rateLimitState = {
+  active: false,
+  until: 0,
+  retryAfterMs: 0,
+  lastStatus: null,
+  lastHitAt: 0,
+  strikes: 0
+};
+const rateLimitListeners = new Set();
 
 function logWarn(...args){
   try {
@@ -27,6 +44,95 @@ function now(){ return Date.now(); }
 
 function delay(ms){
   return new Promise(resolve => setTimeout(resolve, Math.max(0, ms || 0)));
+}
+
+function shallowEqual(a, b){
+  if(a === b) return true;
+  if(!a || !b) return false;
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+  if(keysA.length !== keysB.length) return false;
+  for(const key of keysA){
+    if(a[key] !== b[key]) return false;
+  }
+  return true;
+}
+
+function getRateLimitSnapshot(){
+  return {
+    active: !!rateLimitState.active,
+    until: Number(rateLimitState.until) || 0,
+    retryAfterMs: Number(rateLimitState.retryAfterMs) || 0,
+    lastStatus: rateLimitState.lastStatus ?? null,
+    lastHitAt: Number(rateLimitState.lastHitAt) || 0,
+    strikes: Number(rateLimitState.strikes) || 0
+  };
+}
+
+function notifyRateLimitListeners(){
+  const snapshot = getRateLimitSnapshot();
+  for(const listener of rateLimitListeners){
+    try {
+      listener(snapshot);
+    } catch (err) {
+      logWarn('Rate limit listener failed:', err?.message || err);
+    }
+  }
+}
+
+function updateRateLimitState(patch){
+  const next = { ...getRateLimitSnapshot(), ...patch };
+  if(shallowEqual(rateLimitState, next)) return rateLimitState;
+  rateLimitState = next;
+  notifyRateLimitListeners();
+  return rateLimitState;
+}
+
+function computeRetryDelay(attempt){
+  return Math.min(RETRY_DELAY_CAP, BASE_RETRY_DELAY * Math.pow(2, Math.max(0, attempt)));
+}
+
+function computeRateLimitDelay(strikes, fallback){
+  const scaled = RATE_LIMIT_BASE_DELAY * Math.pow(2, Math.max(0, strikes - 1));
+  const candidate = Math.max(fallback || 0, scaled);
+  return Math.min(RATE_LIMIT_CAP, candidate);
+}
+
+function registerRateLimitHit(retryAfterMs, status = 429){
+  const nowTs = now();
+  const strikes = Math.min(MAX_RATE_LIMIT_STRIKES, (rateLimitState.strikes || 0) + 1);
+  const delayMs = computeRateLimitDelay(strikes, retryAfterMs);
+  throttlePenaltyUntil = Math.max(throttlePenaltyUntil, nowTs + delayMs);
+  updateRateLimitState({
+    active: true,
+    strikes,
+    retryAfterMs: delayMs,
+    until: nowTs + delayMs,
+    lastStatus: status,
+    lastHitAt: nowTs
+  });
+  return delayMs;
+}
+
+function decayRateLimitStrikes(){
+  if(!rateLimitState.strikes) return;
+  const strikes = Math.max(0, rateLimitState.strikes - PENALTY_DECAY_STEP);
+  updateRateLimitState({
+    strikes,
+    active: rateLimitState.active && rateLimitState.until > now()
+  });
+}
+
+function refreshRateLimit(){
+  const nowTs = now();
+  if(rateLimitState.active && nowTs >= rateLimitState.until){
+    updateRateLimitState({ active: false, retryAfterMs: 0, until: 0 });
+  } else if(!rateLimitState.active && rateLimitState.strikes > 0 && nowTs - rateLimitState.lastHitAt > RATE_LIMIT_RECOVERY_WINDOW){
+    updateRateLimitState({ strikes: Math.max(0, rateLimitState.strikes - PENALTY_DECAY_STEP) });
+  }
+  if(throttlePenaltyUntil && nowTs >= throttlePenaltyUntil){
+    throttlePenaltyUntil = 0;
+  }
 }
 
 function getCacheKey(type, id, language){
@@ -155,10 +261,6 @@ function shouldRetryError(err){
   return false;
 }
 
-function backoffDelay(attempt){
-  return Math.min(2000, 300 * Math.pow(2, attempt));
-}
-
 function withAuth(url, auth){
   if(!auth || !auth.value) return { url, init: { headers: { 'Accept': 'application/json' } } };
   if(auth.kind === 'apikey'){
@@ -180,9 +282,13 @@ function withAuth(url, auth){
 }
 
 async function throttle(){
-  const elapsed = now() - lastRequestAt;
-  if(elapsed < MIN_REQUEST_INTERVAL){
-    await delay(MIN_REQUEST_INTERVAL - elapsed);
+  refreshRateLimit();
+  const nowTs = now();
+  const waitInterval = Math.max(0, (lastRequestAt + MIN_REQUEST_INTERVAL) - nowTs);
+  const waitPenalty = Math.max(0, throttlePenaltyUntil - nowTs);
+  const wait = Math.max(waitInterval, waitPenalty);
+  if(wait > 0){
+    await delay(wait);
   }
   lastRequestAt = now();
 }
@@ -196,22 +302,35 @@ async function fetchJson(url, auth, { signal } = {}, attempt = 0){
     response = await fetch(finalUrl, requestInit);
   } catch (err) {
     if(attempt < MAX_RETRIES && shouldRetryError(err)){
-      await delay(backoffDelay(attempt));
+      const wait = computeRetryDelay(attempt);
+      await delay(wait);
       return fetchJson(url, auth, { signal }, attempt + 1);
     }
     throw err;
   }
   if(!response.ok){
-    if(shouldRetryStatus(response.status) && attempt < MAX_RETRIES){
-      const retryAfter = parseRetryAfter(response.headers.get('retry-after')) || backoffDelay(attempt);
-      await delay(retryAfter);
+    const status = response.status;
+    const retryable = shouldRetryStatus(status) && attempt < MAX_RETRIES;
+    if(status === 429){
+      const retryAfter = parseRetryAfter(response.headers.get('retry-after'));
+      const wait = registerRateLimitHit(retryAfter, status);
+      if(retryable){
+        await delay(wait);
+        return fetchJson(url, auth, { signal }, attempt + 1);
+      }
+    } else if(retryable){
+      const wait = computeRetryDelay(attempt);
+      await delay(wait);
       return fetchJson(url, auth, { signal }, attempt + 1);
     }
     const text = await response.text().catch(()=> '');
-    const err = new Error(`HTTP ${response.status}${text ? `: ${text}` : ''}`);
-    err.status = response.status;
+    const err = new Error(`HTTP ${status}${text ? `: ${text}` : ''}`);
+    err.status = status;
+    if(status === 429) err.code = 'RATE_LIMIT';
     throw err;
   }
+  decayRateLimitStrikes();
+  refreshRateLimit();
   return response.json();
 }
 
@@ -340,6 +459,21 @@ export async function resolveAuth(settings={}, options={}){
     if(fallback) return { ...fallback, source: 'fallback' };
   }
   return null;
+}
+
+export function getRateLimitState(){
+  return getRateLimitSnapshot();
+}
+
+export function addRateLimitListener(listener){
+  if(typeof listener !== 'function') return () => {};
+  rateLimitListeners.add(listener);
+  try {
+    listener(getRateLimitSnapshot());
+  } catch (err) {
+    logWarn('Rate limit listener threw during init:', err?.message || err);
+  }
+  return () => rateLimitListeners.delete(listener);
 }
 
 export function tmdbImageUrl(path, size='original'){
@@ -582,5 +716,7 @@ export default {
   resolveAuth,
   clearCache,
   getCached,
-  tmdbImageUrl
+  tmdbImageUrl,
+  getRateLimitState,
+  addRateLimitListener
 };

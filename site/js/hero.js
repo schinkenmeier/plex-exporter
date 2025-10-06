@@ -8,6 +8,25 @@ const NUMBER_FORMAT = typeof Intl !== 'undefined' ? new Intl.NumberFormat('en-US
 let currentHeroEntry = null;
 let heroDefaults = null;
 let navigateToHashHandler = null;
+let lastFallbackReason = null;
+
+const HERO_FALLBACK_COPY = {
+  default: {
+    title: 'Highlights temporarily unavailable',
+    tagline: 'TMDb data could not be loaded just now.',
+    overview: 'The hero banner falls back to a neutral gradient until artwork and metadata are available again. Feel free to keep browsing and refresh later.'
+  },
+  'rate-limit': {
+    title: 'Highlights are catching their breath',
+    tagline: 'TMDb is currently rate limiting our artwork requests.',
+    overview: 'We are slowing down hero generation until the limit resets. Your library stays accessible in the meantime.'
+  },
+  error: {
+    title: 'Highlights paused',
+    tagline: 'Fresh TMDb data is temporarily unavailable.',
+    overview: 'We will automatically retry fetching artwork. You can also trigger a manual refresh from the settings when you are ready.'
+  }
+};
 
 export function setCurrentHeroItem(item){
   currentHeroEntry = item || null;
@@ -16,6 +35,10 @@ export function setCurrentHeroItem(item){
 
 export function getCurrentHeroItem(){
   return currentHeroEntry;
+}
+
+export function getHeroFallbackReason(){
+  return lastFallbackReason;
 }
 
 export function setHeroDefaults(defaults){
@@ -43,6 +66,69 @@ export function setHeroNavigation(handler){
   navigateToHashHandler = typeof handler === 'function' ? handler : null;
 }
 
+export function showHeroFallback(reason = 'default', overrides = {}){
+  const hero = document.getElementById('hero');
+  const heroTitle = document.getElementById('heroTitle');
+  const heroTagline = document.getElementById('heroTagline');
+  const heroOverview = document.getElementById('heroOverview');
+  const heroCta = document.getElementById('heroCta');
+  const heroMeta = document.getElementById('heroMeta');
+  const metaPrimary = document.getElementById('heroMetaPrimary');
+  const metaSecondary = document.getElementById('heroMetaSecondary');
+  const metaTertiary = document.getElementById('heroMetaTertiary');
+  const heroPicture = document.getElementById('heroPicture');
+  const heroImage = document.getElementById('heroBackdropImage');
+  const heroSourceLarge = document.getElementById('heroBackdropLarge');
+  const heroSourceMedium = document.getElementById('heroBackdropMedium');
+
+  if(!hero || !heroTitle || !heroTagline || !heroOverview || !heroCta || !heroMeta) return false;
+
+  const defaults = ensureHeroDefaults();
+  const copy = { ...HERO_FALLBACK_COPY.default, ...(HERO_FALLBACK_COPY[reason] || {}), ...(overrides || {}) };
+
+  setCurrentHeroItem(null);
+  lastFallbackReason = reason;
+
+  hero.dataset.heroKind = 'fallback';
+  hero.dataset.heroId = '';
+  hero.dataset.state = 'fallback';
+  hero.classList.remove('hero--has-media');
+  clearPicture(heroPicture, heroImage, heroSourceLarge, heroSourceMedium);
+
+  heroTitle.textContent = copy.title || defaults.title;
+
+  const taglineText = copy.tagline || '';
+  heroTagline.textContent = taglineText || defaults.tagline;
+  heroTagline.hidden = !taglineText;
+  heroTagline.dataset.taglinePaused = '0';
+  delete heroTagline.dataset.heroBound;
+  heroTagline.classList.remove('is-fading');
+
+  const overviewText = copy.overview || '';
+  heroOverview.textContent = overviewText;
+  heroOverview.hidden = !overviewText;
+
+  const ctaLabel = copy.cta || defaults.cta || heroCta.textContent || 'Browse featured titles';
+  heroCta.textContent = ctaLabel;
+  const ctaEnabled = typeof copy.ctaAction === 'function' && copy.ctaEnabled === true;
+  heroCta.disabled = !ctaEnabled;
+  heroCta.setAttribute('aria-disabled', ctaEnabled ? 'false' : 'true');
+  if(ctaEnabled){
+    heroCta.onclick = () => { try { copy.ctaAction(); } catch (err) { console.warn('[hero] Fallback CTA failed:', err?.message || err); } };
+    heroCta.setAttribute('aria-label', copy.ctaLabel || ctaLabel);
+  } else {
+    heroCta.onclick = null;
+    heroCta.removeAttribute('aria-label');
+  }
+
+  heroMeta.hidden = true;
+  if(metaPrimary) metaPrimary.innerHTML = '';
+  if(metaSecondary) metaSecondary.innerHTML = '';
+  if(metaTertiary) metaTertiary.innerHTML = '';
+
+  return true;
+}
+
 export function refreshHero(listOverride){
   const hero = document.getElementById('hero');
   const heroTitle = document.getElementById('heroTitle');
@@ -65,6 +151,7 @@ export function refreshHero(listOverride){
 
   if(!candidate){
     setCurrentHeroItem(null);
+    lastFallbackReason = null;
     hero.dataset.heroKind = '';
     hero.dataset.heroId = '';
     hero.dataset.state = 'empty';
@@ -96,6 +183,7 @@ export function refreshHero(listOverride){
   }
 
   setCurrentHeroItem(normalized);
+  lastFallbackReason = null;
 
   const kind = normalized.type === 'tv' ? 'show' : 'movie';
   const targetId = normalized.cta?.id || normalized.id || '';

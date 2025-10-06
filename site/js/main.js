@@ -9,12 +9,30 @@ import * as Watch from './watchlist.js';
 import * as Debug from './debug.js';
 import { initErrorHandler, showError, showRetryableError } from './errorHandler.js';
 import { initSettingsOverlay, setHeroRefreshHandler, setReduceMotionHandler } from './settingsOverlay.js';
-import { refreshHero, setHeroNavigation } from './hero.js';
+import { refreshHero, setHeroNavigation, showHeroFallback } from './hero.js';
 import { initHeroAutoplay } from './hero-autoplay.js';
 import * as HeroPolicy from './hero/policy.js';
 import * as HeroPipeline from './hero/pipeline.js';
 
 let taglineTicker = null;
+const heroFallbackNotice = { reason: null };
+
+const HERO_FALLBACK_MESSAGES = {
+  'rate-limit': () => showError('TMDb drosselt Anfragen', 'Highlights werden kurzzeitig langsamer aktualisiert.'),
+  error: detail => showError('Highlights vorübergehend nicht verfügbar', detail?.status?.lastError || 'TMDb-Daten konnten nicht geladen werden.'),
+  default: () => showError('Highlights vorübergehend nicht verfügbar', 'TMDb-Daten konnten nicht geladen werden.')
+};
+
+function announceHeroFallback(reason, detail){
+  if(heroFallbackNotice.reason === reason) return;
+  heroFallbackNotice.reason = reason;
+  const handler = HERO_FALLBACK_MESSAGES[reason] || HERO_FALLBACK_MESSAGES.default;
+  try {
+    handler(detail);
+  } catch (err) {
+    console.warn('[main] Failed to show hero fallback notification:', err?.message || err);
+  }
+}
 
 const hashNavigation = (() => {
   let lastHash = window.location.hash || '';
@@ -108,6 +126,7 @@ setHeroNavigation(navigateToHash);
 
 function refreshHeroWithPipeline(listOverride){
   if(Array.isArray(listOverride) && listOverride.length){
+    heroFallbackNotice.reason = null;
     refreshHero(listOverride);
     return;
   }
@@ -117,15 +136,30 @@ function refreshHeroWithPipeline(listOverride){
     const status = plan?.snapshot?.status?.[currentView];
     const ready = HeroPipeline.isReady();
     const busy = status?.regenerating;
-    if(ready && !busy && Array.isArray(plan?.items) && plan.items.length){
-      const index = plan.startIndex % plan.items.length;
-      const entry = plan.items[index];
+    const items = Array.isArray(plan?.items) ? plan.items : [];
+    const tmdbRateLimit = plan?.snapshot?.tmdb?.rateLimit;
+    const rateLimited = !!tmdbRateLimit?.active;
+    const pipelineError = status?.state === 'error';
+    const shouldFallback = (!items.length && (pipelineError || (rateLimited && ready && !busy)));
+    if(shouldFallback){
+      const reason = pipelineError ? 'error' : 'rate-limit';
+      const applied = showHeroFallback(reason);
+      if(applied){
+        announceHeroFallback(reason, { status, rateLimit: tmdbRateLimit });
+      }
+      return;
+    }
+    if(ready && !busy && items.length){
+      const index = plan.startIndex % items.length;
+      const entry = items[index];
       if(entry){
+        heroFallbackNotice.reason = null;
         refreshHero([entry]);
         return;
       }
     }
   }
+  heroFallbackNotice.reason = null;
   refreshHero(listOverride);
 }
 

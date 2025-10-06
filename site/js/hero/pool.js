@@ -1,6 +1,18 @@
 import { normalizeItem } from './normalizer.js';
 import { getHeroPolicy, getCacheTtl } from './policy.js';
-import { getStoredPool, storePool, invalidatePool, getHeroHistory } from './storage.js';
+import {
+  getStoredPool,
+  storePool,
+  invalidatePool,
+  getHeroHistory,
+  getHeroMemory,
+  recordHeroMemory,
+  clearHeroMemory,
+  getHeroFailures,
+  recordHeroFailure,
+  resolveHeroFailure,
+  clearHeroFailures
+} from './storage.js';
 
 const LOG_PREFIX = '[hero:pool]';
 const PROGRESS_EVENT = 'hero:pool-progress';
@@ -274,28 +286,47 @@ function applySelection(context, candidate, slot){
 
 function attemptSelection(list, count, slot, context, { allowHistory = false, filter } = {}){
   if(count <= 0) return 0;
-  const deferred = [];
+  const deferredHistory = [];
+  const deferredMemory = [];
+  const deferredFailures = [];
   for(const candidate of list){
     if(context.selected.length >= context.poolSize) break;
     if(context.summary[slot] >= count) break;
     if(context.selectedIds.has(candidate.id)) continue;
     if(filter && !filter(candidate)) continue;
     if(!passesCaps(context, candidate)) continue;
+    if(context.failureSet && context.failureSet.has(candidate.id)){
+      deferredFailures.push(candidate);
+      continue;
+    }
+    if(context.memorySet && context.memorySet.has(candidate.id)){
+      deferredMemory.push(candidate);
+      continue;
+    }
     if(!allowHistory && context.historySet && context.historySet.has(candidate.id)){
-      deferred.push(candidate);
+      deferredHistory.push(candidate);
       continue;
     }
     applySelection(context, candidate, slot);
   }
   if(context.summary[slot] >= count || context.selected.length >= context.poolSize) return context.summary[slot];
-  if(deferred.length){
-    for(const candidate of deferred){
+  const applyQueue = (queue)=>{
+    for(const candidate of queue){
       if(context.selected.length >= context.poolSize) break;
       if(context.summary[slot] >= count) break;
       if(context.selectedIds.has(candidate.id)) continue;
       if(!passesCaps(context, candidate)) continue;
       applySelection(context, candidate, slot);
     }
+  };
+  if(deferredMemory.length){
+    applyQueue(deferredMemory);
+  }
+  if(context.summary[slot] < count && deferredHistory.length){
+    applyQueue(deferredHistory);
+  }
+  if(context.summary[slot] < count && deferredFailures.length){
+    applyQueue(deferredFailures);
   }
   return context.summary[slot];
 }
@@ -325,23 +356,46 @@ function emitProgress(detail){
 async function normalizeSelection(selection, language, options = {}){
   const normalized = [];
   const total = selection.length;
+  const {
+    settings,
+    auth,
+    authOptions,
+    signal,
+    disableTmdb,
+    kind,
+    failureTtlMs
+  } = options;
   for(let index = 0; index < selection.length; index++){
     const entry = selection[index];
     emitProgress({ stage: 'normalizing', index: index + 1, total, slot: entry.slot, id: entry.id });
     let normalizedItem = null;
+    let failureReason = '';
+    let rateLimited = false;
     try {
       normalizedItem = await normalizeItem(entry.raw, {
         language,
-        settings: options.settings,
-        auth: options.auth,
-        authOptions: options.authOptions,
-        signal: options.signal,
-        disableTmdb: options.disableTmdb
+        settings,
+        auth,
+        authOptions,
+        signal,
+        disableTmdb
       });
     } catch (err) {
       logWarn('Failed to normalize hero candidate:', err?.message || err);
+      failureReason = err?.message || '';
+      if(err?.code === 'RATE_LIMIT') rateLimited = true;
     }
-    if(!normalizedItem) continue;
+    if(!normalizedItem){
+      if(kind && !rateLimited){
+        try {
+          recordHeroFailure(kind, entry.raw || entry, { timestamp: now(), ttlMs: failureTtlMs, reason: failureReason || 'normalize' });
+        } catch (_err){}
+      }
+      continue;
+    }
+    if(kind){
+      try { resolveHeroFailure(kind, entry.raw || normalizedItem); } catch (_err){}
+    }
     normalizedItem.slot = entry.slot;
     normalizedItem.poolSlot = entry.slot;
     normalizedItem.poolId = entry.id;
@@ -350,7 +404,7 @@ async function normalizeSelection(selection, language, options = {}){
   return normalized;
 }
 
-function classifyCandidates(items, plan, diversity, history){
+function classifyCandidates(items, plan, diversity, history, memory, failures){
   const poolSize = Object.values(plan).reduce((sum, value) => sum + value, 0);
   const context = {
     poolSize,
@@ -360,7 +414,9 @@ function classifyCandidates(items, plan, diversity, history){
     genreCounts: new Map(),
     yearCounts: new Map(),
     selectedIds: new Set(),
-    historySet: history?.set || new Set()
+    historySet: history?.set || new Set(),
+    memorySet: memory?.set || new Set(),
+    failureSet: failures?.set || new Set()
   };
 
   const prepared = prepareCandidates(items);
@@ -416,6 +472,11 @@ async function buildPool(kind, items, options = {}){
   const reuse = !options.force && shouldReusePool(normalizedKind, policyHash, { allowGrace: true });
   if(reuse) return reuse;
 
+  if(options.force){
+    try { clearHeroMemory(normalizedKind); } catch (_err){}
+    try { clearHeroFailures(normalizedKind); } catch (_err){}
+  }
+
   const poolSize = normalizedKind === 'series' ? policy.poolSizeSeries : policy.poolSizeMovies;
   if(!poolSize || poolSize <= 0){
     return { items: [], summary: {}, fromCache: false, updatedAt: now(), expiresAt: 0 };
@@ -424,23 +485,34 @@ async function buildPool(kind, items, options = {}){
   emitProgress({ stage: 'start', kind: normalizedKind, total: poolSize });
 
   const plan = computeSlotPlan(poolSize, policy.slots);
+  const ttlInfo = getCacheTtl();
+  const nowTs = now();
+  const memoryWindow = (()=>{
+    const base = Math.max(0, (ttlInfo.ttlMs || 0)) + Math.max(0, ttlInfo.graceMs || 0);
+    return base > 0 ? base : HISTORY_WINDOW_MS;
+  })();
   const history = getHeroHistory(normalizedKind, { windowMs: HISTORY_WINDOW_MS, limit: HISTORY_LIMIT });
+  const memory = getHeroMemory(normalizedKind, { now: nowTs, windowMs: memoryWindow, limit: Math.max(HISTORY_LIMIT * 2, poolSize * 2) });
+  const failures = getHeroFailures(normalizedKind, { now: nowTs, windowMs: memoryWindow });
 
-  let context = classifyCandidates(items, plan, { ...policy.diversity, kind: normalizedKind }, history);
+  let context = classifyCandidates(items, plan, { ...policy.diversity, kind: normalizedKind }, history, memory, failures);
 
   if(context.selected.length < poolSize && history.entries.length){
     const fallbackHistory = getHeroHistory(normalizedKind, { windowMs: FALLBACK_HISTORY_WINDOW_MS, limit: HISTORY_LIMIT });
-    context = classifyCandidates(items, plan, { ...policy.diversity, kind: normalizedKind }, fallbackHistory);
+    context = classifyCandidates(items, plan, { ...policy.diversity, kind: normalizedKind }, fallbackHistory, memory, failures);
   }
 
   const trimmedSelection = context.selected.slice(0, poolSize);
 
-  const normalizedItems = await normalizeSelection(trimmedSelection, policy.language || 'en-US', options.tmdb);
+  const normalizedItems = await normalizeSelection(trimmedSelection, policy.language || 'en-US', {
+    ...options.tmdb,
+    kind: normalizedKind,
+    failureTtlMs: memoryWindow
+  });
   const finalItems = normalizedItems.slice(0, poolSize);
 
-  const timestamps = getCacheTtl();
   const updatedAt = now();
-  const expiresAt = updatedAt + (timestamps.ttlMs || 0);
+  const expiresAt = updatedAt + (ttlInfo.ttlMs || 0);
 
   const payload = {
     kind: normalizedKind,
@@ -455,6 +527,10 @@ async function buildPool(kind, items, options = {}){
       selectionCount: finalItems.length
     }
   };
+
+  try {
+    recordHeroMemory(normalizedKind, finalItems, { timestamp: updatedAt, ttlMs: memoryWindow, limit: Math.max(HISTORY_LIMIT * 2, poolSize * 2) });
+  } catch (_err){}
 
   storePool(normalizedKind, payload);
   emitProgress({ stage: 'done', kind: normalizedKind, size: finalItems.length, updatedAt });

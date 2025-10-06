@@ -164,11 +164,14 @@
 }
 
 .hero[data-state='empty'] .hero__meta,
-.hero[data-state='empty'] .hero__cta {
+.hero[data-state='empty'] .hero__cta,
+.hero[data-state='fallback'] .hero__meta,
+.hero[data-state='fallback'] .hero__cta {
   opacity: 0.85;
 }
 
-.hero[data-state='empty'] .hero__meta[hidden] {
+.hero[data-state='empty'] .hero__meta[hidden],
+.hero[data-state='fallback'] .hero__meta[hidden] {
   display: none;
 }
 
