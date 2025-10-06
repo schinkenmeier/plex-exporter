@@ -1,9 +1,9 @@
 {
-  "poolSizeMovies": 32,
-  "poolSizeSeries": 24,
+  "poolSizeMovies": 10,
+  "poolSizeSeries": 10,
   "slots": {
-    "new": { "quota": 0.35 },
-    "topRated": { "quota": 0.25 },
+    "new": { "quota": 0.3 },
+    "topRated": { "quota": 0.3 },
     "oldButGold": { "quota": 0.2 },
     "random": { "quota": 0.2 }
   },

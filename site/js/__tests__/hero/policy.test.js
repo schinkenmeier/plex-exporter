@@ -66,8 +66,8 @@ describe('hero policy', () => {
     const policyModule = await import(`../../hero/policy.js?${Date.now()}`);
     const policy = await policyModule.initHeroPolicy();
 
-    assert.equal(policy.poolSizeMovies, 24);
-    assert.equal(policy.poolSizeSeries, 16);
+    assert.equal(policy.poolSizeMovies, 10);
+    assert.equal(policy.poolSizeSeries, 10);
     assert.equal(policy.slots.new.quota, 0.6);
     assert.equal(policy.slots.topRated.quota, 0.3);
     assert.equal(policy.slots.oldButGold.quota, 0.2);
