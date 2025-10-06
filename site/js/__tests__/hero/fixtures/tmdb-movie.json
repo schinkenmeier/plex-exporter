@@ -1,0 +1,40 @@
+{
+  "id": 321,
+  "title": "Fixture Movie",
+  "original_title": "Fixture Movie Original",
+  "overview": "TMDb overview text for the fixture movie.",
+  "tagline": "Only the bold fight fate.",
+  "runtime": 125,
+  "vote_average": 7.46,
+  "vote_count": 3189,
+  "genres": [
+    { "id": 28, "name": "Action" },
+    { "id": 12, "name": "Adventure" },
+    { "id": 878, "name": "Science Fiction" }
+  ],
+  "release_date": "2023-11-15",
+  "imdb_id": "tt1234567",
+  "images": {
+    "backdrops": [
+      { "file_path": "/hero-fixture.jpg", "width": 3840, "height": 2160 },
+      { "file_path": "/too-small.jpg", "width": 800, "height": 450 }
+    ]
+  },
+  "release_dates": {
+    "results": [
+      {
+        "iso_3166_1": "US",
+        "release_dates": [
+          { "certification": "", "type": 2 },
+          { "certification": "PG-13", "type": 3 }
+        ]
+      },
+      {
+        "iso_3166_1": "DE",
+        "release_dates": [
+          { "certification": "FSK12", "type": 3 }
+        ]
+      }
+    ]
+  }
+}
