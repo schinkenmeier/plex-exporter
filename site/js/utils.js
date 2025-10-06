@@ -136,11 +136,50 @@ export function isNew(item){
   return Date.now() - added <= days * 24*60*60*1000;
 }
 
-export function useTmdbOn(){
+/**
+ * Check if TMDB credentials are available
+ * @returns {boolean}
+ */
+function hasTmdbCredentials(){
+  try{
+    const token = localStorage.getItem('tmdbToken');
+    if(token && token.trim()) return true;
+    const state = getState();
+    if(state.cfg?.tmdbToken || state.cfg?.tmdbApiKey) return true;
+    return false;
+  }catch(err){
+    console.warn(`${LOG_PREFIX} Unable to check TMDB credentials:`, err);
+    return false;
+  }
+}
+
+/**
+ * Check if TMDB images should be used for grid cards
+ * User-controlled toggle (default: off)
+ * @returns {boolean}
+ */
+export function useTmdbForCards(){
   try{
     return localStorage.getItem('useTmdb')==='1';
   }catch(err){
-    console.warn(`${LOG_PREFIX} Unable to read TMDB preference from storage:`, err);
+    console.warn(`${LOG_PREFIX} Unable to read TMDB card preference from storage:`, err);
     return false;
   }
+}
+
+/**
+ * Check if TMDB should be used for Hero banner
+ * Always enabled when credentials are available
+ * @returns {boolean}
+ */
+export function useTmdbForHero(){
+  return hasTmdbCredentials();
+}
+
+/**
+ * Legacy alias for backwards compatibility
+ * @deprecated Use useTmdbForCards() instead
+ */
+export function useTmdbOn(){
+  return useTmdbForCards();
 }

@@ -1,6 +1,6 @@
 {
   "startView": "movies",
-  "tmdbEnabled": false,
+  "tmdbEnabled": true,
   "tmdbApiKey": "",
   "lang": "de-DE"
 }

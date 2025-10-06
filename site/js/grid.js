@@ -1,6 +1,6 @@
 import { getState } from './state.js';
 import { el } from './dom.js';
-import { humanYear, formatRating, renderChipsLimited, useTmdbOn, isNew, getGenreNames, collectionTags } from './utils.js';
+import { humanYear, formatRating, renderChipsLimited, useTmdbForCards, isNew, getGenreNames, collectionTags } from './utils.js';
 import * as Watch from './watchlist.js';
 import { openMovieModalV2, openSeriesModalV2 } from './modalV2.js';
 import { navigateToHash } from './main.js';
@@ -295,7 +295,7 @@ function finishGridTransition(grid){
 
 function resolvePoster(item){
   if(!item) return '';
-  const tmdbPoster = useTmdbOn() && (item?.tmdb?.poster || item?.tmdbPoster);
+  const tmdbPoster = useTmdbForCards() && (item?.tmdb?.poster || item?.tmdbPoster);
   const fallback = item?.thumbFile || item?.poster || item?.art || item?.thumb || '';
   return tmdbPoster || fallback || '';
 }

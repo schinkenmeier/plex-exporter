@@ -246,7 +246,13 @@ export async function boot(){
 
     hideLoader();
 
-    if(cfg.tmdbEnabled) (window.requestIdleCallback || setTimeout)(()=> hydrateOptional?.(movies, shows, cfg), 400);
+    if(cfg.tmdbEnabled){
+      if(window.requestIdleCallback){
+        window.requestIdleCallback(()=> hydrateOptional?.(movies, shows, cfg), { timeout: 600 });
+      }else{
+        setTimeout(()=> hydrateOptional?.(movies, shows, cfg), 400);
+      }
+    }
 
     if(!isTestEnv){
       Watch.initUi();
@@ -274,17 +280,21 @@ export async function boot(){
     showRetryableError('Fehler beim Laden der Daten', () => window.location.reload());
     throw error;
   }
-  // Re-render grid on TMDB hydration progress to reveal new posters
+  // Re-render grid on TMDB hydration progress to reveal new posters/data
+  // Note: Grid cards only re-render if user has enabled TMDB images
+  // Hero banner always uses TMDB data when credentials are available
   let tmdbRaf;
   window.addEventListener('tmdb:chunk', ()=>{
     if(tmdbRaf) return; // throttle to animation frame
     tmdbRaf = requestAnimationFrame(()=>{
       tmdbRaf = null;
       try{
-        if(localStorage.getItem('useTmdb')==='1'){
+        const useTmdbCards = localStorage.getItem('useTmdb')==='1';
+        if(useTmdbCards){
           renderGrid(getState().view);
-          refreshHeroWithPipeline();
         }
+        // Always refresh hero when new TMDB data arrives (hero uses TMDB automatically)
+        refreshHeroWithPipeline();
       }catch(err){
         console.warn('[main] TMDB chunk render failed:', err.message);
       }
@@ -292,10 +302,12 @@ export async function boot(){
   });
   window.addEventListener('tmdb:done', ()=>{
     try{
-      if(localStorage.getItem('useTmdb')==='1'){
+      const useTmdbCards = localStorage.getItem('useTmdb')==='1';
+      if(useTmdbCards){
         renderGrid(getState().view);
-        refreshHeroWithPipeline();
       }
+      // Always refresh hero when TMDB hydration is complete
+      refreshHeroWithPipeline();
     }catch(err){
       console.warn('[main] TMDB done render failed:', err.message);
     }

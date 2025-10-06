@@ -384,7 +384,8 @@ export function initSettingsOverlay(cfg){
         else setTmdbStatus('Token ungültig oder keine Berechtigung (401).', 'error');
       }
     }catch(e){ setTmdbStatus('Prüfung fehlgeschlagen. Netzwerk/Browser-Konsole prüfen.', 'error'); }
-    HeroPipeline.updateTmdbActive(useTmdb?.checked ?? false);
+    // Hero uses TMDB automatically when token is available - update pipeline state
+    HeroPipeline.updateTmdbActive(true);
     runHeroRegeneration('all', 'Highlights aktualisieren (Token geändert)…');
   });
 
@@ -427,8 +428,11 @@ export function initSettingsOverlay(cfg){
       setTimeout(()=>{ if(useTmdb.checked) renderGrid(getState().view); }, 1200);
       setTimeout(()=>{ if(useTmdb.checked) renderGrid(getState().view); }, 3000);
     }
-    HeroPipeline.updateTmdbActive(useTmdb.checked);
-    runHeroRegeneration('all', 'Highlights aktualisieren (TMDB-Einstellung)…');
+    // Note: Hero TMDB is automatic based on token, not card toggle
+    // But we still notify pipeline to refresh state
+    HeroPipeline.updateTmdbActive(true);
+    // Only regenerate hero if card toggle changed (cards don't affect hero)
+    // Actually, no need to regenerate hero for card toggle - it uses its own logic
     renderGrid(getState().view);
     notifyHeroRefresh();
   });

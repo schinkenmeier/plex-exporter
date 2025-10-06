@@ -1,6 +1,6 @@
 import { ensureHeroPool, forceRegeneratePool } from './pool.js';
 import { getStoredPool } from './storage.js';
-import { useTmdbOn } from '../utils.js';
+import { useTmdbForHero } from '../utils.js';
 import { addRateLimitListener, getRateLimitState } from './tmdbClient.js';
 
 const LOG_PREFIX = '[hero:pipeline]';
@@ -223,7 +223,12 @@ function ensureSources(){
 }
 
 function buildTmdbOptions(){
-  const disableTmdb = !(state.tmdb.allowed && state.tmdb.active);
+  // Hero always uses TMDB when credentials are available
+  // Re-check in case token was added after initial configure
+  const hasCredentials = useTmdbForHero();
+  const shouldUseTmdb = state.tmdb.allowed && hasCredentials;
+  const disableTmdb = !shouldUseTmdb;
+
   const authOptions = {};
   if(state.cfg && typeof state.cfg === 'object'){
     const fallback = state.cfg.tmdbToken || state.cfg.tmdbApiKey;
@@ -345,7 +350,7 @@ export function configure({ cfg, policy } = {}){
   state.enabled = !!feature.enabled;
   state.featureSource = feature.source;
   state.tmdb.allowed = !!cfg?.tmdbEnabled;
-  state.tmdb.active = state.tmdb.allowed && useTmdbOn();
+  state.tmdb.active = state.tmdb.allowed && useTmdbForHero();
   attachRateLimitListener();
   loadStored('movies');
   loadStored('series');
@@ -395,7 +400,9 @@ export function refreshAll(){
 }
 
 export function updateTmdbActive(active){
-  const next = !!(active && state.tmdb.allowed);
+  // Hero always uses TMDB when credentials are available
+  // This function now just checks if credentials exist
+  const next = !!(state.tmdb.allowed && useTmdbForHero());
   if(state.tmdb.active === next) return;
   state.tmdb.active = next;
   notify();
