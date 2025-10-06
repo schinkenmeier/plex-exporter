@@ -9,6 +9,14 @@ Dieser Leitfaden skizziert den Aufbau der Plex-Exporter-Weboberfläche sowie wic
 * `setState(patch)` merged partielle Updates in den Store und informiert alle registrierten Listener. Es ist die einzige Stelle, an der Mutationen stattfinden sollten.
 * `subscribe(fn)` erlaubt Modulen (z. B. Filter oder UI-Komponenten), auf State-Änderungen zu reagieren. Der Rückgabewert entfernt den Listener wieder.
 
+## Hero-Policy & Pipeline (`site/js/hero/...`)
+
+* **Policy-Layer (`hero/policy.js`):** Lädt `hero.policy.json` ohne Browser-Cache, wendet Defaults an und protokolliert Validierungswarnungen (`getValidationIssues()`). Die Policy definiert Poolgrößen, Slot-Quoten, Diversitätsgewichtungen, Rotationsintervalle und Cache-Laufzeiten. Über `getCacheTtl()` wird eine TTL/Grace-Zeit für gespeicherte Pools abgeleitet.
+* **Pool-Layer (`hero/pool.js`):** Aggregiert Hero-Kandidaten aus State und Policy. Beim Aufruf von `ensureHeroPool(kind, items, { policy })` wird zunächst geprüft, ob ein gültiger Cache vorliegt (siehe Storage-Layer). Andernfalls werden Slots nach Policy quotiert, Diversität gewichtet und Historie/Fehlschläge berücksichtigt. Fortschritt wird über `hero:pool-progress` Events gesendet.
+* **Normalizer (`hero/normalizer.js`):** Konvertiert Rohdaten (inkl. optionaler TMDb-Details) in ein vereinheitlichtes Schema mit Text-Clamps, IDs, Backdrops und Meta-Tags. Der Normalizer kann TMDb-Daten synchronisieren (`fetchDetailsForItem`) und versieht Ergebnisse mit Quellenangaben.
+* **Storage & Cache (`hero/storage.js`):** Persistiert Pools, Historie und Fehlschlag-Listen parallel in `localStorage` (dauerhaft) und `sessionStorage` (tab-lokaler Schnellstart). Pools enthalten `expiresAt` und `policyHash`; nur Treffer innerhalb der TTL (`policy.cache.ttlHours`) oder der Grace-Periode (`policy.cache.graceMinutes`) werden rehydriert. Ein täglicher Refresh entsteht dadurch automatisch: nach Ablauf der TTL wird beim nächsten Rendern ein neuer Pool gebaut.
+* **Feature-Flags (`hero/pipeline.js`):** Der Pipeline-State liest zuerst `localStorage.feature.heroPipeline` (manueller Toggle). Fehlt er, werden `config.heroPipelineEnabled` und `config.features.heroPipeline` herangezogen. Ohne explizites Flag bleibt die Pipeline aktiv. Beim Deaktivieren rendert das System das statische Fallback (`showHeroFallback()`). Pipeline-Status, Cache-Herkunft und TMDb-Rate-Limits werden über `hero:pipeline-update` Events und das Debug-Overlay sichtbar gemacht.
+
 ## Datenpfade und Normalisierung (`site/js/data.js`)
 
 * `loadMovies()` und `loadShows()` laden JSON-Daten bevorzugt aus `site/data/...` und fallen bei Bedarf auf eingebettete `<script>`-Tags, globale Variablen oder alternative Legacy-Pfade zurück. Jede erfolgreiche Quelle wird in `lastSources` protokolliert (`getSources()`).
@@ -51,12 +59,13 @@ Dieser Leitfaden skizziert den Aufbau der Plex-Exporter-Weboberfläche sowie wic
 ## Boot-Sequenz (`site/js/main.js`)
 
 1. `boot()` setzt zunächst Motion-Preferences (`applyReduceMotionPref()`), zeigt Loader/Skeleton.
-2. Lädt `config.json` (`fetch`) und setzt `cfg` + Start-View im State.
+2. Lädt `config.json` (`fetch`) und setzt `cfg` + Start-View im State. Parallel wird `HeroPolicy.initHeroPolicy()` gestartet; Validierungsfehler erscheinen im Debug-Overlay.
 3. Ruft sequentiell `Data.loadMovies()` und `Data.loadShows()` auf; Fortschrittstexte werden via `setLoader()` aktualisiert.
-4. Berechnet Facetten (`Filter.computeFacets()`), speichert Kataloge & Facetten im State und initialisiert Filter-UI (`Filter.renderFacets()`, `Filter.initFilters()`).
-5. Baut die Ansicht (`renderSwitch()`, `renderStats(true)`, `renderFooterMeta()`, `renderGrid()`) und versteckt anschließend den Loader.
-6. Startet optionale Module: TMDB-Hydration (per `requestIdleCallback`), Watchlist (`Watch.initUi()`), Settings-Overlay, Advanced-Filter-Toggle, Header/Scroll-Helfer sowie Debug-Overlay. Das automatische Ausblenden von Hero und Filterbar läuft primär über Scroll-Driven CSS-Animationen (`animation-timeline: scroll`); `initFilterBarAutoHideFallback()` aktiviert ein rAF-basiertes JS-Fallback in Browsern ohne Scroll-Timeline-Unterstützung und respektiert dabei Fokus-/Pointer-Interaktionen sowie die Reduce-Motion-Präferenz.
-7. Ein `hashchange`-Listener unterstützt View-Wechsel (`#/movies`, `#/shows`) und öffnet bei `#/movie/<id>` bzw. `#/show/<id>` die Detail-Modal (`openMovieModalV2()`/`openSeriesModalV2()`).
+4. Konfiguriert die Hero-Pipeline (`HeroPipeline.configure({ cfg, policy })`). Ist das Feature deaktiviert, wechselt das UI sofort in den Fallback-Modus; andernfalls prüft die Pipeline vorhandene Cache-Pools und feuert asynchrone Aufbauten an.
+5. Berechnet Facetten (`Filter.computeFacets()`), speichert Kataloge & Facetten im State und initialisiert Filter-UI (`Filter.renderFacets()`, `Filter.initFilters()`).
+6. Baut die Ansicht (`renderSwitch()`, `renderStats(true)`, `renderFooterMeta()`, `renderGrid()`) und versteckt anschließend den Loader.
+7. Startet optionale Module: TMDB-Hydration (per `requestIdleCallback`), Watchlist (`Watch.initUi()`), Settings-Overlay (inkl. TMDb-Troubleshooting), Advanced-Filter-Toggle, Header/Scroll-Helfer sowie Debug-Overlay. Das automatische Ausblenden von Hero und Filterbar läuft primär über Scroll-Driven CSS-Animationen (`animation-timeline: scroll`); `initFilterBarAutoHideFallback()` aktiviert ein rAF-basiertes JS-Fallback in Browsern ohne Scroll-Timeline-Unterstützung und respektiert dabei Fokus-/Pointer-Interaktionen sowie die Reduce-Motion-Präferenz.
+8. Ein `hashchange`-Listener unterstützt View-Wechsel (`#/movies`, `#/shows`) und öffnet bei `#/movie/<id>` bzw. `#/show/<id>` die Detail-Modal (`openMovieModalV2()`/`openSeriesModalV2()`). Zusätzlich löst das Event `HeroPipeline.ensureHeroPool()` aus, um bei Bibliothekswechseln keine redundanten Requests zu erzeugen.
 
 ## Modal-System (`site/js/modalV2.js`)
 
