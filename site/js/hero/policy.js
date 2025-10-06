@@ -3,8 +3,8 @@ import { showError } from '../errorHandler.js';
 const POLICY_URL = 'hero.policy.json';
 
 const DEFAULT_POLICY = Object.freeze({
-  poolSizeMovies: 24,
-  poolSizeSeries: 16,
+  poolSizeMovies: 10,
+  poolSizeSeries: 10,
   slots: {
     new: { quota: 0.3 },
     topRated: { quota: 0.3 },
