@@ -1,9 +1,13 @@
 const LOG_PREFIX = '[hero:storage]';
 const POOL_PREFIX = 'heroPool:';
 const HISTORY_PREFIX = 'heroHistory:';
+const MEMORY_PREFIX = 'heroMemory:';
+const FAILURE_PREFIX = 'heroFailures:';
 const SESSION_SUFFIX = ':session';
 const HISTORY_LIMIT = 80;
 const HISTORY_WINDOW_MS = 1000 * 60 * 60 * 24 * 14; // 14 days
+const MEMORY_LIMIT = 120;
+const FAILURE_LIMIT = 80;
 
 function now(){
   return Date.now();
@@ -79,6 +83,14 @@ function historyKey(kind){
   return `${HISTORY_PREFIX}${normalizeKind(kind)}`;
 }
 
+function memoryKey(kind){
+  return `${MEMORY_PREFIX}${normalizeKind(kind)}`;
+}
+
+function failureKey(kind){
+  return `${FAILURE_PREFIX}${normalizeKind(kind)}`;
+}
+
 function readPoolFrom(area, key){
   const raw = readRaw(area, key);
   if(!raw) return null;
@@ -91,6 +103,60 @@ function writePoolTo(area, key, payload){
   const json = stringifyJson(payload);
   if(json == null) return;
   writeRaw(area, key, json);
+}
+
+function readMemory(kind){
+  const { local } = resolveAreas();
+  const key = memoryKey(kind);
+  const raw = readPoolFrom(local, key);
+  if(!Array.isArray(raw)) return [];
+  return raw.map(entry => ({
+    id: typeof entry?.id === 'string' ? entry.id : String(entry?.id || ''),
+    ts: Number(entry?.ts ?? entry?.timestamp ?? entry?.time ?? 0),
+    slot: typeof entry?.slot === 'string' ? entry.slot : (entry?.slot != null ? String(entry.slot) : undefined)
+  })).filter(entry => entry.id && Number.isFinite(entry.ts));
+}
+
+function writeMemory(kind, entries){
+  const payload = Array.isArray(entries) ? entries.map(entry => ({
+    id: entry.id,
+    ts: entry.ts,
+    slot: entry.slot
+  })) : [];
+  const json = stringifyJson(payload);
+  if(json == null) return;
+  const { local, session } = resolveAreas();
+  const key = memoryKey(kind);
+  writeRaw(local, key, json);
+  writeRaw(session, `${key}${SESSION_SUFFIX}`, json);
+}
+
+function readFailures(kind){
+  const { local } = resolveAreas();
+  const key = failureKey(kind);
+  const raw = readPoolFrom(local, key);
+  if(!Array.isArray(raw)) return [];
+  return raw.map(entry => ({
+    id: typeof entry?.id === 'string' ? entry.id : String(entry?.id || ''),
+    ts: Number(entry?.ts ?? entry?.timestamp ?? entry?.time ?? 0),
+    reason: typeof entry?.reason === 'string' ? entry.reason : '',
+    hits: Number(entry?.hits) || 0
+  })).filter(entry => entry.id && Number.isFinite(entry.ts));
+}
+
+function writeFailures(kind, entries){
+  const payload = Array.isArray(entries) ? entries.map(entry => ({
+    id: entry.id,
+    ts: entry.ts,
+    reason: entry.reason || '',
+    hits: Number(entry.hits) || 0
+  })) : [];
+  const json = stringifyJson(payload);
+  if(json == null) return;
+  const { local, session } = resolveAreas();
+  const key = failureKey(kind);
+  writeRaw(local, key, json);
+  writeRaw(session, `${key}${SESSION_SUFFIX}`, json);
 }
 
 function resolveAreas(){
@@ -183,12 +249,15 @@ function writeHistory(kind, entries){
   writeRaw(session, `${key}${SESSION_SUFFIX}`, json);
 }
 
-function resolveHistoryId(entry){
+function resolveEntryKey(entry){
   if(!entry) return null;
   if(typeof entry === 'string') return entry.trim() || null;
   if(typeof entry === 'number') return `#${entry}`;
   if(entry && typeof entry === 'object'){
-    if(entry.heroId) return String(entry.heroId);
+    if(entry.poolId != null) return String(entry.poolId);
+    if(entry.poolEntryId != null) return String(entry.poolEntryId);
+    if(entry.heroId != null) return String(entry.heroId);
+    if(entry.cta && entry.cta.id != null) return String(entry.cta.id);
     if(entry.ids && typeof entry.ids === 'object'){
       if(entry.ids.imdb) return `imdb:${entry.ids.imdb}`;
       if(entry.ids.tmdb) return `tmdb:${entry.ids.tmdb}`;
@@ -205,6 +274,10 @@ function resolveHistoryId(entry){
     }
   }
   return null;
+}
+
+function resolveHistoryId(entry){
+  return resolveEntryKey(entry);
 }
 
 export function recordHeroHistory(kind, entry, { timestamp = now(), limit = HISTORY_LIMIT } = {}){
@@ -237,10 +310,133 @@ export function getHeroHistory(kind, { now: nowTs = now(), windowMs = HISTORY_WI
   return { entries, set: seen };
 }
 
+export function recordHeroMemory(kind, entries, { timestamp = now(), ttlMs = 0, limit = MEMORY_LIMIT } = {}){
+  if(!Array.isArray(entries) || !entries.length) return [];
+  const threshold = ttlMs > 0 ? Math.max(0, timestamp - ttlMs) : 0;
+  const list = readMemory(kind);
+  const seen = new Set();
+  const preserved = [];
+  for(const item of list){
+    if(!item || !item.id) continue;
+    if(threshold && item.ts < threshold) continue;
+    if(seen.has(item.id)) continue;
+    seen.add(item.id);
+    preserved.push(item);
+  }
+  const additions = [];
+  const additionIds = new Set();
+  for(const entry of entries){
+    const id = resolveEntryKey(entry);
+    if(!id) continue;
+    const slot = typeof entry?.slot === 'string' ? entry.slot : (entry?.poolSlot ? String(entry.poolSlot) : undefined);
+    additions.push({ id, ts: timestamp, slot });
+    additionIds.add(id);
+  }
+  const filteredPreserved = preserved.filter(item => !additionIds.has(item.id));
+  const merged = [...additions, ...filteredPreserved].filter(item => item && item.id);
+  const limited = merged.slice(0, Math.max(1, limit));
+  const deduped = [];
+  const finalSeen = new Set();
+  for(const item of limited){
+    if(finalSeen.has(item.id)) continue;
+    finalSeen.add(item.id);
+    deduped.push(item);
+  }
+  writeMemory(kind, deduped);
+  return deduped;
+}
+
+export function getHeroMemory(kind, { now: nowTs = now(), windowMs = 0, limit = MEMORY_LIMIT } = {}){
+  const list = readMemory(kind);
+  if(!list.length) return { entries: [], set: new Set() };
+  const threshold = windowMs > 0 ? Math.max(0, nowTs - windowMs) : 0;
+  const seen = new Set();
+  const entries = [];
+  for(const item of list){
+    if(!item || !item.id) continue;
+    if(threshold && item.ts < threshold) continue;
+    if(seen.has(item.id)) continue;
+    seen.add(item.id);
+    entries.push({ id: item.id, ts: item.ts, slot: item.slot });
+    if(entries.length >= limit) break;
+  }
+  return { entries, set: seen };
+}
+
+export function clearHeroMemory(kind){
+  const { local, session } = resolveAreas();
+  const key = memoryKey(kind);
+  writeRaw(local, key, null);
+  writeRaw(session, `${key}${SESSION_SUFFIX}`, null);
+}
+
+export function recordHeroFailure(kind, entry, { timestamp = now(), ttlMs = 0, limit = FAILURE_LIMIT, reason = '' } = {}){
+  const id = resolveEntryKey(entry);
+  if(!id) return null;
+  const threshold = ttlMs > 0 ? Math.max(0, timestamp - ttlMs) : 0;
+  const list = readFailures(kind);
+  const filtered = [];
+  let hits = 0;
+  for(const item of list){
+    if(!item || !item.id) continue;
+    if(item.id === id){
+      hits = (item.hits || 0) + 1;
+      continue;
+    }
+    if(threshold && item.ts < threshold) continue;
+    filtered.push(item);
+  }
+  const payload = { id, ts: timestamp, reason: reason || '', hits };
+  filtered.unshift(payload);
+  const limited = filtered.slice(0, Math.max(1, limit));
+  writeFailures(kind, limited);
+  return payload;
+}
+
+export function resolveHeroFailure(kind, entry){
+  const id = resolveEntryKey(entry);
+  if(!id) return;
+  const list = readFailures(kind);
+  const filtered = list.filter(item => item && item.id !== id);
+  if(filtered.length === list.length) return;
+  writeFailures(kind, filtered);
+}
+
+export function getHeroFailures(kind, { now: nowTs = now(), windowMs = 0, limit = FAILURE_LIMIT } = {}){
+  const list = readFailures(kind);
+  if(!list.length) return { entries: [], set: new Set() };
+  const threshold = windowMs > 0 ? Math.max(0, nowTs - windowMs) : 0;
+  const seen = new Set();
+  const entries = [];
+  for(const item of list){
+    if(!item || !item.id) continue;
+    if(threshold && item.ts < threshold) continue;
+    if(seen.has(item.id)) continue;
+    seen.add(item.id);
+    entries.push({ id: item.id, ts: item.ts, reason: item.reason || '', hits: item.hits || 0 });
+    if(entries.length >= limit) break;
+  }
+  return { entries, set: seen };
+}
+
+export function clearHeroFailures(kind){
+  const { local, session } = resolveAreas();
+  const key = failureKey(kind);
+  writeRaw(local, key, null);
+  writeRaw(session, `${key}${SESSION_SUFFIX}`, null);
+}
+
 export default {
   getStoredPool,
   storePool,
   invalidatePool,
   recordHeroHistory,
-  getHeroHistory
+  getHeroHistory,
+  recordHeroMemory,
+  getHeroMemory,
+  clearHeroMemory,
+  recordHeroFailure,
+  resolveHeroFailure,
+  getHeroFailures,
+  clearHeroFailures
 };
