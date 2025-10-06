@@ -335,7 +335,8 @@ async function normalizeSelection(selection, language, options = {}){
         settings: options.settings,
         auth: options.auth,
         authOptions: options.authOptions,
-        signal: options.signal
+        signal: options.signal,
+        disableTmdb: options.disableTmdb
       });
     } catch (err) {
       logWarn('Failed to normalize hero candidate:', err?.message || err);

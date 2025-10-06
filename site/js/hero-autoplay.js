@@ -1,4 +1,6 @@
 import { refreshHero } from './hero.js';
+import { getState, subscribe as subscribeState } from './state.js';
+import * as HeroPipeline from './hero/pipeline.js';
 
 export function initHeroAutoplay({ onRefresh = refreshHero } = {}){
   const hero = document.getElementById('hero');
@@ -16,6 +18,35 @@ export function initHeroAutoplay({ onRefresh = refreshHero } = {}){
   let elapsed = 0; // ms accumulated when not paused
   let raf = null;
   let lastTs = 0;
+  const pipelineEnabled = HeroPipeline.isEnabled();
+  let rotationKind = resolveKind();
+  let rotationItems = [];
+  let rotationIndex = 0;
+  let pipelinePaused = false;
+  let rotationSignature = '';
+  let unsubscribePipeline = null;
+  let unsubscribeState = null;
+
+  if(pipelineEnabled){
+    applyRotationPlan(HeroPipeline.getRotationPlan(rotationKind));
+    unsubscribePipeline = HeroPipeline.subscribe(() => {
+      applyRotationPlan(HeroPipeline.getRotationPlan(rotationKind));
+    });
+  }
+
+  unsubscribeState = subscribeState(() => {
+    const kind = resolveKind();
+    if(kind === rotationKind) return;
+    rotationKind = kind;
+    if(pipelineEnabled){
+      applyRotationPlan(HeroPipeline.getRotationPlan(rotationKind));
+    }
+  });
+
+  function resolveKind(){
+    const view = getState().view;
+    return view === 'shows' ? 'series' : 'movies';
+  }
 
   function isPaused(){
     return pauseReasons.size > 0;
@@ -39,6 +70,38 @@ export function initHeroAutoplay({ onRefresh = refreshHero } = {}){
     updatePausedState();
   }
 
+  function advanceRotation(){
+    if(!rotationItems.length) return null;
+    rotationIndex = (rotationIndex + 1) % rotationItems.length;
+    return rotationItems[rotationIndex];
+  }
+
+  function applyRotationPlan(plan){
+    if(!plan) return;
+    const items = Array.isArray(plan.items) ? plan.items : [];
+    const snapshot = plan.snapshot || HeroPipeline.getSnapshot();
+    const status = snapshot.status?.[rotationKind];
+    const busy = !HeroPipeline.isReady() || status?.regenerating;
+    const signature = `${rotationKind}:${status?.updatedAt || 0}:${items.length}`;
+    const hadItems = rotationItems.length > 0;
+    const previouslyPaused = pipelinePaused;
+
+    rotationItems = items;
+    rotationIndex = items.length ? (plan.startIndex % items.length) : 0;
+    pipelinePaused = busy || !items.length;
+    setPaused('pipeline', pipelinePaused);
+
+    if(!pipelinePaused && items.length){
+      if(!hadItems || previouslyPaused || rotationSignature !== signature){
+        try { onRefresh?.([items[rotationIndex]]); } catch (_err) {}
+        elapsed = 0;
+        bar.style.setProperty('--p', '0');
+      }
+    }
+
+    rotationSignature = signature;
+  }
+
   function step(ts){
     if(isPaused()){ lastTs = ts; raf = requestAnimationFrame(step); return; }
     if(!lastTs) lastTs = ts;
@@ -51,7 +114,13 @@ export function initHeroAutoplay({ onRefresh = refreshHero } = {}){
       // reset and ask app to refresh hero gently
       elapsed = 0; lastTs = ts; bar.style.setProperty('--p','0');
       try {
-        onRefresh?.();
+        if(pipelineEnabled){
+          const next = advanceRotation();
+          if(next){ onRefresh?.([next]); }
+          else { onRefresh?.(); }
+        }else{
+          onRefresh?.();
+        }
       } catch(_e) {
         // no-op
       }
@@ -78,6 +147,10 @@ export function initHeroAutoplay({ onRefresh = refreshHero } = {}){
   return {
     pause(){ setPaused('manual', true); },
     resume(){ setPaused('manual', false); },
-    reset(){ elapsed = 0; bar.style.setProperty('--p','0'); }
+    reset(){ elapsed = 0; bar.style.setProperty('--p','0'); },
+    destroy(){
+      if(unsubscribePipeline) unsubscribePipeline();
+      if(unsubscribeState) unsubscribeState();
+    }
   };
 }
