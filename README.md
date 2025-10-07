@@ -75,14 +75,14 @@ Der Plex Exporter stellt einen statischen Katalog deiner Plex-Bibliotheken berei
 - Hinterlege einen TMDB v4 Bearer Token zur Laufzeit im Einstellungsdialog oder trage deinen API Key dauerhaft im Feld `tmdbApiKey` ein. Tokens werden im Browser in `localStorage` gespeichert.
 - Sobald TMDB aktiviert ist, lädt das Frontend Cover und Backdrops nach (`site/js/services/tmdb.js`). Die Nutzung ist optional und kann jederzeit über den UI-Toggle abgeschaltet werden.
 
-### TMDB-Laufzeitkonfiguration (`site/js/config.example.js`)
-- Kopiere `site/js/config.example.js` nach `site/js/config.js`, um lokale Defaults für Sprache, Region, API-Basis und TTL zu setzen. `config.js` ist bewusst nicht eingecheckt – halte die Datei aus der Versionsverwaltung heraus, damit persönliche API Keys/Tokens lokal bleiben.
-- Ergänze `TMDB.apiKey` (v3) oder trage einen v4 Bearer Token via Einstellungs-Overlay ein. Der Code kombiniert beide Quellen: `config.js` dient als Fallback, während das UI Tokens im `localStorage.tmdbToken` ablegt und API Keys aus `config.json`/`config.js` übernimmt.
+### TMDB-Laufzeitkonfiguration (`site/config.json`)
+- Kopiere `site/config.json.example` nach `site/config.json`, um Defaults für Sprache, Region, API-Basis und TTL zu setzen. Die Datei dient als einzige Build-Zeit-Quelle für TMDB-Optionen – halte sie aus Repos fern, wenn sie persönliche API Keys/Tokens enthält.
+- Ergänze `tmdbApiKey` (v3) oder trage einen v4 Bearer Token via Einstellungs-Overlay ein. Das UI kombiniert beide Quellen: Tokens landen im `localStorage.tmdbToken`, während API Keys ausschließlich aus `site/config.json` gelesen werden.
 - Aktiviere das Feature-Flag für die Modal-Anreicherung über `tmdbEnabled: true` in `site/config.json`. Beim Bootstrapping synchronisiert `site/js/main.js` dieses Flag mit `window.FEATURES.tmdbEnrichment`, sodass du das Verhalten auch manuell via `window.FEATURES = { tmdbEnrichment: true }` im Browser vorladen kannst.
 
 ### Cache-Strategie & On-Demand-Laden
 - Die TMDB-Metadaten werden mehrstufig gecacht. Kern-Keys lauten `tmdb:movie:{id}:v1`, `tmdb:tv:{id}:v1` sowie `tmdb:tv:{id}:season:{number}:v1` und landen im gemeinsamen Cache-Store (`site/js/cacheStore.js`).
-- Die Standard-TTL beträgt 24 Stunden. Sie lässt sich in `site/js/config.js` bzw. `site/config.json` über `ttlHours`/`tmdbTtlHours` überschreiben. Lädt eine Anreicherung erneut, wird der Cache-Eintrag aktualisiert und die TTL pro Key respektiert.
+- Die Standard-TTL beträgt 24 Stunden. Sie lässt sich in `site/config.json` über `ttlHours`/`tmdbTtlHours` überschreiben. Lädt eine Anreicherung erneut, wird der Cache-Eintrag aktualisiert und die TTL pro Key respektiert.
 - Modals und Staffeln bleiben schlank: `site/js/modalV2.js` lädt TMDB-Details erst beim Öffnen einer Detailansicht und verwendet zunächst vorhandene Plex-Daten. Staffel- und Episodeninformationen (`site/js/modal/seasonsAccordion.js`) werden lazy nachgeladen, sobald Nutzer:innen eine Staffel aufklappen; erst dann ruft das Frontend `getSeasonEnriched` ab und mapt Stillbilder.
 
 ### Fallbacks, Fehlerbehandlung & Sprachindikator
