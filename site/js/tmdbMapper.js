@@ -29,8 +29,14 @@ function normaliseOptions(options = {}){
 function normaliseId(id){
   if(id == null) return '';
   const num = Number(id);
-  if(Number.isFinite(num) && num > 0) return String(num);
-  return String(id);
+  if(Number.isFinite(num) && num > 0) return String(Math.floor(num));
+  // Only accept valid numeric strings
+  const str = String(id).trim();
+  if(/^\d+$/.test(str)){
+    const parsed = parseInt(str, 10);
+    if(parsed > 0) return String(parsed);
+  }
+  return '';
 }
 
 function scoreImage(entry){

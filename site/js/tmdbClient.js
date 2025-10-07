@@ -150,6 +150,19 @@ async function fetchJson(url, init, { retries = MAX_RETRIES } = {}){
   throw lastError || new Error('TMDB request failed');
 }
 
+/**
+ * Creates a TMDB API client with caching and retry logic
+ * @param {Object} [options] - Configuration options
+ * @param {string} [options.apiBase] - TMDB API base URL
+ * @param {string} [options.language] - Default language (e.g., 'de-DE')
+ * @param {string} [options.region] - Default region (e.g., 'DE')
+ * @param {string} [options.token] - TMDB v4 Bearer token
+ * @param {string} [options.apiKey] - TMDB v3 API key
+ * @param {number} [options.ttlHours] - Cache TTL in hours
+ * @param {boolean} [options.useCache] - Enable caching
+ * @param {Object} [options.cacheStore] - Custom cache store instance
+ * @returns {Object} TMDB client with get method
+ */
 export function createTmdbClient(options = {}){
   const cache = options.cache instanceof Map ? options.cache : null;
   const config = {

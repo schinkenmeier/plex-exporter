@@ -201,7 +201,7 @@ export function renderModalV2(item){
             <div class="v2-head-backdrop" data-head-backdrop></div>
             <div class="v2-head-logo" data-head-logo hidden></div>
           </div>
-          <p class="v2-head-status" data-head-status hidden aria-live="polite"></p>
+          <p class="v2-head-status" data-head-status hidden aria-live="polite" aria-atomic="true"></p>
           <div class="v2-titlebar">
             <div class="v2-title-wrap">
               <h2 class="v2-title" id="modalV2Title"></h2>
@@ -299,15 +299,27 @@ function maybeStartTmdbEnrichment(kind, item, tokenSnapshot){
       setCastStatus(rootEl, null);
       return;
     }
-    attachTmdbDetail(item, detail);
-    refreshModalSections(item);
+    const enriched = attachTmdbDetail(item, detail);
+    if(enriched){
+      currentItem = enriched;
+      refreshModalSections(enriched);
+    }
     setTmdbStatus(null);
     setCastLoading(rootEl, false);
     setCastStatus(rootEl, null);
   }).catch(err => {
     if(activeToken !== renderToken) return;
     console.warn('[modalV2] Failed to enrich modal with TMDB data:', err?.message || err);
-    setTmdbStatus({ state: 'error', message: 'TMDB-Daten konnten nicht geladen werden.' });
+    // Provide more specific error messages based on error type
+    let errorMessage = 'TMDB-Daten konnten nicht geladen werden.';
+    if(err?.status === 429){
+      errorMessage = 'TMDB-Rate-Limit erreicht. Bitte versuchen Sie es später erneut.';
+    }else if(err?.status === 404){
+      errorMessage = 'Inhalt nicht in TMDB gefunden.';
+    }else if(err?.message?.includes('network') || err?.message?.includes('fetch')){
+      errorMessage = 'Netzwerkfehler. Bitte überprüfen Sie Ihre Verbindung.';
+    }
+    setTmdbStatus({ state: 'error', message: errorMessage });
     setCastLoading(rootEl, false);
     setCastStatus(rootEl, { state: 'error', message: 'Zusätzliche Besetzung konnte nicht geladen werden.' });
   });
@@ -339,16 +351,18 @@ function resolveTmdbId(item){
 }
 
 function attachTmdbDetail(item, detail){
-  if(!item || !detail) return;
-  item.tmdbDetail = detail;
-  item.tmdb = item.tmdb || {};
-  if(detail.poster && !item.tmdb.poster) item.tmdb.poster = detail.poster;
-  if(detail.backdrop && !item.tmdb.backdrop) item.tmdb.backdrop = detail.backdrop;
-  if(detail.url) item.tmdb.url = detail.url;
-  item.ids = item.ids || {};
-  if(detail.id) item.ids.tmdb = String(detail.id);
-  if(detail.imdbId && !item.ids.imdb) item.ids.imdb = String(detail.imdbId);
-  currentItem = item;
+  if(!item || !detail) return item;
+  // Create a shallow clone to avoid mutating the original
+  const enriched = { ...item };
+  enriched.tmdbDetail = detail;
+  enriched.tmdb = { ...(item.tmdb || {}) };
+  if(detail.poster && !enriched.tmdb.poster) enriched.tmdb.poster = detail.poster;
+  if(detail.backdrop && !enriched.tmdb.backdrop) enriched.tmdb.backdrop = detail.backdrop;
+  if(detail.url) enriched.tmdb.url = detail.url;
+  enriched.ids = { ...(item.ids || {}) };
+  if(detail.id) enriched.ids.tmdb = String(detail.id);
+  if(detail.imdbId && !enriched.ids.imdb) enriched.ids.imdb = String(detail.imdbId);
+  return enriched;
 }
 
 export async function openMovieModalV2(idOrData){

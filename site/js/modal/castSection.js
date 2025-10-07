@@ -51,22 +51,33 @@ function normalizeTmdbCast(person){
 }
 
 export function buildCastList(item){
-  const seen = new Set();
+  const seen = new Map(); // Use Map for case-insensitive deduplication
   const combined = [];
   const localSource = Array.isArray(item?.cast) ? item.cast : Array.isArray(item?.roles) ? item.roles : [];
-  localSource.map(normalizeLocalCast).filter(Boolean).forEach(entry => {
-    const key = entry.name.toLowerCase();
-    if(seen.has(key)) return;
-    seen.add(key);
-    combined.push(entry);
+
+  // Pre-normalize and deduplicate local cast
+  localSource.forEach(person => {
+    const entry = normalizeLocalCast(person);
+    if(!entry) return;
+    const lowerName = entry.name.toLowerCase();
+    if(!seen.has(lowerName)){
+      seen.set(lowerName, true);
+      combined.push(entry);
+    }
   });
+
+  // Pre-normalize and deduplicate TMDB cast
   const tmdbSource = Array.isArray(item?.tmdbDetail?.credits?.cast) ? item.tmdbDetail.credits.cast : [];
-  tmdbSource.map(normalizeTmdbCast).filter(Boolean).forEach(entry => {
-    const key = entry.name.toLowerCase();
-    if(seen.has(key)) return;
-    seen.add(key);
-    combined.push(entry);
+  tmdbSource.forEach(person => {
+    const entry = normalizeTmdbCast(person);
+    if(!entry) return;
+    const lowerName = entry.name.toLowerCase();
+    if(!seen.has(lowerName)){
+      seen.set(lowerName, true);
+      combined.push(entry);
+    }
   });
+
   return combined;
 }
 
@@ -174,6 +185,8 @@ export function setCastStatus(root, status){
   if(!statusEl){
     statusEl = document.createElement('p');
     statusEl.className = 'v2-cast-status';
+    statusEl.setAttribute('aria-live', 'polite');
+    statusEl.setAttribute('aria-atomic', 'true');
     pane.appendChild(statusEl);
   }
   statusEl.dataset.state = status.state || '';

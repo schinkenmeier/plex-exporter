@@ -7,6 +7,15 @@ const LOG_PREFIX = '[seasonsAccordion]';
 export function renderSeasonsAccordion(targetOrSeasons, maybeSeasons, maybeOptions){
   const { root, seasons, options } = resolveContext(targetOrSeasons, maybeSeasons, maybeOptions);
   if(!root) return;
+
+  // Cleanup existing cards before replacing
+  const existingCards = root.querySelectorAll('.season-card');
+  existingCards.forEach(card => {
+    if(typeof card._cleanup === 'function'){
+      card._cleanup();
+    }
+  });
+
   root.replaceChildren();
   (seasons || []).forEach((s, idx) => root.append(seasonCardEl(s, idx, options)));
 }
@@ -82,8 +91,9 @@ function seasonCardEl(season, idx, options = {}){
   const tvId = resolveShowTmdbId(season, options.show);
   let loaded = false;
   let loading = false;
+  let abortController = null;
 
-  head.addEventListener('click', ()=>{
+  const handleClick = ()=>{
     const isOpen = card.classList.toggle('open');
     if(!isOpen || loaded || loading) return;
     if(!shouldEnrichSeason(tvId, seasonNumber)){
@@ -91,18 +101,35 @@ function seasonCardEl(season, idx, options = {}){
       return;
     }
     loading = true;
+    abortController = new AbortController();
+
     metadataService.getSeasonEnriched(tvId, seasonNumber, { stillSize: 'w300', show: options.show || null })
       .then(detail => {
+        if(abortController?.signal.aborted) return;
         if(!detail || !Array.isArray(detail.episodes)) return;
         mergeSeasonEpisodes(season, detail.episodes);
         renderEpisodeRows(body, season.episodes || [], { show: options.show });
         loaded = true;
       })
       .catch(err => {
+        if(abortController?.signal.aborted) return;
         logWarn('Failed to enrich season', tvId, seasonNumber, err?.message || err);
       })
-      .finally(()=>{ loading = false; });
-  });
+      .finally(()=>{
+        loading = false;
+        abortController = null;
+      });
+  };
+
+  head.addEventListener('click', handleClick);
+
+  // Cleanup function for potential future use
+  card._cleanup = () => {
+    head.removeEventListener('click', handleClick);
+    if(abortController && !abortController.signal.aborted){
+      abortController.abort();
+    }
+  };
 
   card.append(head, body);
   return card;

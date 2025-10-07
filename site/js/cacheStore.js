@@ -120,7 +120,26 @@ function createStore({ storageKey = STORAGE_KEY } = {}){
     if(changed) persist();
   }
 
-  return { get, set, clear };
+  function clearExpired(){
+    load();
+    const nowTs = now();
+    let changed = false;
+    for(const [key, entry] of memory.entries()){
+      if(Number.isFinite(entry.expiresAt) && entry.expiresAt <= nowTs){
+        memory.delete(key);
+        changed = true;
+      }
+    }
+    if(changed) persist();
+    return changed;
+  }
+
+  function size(){
+    load();
+    return memory.size;
+  }
+
+  return { get, set, clear, clearExpired, size };
 }
 
 const defaultStore = createStore();
@@ -137,6 +156,14 @@ export function clear(prefix){
   return defaultStore.clear(prefix);
 }
 
+export function clearExpired(){
+  return defaultStore.clearExpired();
+}
+
+export function size(){
+  return defaultStore.size();
+}
+
 export function createCacheStore(options){
   return createStore(options);
 }
@@ -145,5 +172,7 @@ export default {
   get,
   set,
   clear,
+  clearExpired,
+  size,
   createCacheStore,
 };

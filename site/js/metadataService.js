@@ -74,6 +74,20 @@ function createFetcher(client, cache, config, log){
     return data;
   }
 
+  /**
+   * Fetches enriched movie details from TMDB with caching
+   * @param {string|number} id - TMDB movie ID
+   * @param {Object} [options] - Configuration options
+   * @param {number} [options.ttlHours] - Cache TTL in hours
+   * @param {string} [options.language] - Language code (e.g., 'de-DE')
+   * @param {string} [options.region] - Region code (e.g., 'DE')
+   * @param {string|string[]} [options.append] - Additional TMDB endpoints to append
+   * @param {string} [options.posterSize] - Poster image size
+   * @param {string} [options.backdropSize] - Backdrop image size
+   * @param {string} [options.profileSize] - Profile image size
+   * @param {string} [options.logoSize] - Logo image size
+   * @returns {Promise<Object|null>} Enriched movie data or null
+   */
   async function getMovieEnriched(id, options = {}){
     const movieId = id ?? options.id;
     if(movieId == null) return null;
@@ -98,6 +112,12 @@ function createFetcher(client, cache, config, log){
     });
   }
 
+  /**
+   * Fetches enriched TV series details from TMDB with caching
+   * @param {string|number} id - TMDB TV series ID
+   * @param {Object} [options] - Configuration options (same as getMovieEnriched)
+   * @returns {Promise<Object|null>} Enriched TV series data or null
+   */
   async function getTvEnriched(id, options = {}){
     const tvId = id ?? options.id;
     if(tvId == null) return null;
@@ -122,6 +142,16 @@ function createFetcher(client, cache, config, log){
     });
   }
 
+  /**
+   * Fetches enriched season details from TMDB with caching
+   * @param {string|number} tvId - TMDB TV series ID
+   * @param {number} seasonNumber - Season number
+   * @param {Object} [options] - Configuration options
+   * @param {Object} [options.show] - Parent show object to attach to season
+   * @param {boolean} [options.skipShowLookup] - Skip automatic show lookup
+   * @param {string} [options.stillSize] - Episode still image size
+   * @returns {Promise<Object|null>} Enriched season data or null
+   */
   async function getSeasonEnriched(tvId, seasonNumber, options = {}){
     if(tvId == null || seasonNumber == null) return null;
     const cacheKey = `tmdb:tv:${tvId}:season:${seasonNumber}:v1`;
@@ -140,7 +170,13 @@ function createFetcher(client, cache, config, log){
           show = await getTvEnriched(tvId, { ttlHours: ttl });
         }catch(err){
           log.warn('Failed to load parent show for season', tvId, seasonNumber, err?.message || err);
+          // Provide minimal show object as fallback
+          show = { id: tvId, name: '', type: 'tv' };
         }
+      }
+      // Ensure show has at least minimal structure
+      if(!show){
+        show = { id: tvId, name: '', type: 'tv' };
       }
       return mapSeasonDetail(detail, {
         imageBase: config.imageBase,

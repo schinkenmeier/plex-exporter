@@ -104,13 +104,29 @@ function pickLogo(item){
   return logos.find(Boolean) || '';
 }
 
+function sanitizeUrl(url){
+  if(!url) return '';
+  const str = String(url).trim();
+  if(!str) return '';
+  // Only allow http(s) and data URLs
+  if(/^https?:\/\//i.test(str) || /^data:image\//i.test(str)) return str;
+  // For relative paths, ensure they don't contain quotes or special chars
+  return str.replace(/["'()]/g, '');
+}
+
 function applyBackdrop(root, item){
   const container = root.querySelector('[data-head-backdrop]');
   if(!container) return;
   const url = pickBackdrop(item);
   if(url){
-    container.style.backgroundImage = `url("${url.replace(/"/g, '\"')}")`;
-    container.dataset.state = 'ready';
+    const sanitized = sanitizeUrl(url);
+    if(sanitized){
+      container.style.backgroundImage = `url("${sanitized}")`;
+      container.dataset.state = 'ready';
+    }else{
+      container.style.backgroundImage = '';
+      container.dataset.state = '';
+    }
   }else{
     container.style.backgroundImage = '';
     container.dataset.state = '';
