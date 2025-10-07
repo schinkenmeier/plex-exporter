@@ -250,6 +250,10 @@ export function renderModalV2(item){
           ${hasSeasons ? '<div class="v2-pane v2-seasons" data-pane="seasons" id="v2PaneSeasons" role="tabpanel" aria-labelledby="v2TabSeasons" hidden></div>' : ''}
           <div class="v2-pane v2-cast" data-pane="cast" id="v2PaneCast" role="tabpanel" aria-labelledby="v2TabCast" hidden></div>
         </section>
+        <footer class="v2-footer" aria-label="Produktionslogos & Attribution" hidden>
+          <div class="v2-footer-logos" aria-label="Produktionsfirmen und Netzwerke"></div>
+          <p class="v2-footer-note"></p>
+        </footer>
       </div>
     </section>
   `;
