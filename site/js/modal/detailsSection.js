@@ -328,6 +328,80 @@ export function updateDetails(root, item){
     grid.append(section);
   }
 
+  const networks = Array.isArray(item?.tmdbDetail?.networks)
+    ? item.tmdbDetail.networks.map(entry => ({
+      name: String(entry?.name || '').trim(),
+      logo: String(entry?.logo || entry?.logoPath || entry?.logo_path || '').trim(),
+    })).filter(entry => entry.name || entry.logo)
+    : [];
+  if(networks.length){
+    const section = document.createElement('section');
+    section.className = 'v2-details-section';
+    section.dataset.section = 'networks';
+    const heading = document.createElement('h3');
+    heading.className = 'v2-details-heading';
+    heading.textContent = 'Netzwerke';
+    const list = document.createElement('div');
+    list.className = 'v2-chip-group network-chip-group';
+    networks.forEach(network => {
+      const chip = document.createElement('span');
+      chip.className = 'network-chip';
+      const label = network.name || 'Unbekanntes Netzwerk';
+      if(network.logo){
+        const img = document.createElement('img');
+        img.src = network.logo;
+        img.alt = label;
+        img.loading = 'lazy';
+        img.decoding = 'async';
+        chip.appendChild(img);
+      }
+      const name = document.createElement('span');
+      name.textContent = label;
+      chip.appendChild(name);
+      chip.title = label;
+      list.appendChild(chip);
+    });
+    if(list.childElementCount){
+      section.append(heading, list);
+      grid.append(section);
+    }
+  }
+
+  const spokenLanguages = Array.isArray(item?.tmdbDetail?.spokenLanguages)
+    ? item.tmdbDetail.spokenLanguages.map(entry => ({
+      code: String(entry?.code || entry?.iso6391 || '').trim(),
+      name: String(entry?.name || '').trim(),
+    })).filter(entry => entry.name || entry.code)
+    : [];
+  if(spokenLanguages.length){
+    const section = document.createElement('section');
+    section.className = 'v2-details-section';
+    section.dataset.section = 'languages';
+    const heading = document.createElement('h3');
+    heading.className = 'v2-details-heading';
+    heading.textContent = 'Sprachen';
+    const list = document.createElement('div');
+    list.className = 'v2-chip-group network-chip-group';
+    spokenLanguages.forEach(lang => {
+      const chip = document.createElement('span');
+      chip.className = 'network-chip';
+      const labelParts = [];
+      if(lang.name) labelParts.push(lang.name);
+      const upperCode = lang.code ? lang.code.toUpperCase() : '';
+      if(upperCode && (!lang.name || upperCode !== lang.name.toUpperCase())){
+        labelParts.push(upperCode);
+      }
+      const label = labelParts.join(' • ') || 'Unbekannte Sprache';
+      chip.textContent = label;
+      chip.title = label;
+      list.appendChild(chip);
+    });
+    if(list.childElementCount){
+      section.append(heading, list);
+      grid.append(section);
+    }
+  }
+
   if(grid.childElementCount){
     pane.appendChild(grid);
   }else{
