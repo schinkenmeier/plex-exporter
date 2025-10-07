@@ -264,6 +264,7 @@ function applyHeroLogo(root, item){
     slot.dataset.state = '';
     slot.dataset.src = '';
     slot.replaceChildren();
+    applyLogo(root, item, '');
   };
   img.addEventListener('load', onReady, { once: true });
   img.addEventListener('error', onError, { once: true });
