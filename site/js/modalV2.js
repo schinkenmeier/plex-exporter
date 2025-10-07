@@ -198,7 +198,11 @@ export function renderModalV2(item){
       <div class="v2-info">
         <header class="v2-head" data-tmdb-section>
           <div class="v2-head-visual" data-head-visual>
-            <div class="v2-head-backdrop" data-head-backdrop></div>
+            <div class="v2-head-hero" data-head-hero>
+              <div class="v2-head-backdrop" data-head-backdrop></div>
+              <div class="v2-head-overlay-logo" data-head-overlay-logo hidden></div>
+              <div class="v2-head-overlay-meta" data-head-overlay-meta hidden></div>
+            </div>
             <div class="v2-head-logo" data-head-logo hidden></div>
           </div>
           <p class="v2-head-status" data-head-status hidden aria-live="polite" aria-atomic="true"></p>
