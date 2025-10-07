@@ -16,6 +16,7 @@ const DEFAULT_OPTIONS = {
   stillSize: 'w780',
   castLimit: 20,
   crewLimit: 40,
+  region: 'DE',
 };
 
 function normaliseOptions(options = {}){
@@ -90,6 +91,54 @@ function mapProductionCompanies(list, options){
     originCountry: company?.origin_country || '',
     logo: urlLogo(company?.logo_path, { imageBase: options.imageBase, size: options.logoSize, title: company?.name }),
   }));
+}
+
+function mapProvider(entry, options){
+  if(!entry) return null;
+  const cfg = normaliseOptions(options);
+  const id = normaliseId(entry.provider_id ?? entry.id);
+  const name = entry.provider_name || entry.name || '';
+  if(!name) return null;
+  return {
+    id,
+    providerId: id,
+    name,
+    logoPath: entry.logo_path || '',
+    logo: urlLogo(entry.logo_path, { imageBase: cfg.imageBase, size: cfg.logoSize, title: name }),
+    displayPriority: entry.display_priority ?? entry.displayPriority ?? null,
+  };
+}
+
+function mapWatchProviderRegion(regionData, options){
+  if(!regionData) return null;
+  const cfg = normaliseOptions(options);
+  const types = ['flatrate', 'rent', 'buy', 'free', 'ads'];
+  const mapped = { link: regionData.link || '' };
+  for(const type of types){
+    const list = Array.isArray(regionData[type]) ? regionData[type] : [];
+    mapped[type] = list
+      .map(entry => mapProvider(entry, cfg))
+      .filter(Boolean);
+  }
+  return mapped;
+}
+
+function mapWatchProviders(payload, options = {}){
+  const cfg = normaliseOptions(options);
+  const results = payload?.results;
+  if(!results || typeof results !== 'object') return {};
+  const mapped = {};
+  for(const [region, data] of Object.entries(results)){
+    const regionKey = String(region || '').toUpperCase();
+    if(!regionKey) continue;
+    const mappedRegion = mapWatchProviderRegion(data, cfg);
+    if(mappedRegion) mapped[regionKey] = mappedRegion;
+  }
+  const defaultRegion = String(options.region || cfg.region || '').toUpperCase();
+  if(defaultRegion && mapped[defaultRegion]){
+    mapped.default = mapped[defaultRegion];
+  }
+  return mapped;
 }
 
 function mapNetworks(list, options){
@@ -267,6 +316,7 @@ export function mapMovieDetail(detail, options = {}){
         language: entry.iso_639_1 || '',
       })),
     },
+    watchProviders: mapWatchProviders(detail['watch/providers'], cfg),
     url: detail.id ? `https://www.themoviedb.org/movie/${detail.id}` : '',
     raw: detail,
   };
@@ -338,6 +388,7 @@ export function mapTvDetail(detail, options = {}){
         language: entry.iso_639_1 || '',
       })),
     },
+    watchProviders: mapWatchProviders(detail['watch/providers'], cfg),
     url: detail.id ? `https://www.themoviedb.org/tv/${detail.id}` : '',
     raw: detail,
   };
