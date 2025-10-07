@@ -40,6 +40,8 @@ body.modalv2-open { overflow: hidden; }
 .v2-head-backdrop { position: absolute; inset: 0; background-size: cover; background-position: center; filter: brightness(0.65); opacity: 0; transition: opacity .35s ease; transform: scale(1.02); }
 .v2-head-backdrop[data-state="ready"] { opacity: 1; }
 .v2-head-overlay-logo { position: relative; z-index: 2; display: flex; align-items: center; justify-content: center; padding: clamp(16px, 3vw, 28px); }
+.v2-head-overlay-meta { position: absolute; right: clamp(22px, 4vw, 34px); bottom: clamp(22px, 4vw, 34px); z-index: 3; display: block; max-width: min(340px, calc(100% - (clamp(22px, 4vw, 34px) * 2))); text-align: right; pointer-events: none; }
+.v2-head-overlay-meta > * { pointer-events: auto; }
 .v2-head-overlay-logo img { display: block; max-width: min(70%, 420px); max-height: clamp(64px, 12vw, 110px); object-fit: contain; filter: drop-shadow(0 18px 48px rgba(0,0,0,0.55)); mix-blend-mode: screen; }
 .v2-head-logo { position: relative; z-index: 1; padding: 24px; }
 .v2-head-logo[hidden] { display: none; }
@@ -230,6 +232,7 @@ body.modalv2-open { overflow: hidden; }
   .episode { grid-template-columns: 1fr; }
   .ep-header { flex-direction: column; align-items: flex-start; gap: 4px; }
   .v2-head-visual { min-height: 200px; }
+  .v2-head-overlay-meta { right: 20px; bottom: 20px; max-width: min(320px, calc(100% - 40px)); }
   .v2-head-overlay-logo img { max-width: 82%; max-height: 96px; }
   .v2-footer-logos { width: 100%; }
   .v2-footer-logo { flex: 1 1 calc(50% - 8px); justify-content: center; }
@@ -245,6 +248,7 @@ body.modalv2-open { overflow: hidden; }
   .v2-title { font-size: clamp(22px, 8vw, 32px); }
   .v2-facts-list { grid-template-columns: 1fr; }
   .v2-head-visual { border-radius: 16px; min-height: 180px; }
+  .v2-head-overlay-meta { right: 16px; bottom: 16px; max-width: calc(100% - 32px); }
   .v2-head-overlay-logo { padding: 18px; }
   .v2-head-overlay-logo img { max-width: 88%; max-height: 78px; }
   .v2-footer-logo { flex: 1 1 100%; }
