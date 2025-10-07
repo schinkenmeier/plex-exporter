@@ -1,5 +1,12 @@
 import { formatRating, humanYear, isNew, useTmdbOn } from '../utils.js';
 
+const TMDB_BASE_URL = 'https://www.themoviedb.org';
+const FOOTER_TYPE_CONFIG = {
+  network: { path: 'network', label: 'Netzwerk' },
+  company: { path: 'company', label: 'Produktionsfirma' },
+  collection: { path: 'collection', label: 'Sammlung' },
+};
+
 function resolvePoster(item){
   const tmdbPoster = item?.tmdbDetail?.poster || item?.tmdb?.poster || item?.tmdbPoster;
   const localPoster = item?.poster || item?.thumbFile || item?.art || '';
@@ -387,8 +394,163 @@ export function populateHead(root, item){
   const heroLogo = applyHeroLogo(root, item);
   applyHeroMeta(root, item);
   applyLogo(root, item, heroLogo);
+  populateFooter(root, item);
 }
 
 function onPosterReady(ev){
   ev.currentTarget?.classList.add('is-ready');
+}
+
+function buildFooterInitials(name=''){
+  const trimmed = String(name || '').trim();
+  if(!trimmed) return 'TMDB';
+  const initials = trimmed
+    .split(/\s+/)
+    .map(part => part[0])
+    .filter(Boolean)
+    .join('')
+    .slice(0, 3)
+    .toUpperCase();
+  return initials || 'TMDB';
+}
+
+function createFallbackLogo(name=''){
+  const initials = buildFooterInitials(name);
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 160 60');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  const rect = document.createElementNS(ns, 'rect');
+  rect.setAttribute('x', '2');
+  rect.setAttribute('y', '2');
+  rect.setAttribute('width', '156');
+  rect.setAttribute('height', '56');
+  rect.setAttribute('rx', '14');
+  rect.setAttribute('fill', '#15243b');
+  rect.setAttribute('stroke', 'rgba(87, 116, 164, 0.6)');
+  rect.setAttribute('stroke-width', '2');
+  const text = document.createElementNS(ns, 'text');
+  text.setAttribute('x', '80');
+  text.setAttribute('y', '38');
+  text.setAttribute('fill', '#b8c7e6');
+  text.setAttribute('font-size', '28');
+  text.setAttribute('font-weight', '600');
+  text.setAttribute('text-anchor', 'middle');
+  text.setAttribute('font-family', 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif');
+  text.textContent = initials;
+  svg.append(rect, text);
+  return svg;
+}
+
+function createFooterLogoNode(entry){
+  const config = FOOTER_TYPE_CONFIG[entry.type] || { label: 'TMDB' };
+  const baseLabel = entry.name ? `${entry.name} (${config.label})` : config.label;
+  const anchor = document.createElement('a');
+  anchor.className = 'v2-footer-logo';
+  anchor.href = entry.link || TMDB_BASE_URL;
+  anchor.target = '_blank';
+  anchor.rel = 'noopener noreferrer';
+  anchor.title = entry.name ? `${entry.name} – TMDB` : 'TMDB';
+  const ariaSuffix = entry.hasSpecificLink ? ' – öffnet externes TMDB-Profil' : ' – öffnet externe TMDB-Seite';
+  anchor.setAttribute('aria-label', `${baseLabel}${ariaSuffix}`);
+  if(entry.logo){
+    const img = document.createElement('img');
+    img.src = entry.logo;
+    img.alt = entry.name ? `${entry.name} Logo` : 'TMDB Logo';
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.referrerPolicy = 'no-referrer';
+    anchor.appendChild(img);
+  }else{
+    anchor.appendChild(createFallbackLogo(entry.name || config.label));
+  }
+  return anchor;
+}
+
+function buildFooterEntries(item){
+  const detail = item?.tmdbDetail;
+  if(!detail) return [];
+  const entries = [];
+  const seen = new Set();
+  const pushEntry = (source, type)=>{
+    if(!source) return;
+    const config = FOOTER_TYPE_CONFIG[type];
+    if(!config) return;
+    const rawId = source.id ?? source.tmdbId ?? source.tmdb_id ?? '';
+    const id = rawId == null ? '' : String(rawId).trim();
+    const name = String(source.name || source.title || '').trim();
+    const logoCandidates = [source.logo, source.logoPath, source.poster, source.backdrop];
+    let logoUrl = '';
+    for(const candidate of logoCandidates){
+      const sanitized = sanitizeUrl(candidate);
+      if(sanitized){ logoUrl = sanitized; break; }
+    }
+    if(!logoUrl && !name) return;
+    const keyParts = [type];
+    if(id) keyParts.push(id);
+    else if(name) keyParts.push(name.toLowerCase());
+    else if(logoUrl) keyParts.push(logoUrl);
+    const key = keyParts.join(':');
+    if(seen.has(key)) return;
+    seen.add(key);
+    const path = config.path;
+    const link = id ? `${TMDB_BASE_URL}/${path}/${encodeURIComponent(id)}` : TMDB_BASE_URL;
+    entries.push({
+      type,
+      name,
+      logo: logoUrl,
+      link,
+      hasSpecificLink: Boolean(id),
+    });
+  };
+  const networks = Array.isArray(detail?.networks) ? detail.networks : [];
+  networks.forEach(entry => pushEntry(entry, 'network'));
+  const companies = Array.isArray(detail?.productionCompanies) ? detail.productionCompanies : [];
+  companies.forEach(entry => pushEntry(entry, 'company'));
+  if(detail?.collection){
+    const collectionSource = {
+      ...detail.collection,
+      logo: detail.collection?.logo,
+      poster: detail.collection?.poster,
+      backdrop: detail.collection?.backdrop,
+    };
+    pushEntry(collectionSource, 'collection');
+  }
+  return entries;
+}
+
+function populateFooter(root, item){
+  const footer = root.querySelector('.v2-footer');
+  if(!footer) return;
+  const logosRoot = footer.querySelector('.v2-footer-logos');
+  const note = footer.querySelector('.v2-footer-note');
+  if(!logosRoot || !note){
+    footer.hidden = true;
+    return;
+  }
+  logosRoot.replaceChildren();
+  note.replaceChildren();
+  const entries = buildFooterEntries(item);
+  if(!entries.length){
+    footer.hidden = true;
+    return;
+  }
+  const fragment = document.createDocumentFragment();
+  entries.forEach(entry => fragment.appendChild(createFooterLogoNode(entry)));
+  logosRoot.appendChild(fragment);
+  const tmdbLink = document.createElement('a');
+  tmdbLink.href = TMDB_BASE_URL;
+  tmdbLink.target = '_blank';
+  tmdbLink.rel = 'noopener noreferrer';
+  tmdbLink.textContent = 'TMDB';
+  tmdbLink.setAttribute('aria-label', 'The Movie Database (TMDB) – externe Seite');
+  const strong = document.createElement('strong');
+  strong.appendChild(tmdbLink);
+  note.append(
+    'Logos & Daten bereitgestellt von ',
+    strong,
+    '. Dieses Produkt nutzt die TMDB API, ist jedoch nicht von TMDB zertifiziert oder unterstützt.'
+  );
+  footer.hidden = false;
 }
