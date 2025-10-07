@@ -7,12 +7,23 @@ function resolvePoster(item){
 }
 
 export function runtimeText(item){
-  const raw = item?.runtimeMin
-    ?? item?.durationMin
-    ?? item?.tmdbDetail?.runtime
-    ?? (item?.duration ? Math.round(Number(item.duration) / 60000) : null);
-  const minutes = Number(raw);
-  if(!Number.isFinite(minutes) || minutes <= 0) return '';
+  const sources = [
+    item?.runtimeMin,
+    item?.durationMin,
+    item?.tmdbDetail?.runtime,
+    item?.duration ? Math.round(Number(item.duration) / 60000) : null,
+  ];
+
+  let minutes = null;
+  for(const value of sources){
+    const parsed = Number(value);
+    if(Number.isFinite(parsed) && parsed > 0){
+      minutes = parsed;
+      break;
+    }
+  }
+
+  if(minutes === null) return '';
   if(item?.type === 'tv'){ return `~${minutes} min/Ep`; }
   return `${minutes} min`;
 }
