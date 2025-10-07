@@ -89,19 +89,62 @@ function pickBackdrop(item){
   return item?.art || item?.background || '';
 }
 
-function pickLogo(item){
-  const logos = [];
+function logoEntryToUrl(entry){
+  if(!entry) return '';
+  if(typeof entry === 'string') return entry;
+  return entry.url || entry.file_path || entry.filePath || entry.path || entry.logo || '';
+}
+
+function logoEntryLanguage(entry){
+  if(!entry || typeof entry !== 'object') return '';
+  const lang = entry.iso6391 || entry.iso_639_1 || entry.language || '';
+  return typeof lang === 'string' ? lang.toLowerCase() : '';
+}
+
+function pickHeroLogo(item){
   const detail = item?.tmdbDetail;
+  const logos = Array.isArray(detail?.images?.logos) ? detail.images.logos : [];
+  if(!logos.length) return '';
+  const preferences = ['de', 'en', ''];
+  for(const pref of preferences){
+    const match = logos.find(entry => {
+      const lang = logoEntryLanguage(entry);
+      if(pref){ return lang === pref; }
+      return !lang;
+    });
+    const url = logoEntryToUrl(match);
+    const sanitized = sanitizeUrl(url);
+    if(sanitized) return sanitized;
+  }
+  for(const entry of logos){
+    const sanitized = sanitizeUrl(logoEntryToUrl(entry));
+    if(sanitized) return sanitized;
+  }
+  return '';
+}
+
+function pickLogo(item, excludeUrl=''){
+  const seen = new Set();
+  const exclude = sanitizeUrl(excludeUrl);
+  if(exclude) seen.add(exclude);
+  const candidates = [];
+  const detail = item?.tmdbDetail;
+  const push = (value)=>{
+    const sanitized = sanitizeUrl(logoEntryToUrl(value));
+    if(!sanitized || seen.has(sanitized)) return;
+    seen.add(sanitized);
+    candidates.push(sanitized);
+  };
   if(detail?.images?.logos){
-    logos.push(...detail.images.logos.map(entry => entry?.url || entry?.path || '').filter(Boolean));
+    detail.images.logos.forEach(push);
   }
   if(detail?.networks){
-    logos.push(...detail.networks.map(net => net?.logo).filter(Boolean));
+    detail.networks.forEach(push);
   }
   if(detail?.productionCompanies){
-    logos.push(...detail.productionCompanies.map(company => company?.logo).filter(Boolean));
+    detail.productionCompanies.forEach(push);
   }
-  return logos.find(Boolean) || '';
+  return candidates[0] || '';
 }
 
 function sanitizeUrl(url){
@@ -118,25 +161,46 @@ function applyBackdrop(root, item){
   const container = root.querySelector('[data-head-backdrop]');
   if(!container) return;
   const url = pickBackdrop(item);
-  if(url){
-    const sanitized = sanitizeUrl(url);
-    if(sanitized){
-      container.style.backgroundImage = `url("${sanitized}")`;
-      container.dataset.state = 'ready';
-    }else{
-      container.style.backgroundImage = '';
-      container.dataset.state = '';
-    }
-  }else{
+  const sanitized = sanitizeUrl(url);
+  const reset = ()=>{
     container.style.backgroundImage = '';
     container.dataset.state = '';
+    container.dataset.src = '';
+  };
+  if(!sanitized){
+    reset();
+    return;
   }
+  if(typeof Image === 'undefined'){
+    container.dataset.src = sanitized;
+    container.dataset.state = 'ready';
+    container.style.backgroundImage = `url("${sanitized}")`;
+    return;
+  }
+  container.dataset.state = 'loading';
+  container.style.backgroundImage = '';
+  container.dataset.src = sanitized;
+  const img = new Image();
+  img.decoding = 'async';
+  img.referrerPolicy = 'no-referrer';
+  const onLoad = ()=>{
+    if(container.dataset.src !== sanitized) return;
+    container.style.backgroundImage = `url("${sanitized}")`;
+    container.dataset.state = 'ready';
+  };
+  const onError = ()=>{
+    if(container.dataset.src !== sanitized) return;
+    reset();
+  };
+  img.addEventListener('load', onLoad, { once: true });
+  img.addEventListener('error', onError, { once: true });
+  img.src = sanitized;
 }
 
-function applyLogo(root, item){
+function applyLogo(root, item, excludeUrl=''){
   const slot = root.querySelector('[data-head-logo]');
   if(!slot) return;
-  const logoUrl = pickLogo(item);
+  const logoUrl = pickLogo(item, excludeUrl);
   if(logoUrl){
     let img = slot.querySelector('img');
     if(!img){
@@ -144,6 +208,7 @@ function applyLogo(root, item){
       img.alt = item?.title || item?.name || 'Logo';
       img.decoding = 'async';
       img.loading = 'lazy';
+      img.referrerPolicy = 'no-referrer';
       slot.replaceChildren(img);
     }
     img.src = logoUrl;
@@ -153,6 +218,103 @@ function applyLogo(root, item){
     slot.hidden = true;
     slot.replaceChildren();
   }
+}
+
+function applyHeroLogo(root, item){
+  const slot = root.querySelector('[data-head-overlay-logo]');
+  if(!slot) return '';
+  const logoUrl = pickHeroLogo(item);
+  slot.dataset.src = '';
+  if(!logoUrl){
+    slot.hidden = true;
+    slot.dataset.state = '';
+    slot.replaceChildren();
+    return '';
+  }
+  const img = document.createElement('img');
+  img.alt = item?.title ? `Hero Logo: ${item.title}` : 'Hero Logo';
+  img.decoding = 'async';
+  img.loading = 'lazy';
+  img.referrerPolicy = 'no-referrer';
+  slot.replaceChildren(img);
+  slot.dataset.src = logoUrl;
+  if(typeof Image === 'undefined'){
+    img.src = logoUrl;
+    slot.hidden = false;
+    slot.dataset.state = 'ready';
+    return logoUrl;
+  }
+  slot.hidden = true;
+  slot.dataset.state = 'loading';
+  const onReady = ()=>{
+    if(slot.dataset.src !== logoUrl) return;
+    slot.hidden = false;
+    slot.dataset.state = 'ready';
+  };
+  const onError = ()=>{
+    if(slot.dataset.src !== logoUrl) return;
+    slot.hidden = true;
+    slot.dataset.state = '';
+    slot.dataset.src = '';
+    slot.replaceChildren();
+  };
+  img.addEventListener('load', onReady, { once: true });
+  img.addEventListener('error', onError, { once: true });
+  img.src = logoUrl;
+  return logoUrl;
+}
+
+function ratingBucket(value){
+  if(!Number.isFinite(value)) return '';
+  if(value >= 7.5) return 'high';
+  if(value >= 5.5) return 'medium';
+  if(value > 0) return 'low';
+  return '';
+}
+
+function pickRatingInfo(item){
+  const detail = item?.tmdbDetail || {};
+  const tmdbVote = Number(detail.voteAverage ?? detail.vote_average);
+  if(Number.isFinite(tmdbVote) && tmdbVote > 0){
+    return {
+      label: 'TMDB',
+      value: tmdbVote,
+      text: formatRating(tmdbVote),
+      bucket: ratingBucket(tmdbVote),
+    };
+  }
+  const fallback = Number(item?.rating ?? item?.audienceRating ?? item?.userRating);
+  if(Number.isFinite(fallback) && fallback > 0){
+    return {
+      label: 'Bewertung',
+      value: fallback,
+      text: formatRating(fallback),
+      bucket: ratingBucket(fallback),
+    };
+  }
+  return null;
+}
+
+function applyHeroMeta(root, item){
+  const slot = root.querySelector('[data-head-overlay-meta]');
+  if(!slot) return;
+  slot.replaceChildren();
+  const info = pickRatingInfo(item);
+  if(!info){
+    slot.hidden = true;
+    return;
+  }
+  const chip = document.createElement('span');
+  chip.className = 'v2-chip--rating';
+  if(info.bucket) chip.dataset.score = info.bucket;
+  const label = document.createElement('span');
+  label.textContent = info.label;
+  const value = document.createElement('strong');
+  value.textContent = info.text;
+  chip.append(label, value);
+  chip.setAttribute('aria-label', `${info.label} Bewertung ${info.text} von 10`);
+  slot.appendChild(chip);
+  slot.hidden = false;
 }
 
 export function populateHead(root, item){
@@ -222,7 +384,9 @@ export function populateHead(root, item){
     }
   }
   applyBackdrop(root, item);
-  applyLogo(root, item);
+  const heroLogo = applyHeroLogo(root, item);
+  applyHeroMeta(root, item);
+  applyLogo(root, item, heroLogo);
 }
 
 function onPosterReady(ev){
