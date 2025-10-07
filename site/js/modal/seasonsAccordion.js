@@ -298,8 +298,28 @@ function resolveShowTmdbId(season, show){
   return str ? str : null;
 }
 
+function hasTmdbCredentials(){
+  try{
+    const config = metadataService?.config || {};
+    if(typeof config.token === 'string' && config.token.trim()) return true;
+    if(typeof config.apiKey === 'string' && config.apiKey.trim()) return true;
+  }catch(err){
+    logWarn('Failed to inspect metadata service config for credentials', err?.message || err);
+  }
+
+  try{
+    const stored = typeof localStorage?.getItem === 'function' ? localStorage.getItem('tmdbToken') : '';
+    if(typeof stored === 'string' && stored.trim()) return true;
+  }catch(err){
+    logWarn('Failed to read TMDB credentials from storage', err?.message || err);
+  }
+
+  return false;
+}
+
 function shouldEnrichSeason(tvId, seasonNumber){
   if(!window?.FEATURES?.tmdbEnrichment) return false;
+  if(!hasTmdbCredentials()) return false;
   if(!tvId || seasonNumber == null) return false;
   return true;
 }
