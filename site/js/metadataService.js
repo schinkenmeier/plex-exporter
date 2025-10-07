@@ -47,8 +47,8 @@ function combineAppend(base, extras){
 
 function createFetcher(client, cache, config, log){
   const defaultAppend = {
-    movie: 'images,credits,release_dates',
-    tv: 'images,content_ratings,aggregate_credits,credits',
+    movie: 'images,credits,release_dates,watch/providers',
+    tv: 'images,content_ratings,aggregate_credits,credits,watch/providers',
     season: 'images,credits',
   };
 
@@ -93,6 +93,7 @@ function createFetcher(client, cache, config, log){
         backdropSize: options.backdropSize,
         profileSize: options.profileSize,
         logoSize: options.logoSize,
+        region: options.region ?? config.region,
       });
     });
   }
@@ -116,6 +117,7 @@ function createFetcher(client, cache, config, log){
         backdropSize: options.backdropSize,
         profileSize: options.profileSize,
         logoSize: options.logoSize,
+        region: options.region ?? config.region,
       });
     });
   }
