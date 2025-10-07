@@ -7,11 +7,12 @@ function resolvePoster(item){
 }
 
 export function runtimeText(item){
-  const minutes = item?.runtimeMin
-    || item?.durationMin
-    || (item?.tmdbDetail?.runtime ? Number(item.tmdbDetail.runtime) : null)
-    || (item?.duration ? Math.round(Number(item.duration) / 60000) : null);
-  if(!Number.isFinite(minutes)) return '';
+  const raw = item?.runtimeMin
+    ?? item?.durationMin
+    ?? item?.tmdbDetail?.runtime
+    ?? (item?.duration ? Math.round(Number(item.duration) / 60000) : null);
+  const minutes = Number(raw);
+  if(!Number.isFinite(minutes) || minutes <= 0) return '';
   if(item?.type === 'tv'){ return `~${minutes} min/Ep`; }
   return `${minutes} min`;
 }
