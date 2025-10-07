@@ -13,6 +13,7 @@ import { refreshHero, setHeroNavigation, showHeroFallback } from './hero.js';
 import { initHeroAutoplay } from './hero-autoplay.js';
 import * as HeroPolicy from './hero/policy.js';
 import * as HeroPipeline from './hero/pipeline.js';
+import { syncDefaultMetadataService } from './metadataService.js';
 
 const DEFAULT_FEATURE_FLAGS = { tmdbEnrichment: false };
 const globalFeatures = (()=>{
@@ -221,6 +222,7 @@ export async function boot(){
 
   const [cfg, heroPolicy] = await Promise.all([configPromise, policyPromise]);
   applyFeatureFlags(cfg);
+  syncDefaultMetadataService(cfg);
   const heroPipelineInfo = HeroPipeline.configure({ cfg, policy: heroPolicy });
   setState({
     cfg,
