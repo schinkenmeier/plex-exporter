@@ -185,10 +185,132 @@ export function createMetadataService(inputOptions = {}){
   };
 }
 
-const defaultService = createMetadataService();
+let defaultCacheStore = null;
+let defaultService = null;
 
-export const getMovieEnriched = (...args) => defaultService.getMovieEnriched(...args);
-export const getTvEnriched = (...args) => defaultService.getTvEnriched(...args);
-export const getSeasonEnriched = (...args) => defaultService.getSeasonEnriched(...args);
+function ensureDefaultCache(){
+  if(!defaultCacheStore){
+    defaultCacheStore = createCacheStore();
+  }
+  return defaultCacheStore;
+}
 
-export default defaultService;
+function ensureDefaultService(){
+  if(!defaultService){
+    defaultService = createMetadataService({ cacheStore: ensureDefaultCache() });
+  }
+  return defaultService;
+}
+
+export function configureMetadataServiceDefaults(options = {}){
+  const merged = { ...options };
+  if(!merged.cacheStore){
+    merged.cacheStore = ensureDefaultCache();
+  }
+  defaultService = createMetadataService(merged);
+  return defaultService;
+}
+
+function readStoredToken(){
+  try{
+    const token = localStorage.getItem('tmdbToken');
+    if(token && token.trim()){
+      return token.trim();
+    }
+  }catch(err){
+    console.warn(`${LOG_PREFIX} Failed to read tmdbToken from storage:`, err?.message || err);
+  }
+  return '';
+}
+
+export function syncDefaultMetadataService(cfg = {}, overrides = {}){
+  try{
+    const {
+      preferStoredToken = true,
+      token: overrideToken,
+      apiKey: overrideApiKey,
+      language: overrideLanguage,
+      region: overrideRegion,
+      ttlHours: overrideTtl,
+      imageBase: overrideImageBase,
+    } = overrides || {};
+
+    const options = {};
+    const lang = overrideLanguage || cfg.lang || cfg.language;
+    if(lang) options.language = lang;
+    const region = overrideRegion || cfg.region || cfg.iso;
+    if(region) options.region = region;
+    const ttlCandidates = [overrideTtl, cfg.ttlHours, cfg.tmdbTtlHours];
+    for(const candidate of ttlCandidates){
+      if(candidate === undefined || candidate === null) continue;
+      if(typeof candidate === 'string' && candidate.trim() === '') continue;
+      const ttlNum = Number(candidate);
+      if(Number.isFinite(ttlNum)){
+        options.ttlHours = ttlNum;
+        break;
+      }
+    }
+    const imageBase = overrideImageBase || cfg.imageBase || cfg.tmdbImageBase;
+    if(imageBase) options.imageBase = imageBase;
+
+    let token = typeof overrideToken === 'string' ? overrideToken.trim() : (overrideToken ?? '');
+    if(typeof token !== 'string') token = '';
+    if(!token && preferStoredToken){
+      token = readStoredToken();
+    }
+    if(!token && typeof cfg.tmdbToken === 'string'){
+      token = cfg.tmdbToken.trim();
+    }
+
+    let apiKey = typeof overrideApiKey === 'string' ? overrideApiKey.trim() : (overrideApiKey ?? '');
+    if(typeof apiKey !== 'string') apiKey = '';
+    if(!apiKey && typeof cfg.tmdbApiKey === 'string'){
+      apiKey = cfg.tmdbApiKey.trim();
+    }
+
+    if(token){
+      options.token = token;
+    }else if(apiKey){
+      options.apiKey = apiKey;
+    }
+
+    configureMetadataServiceDefaults(options);
+  }catch(err){
+    console.warn(`${LOG_PREFIX} Failed to sync default metadata service:`, err?.message || err);
+  }
+}
+
+export const getMovieEnriched = (...args) => ensureDefaultService().getMovieEnriched(...args);
+export const getTvEnriched = (...args) => ensureDefaultService().getTvEnriched(...args);
+export const getSeasonEnriched = (...args) => ensureDefaultService().getSeasonEnriched(...args);
+
+const metadataServiceFacade = {
+  getMovieEnriched: (...args) => ensureDefaultService().getMovieEnriched(...args),
+  getTvEnriched: (...args) => ensureDefaultService().getTvEnriched(...args),
+  getSeasonEnriched: (...args) => ensureDefaultService().getSeasonEnriched(...args),
+  clear(prefix){
+    return ensureDefaultService().clear(prefix);
+  },
+  configure: configureMetadataServiceDefaults,
+  sync: syncDefaultMetadataService,
+};
+
+Object.defineProperties(metadataServiceFacade, {
+  client: {
+    get(){
+      return ensureDefaultService().client;
+    },
+  },
+  cache: {
+    get(){
+      return ensureDefaultService().cache;
+    },
+  },
+  config: {
+    get(){
+      return ensureDefaultService().config;
+    },
+  },
+});
+
+export default metadataServiceFacade;
