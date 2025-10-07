@@ -9,5 +9,5 @@ export function updateSeasons(root, item){
     return;
   }
   pane.innerHTML = '';
-  renderSeasonsAccordion(pane, seasons);
+  renderSeasonsAccordion(pane, seasons, { show: item });
 }
