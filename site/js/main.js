@@ -14,6 +14,29 @@ import { initHeroAutoplay } from './hero-autoplay.js';
 import * as HeroPolicy from './hero/policy.js';
 import * as HeroPipeline from './hero/pipeline.js';
 
+const DEFAULT_FEATURE_FLAGS = { tmdbEnrichment: false };
+const globalFeatures = (()=>{
+  const existing = typeof window !== 'undefined' && window.FEATURES ? window.FEATURES : {};
+  const merged = { ...DEFAULT_FEATURE_FLAGS, ...existing };
+  if(typeof window !== 'undefined'){
+    window.FEATURES = merged;
+  }
+  return merged;
+})();
+
+function applyFeatureFlags(cfg){
+  try{
+    if(globalFeatures){
+      globalFeatures.tmdbEnrichment = !!(cfg && cfg.tmdbEnabled);
+    }
+    if(typeof window !== 'undefined' && window.FEATURES && window.FEATURES !== globalFeatures){
+      window.FEATURES = { ...window.FEATURES, ...globalFeatures };
+    }
+  }catch(err){
+    console.warn('[main] Failed to apply feature flags:', err?.message || err);
+  }
+}
+
 let taglineTicker = null;
 const heroFallbackNotice = { reason: null };
 
@@ -197,6 +220,7 @@ export async function boot(){
   });
 
   const [cfg, heroPolicy] = await Promise.all([configPromise, policyPromise]);
+  applyFeatureFlags(cfg);
   const heroPipelineInfo = HeroPipeline.configure({ cfg, policy: heroPolicy });
   setState({
     cfg,

@@ -1,8 +1,13 @@
 import { formatRating, humanYear } from '../utils.js';
 import { runtimeText, studioText } from './headerSection.js';
+import { getState } from '../state.js';
 
 function releaseDateText(item){
+  const tmdb = item?.tmdbDetail;
   const candidates = [
+    tmdb?.releaseDate,
+    tmdb?.firstAirDate,
+    tmdb?.lastAirDate,
     item?.originallyAvailableAt,
     item?.releaseDate,
     item?.premiereDate,
@@ -39,12 +44,87 @@ function namesFromList(source){
 
 function genresFromItem(item){
   const arr = Array.isArray(item?.genres) ? item.genres : [];
-  const mapped = arr.map(entry=>{
+  const tmdb = Array.isArray(item?.tmdbDetail?.genres) ? item.tmdbDetail.genres : [];
+  const mapped = [...arr, ...tmdb].map(entry=>{
     if(!entry) return '';
     if(typeof entry === 'string') return entry;
     return entry.tag || entry.title || entry.name || '';
   }).filter(Boolean);
   return Array.from(new Set(mapped));
+}
+
+function tmdbCrew(detail, jobs){
+  if(!detail?.credits || !Array.isArray(detail.credits.crew)) return [];
+  const jobSet = Array.isArray(jobs) ? new Set(jobs) : new Set([jobs]);
+  const names = detail.credits.crew
+    .filter(member => member && jobSet.has(member.job))
+    .map(member => member.name || member.originalName || member.tag)
+    .filter(Boolean);
+  return Array.from(new Set(names));
+}
+
+function mergeNameLists(primary, secondary){
+  const seen = new Set();
+  const result = [];
+  [...primary, ...secondary].forEach(name => {
+    const trimmed = String(name || '').trim();
+    if(!trimmed || seen.has(trimmed.toLowerCase())) return;
+    seen.add(trimmed.toLowerCase());
+    result.push(trimmed);
+  });
+  return result;
+}
+
+function contentRatingFromItem(item){
+  const tmdb = (item?.tmdbDetail?.contentRating || '').trim();
+  if(tmdb) return tmdb;
+  return (item?.contentRating || '').trim();
+}
+
+function aggregateRatings(item){
+  const ratings = [];
+  const tmdb = item?.tmdbDetail;
+  if(tmdb?.voteAverage){
+    ratings.push(['TMDB', `★ ${formatOptionalRating(tmdb.voteAverage)}`]);
+  }
+  if(item?.rating){
+    ratings.push(['Bewertung', `★ ${formatOptionalRating(item.rating)}`]);
+  }
+  if(item?.audienceRating){
+    ratings.push(['Publikum', `★ ${formatOptionalRating(item.audienceRating)}`]);
+  }
+  if(item?.userRating){
+    ratings.push(['Eigene Wertung', `★ ${formatOptionalRating(item.userRating)}`]);
+  }
+  return ratings;
+}
+
+function watchProviderGroups(item){
+  const detail = item?.tmdbDetail;
+  if(!detail?.watchProviders) return [];
+  const region = (getState().cfg?.iso || getState().cfg?.region || 'DE').toUpperCase();
+  const source = detail.watchProviders?.[region] || detail.watchProviders?.DE || detail.watchProviders?.default || null;
+  if(!source) return [];
+  const map = [
+    ['flatrate', 'Streaming'],
+    ['rent', 'Leihen'],
+    ['buy', 'Kaufen'],
+    ['free', 'Kostenlos'],
+    ['ads', 'Mit Werbung'],
+  ];
+  const groups = [];
+  for(const [key, label] of map){
+    const list = Array.isArray(source[key]) ? source[key] : [];
+    const providers = list.map(entry => ({
+      id: entry?.id || entry?.provider_id || entry?.providerId || '',
+      name: entry?.provider_name || entry?.name || '',
+      logo: entry?.logo || entry?.logo_path || entry?.logoPath || '',
+    })).filter(entry => entry.name);
+    if(providers.length){
+      groups.push({ label, providers });
+    }
+  }
+  return groups;
 }
 
 function formatOptionalRating(value){
@@ -78,19 +158,13 @@ export function updateDetails(root, item){
   if(runtime) general.push(['Laufzeit', runtime]);
   const studio = studioText(item);
   if(studio) general.push(['Studio', studio]);
-  const certification = (item?.contentRating || '').trim();
+  const certification = contentRatingFromItem(item);
   if(certification) general.push(['Freigabe', certification]);
 
-  const critic = formatOptionalRating(item?.rating);
-  const audience = formatOptionalRating(item?.audienceRating);
-  const user = formatOptionalRating(item?.userRating);
-  if(critic){
-    general.push(['Bewertung', `★ ${critic}`]);
-    if(audience && audience !== critic) general.push(['Publikum', `★ ${audience}`]);
-  }else if(audience){
-    general.push(['Bewertung', `★ ${audience}`]);
-  }
-  if(user) general.push(['Eigene Wertung', `★ ${user}`]);
+  aggregateRatings(item).forEach(entry => {
+    const [label, value] = entry;
+    if(label && value) general.push([label, value]);
+  });
 
   if(item?.type === 'tv'){
     const numericSeasons = Number(item?.seasonCount);
@@ -108,9 +182,15 @@ export function updateDetails(root, item){
     }
   }
 
-  const countries = namesFromList(item?.countries);
+  const countries = mergeNameLists(
+    namesFromList(item?.countries),
+    Array.isArray(item?.tmdbDetail?.productionCountries) ? item.tmdbDetail.productionCountries : []
+  );
   if(countries.length) general.push(['Länder', countries.join(', ')]);
-  const collections = namesFromList(item?.collections);
+  const collections = mergeNameLists(
+    namesFromList(item?.collections),
+    item?.tmdbDetail?.collection?.name ? [item.tmdbDetail.collection.name] : []
+  );
   if(collections.length) general.push(['Sammlungen', collections.join(', ')]);
   const labels = namesFromList(item?.labels);
   if(labels.length) general.push(['Labels', labels.join(', ')]);
@@ -161,13 +241,25 @@ export function updateDetails(root, item){
   }
 
   const crew = [];
-  const directors = namesFromList(item?.directors);
+  const directors = mergeNameLists(
+    namesFromList(item?.directors),
+    tmdbCrew(item?.tmdbDetail, ['Director'])
+  );
   if(directors.length) crew.push(['Regie', directors.join(', ')]);
-  const writers = namesFromList(item?.writers);
+  const writers = mergeNameLists(
+    namesFromList(item?.writers),
+    tmdbCrew(item?.tmdbDetail, ['Writer', 'Screenplay', 'Story'])
+  );
   if(writers.length) crew.push(['Drehbuch', writers.join(', ')]);
-  const producers = namesFromList(item?.producers);
+  const producers = mergeNameLists(
+    namesFromList(item?.producers),
+    tmdbCrew(item?.tmdbDetail, ['Producer', 'Executive Producer'])
+  );
   if(producers.length) crew.push(['Produktion', producers.join(', ')]);
-  const creators = namesFromList(item?.creators || item?.showrunners);
+  const creators = mergeNameLists(
+    namesFromList(item?.creators || item?.showrunners),
+    Array.isArray(item?.tmdbDetail?.createdBy) ? item.tmdbDetail.createdBy.map(entry => entry?.name || '') : []
+  );
   if(item?.type === 'tv' && creators.length) crew.push(['Creator', creators.join(', ')]);
 
   if(crew.length){
@@ -191,6 +283,49 @@ export function updateDetails(root, item){
       section.append(heading, list);
       grid.append(section);
     }
+  }
+
+  const providers = watchProviderGroups(item);
+  if(providers.length){
+    const section = document.createElement('section');
+    section.className = 'v2-details-section';
+    section.dataset.section = 'providers';
+    const heading = document.createElement('h3');
+    heading.className = 'v2-details-heading';
+    heading.textContent = 'Verfügbarkeit';
+    const groupsWrap = document.createElement('div');
+    groupsWrap.className = 'v2-provider-groups';
+    providers.forEach(group => {
+      const groupEl = document.createElement('div');
+      groupEl.className = 'v2-provider-group';
+      const labelEl = document.createElement('p');
+      labelEl.className = 'v2-provider-label';
+      labelEl.textContent = group.label;
+      const listEl = document.createElement('div');
+      listEl.className = 'v2-provider-list';
+      group.providers.forEach(provider => {
+        const itemEl = document.createElement('span');
+        itemEl.className = 'v2-provider';
+        itemEl.setAttribute('data-provider', provider.id || provider.name);
+        if(provider.logo){
+          const logo = document.createElement('img');
+          logo.src = provider.logo;
+          logo.alt = provider.name;
+          logo.loading = 'lazy';
+          logo.decoding = 'async';
+          itemEl.appendChild(logo);
+        }
+        const name = document.createElement('span');
+        name.className = 'v2-provider-name';
+        name.textContent = provider.name;
+        itemEl.appendChild(name);
+        listEl.appendChild(itemEl);
+      });
+      groupEl.append(labelEl, listEl);
+      groupsWrap.appendChild(groupEl);
+    });
+    section.append(heading, groupsWrap);
+    grid.append(section);
   }
 
   if(grid.childElementCount){

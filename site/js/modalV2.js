@@ -4,10 +4,11 @@ import { updateOverview } from './modal/overviewSection.js';
 import { updateDetails } from './modal/detailsSection.js';
 import { updateSeasons } from './modal/seasonsSection.js';
 import { setExternalLinks } from './modal/externalLinks.js';
-import { updateCast, buildCastList } from './modal/castSection.js';
+import { updateCast, buildCastList, setCastLoading, setCastStatus } from './modal/castSection.js';
 import { getState } from './state.js';
 import { loadShowDetail } from './data.js';
 import { mapMovie, mapShow, mergeShowDetail, needsShowDetail } from './modal/shared.js';
+import { getMovieEnriched, getTvEnriched } from './metadataService.js';
 
 let overlayContainer = null;
 let dialogEl = null;
@@ -147,6 +148,29 @@ function focusInitial(){
   }
 }
 
+function setTmdbStatus(rootOrPayload, maybePayload){
+  let root = rootOrPayload;
+  let payload = maybePayload;
+  if(!(root instanceof HTMLElement)){
+    payload = rootOrPayload;
+    root = null;
+  }
+  const targetRoot = root instanceof HTMLElement ? root : rootEl;
+  if(!targetRoot) return;
+  const statusEl = targetRoot.querySelector('[data-head-status]');
+  if(!statusEl) return;
+  if(!payload){
+    statusEl.hidden = true;
+    statusEl.textContent = '';
+    statusEl.dataset.state = '';
+    return;
+  }
+  const { state='', message='' } = payload;
+  statusEl.dataset.state = state || '';
+  statusEl.textContent = message || '';
+  statusEl.hidden = !message;
+}
+
 export function showModalV2Loading(message='Details werden geladen …'){
   const root = showOverlay();
   if(!root) return;
@@ -172,7 +196,12 @@ export function renderModalV2(item){
         </div>
       </aside>
       <div class="v2-info">
-        <header class="v2-head">
+        <header class="v2-head" data-tmdb-section>
+          <div class="v2-head-visual" data-head-visual>
+            <div class="v2-head-backdrop" data-head-backdrop></div>
+            <div class="v2-head-logo" data-head-logo hidden></div>
+          </div>
+          <p class="v2-head-status" data-head-status hidden aria-live="polite"></p>
           <div class="v2-titlebar">
             <div class="v2-title-wrap">
               <h2 class="v2-title" id="modalV2Title"></h2>
@@ -223,10 +252,13 @@ export function renderModalV2(item){
 
   populateHead(root, item);
   setExternalLinks(root, item);
-  updateOverview(root, item?.overview || item?.summary || '');
+  updateOverview(root, item);
   updateDetails(root, item);
   if(item?.type === 'tv'){ updateSeasons(root, item); }
   updateCast(root, buildCastList(item));
+  setCastLoading(root, false);
+  setCastStatus(root, null);
+  setTmdbStatus(root, null);
   applyTabs(root);
   const closeBtn = root.querySelector('#v2Close');
   if(closeBtn){
@@ -234,6 +266,89 @@ export function renderModalV2(item){
   }
   if(dialogEl) dialogEl.setAttribute('aria-labelledby', 'modalV2Title');
   focusInitial();
+}
+
+function refreshModalSections(item){
+  const root = rootEl;
+  if(!root) return;
+  populateHead(root, item);
+  setExternalLinks(root, item);
+  updateOverview(root, item);
+  updateDetails(root, item);
+  updateCast(root, buildCastList(item));
+}
+
+function maybeStartTmdbEnrichment(kind, item, tokenSnapshot){
+  if(!shouldUseTmdbEnrichment(item)) return;
+  if(item?.tmdbDetail){
+    refreshModalSections(item);
+    return;
+  }
+  const tmdbId = resolveTmdbId(item);
+  if(!tmdbId) return;
+  const activeToken = tokenSnapshot ?? renderToken;
+  setTmdbStatus({ state: 'loading', message: 'TMDB-Daten werden geladen …' });
+  setCastLoading(rootEl, true);
+  setCastStatus(rootEl, { state: 'loading', message: 'Cast wird angereichert …' });
+  const fetcher = kind === 'tv' ? getTvEnriched : getMovieEnriched;
+  fetcher(tmdbId).then(detail => {
+    if(activeToken !== renderToken) return;
+    if(!detail){
+      setTmdbStatus({ state: 'error', message: 'Keine zusätzlichen TMDB-Daten gefunden.' });
+      setCastLoading(rootEl, false);
+      setCastStatus(rootEl, null);
+      return;
+    }
+    attachTmdbDetail(item, detail);
+    refreshModalSections(item);
+    setTmdbStatus(null);
+    setCastLoading(rootEl, false);
+    setCastStatus(rootEl, null);
+  }).catch(err => {
+    if(activeToken !== renderToken) return;
+    console.warn('[modalV2] Failed to enrich modal with TMDB data:', err?.message || err);
+    setTmdbStatus({ state: 'error', message: 'TMDB-Daten konnten nicht geladen werden.' });
+    setCastLoading(rootEl, false);
+    setCastStatus(rootEl, { state: 'error', message: 'Zusätzliche Besetzung konnte nicht geladen werden.' });
+  });
+}
+
+function shouldUseTmdbEnrichment(item){
+  if(!item) return false;
+  if(!window?.FEATURES?.tmdbEnrichment) return false;
+  if(!hasTmdbCredentials()) return false;
+  if(!resolveTmdbId(item)) return false;
+  return true;
+}
+
+function hasTmdbCredentials(){
+  try{
+    const stored = localStorage.getItem('tmdbToken');
+    if(stored && stored.trim()) return true;
+  }catch(err){
+    console.warn('[modalV2] Unable to read TMDB credentials from storage:', err?.message || err);
+  }
+  const cfg = getState().cfg || {};
+  return !!(cfg.tmdbToken || cfg.tmdbApiKey);
+}
+
+function resolveTmdbId(item){
+  if(!item) return '';
+  const ids = item.ids || {};
+  return ids.tmdb || item.tmdbId || item?.tmdb?.id || '';
+}
+
+function attachTmdbDetail(item, detail){
+  if(!item || !detail) return;
+  item.tmdbDetail = detail;
+  item.tmdb = item.tmdb || {};
+  if(detail.poster && !item.tmdb.poster) item.tmdb.poster = detail.poster;
+  if(detail.backdrop && !item.tmdb.backdrop) item.tmdb.backdrop = detail.backdrop;
+  if(detail.url) item.tmdb.url = detail.url;
+  item.ids = item.ids || {};
+  if(detail.id) item.ids.tmdb = String(detail.id);
+  if(detail.imdbId && !item.ids.imdb) item.ids.imdb = String(detail.imdbId);
+  currentItem = item;
 }
 
 export async function openMovieModalV2(idOrData){
@@ -257,6 +372,7 @@ export async function openMovieModalV2(idOrData){
   currentItem = data;
   currentKind = 'movie';
   renderModalV2(data);
+  maybeStartTmdbEnrichment('movie', data, token);
 }
 
 export async function openSeriesModalV2(idOrData){
@@ -294,6 +410,7 @@ export async function openSeriesModalV2(idOrData){
   }
   if(token !== renderToken) return;
   renderModalV2(working);
+  maybeStartTmdbEnrichment('tv', working, token);
 }
 
 export function closeModalV2(){
