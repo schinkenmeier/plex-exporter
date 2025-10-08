@@ -143,9 +143,16 @@ function formatOptionalRating(value){
   return '';
 }
 
-export function updateDetails(root, item){
-  const pane = root.querySelector('.v2-details');
-  if(!pane) return;
+function resolveDetailsPane(target){
+  if(!target) return null;
+  if(target instanceof HTMLElement){
+    return target.classList.contains('v2-details') ? target : target.querySelector('.v2-details');
+  }
+  if(target?.details instanceof HTMLElement) return target.details;
+  return null;
+}
+
+function renderDetailsPane(pane, item){
   pane.replaceChildren();
 
   const grid = document.createElement('div');
@@ -410,4 +417,14 @@ export function updateDetails(root, item){
     fallback.textContent = 'Keine zusätzlichen Details verfügbar.';
     pane.appendChild(fallback);
   }
+}
+
+export function renderDetails(target, item){
+  const pane = resolveDetailsPane(target);
+  if(!pane) return;
+  renderDetailsPane(pane, item);
+}
+
+export function updateDetails(root, item){
+  renderDetails(root, item);
 }

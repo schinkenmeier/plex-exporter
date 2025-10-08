@@ -81,8 +81,7 @@ export function buildCastList(item){
   return combined;
 }
 
-export function updateCast(root, cast){
-  const pane = root.querySelector('.v2-cast');
+function renderCastPane(pane, cast){
   if(!pane) return;
   let scroll = pane.querySelector('.v2-cast-scroll');
   if(!scroll){
@@ -162,6 +161,15 @@ export function updateCast(root, cast){
   ensureCastStatusPosition(pane);
 }
 
+export function renderCast(target, cast){
+  const pane = resolveCastPane(target);
+  renderCastPane(pane, cast);
+}
+
+export function updateCast(root, cast){
+  renderCast(root, cast);
+}
+
 export function setCastLoading(root, loading){
   const pane = resolveCastPane(root);
   if(!pane) return;
@@ -204,7 +212,11 @@ function ensureCastStatusPosition(pane){
 }
 
 function resolveCastPane(root){
-  if(root instanceof HTMLElement) return root.querySelector('.v2-cast');
+  if(root instanceof HTMLElement){
+    if(root.classList.contains('v2-cast')) return root;
+    return root.querySelector('.v2-cast');
+  }
+  if(root?.cast instanceof HTMLElement) return root.cast;
   return document.querySelector('.v2-pane.v2-cast');
 }
 

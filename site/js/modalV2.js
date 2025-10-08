@@ -1,10 +1,10 @@
 import { applyTabs } from './modal/tabs.js';
-import { populateHead } from './modal/headerSection.js';
-import { updateOverview } from './modal/overviewSection.js';
-import { updateDetails } from './modal/detailsSection.js';
+import { renderHeader, fillPosterAndQuickfacts } from './modal/headerSection.js';
+import { renderOverview } from './modal/overviewSection.js';
+import { renderDetails } from './modal/detailsSection.js';
 import { updateSeasons } from './modal/seasonsSection.js';
 import { setExternalLinks } from './modal/externalLinks.js';
-import { updateCast, buildCastList, setCastLoading, setCastStatus } from './modal/castSection.js';
+import { renderCast, buildCastList, setCastLoading, setCastStatus } from './modal/castSection.js';
 import { getState } from './state.js';
 import { loadShowDetail } from './data.js';
 import { mapMovie, mapShow, mergeShowDetail, needsShowDetail } from './modal/shared.js';
@@ -20,6 +20,7 @@ let escapeHandler = null;
 let renderToken = 0;
 let currentKind = null;
 let currentItem = null;
+let currentDomNodes = null;
 
 let demoDataModulePromise = null;
 function loadDemoDataModule(){
@@ -135,7 +136,7 @@ function showOverlay(){
 
 function focusInitial(){
   if(!dialogEl) return;
-  const closeBtn = dialogEl.querySelector('#v2Close');
+  const closeBtn = dialogEl.querySelector('#action-close, #v2Close');
   const focusables = getFocusableElements();
   let target = (closeBtn && !closeBtn.hasAttribute('hidden')) ? closeBtn : focusables[0];
   if(!target) target = dialogEl;
@@ -187,103 +188,144 @@ export function renderModalV2(item){
   root.hidden = false;
   const hasSeasons = item?.type === 'tv';
   root.innerHTML = `
-    <section class="v2-layout">
-      <aside class="v2-side">
-        <div class="v2-poster"><img alt=""></div>
-        <div class="v2-facts" aria-label="Schnellinfos" hidden>
-          <h3 class="v2-facts-title">Schnellinfos</h3>
-          <dl class="v2-facts-list"></dl>
+    <article class="v2-shell">
+      <header class="v2-head" id="modal-head" data-tmdb-section>
+        <div class="v2-head-visual" data-head-visual>
+          <div class="v2-head-hero" data-head-hero>
+            <div class="v2-head-backdrop" data-head-backdrop></div>
+            <div class="v2-head-overlay-logo" data-head-overlay-logo hidden></div>
+            <div class="v2-head-overlay-meta" data-head-overlay-meta hidden></div>
+          </div>
+          <div class="v2-head-logo" data-head-logo hidden></div>
         </div>
-      </aside>
-      <div class="v2-info">
-        <header class="v2-head" data-tmdb-section>
-          <div class="v2-head-visual" data-head-visual>
-            <div class="v2-head-hero" data-head-hero>
-              <div class="v2-head-backdrop" data-head-backdrop></div>
-              <div class="v2-head-overlay-logo" data-head-overlay-logo hidden></div>
-              <div class="v2-head-overlay-meta" data-head-overlay-meta hidden></div>
-            </div>
-            <div class="v2-head-logo" data-head-logo hidden></div>
+        <p class="v2-head-status" data-head-status hidden aria-live="polite" aria-atomic="true"></p>
+        <div class="v2-titlebar">
+          <div class="v2-title-wrap">
+            <h2 class="v2-title" id="modal-title"></h2>
+            <div class="v2-subline" id="modal-subline"></div>
+            <div class="v2-meta" id="modal-meta"></div>
           </div>
-          <p class="v2-head-status" data-head-status hidden aria-live="polite" aria-atomic="true"></p>
-          <div class="v2-titlebar">
-            <div class="v2-title-wrap">
-              <h2 class="v2-title" id="modalV2Title"></h2>
-              <div class="v2-subline"></div>
-              <div class="v2-meta"></div>
-            </div>
-            <div class="v2-actions" aria-label="Externe Aktionen">
-              <button class="v2-icon-btn" id="v2Close" type="button" aria-label="Schließen">
-                <svg class="v2-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M6 6l12 12M6 18L18 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
-                </svg>
-              </button>
-              <a class="v2-icon-btn" id="v2Tmdb" target="_blank" rel="noopener noreferrer" aria-label="Auf TMDB öffnen" hidden>
-                <svg class="v2-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M4 9h16v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
-                  <path d="M4 9V7a2 2 0 0 1 2-2h1l2 4 2-4 2 4 2-4h1a2 2 0 0 1 2 2v2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path>
-                </svg>
-              </a>
-              <a class="v2-icon-btn" id="v2Imdb" target="_blank" rel="noopener noreferrer" aria-label="Auf IMDb öffnen" hidden>
-                <svg class="v2-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M12 4l2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4-3.9-3.8 5.4-.8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
-                </svg>
-              </a>
-              <button class="v2-icon-btn" id="v2Trailer" type="button" aria-label="Trailer abspielen" hidden>
-                <svg class="v2-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M9 6l8 6-8 6V6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"></path>
-                </svg>
-              </button>
-            </div>
+          <div class="v2-actions" aria-label="Externe Aktionen">
+            <button class="v2-icon-btn" id="action-close" type="button" aria-label="Schließen">
+              <svg class="v2-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M6 6l12 12M6 18L18 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+              </svg>
+            </button>
+            <a class="v2-icon-btn" id="action-tmdb" target="_blank" rel="noopener noreferrer" aria-label="Auf TMDB öffnen" hidden>
+              <svg class="v2-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M4 9h16v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
+                <path d="M4 9V7a2 2 0 0 1 2-2h1l2 4 2-4 2 4 2-4h1a2 2 0 0 1 2 2v2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </a>
+            <a class="v2-icon-btn" id="action-imdb" target="_blank" rel="noopener noreferrer" aria-label="Auf IMDb öffnen" hidden>
+              <svg class="v2-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M12 4l2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4-3.9-3.8 5.4-.8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
+              </svg>
+            </a>
+            <button class="v2-icon-btn" id="action-trailer" type="button" aria-label="Trailer abspielen" hidden>
+              <svg class="v2-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M9 6l8 6-8 6V6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"></path>
+              </svg>
+            </button>
           </div>
-          <div class="v2-chips" aria-label="Attribute"></div>
-        </header>
-        <nav class="v2-tabs" aria-label="Details Navigation" role="tablist">
-          <button type="button" data-t="overview" class="active" id="v2TabOverview" role="tab" aria-controls="v2PaneOverview" aria-selected="true">Überblick</button>
-          <button type="button" data-t="details" id="v2TabDetails" role="tab" aria-controls="v2PaneDetails" aria-selected="false">Details</button>
-          ${hasSeasons ? '<button type="button" data-t="seasons" id="v2TabSeasons" role="tab" aria-controls="v2PaneSeasons" aria-selected="false">Staffeln</button>' : ''}
-          <button type="button" data-t="cast" id="v2TabCast" role="tab" aria-controls="v2PaneCast" aria-selected="false">Cast</button>
-        </nav>
-        <section class="v2-body">
-          <div class="v2-pane v2-overview" data-pane="overview" id="v2PaneOverview" role="tabpanel" aria-labelledby="v2TabOverview"></div>
-          <div class="v2-pane v2-details" data-pane="details" id="v2PaneDetails" role="tabpanel" aria-labelledby="v2TabDetails" hidden></div>
-          ${hasSeasons ? '<div class="v2-pane v2-seasons" data-pane="seasons" id="v2PaneSeasons" role="tabpanel" aria-labelledby="v2TabSeasons" hidden></div>' : ''}
-          <div class="v2-pane v2-cast" data-pane="cast" id="v2PaneCast" role="tabpanel" aria-labelledby="v2TabCast" hidden></div>
+        </div>
+        <div class="v2-chips" id="modal-chips" aria-label="Attribute"></div>
+      </header>
+      <div class="v2-body">
+        <section class="v2-layout">
+          <aside class="v2-side" id="modal-aside">
+            <div class="v2-poster" id="modal-poster"><img id="modal-poster-img" alt=""></div>
+            <div class="v2-facts" id="modal-quickfacts" aria-label="Schnellinfos" hidden>
+              <h3 class="v2-facts-title">Schnellinfos</h3>
+              <dl class="v2-facts-list" id="modal-quickfacts-list"></dl>
+            </div>
+          </aside>
+          <main class="v2-info" id="modal-main">
+            <nav class="v2-tabs" aria-label="Details Navigation" role="tablist">
+              <button type="button" data-t="overview" class="active" id="tab-overview" role="tab" aria-controls="pane-overview" aria-selected="true">Überblick</button>
+              <button type="button" data-t="details" id="tab-details" role="tab" aria-controls="pane-details" aria-selected="false">Details</button>
+              ${hasSeasons ? '<button type="button" data-t="seasons" id="tab-seasons" role="tab" aria-controls="pane-seasons" aria-selected="false">Staffeln</button>' : ''}
+              <button type="button" data-t="cast" id="tab-cast" role="tab" aria-controls="pane-cast" aria-selected="false">Cast</button>
+            </nav>
+            <section class="v2-body" id="modal-panes">
+              <div class="v2-pane v2-overview" data-pane="overview" id="pane-overview" role="tabpanel" aria-labelledby="tab-overview"></div>
+              <div class="v2-pane v2-details" data-pane="details" id="pane-details" role="tabpanel" aria-labelledby="tab-details" hidden></div>
+              ${hasSeasons ? '<div class="v2-pane v2-seasons" data-pane="seasons" id="pane-seasons" role="tabpanel" aria-labelledby="tab-seasons" hidden></div>' : ''}
+              <div class="v2-pane v2-cast" data-pane="cast" id="pane-cast" role="tabpanel" aria-labelledby="tab-cast" hidden></div>
+            </section>
+            <footer class="v2-footer" id="modal-footer" aria-label="Produktionslogos & Attribution" hidden>
+              <div class="v2-footer-logos" id="modal-footer-logos" aria-label="Produktionsfirmen und Netzwerke"></div>
+              <p class="v2-footer-note" id="modal-footer-note"></p>
+            </footer>
+          </main>
         </section>
-        <footer class="v2-footer" aria-label="Produktionslogos & Attribution" hidden>
-          <div class="v2-footer-logos" aria-label="Produktionsfirmen und Netzwerke"></div>
-          <p class="v2-footer-note"></p>
-        </footer>
       </div>
-    </section>
+    </article>
   `;
 
-  populateHead(root, item);
+  const dom = {
+    head: {
+      root: root.querySelector('#modal-head'),
+      title: root.querySelector('#modal-title'),
+      subline: root.querySelector('#modal-subline'),
+      meta: root.querySelector('#modal-meta'),
+      chips: root.querySelector('#modal-chips'),
+      footer: root.querySelector('#modal-footer'),
+      footerLogos: root.querySelector('#modal-footer-logos'),
+      footerNote: root.querySelector('#modal-footer-note'),
+    },
+    poster: {
+      posterImage: root.querySelector('#modal-poster-img'),
+      quickFacts: root.querySelector('#modal-quickfacts'),
+      quickFactsList: root.querySelector('#modal-quickfacts-list'),
+    },
+    panes: {
+      overview: root.querySelector('#pane-overview'),
+      details: root.querySelector('#pane-details'),
+      seasons: root.querySelector('#pane-seasons'),
+      cast: root.querySelector('#pane-cast'),
+    },
+    actions: {
+      close: root.querySelector('#action-close'),
+      tmdb: root.querySelector('#action-tmdb'),
+      imdb: root.querySelector('#action-imdb'),
+      trailer: root.querySelector('#action-trailer'),
+    },
+  };
+
+  currentDomNodes = dom;
+
+  renderHeader(dom.head, item);
+  fillPosterAndQuickfacts(dom.poster, item);
   setExternalLinks(root, item);
-  updateOverview(root, item);
-  updateDetails(root, item);
-  if(item?.type === 'tv'){ updateSeasons(root, item); }
-  updateCast(root, buildCastList(item));
-  setCastLoading(root, false);
-  setCastStatus(root, null);
+  renderOverview(dom.panes.overview, item);
+  renderDetails(dom.panes.details, item);
+  if(hasSeasons){ updateSeasons(root, item); }
+  renderCast(dom.panes.cast, buildCastList(item));
+  setCastLoading(dom.panes.cast, false);
+  setCastStatus(dom.panes.cast, null);
   setTmdbStatus(root, null);
   applyTabs(root);
-  const closeBtn = root.querySelector('#v2Close');
+  const closeBtn = dom.actions.close;
   if(closeBtn){
     closeBtn.addEventListener('click', closeModalV2);
   }
-  if(dialogEl) dialogEl.setAttribute('aria-labelledby', 'modalV2Title');
+  if(dialogEl){
+    const titleId = dom.head?.title?.id || 'modal-title';
+    dialogEl.setAttribute('aria-labelledby', titleId);
+  }
   focusInitial();
 }
 
 function refreshModalSections(item){
-  const root = rootEl;
-  if(!root) return;
-  populateHead(root, item);
-  setExternalLinks(root, item);
-  updateOverview(root, item);
-  updateDetails(root, item);
-  updateCast(root, buildCastList(item));
+  if(!rootEl || !currentDomNodes) return;
+  renderHeader(currentDomNodes.head, item);
+  fillPosterAndQuickfacts(currentDomNodes.poster, item);
+  setExternalLinks(rootEl, item);
+  renderOverview(currentDomNodes.panes.overview, item);
+  renderDetails(currentDomNodes.panes.details, item);
+  if(item?.type === 'tv' && currentDomNodes.panes.seasons){ updateSeasons(rootEl, item); }
+  renderCast(currentDomNodes.panes.cast, buildCastList(item));
 }
 
 function maybeStartTmdbEnrichment(kind, item, tokenSnapshot){
@@ -296,15 +338,17 @@ function maybeStartTmdbEnrichment(kind, item, tokenSnapshot){
   if(!tmdbId) return;
   const activeToken = tokenSnapshot ?? renderToken;
   setTmdbStatus({ state: 'loading', message: 'TMDB-Daten werden geladen …' });
-  setCastLoading(rootEl, true);
-  setCastStatus(rootEl, { state: 'loading', message: 'Cast wird angereichert …' });
+  const castTarget = currentDomNodes?.panes?.cast || rootEl;
+  setCastLoading(castTarget, true);
+  setCastStatus(castTarget, { state: 'loading', message: 'Cast wird angereichert …' });
   const fetcher = kind === 'tv' ? getTvEnriched : getMovieEnriched;
   fetcher(tmdbId).then(detail => {
     if(activeToken !== renderToken) return;
     if(!detail){
       setTmdbStatus({ state: 'error', message: 'Keine zusätzlichen TMDB-Daten gefunden.' });
-      setCastLoading(rootEl, false);
-      setCastStatus(rootEl, null);
+      const target = currentDomNodes?.panes?.cast || rootEl;
+      setCastLoading(target, false);
+      setCastStatus(target, null);
       return;
     }
     const enriched = attachTmdbDetail(item, detail);
@@ -313,8 +357,9 @@ function maybeStartTmdbEnrichment(kind, item, tokenSnapshot){
       refreshModalSections(enriched);
     }
     setTmdbStatus(null);
-    setCastLoading(rootEl, false);
-    setCastStatus(rootEl, null);
+    const target = currentDomNodes?.panes?.cast || rootEl;
+    setCastLoading(target, false);
+    setCastStatus(target, null);
   }).catch(err => {
     if(activeToken !== renderToken) return;
     console.warn('[modalV2] Failed to enrich modal with TMDB data:', err?.message || err);
@@ -328,8 +373,9 @@ function maybeStartTmdbEnrichment(kind, item, tokenSnapshot){
       errorMessage = 'Netzwerkfehler. Bitte überprüfen Sie Ihre Verbindung.';
     }
     setTmdbStatus({ state: 'error', message: errorMessage });
-    setCastLoading(rootEl, false);
-    setCastStatus(rootEl, { state: 'error', message: 'Zusätzliche Besetzung konnte nicht geladen werden.' });
+    const target = currentDomNodes?.panes?.cast || rootEl;
+    setCastLoading(target, false);
+    setCastStatus(target, { state: 'error', message: 'Zusätzliche Besetzung konnte nicht geladen werden.' });
   });
 }
 
@@ -455,6 +501,7 @@ export function closeModalV2(){
   lastActiveElement = null;
   currentItem = null;
   currentKind = null;
+  currentDomNodes = null;
 }
 
 export function isModalV2Open(){
