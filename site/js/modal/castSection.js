@@ -81,24 +81,17 @@ export function buildCastList(item){
   return combined;
 }
 
-function renderCastPane(pane, cast){
-  if(!pane) return;
-  let scroll = pane.querySelector('.v2-cast-scroll');
-  if(!scroll){
-    scroll = document.createElement('div');
-    scroll.className = 'v2-cast-scroll';
-    pane.prepend(scroll);
-  }else{
-    scroll.innerHTML = '';
-  }
-  if(!scroll) return;
+function renderCastPane(pane, cast, row){
+  if(!pane || !row) return;
+  row.innerHTML = '';
   const limited = Array.isArray(cast) ? cast.slice(0, 12) : [];
   if(!limited.length){
-    scroll.innerHTML = '<span class="modalv2-loading">Keine Besetzungsdaten verfügbar.</span>';
-    scroll.removeAttribute('role');
+    row.innerHTML = '<span class="modalv2-loading">Keine Besetzungsdaten verfügbar.</span>';
+    row.removeAttribute('role');
+    ensureCastStatusPosition(pane);
     return;
   }
-  scroll.setAttribute('role', 'list');
+  row.setAttribute('role', 'list');
   const tmdbEnabled = useTmdbOn();
   limited.forEach(entry=>{
     const data = (entry && typeof entry === 'object' && 'name' in entry)
@@ -111,7 +104,7 @@ function renderCastPane(pane, cast){
     if(!data || !data.name) return;
 
     const card = document.createElement('article');
-    card.className = 'v2-cast-card';
+    card.className = 'cast-card';
     card.tabIndex = 0;
     card.setAttribute('role', 'listitem');
 
@@ -119,7 +112,7 @@ function renderCastPane(pane, cast){
     card.setAttribute('aria-label', roleText ? `${data.name} – ${roleText}` : data.name);
 
     const avatar = document.createElement('div');
-    avatar.className = 'v2-cast-avatar';
+    avatar.className = 'cast-avatar';
     const imageSrc = resolveCastImage(data, tmdbEnabled);
     if(imageSrc){
       avatar.classList.add('has-image');
@@ -131,43 +124,47 @@ function renderCastPane(pane, cast){
       avatar.appendChild(img);
     }else{
       const initials = document.createElement('span');
-      initials.className = 'v2-cast-initials';
+      initials.className = 'cast-initials';
       initials.textContent = castInitials(data.name);
       initials.setAttribute('aria-hidden', 'true');
       avatar.appendChild(initials);
     }
 
     const nameLine = document.createElement('p');
-    nameLine.className = 'v2-cast-name';
+    nameLine.className = 'cast-name';
     nameLine.textContent = data.name;
 
     card.append(avatar, nameLine);
 
     if(roleText){
       const roleLine = document.createElement('p');
-      roleLine.className = 'v2-cast-role';
+      roleLine.className = 'cast-role';
       roleLine.textContent = roleText;
       card.append(roleLine);
     }else{
-      card.classList.add('v2-cast-card--no-role');
+      card.classList.add('cast-card--no-role');
     }
-    scroll.appendChild(card);
+    row.appendChild(card);
   });
 
-  if(!scroll.children.length){
-    scroll.innerHTML = '<span class="modalv2-loading">Keine Besetzungsdaten verfügbar.</span>';
-    scroll.removeAttribute('role');
+  if(!row.children.length){
+    row.innerHTML = '<span class="modalv2-loading">Keine Besetzungsdaten verfügbar.</span>';
+    row.removeAttribute('role');
+  }else{
+    applyUniformCastCardMinHeight(row);
   }
   ensureCastStatusPosition(pane);
 }
 
 export function renderCast(target, cast){
-  const pane = resolveCastPane(target);
-  renderCastPane(pane, cast);
+  updateCast(target, cast);
 }
 
 export function updateCast(root, cast){
-  renderCast(root, cast);
+  const pane = resolveCastPane(root);
+  if(!pane) return;
+  const row = ensureCastRow(pane);
+  renderCastPane(pane, cast, row);
 }
 
 export function setCastLoading(root, loading){
@@ -184,6 +181,7 @@ export function setCastLoading(root, loading){
 export function setCastStatus(root, status){
   const pane = resolveCastPane(root);
   if(!pane) return;
+  ensureCastRow(pane);
   let statusEl = pane.querySelector('.v2-cast-status');
   if(!status || !status.message){
     if(statusEl) statusEl.remove();
@@ -195,7 +193,12 @@ export function setCastStatus(root, status){
     statusEl.className = 'v2-cast-status';
     statusEl.setAttribute('aria-live', 'polite');
     statusEl.setAttribute('aria-atomic', 'true');
-    pane.appendChild(statusEl);
+    const row = pane.querySelector('.cast-row');
+    if(row && row.nextSibling){
+      pane.insertBefore(statusEl, row.nextSibling);
+    }else{
+      pane.appendChild(statusEl);
+    }
   }
   statusEl.dataset.state = status.state || '';
   statusEl.textContent = status.message;
@@ -204,10 +207,58 @@ export function setCastStatus(root, status){
 }
 
 function ensureCastStatusPosition(pane){
+  if(!pane) return;
   const statusEl = pane.querySelector('.v2-cast-status');
-  const scroll = pane.querySelector('.v2-cast-scroll');
-  if(statusEl && scroll && statusEl.previousElementSibling !== scroll){
+  if(!statusEl) return;
+  const row = pane.querySelector('.cast-row');
+  if(row && statusEl.previousElementSibling !== row){
+    if(row.nextSibling){
+      pane.insertBefore(statusEl, row.nextSibling);
+    }else{
+      pane.appendChild(statusEl);
+    }
+  }else if(!row && statusEl.parentElement !== pane){
     pane.appendChild(statusEl);
+  }
+}
+
+function ensureCastRow(pane){
+  if(!pane) return null;
+  let row = pane.querySelector('.cast-row');
+  if(row) return row;
+  row = document.createElement('div');
+  row.className = 'cast-row';
+  const statusEl = pane.querySelector('.v2-cast-status');
+  if(statusEl){
+    pane.insertBefore(row, statusEl);
+  }else{
+    pane.appendChild(row);
+  }
+  return row;
+}
+
+function applyUniformCastCardMinHeight(row){
+  if(!row) return;
+  const applyHeights = ()=>{
+    const cards = Array.from(row.querySelectorAll('.cast-card'));
+    if(!cards.length) return;
+    let maxHeight = 0;
+    cards.forEach(card => {
+      card.style.minHeight = '';
+      const height = card.offsetHeight;
+      if(height > maxHeight) maxHeight = height;
+    });
+    if(maxHeight){
+      const minHeightValue = `${maxHeight}px`;
+      cards.forEach(card => {
+        card.style.minHeight = minHeightValue;
+      });
+    }
+  };
+  if(typeof requestAnimationFrame === 'function'){
+    requestAnimationFrame(applyHeights);
+  }else{
+    applyHeights();
   }
 }
 
