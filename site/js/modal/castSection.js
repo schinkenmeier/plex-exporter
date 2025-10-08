@@ -193,7 +193,7 @@ export function setCastStatus(root, status){
     statusEl.className = 'v2-cast-status';
     statusEl.setAttribute('aria-live', 'polite');
     statusEl.setAttribute('aria-atomic', 'true');
-    const row = pane.querySelector('.cast-row');
+    const row = pane.querySelector('.v2-cast-grid');
     if(row && row.nextSibling){
       pane.insertBefore(statusEl, row.nextSibling);
     }else{
@@ -210,7 +210,7 @@ function ensureCastStatusPosition(pane){
   if(!pane) return;
   const statusEl = pane.querySelector('.v2-cast-status');
   if(!statusEl) return;
-  const row = pane.querySelector('.cast-row');
+  const row = pane.querySelector('.v2-cast-grid');
   if(row && statusEl.previousElementSibling !== row){
     if(row.nextSibling){
       pane.insertBefore(statusEl, row.nextSibling);
@@ -224,10 +224,10 @@ function ensureCastStatusPosition(pane){
 
 function ensureCastRow(pane){
   if(!pane) return null;
-  let row = pane.querySelector('.cast-row');
+  let row = pane.querySelector('.v2-cast-grid');
   if(row) return row;
   row = document.createElement('div');
-  row.className = 'cast-row';
+  row.className = 'v2-cast-grid';
   const statusEl = pane.querySelector('.v2-cast-status');
   if(statusEl){
     pane.insertBefore(row, statusEl);

@@ -28,7 +28,7 @@ function captureOverviewState(pane){
 
 function createCard(title, key){
   const section = document.createElement('section');
-  section.className = 'card';
+  section.className = 'v2-pane-card';
   section.dataset.section = key;
   section.setAttribute('role', 'group');
 
