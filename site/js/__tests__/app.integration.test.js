@@ -340,9 +340,28 @@ test('boot flow integrates view switch, filtering and modal opening', async () =
     const modalRoot = document.getElementById('modal-root-v2');
     heroCta?.click();
     await settle();
-    const heroModalTitle = document.getElementById('modalV2Title');
+    const heroModalTitle = document.getElementById('modal-title');
     assert.equal(modalRoot?.hidden, false);
     assert.equal(heroModalTitle?.textContent?.trim(), 'Action Blast');
+
+    const overviewTab = document.getElementById('tab-overview');
+    assert.equal(overviewTab?.getAttribute('aria-selected'), 'true');
+
+    const overviewPane = document.getElementById('pane-overview');
+    const overviewText = overviewPane?.querySelector('.v2-overview-text');
+    assert.ok(overviewPane, 'expected overview pane to exist');
+    assert.equal(overviewPane?.hasAttribute('hidden'), false);
+    assert.equal(overviewPane?.getAttribute('aria-hidden'), 'false');
+    assert.equal(overviewText?.textContent?.trim(), 'Action-packed adventure.');
+
+    const detailsPane = document.getElementById('pane-details');
+    assert.equal(detailsPane?.getAttribute('aria-hidden'), 'true');
+    assert.equal(detailsPane?.hasAttribute('hidden'), true);
+
+    const castPane = document.getElementById('pane-cast');
+    assert.equal(castPane?.getAttribute('aria-hidden'), 'true');
+    assert.equal(castPane?.hasAttribute('hidden'), true);
+    assert.ok(castPane?.textContent?.includes('Lead'));
 
     const grid = document.getElementById('grid');
     assert.equal(getState().view, 'movies');
@@ -379,10 +398,20 @@ test('boot flow integrates view switch, filtering and modal opening', async () =
     firstCard.click();
     await settle();
 
-    const titleEl = document.getElementById('modalV2Title');
+    const titleEl = document.getElementById('modal-title');
     assert.equal(modalRoot.hidden, false);
     assert.ok(document.body.classList.contains('modalv2-open'));
     assert.equal(titleEl?.textContent?.trim(), 'Drama Piece');
+
+    const activeTab = document.getElementById('tab-overview');
+    assert.equal(activeTab?.getAttribute('aria-selected'), 'true');
+
+    const modalOverviewPane = document.getElementById('pane-overview');
+    const modalOverviewText = modalOverviewPane?.querySelector('.v2-overview-text');
+    assert.ok(modalOverviewPane, 'expected modal overview pane to exist');
+    assert.equal(modalOverviewPane?.hasAttribute('hidden'), false);
+    assert.equal(modalOverviewPane?.getAttribute('aria-hidden'), 'false');
+    assert.equal(modalOverviewText?.textContent?.trim(), 'Dramatic storytelling.');
   } finally {
     if(hadTestModeFlag){
       globalThis.__PLEX_TEST_MODE__ = originalTestMode;
