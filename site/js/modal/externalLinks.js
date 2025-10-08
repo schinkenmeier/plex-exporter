@@ -6,31 +6,48 @@ export function setExternalLinks(root, item){
   const imdbId = item?.ids?.imdb || item?.imdbId || item?.tmdbDetail?.imdbId || item?.tmdbDetail?.raw?.external_ids?.imdb_id;
   const trailer = item?.trailer || item?.trailerUrl || item?.tmdbDetail?.trailer;
   const type = item?.type === 'tv' ? 'tv' : 'movie';
-  if(tmdbBtn){
-    if(tmdbId){
-      tmdbBtn.hidden = false;
-      tmdbBtn.href = `https://www.themoviedb.org/${type}/${tmdbId}`;
-    }else{
-      tmdbBtn.hidden = true;
-      tmdbBtn.removeAttribute('href');
-    }
-  }
-  if(imdbBtn){
-    if(imdbId){
-      imdbBtn.hidden = false;
-      imdbBtn.href = `https://www.imdb.com/title/${imdbId}/`;
-    }else{
-      imdbBtn.hidden = true;
-      imdbBtn.removeAttribute('href');
-    }
-  }
+  toggleActionLink(tmdbBtn, tmdbId ? `https://www.themoviedb.org/${type}/${tmdbId}` : '');
+  toggleActionLink(imdbBtn, imdbId ? `https://www.imdb.com/title/${imdbId}/` : '');
   if(trailerBtn){
     if(trailer){
       trailerBtn.hidden = false;
+      trailerBtn.setAttribute('aria-hidden', 'false');
+      trailerBtn.removeAttribute('aria-disabled');
+      trailerBtn.removeAttribute('tabindex');
       trailerBtn.onclick = ()=> window.open(trailer, '_blank', 'noopener');
     }else{
       trailerBtn.hidden = true;
+      trailerBtn.setAttribute('aria-hidden', 'true');
+      trailerBtn.setAttribute('aria-disabled', 'true');
+      trailerBtn.setAttribute('tabindex', '-1');
       trailerBtn.onclick = null;
+    }
+  }
+}
+
+function toggleActionLink(element, href){
+  if(!element) return;
+  const isAnchor = element.tagName === 'A';
+  const hasHref = Boolean(href);
+  element.hidden = !hasHref;
+  element.setAttribute('aria-hidden', hasHref ? 'false' : 'true');
+  if(isAnchor){
+    if(hasHref){
+      element.href = href;
+      element.removeAttribute('aria-disabled');
+      element.removeAttribute('tabindex');
+    }else{
+      element.removeAttribute('href');
+      element.setAttribute('aria-disabled', 'true');
+      element.setAttribute('tabindex', '-1');
+    }
+  }else{
+    if(hasHref){
+      element.removeAttribute('aria-disabled');
+      element.removeAttribute('tabindex');
+    }else{
+      element.setAttribute('aria-disabled', 'true');
+      element.setAttribute('tabindex', '-1');
     }
   }
 }

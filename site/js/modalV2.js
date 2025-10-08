@@ -201,6 +201,10 @@ export function renderModalV2(item){
         <p class="v2-head-status" data-head-status hidden aria-live="polite" aria-atomic="true"></p>
         <div class="v2-titlebar">
           <div class="v2-title-wrap">
+            <div class="v2-badges" id="modal-badges" aria-label="Bewertungen & Zertifikate" hidden>
+              <span class="badge badge--tmdb" data-badge-tmdb hidden></span>
+              <span class="badge badge--certification" data-badge-certification hidden></span>
+            </div>
             <h2 class="v2-title" id="modal-title"></h2>
             <div class="v2-subline" id="modal-subline"></div>
             <div class="v2-meta" id="modal-meta"></div>
@@ -234,10 +238,14 @@ export function renderModalV2(item){
       <div class="v2-body">
         <section class="v2-layout">
           <aside class="v2-side" id="modal-aside">
-            <div class="v2-poster" id="modal-poster"><img id="modal-poster-img" alt=""></div>
-            <div class="v2-facts" id="modal-quickfacts" aria-label="Schnellinfos" hidden>
-              <h3 class="v2-facts-title">Schnellinfos</h3>
-              <dl class="v2-facts-list" id="modal-quickfacts-list"></dl>
+            <div class="v2-poster-card" id="modal-poster-card">
+              <div class="v2-poster-media" id="modal-poster" aria-hidden="true">
+                <img id="modal-poster-img" alt="">
+              </div>
+              <section class="v2-quickfacts" id="modal-quickfacts" aria-label="Schnellinfos" hidden>
+                <h3 class="v2-quickfacts-title">Schnellinfos</h3>
+                <dl class="v2-quickfacts-list" id="modal-quickfacts-list"></dl>
+              </section>
             </div>
           </aside>
           <main class="v2-info" id="modal-main">
@@ -253,9 +261,9 @@ export function renderModalV2(item){
               ${hasSeasons ? '<div class="v2-pane v2-seasons" data-pane="seasons" id="pane-seasons" role="tabpanel" aria-labelledby="tab-seasons" hidden></div>' : ''}
               <div class="v2-pane v2-cast" data-pane="cast" id="pane-cast" role="tabpanel" aria-labelledby="tab-cast" hidden></div>
             </section>
-            <footer class="v2-footer" id="modal-footer" aria-label="Produktionslogos & Attribution" hidden>
-              <div class="v2-footer-logos" id="modal-footer-logos" aria-label="Produktionsfirmen und Netzwerke"></div>
-              <p class="v2-footer-note" id="modal-footer-note"></p>
+            <footer class="v2-foot" id="modal-footer" aria-label="Produktionslogos & Attribution" hidden>
+              <div class="v2-logos" id="modal-footer-logos" aria-label="Produktionsfirmen und Netzwerke"></div>
+              <p class="v2-footnote" id="modal-footer-note"></p>
             </footer>
           </main>
         </section>
@@ -265,19 +273,24 @@ export function renderModalV2(item){
 
   const dom = {
     head: {
-      root: root.querySelector('#modal-head'),
-      title: root.querySelector('#modal-title'),
-      subline: root.querySelector('#modal-subline'),
-      meta: root.querySelector('#modal-meta'),
-      chips: root.querySelector('#modal-chips'),
-      footer: root.querySelector('#modal-footer'),
-      footerLogos: root.querySelector('#modal-footer-logos'),
-      footerNote: root.querySelector('#modal-footer-note'),
+      rootEl: root.querySelector('#modal-head'),
+      titleEl: root.querySelector('#modal-title'),
+      sublineEl: root.querySelector('#modal-subline'),
+      metaEl: root.querySelector('#modal-meta'),
+      chipsEl: root.querySelector('#modal-chips'),
+      badgesGroupEl: root.querySelector('#modal-badges'),
+      tmdbBadgeEl: root.querySelector('[data-badge-tmdb]'),
+      certificationBadgeEl: root.querySelector('[data-badge-certification]'),
+      footerEl: root.querySelector('#modal-footer'),
+      footerLogosEl: root.querySelector('#modal-footer-logos'),
+      footerNoteEl: root.querySelector('#modal-footer-note'),
     },
     poster: {
-      posterImage: root.querySelector('#modal-poster-img'),
-      quickFacts: root.querySelector('#modal-quickfacts'),
-      quickFactsList: root.querySelector('#modal-quickfacts-list'),
+      posterEl: root.querySelector('#modal-poster-img'),
+      quickfactsEl: {
+        root: root.querySelector('#modal-quickfacts'),
+        list: root.querySelector('#modal-quickfacts-list'),
+      },
     },
     panes: {
       overview: root.querySelector('#pane-overview'),
@@ -311,7 +324,7 @@ export function renderModalV2(item){
     closeBtn.addEventListener('click', closeModalV2);
   }
   if(dialogEl){
-    const titleId = dom.head?.title?.id || 'modal-title';
+    const titleId = dom.head?.titleEl?.id || 'modal-title';
     dialogEl.setAttribute('aria-labelledby', titleId);
   }
   focusInitial();

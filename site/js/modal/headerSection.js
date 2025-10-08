@@ -325,52 +325,47 @@ function applyHeroMeta(root, item){
   slot.hidden = false;
 }
 
-function normalizeHeaderNodes(target){
-  if(!target) return null;
-  if(target.root || target.title || target.footer){
-    return target;
+function setBadge(element, value, ariaLabel){
+  if(!element) return;
+  const hasValue = Boolean(value);
+  element.hidden = !hasValue;
+  element.setAttribute('aria-hidden', hasValue ? 'false' : 'true');
+  if(!hasValue){
+    element.textContent = '';
+    element.removeAttribute('aria-label');
+    element.removeAttribute('data-score');
+    return;
   }
-  if(target instanceof HTMLElement){
-    const head = target.matches('.v2-head') ? target : target.querySelector('.v2-head');
-    if(!head) return null;
-    const footer = target.querySelector('.v2-footer');
-    return {
-      root: head,
-      title: head.querySelector('.v2-title'),
-      subline: head.querySelector('.v2-subline'),
-      meta: head.querySelector('.v2-meta'),
-      chips: head.querySelector('.v2-chips'),
-      footer,
-      footerLogos: footer?.querySelector('.v2-footer-logos') || null,
-      footerNote: footer?.querySelector('.v2-footer-note') || null,
-    };
+  element.textContent = value.text;
+  if(value.bucket){
+    element.dataset.score = value.bucket;
+  }else{
+    element.removeAttribute('data-score');
   }
-  return null;
+  if(ariaLabel){
+    element.setAttribute('aria-label', ariaLabel);
+  }else{
+    element.removeAttribute('aria-label');
+  }
 }
 
-function normalizePosterNodes(target){
-  if(!target) return null;
-  if(target.posterImage || target.quickFacts){
-    return target;
-  }
-  if(target instanceof HTMLElement){
-    const poster = target.querySelector('.v2-poster img');
-    const quickFacts = target.querySelector('.v2-facts');
-    return {
-      posterImage: poster,
-      quickFacts,
-      quickFactsList: quickFacts?.querySelector('.v2-facts-list') || null,
-    };
-  }
-  return null;
-}
+export function renderHeader(options, item){
+  if(!options) return;
+  const {
+    rootEl,
+    titleEl,
+    sublineEl,
+    metaEl,
+    chipsEl,
+    tmdbBadgeEl,
+    certificationBadgeEl,
+    badgesGroupEl,
+    footerEl,
+    footerLogosEl,
+    footerNoteEl,
+  } = options;
 
-export function renderHeader(targetNodes, item){
-  const nodes = normalizeHeaderNodes(targetNodes);
-  if(!nodes) return;
-
-  const { root, title, subline, meta, chips, footer, footerLogos, footerNote } = nodes;
-  if(title) title.textContent = item?.title || item?.name || '';
+  if(titleEl) titleEl.textContent = item?.title || item?.name || '';
 
   const tagline = pickTagline(item);
   const year = humanYear(item);
@@ -379,59 +374,91 @@ export function renderHeader(targetNodes, item){
   const studio = studioText(item);
   const metaParts = [year, runtime, rating, studio].filter(Boolean);
 
-  if(subline){
+  if(sublineEl){
     const fallback = metaParts.join(' • ');
-    subline.textContent = tagline || fallback;
-    subline.hidden = !(tagline || fallback);
+    sublineEl.textContent = tagline || fallback;
+    sublineEl.hidden = !(tagline || fallback);
   }
 
-  if(meta){
-    meta.textContent = tagline && metaParts.length ? metaParts.join(' • ') : '';
-    meta.hidden = !(tagline && metaParts.length);
+  if(metaEl){
+    metaEl.textContent = tagline && metaParts.length ? metaParts.join(' • ') : '';
+    metaEl.hidden = !(tagline && metaParts.length);
   }
 
-  if(chips){
-    chips.replaceChildren();
+  if(chipsEl){
+    chipsEl.replaceChildren();
     buildChips(item).forEach(text=>{
       const span = document.createElement('span');
       span.className = 'chip';
       span.textContent = text;
-      chips.appendChild(span);
+      chipsEl.appendChild(span);
     });
-    chips.hidden = !chips.childElementCount;
+    chipsEl.hidden = !chipsEl.childElementCount;
+    chipsEl.setAttribute('aria-hidden', chipsEl.childElementCount ? 'false' : 'true');
   }
 
-  if(root){
-    applyBackdrop(root, item);
-    const heroLogo = applyHeroLogo(root, item);
-    applyHeroMeta(root, item);
-    applyLogo(root, item, heroLogo);
+  const tmdbInfo = pickRatingInfo(item);
+  if(tmdbBadgeEl){
+    const badgeValue = tmdbInfo
+      ? { text: `${tmdbInfo.label?.toUpperCase() || 'TMDB'} ${tmdbInfo.text}`, bucket: tmdbInfo.bucket }
+      : null;
+    const ariaLabel = tmdbInfo
+      ? `${tmdbInfo.label === 'TMDB' ? 'TMDB Bewertung' : tmdbInfo.label} ${tmdbInfo.text} von 10`
+      : '';
+    setBadge(tmdbBadgeEl, badgeValue, ariaLabel || null);
   }
 
-  populateFooter({ footer, footerLogos, footerNote }, item);
-}
+  if(certificationBadgeEl){
+    const certification = pickContentRating(item);
+    const badgeValue = certification
+      ? { text: certification, bucket: '' }
+      : null;
+    const ariaLabel = certification ? `Altersfreigabe ${certification}` : '';
+    setBadge(certificationBadgeEl, badgeValue, ariaLabel || null);
+  }
 
-export function fillPosterAndQuickfacts(targetNodes, item){
-  const nodes = normalizePosterNodes(targetNodes);
-  if(!nodes) return;
-  const { posterImage, quickFacts, quickFactsList } = nodes;
-
-  if(posterImage){
-    const src = resolvePoster(item);
-    posterImage.src = src || '';
-    posterImage.alt = item?.title ? `Poster: ${item.title}` : '';
-    posterImage.loading = 'lazy';
-    posterImage.decoding = 'async';
-    posterImage.classList.remove('is-ready');
-    if(src){
-      posterImage.addEventListener('load', onPosterReady, { once: true });
-      posterImage.addEventListener('error', onPosterReady, { once: true });
+  if(badgesGroupEl){
+    const hasBadges = Boolean(
+      (tmdbBadgeEl && !tmdbBadgeEl.hidden) ||
+      (certificationBadgeEl && !certificationBadgeEl.hidden)
+    );
+    badgesGroupEl.hidden = !hasBadges;
+    if(hasBadges){
+      badgesGroupEl.setAttribute('aria-hidden', 'false');
     }else{
-      posterImage.classList.add('is-ready');
+      badgesGroupEl.setAttribute('aria-hidden', 'true');
     }
   }
 
-  if(quickFacts && quickFactsList){
+  if(rootEl){
+    applyBackdrop(rootEl, item);
+    const heroLogo = applyHeroLogo(rootEl, item);
+    applyHeroMeta(rootEl, item);
+    applyLogo(rootEl, item, heroLogo);
+  }
+
+  populateFooter({ footerEl, footerLogosEl, footerNoteEl }, item);
+}
+
+export function fillPosterAndQuickfacts({ posterEl, quickfactsEl }, item){
+  if(posterEl){
+    const src = resolvePoster(item);
+    posterEl.src = src || '';
+    posterEl.alt = item?.title ? `Poster: ${item.title}` : '';
+    posterEl.loading = 'lazy';
+    posterEl.decoding = 'async';
+    posterEl.classList.remove('is-ready');
+    if(src){
+      posterEl.addEventListener('load', onPosterReady, { once: true });
+      posterEl.addEventListener('error', onPosterReady, { once: true });
+    }else{
+      posterEl.classList.add('is-ready');
+    }
+  }
+
+  const quickfactsRoot = quickfactsEl?.root || quickfactsEl;
+  const quickfactsList = quickfactsEl?.list;
+  if(quickfactsRoot && quickfactsList){
     const year = humanYear(item);
     const runtime = runtimeText(item);
     const rating = ratingText(item);
@@ -444,23 +471,17 @@ export function fillPosterAndQuickfacts(targetNodes, item){
     if(rating) facts.push(['Bewertung', rating]);
     if(studio) facts.push(['Studio', studio]);
 
-    quickFactsList.replaceChildren();
+    quickfactsList.replaceChildren();
     facts.forEach(([label, value])=>{
       const dt = document.createElement('dt');
       dt.textContent = label;
       const dd = document.createElement('dd');
       dd.textContent = value;
-      quickFactsList.append(dt, dd);
+      quickfactsList.append(dt, dd);
     });
-    quickFacts.hidden = !facts.length;
+    quickfactsRoot.hidden = !facts.length;
+    quickfactsRoot.setAttribute('aria-hidden', facts.length ? 'false' : 'true');
   }
-}
-
-export function populateHead(root, item){
-  const headerNodes = normalizeHeaderNodes(root);
-  const posterNodes = normalizePosterNodes(root);
-  renderHeader(headerNodes, item);
-  fillPosterAndQuickfacts(posterNodes, item);
 }
 
 function onPosterReady(ev){
@@ -513,7 +534,7 @@ function createFooterLogoNode(entry){
   const config = FOOTER_TYPE_CONFIG[entry.type] || { label: 'TMDB' };
   const baseLabel = entry.name ? `${entry.name} (${config.label})` : config.label;
   const anchor = document.createElement('a');
-  anchor.className = 'v2-footer-logo';
+  anchor.className = 'v2-logo';
   anchor.href = entry.link || TMDB_BASE_URL;
   anchor.target = '_blank';
   anchor.rel = 'noopener noreferrer';
@@ -586,31 +607,21 @@ function buildFooterEntries(item){
   return entries;
 }
 
-function resolveFooterNodes(target){
-  if(!target) return { footer: null, logosRoot: null, note: null };
-  if(target instanceof HTMLElement){
-    const footer = target.classList.contains('v2-footer') ? target : target.querySelector('.v2-footer');
-    if(!footer) return { footer: null, logosRoot: null, note: null };
-    return {
-      footer,
-      logosRoot: footer.querySelector('.v2-footer-logos'),
-      note: footer.querySelector('.v2-footer-note'),
-    };
-  }
-  const footer = target.footer instanceof HTMLElement ? target.footer : null;
-  const logosRoot = target.footerLogos instanceof HTMLElement
-    ? target.footerLogos
-    : footer?.querySelector('.v2-footer-logos') || null;
-  const note = target.footerNote instanceof HTMLElement
-    ? target.footerNote
-    : footer?.querySelector('.v2-footer-note') || null;
-  return { footer, logosRoot, note };
+function coerceElement(value){
+  if(!value) return null;
+  if(typeof HTMLElement === 'undefined') return value;
+  return value instanceof HTMLElement ? value : null;
 }
 
 function populateFooter(target, item){
-  const { footer, logosRoot, note } = resolveFooterNodes(target);
+  const footer = coerceElement(target?.footerEl);
+  const logosRoot = coerceElement(target?.footerLogosEl);
+  const note = coerceElement(target?.footerNoteEl);
   if(!footer || !logosRoot || !note){
-    if(footer) footer.hidden = true;
+    if(footer){
+      footer.hidden = true;
+      footer.setAttribute('aria-hidden', 'true');
+    }
     return;
   }
   logosRoot.replaceChildren();
@@ -618,6 +629,7 @@ function populateFooter(target, item){
   const entries = buildFooterEntries(item);
   if(!entries.length){
     footer.hidden = true;
+    footer.setAttribute('aria-hidden', 'true');
     return;
   }
   const fragment = document.createDocumentFragment();
@@ -637,4 +649,5 @@ function populateFooter(target, item){
     '. Dieses Produkt nutzt die TMDB API, ist jedoch nicht von TMDB zertifiziert oder unterstützt.'
   );
   footer.hidden = false;
+  footer.setAttribute('aria-hidden', 'false');
 }

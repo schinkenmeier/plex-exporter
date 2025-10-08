@@ -6,7 +6,7 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert';
 
-import { runtimeText, ratingText, studioText, populateHead } from '../modal/headerSection.js';
+import { runtimeText, ratingText, studioText, renderHeader } from '../modal/headerSection.js';
 
 // Mock DOM
 const mockElements = new Map();
@@ -27,6 +27,12 @@ global.document = {
 
       setAttribute(name, value) {
         this[name] = value;
+      },
+
+      removeAttribute(name) {
+        if (name in this) {
+          delete this[name];
+        }
       },
 
       getAttribute(name) {
@@ -79,6 +85,23 @@ global.document = {
 };
 
 // Helper to test sanitizeUrl indirectly via applyBackdrop
+function createHeaderOptions(root, overrides = {}) {
+  return {
+    rootEl: root,
+    titleEl: document.createElement('h2'),
+    sublineEl: document.createElement('div'),
+    metaEl: document.createElement('div'),
+    chipsEl: document.createElement('div'),
+    tmdbBadgeEl: document.createElement('span'),
+    certificationBadgeEl: document.createElement('span'),
+    badgesGroupEl: document.createElement('div'),
+    footerEl: document.createElement('div'),
+    footerLogosEl: document.createElement('div'),
+    footerNoteEl: document.createElement('p'),
+    ...overrides,
+  };
+}
+
 function testBackdropSanitization(url) {
   const root = document.createElement('div');
   const backdropContainer = document.createElement('div');
@@ -92,7 +115,7 @@ function testBackdropSanitization(url) {
     },
   };
 
-  populateHead(root, item);
+  renderHeader(createHeaderOptions(root), item);
 
   return backdropContainer.style.backgroundImage;
 }
@@ -173,7 +196,7 @@ describe('headerSection', () => {
       const maliciousUrl = 'https://example.com/image.jpg") no-repeat; background: url("https://evil.com/track.gif';
       const result = testBackdropSanitization(maliciousUrl);
       // Sanitizer allows https:// URLs through (as they're valid)
-      // The key security is that the whole URL is wrapped in a single url("...") by populateHead
+      // The key security is that the whole URL is wrapped in a single url("...") by renderHeader
       // So even if it contains malicious text, it's treated as one URL string
       assert.ok(result.includes('https://example.com'));
       // Test documents current behavior - sanitizer allows https:// through
