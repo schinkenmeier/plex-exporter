@@ -3,8 +3,213 @@
  * Tests race condition fixes, immutable state updates, and error handling
  */
 
-import { describe, it } from 'node:test';
-import assert from 'node:assert';
+import { describe, it, beforeEach, afterEach } from 'node:test';
+import assert from 'node:assert/strict';
+import { parseHTML } from 'linkedom';
+
+import { renderModalV2, closeModalV2 } from '../modalV2.js';
+import { getState, setState } from '../state.js';
+
+function createStorage(){
+  const store = new Map();
+  return {
+    getItem(key){ return store.has(key) ? store.get(key) : null; },
+    setItem(key, value){ store.set(key, String(value)); },
+    removeItem(key){ store.delete(key); },
+    clear(){ store.clear(); },
+    key(index){ return Array.from(store.keys())[index] ?? null; },
+    get length(){ return store.size; }
+  };
+}
+
+function setupDom(){
+  const { window } = parseHTML(`<!DOCTYPE html><html lang="de"><body><div id="modal-root-v2" hidden></div></body></html>`);
+  const cleanups = [];
+  const MISSING = Symbol('missing');
+  const safeAssign = (key, value)=>{
+    const previous = Object.prototype.hasOwnProperty.call(globalThis, key) ? globalThis[key] : MISSING;
+    globalThis[key] = value;
+    cleanups.push(()=>{
+      if(previous === MISSING){ delete globalThis[key]; }
+      else{ globalThis[key] = previous; }
+    });
+  };
+
+  safeAssign('window', window);
+  safeAssign('document', window.document);
+  safeAssign('HTMLElement', window.HTMLElement);
+  safeAssign('HTMLInputElement', window.HTMLInputElement);
+  safeAssign('HTMLSelectElement', window.HTMLSelectElement);
+  safeAssign('Node', window.Node);
+  safeAssign('CustomEvent', window.CustomEvent);
+  safeAssign('Event', window.Event);
+  safeAssign('navigator', { userAgent: 'node-test' });
+  safeAssign('history', window.history);
+  safeAssign('location', window.location);
+  safeAssign('scrollTo', window.scrollTo || (()=>{}));
+  safeAssign('matchMedia', window.matchMedia || (()=>({ matches: false }))); 
+  safeAssign('requestAnimationFrame', window.requestAnimationFrame || (cb=>setTimeout(()=>cb(Date.now()), 0)));
+  safeAssign('cancelAnimationFrame', window.cancelAnimationFrame || (id=>clearTimeout(id)));
+  safeAssign('requestIdleCallback', window.requestIdleCallback || (cb=>setTimeout(()=>cb({ didTimeout:false, timeRemaining:()=>0 }), 0)));
+  safeAssign('getComputedStyle', window.getComputedStyle || (()=>({ getPropertyValue(){ return ''; } })));
+  safeAssign('scrollY', window.scrollY || 0);
+  safeAssign('scrollX', window.scrollX || 0);
+  safeAssign('innerHeight', window.innerHeight || 900);
+  safeAssign('innerWidth', window.innerWidth || 1280);
+  safeAssign('localStorage', createStorage());
+  safeAssign('sessionStorage', createStorage());
+  safeAssign('CSS', globalThis.CSS || { supports: () => false });
+  safeAssign('Image', window.Image || function Image(){ return window.document.createElement('img'); });
+  safeAssign('performance', window.performance || { now: () => Date.now() });
+  safeAssign('ResizeObserver', globalThis.ResizeObserver || class { observe(){} unobserve(){} disconnect(){} });
+
+  const prototypeCleanups = [];
+  if(window.HTMLElement){
+    const proto = window.HTMLElement.prototype;
+    const originalGetBoundingClientRect = proto.getBoundingClientRect;
+    proto.getBoundingClientRect = function(){
+      const width = Number(this.style?.width?.replace('px', '')) || this.clientWidth || 0;
+      const height = Number(this.style?.height?.replace('px', '')) || this.clientHeight || 0;
+      return { top: 0, left: 0, right: width, bottom: height, width, height };
+    };
+    prototypeCleanups.push(()=>{ proto.getBoundingClientRect = originalGetBoundingClientRect; });
+
+    const offsetParentDescriptor = Object.getOwnPropertyDescriptor(proto, 'offsetParent');
+    prototypeCleanups.push(()=>{
+      if(offsetParentDescriptor){ Object.defineProperty(proto, 'offsetParent', offsetParentDescriptor); }
+      else{ delete proto.offsetParent; }
+    });
+    Object.defineProperty(proto, 'offsetParent', {
+      configurable: true,
+      get(){ return this.parentNode || window.document.body; }
+    });
+
+    const offsetTopDescriptor = Object.getOwnPropertyDescriptor(proto, 'offsetTop');
+    prototypeCleanups.push(()=>{
+      if(offsetTopDescriptor){ Object.defineProperty(proto, 'offsetTop', offsetTopDescriptor); }
+      else{ delete proto.offsetTop; }
+    });
+    Object.defineProperty(proto, 'offsetTop', {
+      configurable: true,
+      get(){ return Number(this.dataset?.offsetTop ?? 0); }
+    });
+  }
+
+  const previousFeatures = window.FEATURES;
+  window.FEATURES = window.FEATURES || {};
+  cleanups.push(()=>{ window.FEATURES = previousFeatures; });
+
+  cleanups.push(()=>{
+    while(prototypeCleanups.length){
+      const cleanup = prototypeCleanups.pop();
+      cleanup();
+    }
+  });
+
+  return ()=>{
+    while(cleanups.length){
+      const cleanup = cleanups.pop();
+      cleanup();
+    }
+  };
+}
+
+async function tick(){
+  await new Promise(resolve => setTimeout(resolve, 0));
+}
+
+async function settle(times = 2){
+  for(let i = 0; i < times; i += 1){
+    await tick();
+  }
+}
+
+describe('modalV2 - Cinematic shell DOM', () => {
+  let cleanupDom;
+  let stateSnapshot;
+
+  beforeEach(() => {
+    cleanupDom = setupDom();
+    stateSnapshot = JSON.parse(JSON.stringify(getState()));
+    setState({
+      view: 'movies',
+      movies: [],
+      shows: [],
+      facets: {},
+      filtered: [],
+      cfg: { lang: 'de-DE' },
+      heroPolicy: null,
+      heroPolicyIssues: [],
+    });
+  });
+
+  afterEach(async () => {
+    closeModalV2();
+    await settle();
+    if(typeof cleanupDom === 'function'){
+      cleanupDom();
+      cleanupDom = null;
+    }
+    setState({
+      view: stateSnapshot.view,
+      movies: stateSnapshot.movies,
+      shows: stateSnapshot.shows,
+      facets: stateSnapshot.facets,
+      filtered: stateSnapshot.filtered,
+      cfg: stateSnapshot.cfg,
+      heroPolicy: stateSnapshot.heroPolicy,
+      heroPolicyIssues: stateSnapshot.heroPolicyIssues,
+    });
+  });
+
+  it('renders tabs and panes with new selectors', async () => {
+    renderModalV2({
+      type: 'movie',
+      title: 'Lumen',
+      summary: 'Demo summary.',
+      genres: ['Science-Fiction'],
+      roles: [{ tag: 'Pilot' }],
+      duration: 5_400_000,
+      rating: 8.4,
+      contentRating: 'PG-13',
+    });
+
+    await settle(3);
+
+    const modalRoot = document.getElementById('modal-root-v2');
+    assert.equal(modalRoot?.hidden, false);
+    assert.ok(document.body.classList.contains('modalv2-open'));
+
+    const titleEl = document.getElementById('modal-title');
+    assert.equal(titleEl?.textContent?.trim(), 'Lumen');
+
+    const tabs = Array.from(document.querySelectorAll('.v2-tabs [role="tab"]'));
+    assert.deepEqual(tabs.map(btn => btn.id), ['tab-overview', 'tab-details', 'tab-cast']);
+    assert.deepEqual(tabs.map(btn => btn.textContent.trim()), ['Überblick', 'Details', 'Cast']);
+
+    const activeTab = tabs.find(btn => btn.getAttribute('aria-selected') === 'true');
+    assert.equal(activeTab?.id, 'tab-overview');
+
+    const overviewPane = document.getElementById('pane-overview');
+    assert.ok(overviewPane, 'overview pane exists');
+    assert.equal(overviewPane?.hasAttribute('hidden'), false);
+    assert.equal(overviewPane?.getAttribute('aria-hidden'), 'false');
+    const overviewText = overviewPane?.querySelector('.v2-overview-text');
+    assert.ok(overviewText);
+    assert.equal(overviewText?.textContent?.trim(), 'Demo summary.');
+
+    const detailsPane = document.getElementById('pane-details');
+    assert.ok(detailsPane);
+    assert.equal(detailsPane?.hasAttribute('hidden'), true);
+    assert.equal(detailsPane?.getAttribute('aria-hidden'), 'true');
+
+    const castPane = document.getElementById('pane-cast');
+    assert.ok(castPane);
+    assert.equal(castPane?.hasAttribute('hidden'), true);
+    assert.equal(castPane?.getAttribute('aria-hidden'), 'true');
+    assert.ok(castPane?.textContent?.includes('Pilot'));
+  });
+});
 
 describe('modalV2 - attachTmdbDetail (Race Condition Fix)', () => {
   // Simulate the attachTmdbDetail function with immutable updates
