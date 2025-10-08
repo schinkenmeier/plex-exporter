@@ -1,17 +1,66 @@
 export function applyTabs(root){
   const tabs = root.querySelector('.v2-tabs');
   if(!tabs) return;
-  const buttons = Array.from(tabs.querySelectorAll('button[data-t]'));
-  const select = (target)=>{
+  const buttons = Array.from(tabs.querySelectorAll('[role="tab"][data-t]'));
+  if(!buttons.length) return;
+
+  const panes = Array.from(root.querySelectorAll('[role="tabpanel"], .v2-pane'));
+  const paneLookup = new Map();
+  panes.forEach(pane=>{
+    const keys = [];
+    const dataT = pane.getAttribute('data-t');
+    const dataPane = pane.getAttribute('data-pane');
+    if(dataT) keys.push(dataT);
+    if(dataPane) keys.push(dataPane);
+    if(pane.id) keys.push(pane.id);
+    keys.forEach(key=>{
+      if(!paneLookup.has(key)){
+        paneLookup.set(key, pane);
+      }
+    });
+  });
+
+  const getPaneForButton = btn=>{
+    if(!btn) return null;
+    const control = btn.getAttribute('aria-controls');
+    if(control && paneLookup.has(control)) return paneLookup.get(control);
+
+    const dataKey = btn.dataset.t || btn.dataset.pane;
+    if(dataKey && paneLookup.has(dataKey)) return paneLookup.get(dataKey);
+
+    if(control){
+      const doc = root.ownerDocument || (root.nodeType === 9 ? root : (typeof document !== 'undefined' ? document : null));
+      if(doc && typeof doc.getElementById === 'function'){
+        const paneById = doc.getElementById(control);
+        if(paneById && (!root.contains || root.contains(paneById))) return paneById;
+      }
+    }
+
+    if(dataKey){
+      return root.querySelector(`[data-pane="${dataKey}"]`) || root.querySelector(`[data-t="${dataKey}"]`);
+    }
+
+    return null;
+  };
+
+  const select = target=>{
+    const targetBtn = typeof target === 'string'
+      ? buttons.find(btn=> btn.dataset.t === target || btn.getAttribute('aria-controls') === target)
+      : target;
+    if(!targetBtn) return;
+
     buttons.forEach(btn=>{
-      const isActive = btn.dataset.t === target;
+      const isActive = btn === targetBtn;
       btn.classList.toggle('active', isActive);
       btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
       btn.tabIndex = isActive ? 0 : -1;
-      const pane = root.querySelector(`.v2-pane[data-pane="${btn.dataset.t}"]`);
+      const pane = getPaneForButton(btn);
       if(pane){
-        pane.hidden = !isActive;
-        pane.setAttribute('aria-hidden', pane.hidden ? 'true' : 'false');
+        pane.classList.toggle('is-hidden', !isActive);
+        pane.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+        if(pane.hasAttribute('hidden')){
+          pane.removeAttribute('hidden');
+        }
       }
     });
   };
@@ -23,17 +72,17 @@ export function applyTabs(root){
     const next = buttons[index];
     if(next){
       next.focus();
-      select(next.dataset.t);
+      select(next);
     }
   };
   tabs.addEventListener('click', ev=>{
-    const btn = ev.target.closest('button[data-t]');
+    const btn = ev.target.closest('[role="tab"][data-t]');
     if(!btn) return;
     ev.preventDefault();
-    select(btn.dataset.t);
+    select(btn);
   });
   tabs.addEventListener('keydown', ev=>{
-    const btn = ev.target.closest('button[data-t]');
+    const btn = ev.target.closest('[role="tab"][data-t]');
     if(!btn) return;
     switch(ev.key){
       case 'ArrowLeft':
@@ -50,7 +99,7 @@ export function applyTabs(root){
         ev.preventDefault();
         if(buttons[0]){
           buttons[0].focus();
-          select(buttons[0].dataset.t);
+          select(buttons[0]);
         }
         break;
       case 'End':
@@ -58,13 +107,13 @@ export function applyTabs(root){
         if(buttons.length){
           const last = buttons[buttons.length - 1];
           last.focus();
-          select(last.dataset.t);
+          select(last);
         }
         break;
       default:
         break;
     }
   });
-  const initial = buttons.find(btn=> btn.classList.contains('active')) || buttons[0];
-  if(initial) select(initial.dataset.t);
+  const initial = buttons.find(btn=> btn.getAttribute('aria-selected') === 'true') || buttons[0];
+  if(initial) select(initial);
 }
