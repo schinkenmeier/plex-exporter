@@ -325,77 +325,142 @@ function applyHeroMeta(root, item){
   slot.hidden = false;
 }
 
-export function populateHead(root, item){
-  const titleEl = root.querySelector('.v2-title');
-  if(titleEl) titleEl.textContent = item?.title || item?.name || '';
+function normalizeHeaderNodes(target){
+  if(!target) return null;
+  if(target.root || target.title || target.footer){
+    return target;
+  }
+  if(target instanceof HTMLElement){
+    const head = target.matches('.v2-head') ? target : target.querySelector('.v2-head');
+    if(!head) return null;
+    const footer = target.querySelector('.v2-footer');
+    return {
+      root: head,
+      title: head.querySelector('.v2-title'),
+      subline: head.querySelector('.v2-subline'),
+      meta: head.querySelector('.v2-meta'),
+      chips: head.querySelector('.v2-chips'),
+      footer,
+      footerLogos: footer?.querySelector('.v2-footer-logos') || null,
+      footerNote: footer?.querySelector('.v2-footer-note') || null,
+    };
+  }
+  return null;
+}
+
+function normalizePosterNodes(target){
+  if(!target) return null;
+  if(target.posterImage || target.quickFacts){
+    return target;
+  }
+  if(target instanceof HTMLElement){
+    const poster = target.querySelector('.v2-poster img');
+    const quickFacts = target.querySelector('.v2-facts');
+    return {
+      posterImage: poster,
+      quickFacts,
+      quickFactsList: quickFacts?.querySelector('.v2-facts-list') || null,
+    };
+  }
+  return null;
+}
+
+export function renderHeader(targetNodes, item){
+  const nodes = normalizeHeaderNodes(targetNodes);
+  if(!nodes) return;
+
+  const { root, title, subline, meta, chips, footer, footerLogos, footerNote } = nodes;
+  if(title) title.textContent = item?.title || item?.name || '';
+
   const tagline = pickTagline(item);
-  const metaEl = root.querySelector('.v2-meta');
-  const subEl = root.querySelector('.v2-subline');
   const year = humanYear(item);
   const runtime = runtimeText(item);
   const rating = ratingText(item);
   const studio = studioText(item);
   const metaParts = [year, runtime, rating, studio].filter(Boolean);
-  if(subEl){
+
+  if(subline){
     const fallback = metaParts.join(' • ');
-    subEl.textContent = tagline || fallback;
-    subEl.hidden = !(tagline || fallback);
+    subline.textContent = tagline || fallback;
+    subline.hidden = !(tagline || fallback);
   }
-  if(metaEl){
-    metaEl.textContent = tagline && metaParts.length ? metaParts.join(' • ') : '';
-    metaEl.hidden = !(tagline && metaParts.length);
+
+  if(meta){
+    meta.textContent = tagline && metaParts.length ? metaParts.join(' • ') : '';
+    meta.hidden = !(tagline && metaParts.length);
   }
-  const chipsRoot = root.querySelector('.v2-chips');
-  if(chipsRoot){
-    chipsRoot.replaceChildren();
+
+  if(chips){
+    chips.replaceChildren();
     buildChips(item).forEach(text=>{
       const span = document.createElement('span');
       span.className = 'chip';
       span.textContent = text;
-      chipsRoot.appendChild(span);
+      chips.appendChild(span);
     });
-    chipsRoot.hidden = !chipsRoot.childElementCount;
+    chips.hidden = !chips.childElementCount;
   }
-  const quickFacts = root.querySelector('.v2-facts');
-  const quickList = root.querySelector('.v2-facts-list');
-  if(quickFacts && quickList){
+
+  if(root){
+    applyBackdrop(root, item);
+    const heroLogo = applyHeroLogo(root, item);
+    applyHeroMeta(root, item);
+    applyLogo(root, item, heroLogo);
+  }
+
+  populateFooter({ footer, footerLogos, footerNote }, item);
+}
+
+export function fillPosterAndQuickfacts(targetNodes, item){
+  const nodes = normalizePosterNodes(targetNodes);
+  if(!nodes) return;
+  const { posterImage, quickFacts, quickFactsList } = nodes;
+
+  if(posterImage){
+    const src = resolvePoster(item);
+    posterImage.src = src || '';
+    posterImage.alt = item?.title ? `Poster: ${item.title}` : '';
+    posterImage.loading = 'lazy';
+    posterImage.decoding = 'async';
+    posterImage.classList.remove('is-ready');
+    if(src){
+      posterImage.addEventListener('load', onPosterReady, { once: true });
+      posterImage.addEventListener('error', onPosterReady, { once: true });
+    }else{
+      posterImage.classList.add('is-ready');
+    }
+  }
+
+  if(quickFacts && quickFactsList){
+    const year = humanYear(item);
+    const runtime = runtimeText(item);
+    const rating = ratingText(item);
+    const studio = studioText(item);
+    const contentRating = pickContentRating(item);
     const facts = [];
     if(year) facts.push(['Jahr', year]);
-    const contentRating = pickContentRating(item);
     if(contentRating) facts.push(['Freigabe', contentRating]);
     if(runtime) facts.push(['Laufzeit', runtime]);
     if(rating) facts.push(['Bewertung', rating]);
     if(studio) facts.push(['Studio', studio]);
-    quickList.replaceChildren();
+
+    quickFactsList.replaceChildren();
     facts.forEach(([label, value])=>{
       const dt = document.createElement('dt');
       dt.textContent = label;
       const dd = document.createElement('dd');
       dd.textContent = value;
-      quickList.append(dt, dd);
+      quickFactsList.append(dt, dd);
     });
     quickFacts.hidden = !facts.length;
   }
-  const img = root.querySelector('.v2-poster img');
-  if(img){
-    const src = resolvePoster(item);
-    img.src = src || '';
-    img.alt = item?.title ? `Poster: ${item.title}` : '';
-    img.loading = 'lazy';
-    img.decoding = 'async';
-    img.classList.remove('is-ready');
-    if(src){
-      img.addEventListener('load', onPosterReady, { once:true });
-      img.addEventListener('error', onPosterReady, { once:true });
-    }else{
-      img.classList.add('is-ready');
-    }
-  }
-  applyBackdrop(root, item);
-  const heroLogo = applyHeroLogo(root, item);
-  applyHeroMeta(root, item);
-  applyLogo(root, item, heroLogo);
-  populateFooter(root, item);
+}
+
+export function populateHead(root, item){
+  const headerNodes = normalizeHeaderNodes(root);
+  const posterNodes = normalizePosterNodes(root);
+  renderHeader(headerNodes, item);
+  fillPosterAndQuickfacts(posterNodes, item);
 }
 
 function onPosterReady(ev){
@@ -521,13 +586,31 @@ function buildFooterEntries(item){
   return entries;
 }
 
-function populateFooter(root, item){
-  const footer = root.querySelector('.v2-footer');
-  if(!footer) return;
-  const logosRoot = footer.querySelector('.v2-footer-logos');
-  const note = footer.querySelector('.v2-footer-note');
-  if(!logosRoot || !note){
-    footer.hidden = true;
+function resolveFooterNodes(target){
+  if(!target) return { footer: null, logosRoot: null, note: null };
+  if(target instanceof HTMLElement){
+    const footer = target.classList.contains('v2-footer') ? target : target.querySelector('.v2-footer');
+    if(!footer) return { footer: null, logosRoot: null, note: null };
+    return {
+      footer,
+      logosRoot: footer.querySelector('.v2-footer-logos'),
+      note: footer.querySelector('.v2-footer-note'),
+    };
+  }
+  const footer = target.footer instanceof HTMLElement ? target.footer : null;
+  const logosRoot = target.footerLogos instanceof HTMLElement
+    ? target.footerLogos
+    : footer?.querySelector('.v2-footer-logos') || null;
+  const note = target.footerNote instanceof HTMLElement
+    ? target.footerNote
+    : footer?.querySelector('.v2-footer-note') || null;
+  return { footer, logosRoot, note };
+}
+
+function populateFooter(target, item){
+  const { footer, logosRoot, note } = resolveFooterNodes(target);
+  if(!footer || !logosRoot || !note){
+    if(footer) footer.hidden = true;
     return;
   }
   logosRoot.replaceChildren();

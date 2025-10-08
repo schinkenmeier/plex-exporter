@@ -1,7 +1,7 @@
 export function setExternalLinks(root, item){
-  const tmdbBtn = root.querySelector('#v2Tmdb');
-  const imdbBtn = root.querySelector('#v2Imdb');
-  const trailerBtn = root.querySelector('#v2Trailer');
+  const tmdbBtn = root.querySelector('#action-tmdb, #v2Tmdb');
+  const imdbBtn = root.querySelector('#action-imdb, #v2Imdb');
+  const trailerBtn = root.querySelector('#action-trailer, #v2Trailer');
   const tmdbId = item?.ids?.tmdb || item?.tmdbId || item?.tmdbDetail?.id || item?.tmdb?.id;
   const imdbId = item?.ids?.imdb || item?.imdbId || item?.tmdbDetail?.imdbId || item?.tmdbDetail?.raw?.external_ids?.imdb_id;
   const trailer = item?.trailer || item?.trailerUrl || item?.tmdbDetail?.trailer;

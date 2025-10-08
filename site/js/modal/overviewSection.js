@@ -1,7 +1,16 @@
 import { getState } from '../state.js';
 
-export function updateOverview(root, item){
-  const pane = root.querySelector('.v2-overview');
+function resolveOverviewPane(target){
+  if(!target) return null;
+  if(target instanceof HTMLElement){
+    return target.classList.contains('v2-overview') ? target : target.querySelector('.v2-overview');
+  }
+  if(target?.overview instanceof HTMLElement) return target.overview;
+  return null;
+}
+
+export function renderOverview(target, item){
+  const pane = resolveOverviewPane(target);
   if(!pane) return;
 
   const tmdb = (item?.tmdbDetail?.overview || '').trim();
@@ -61,6 +70,10 @@ export function updateOverview(root, item){
   };
   const schedule = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : (cb)=>setTimeout(cb, 0);
   schedule(measure);
+}
+
+export function updateOverview(root, item){
+  renderOverview(root, item);
 }
 
 function determineLanguageBadge(item, source){
