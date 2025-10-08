@@ -58,8 +58,10 @@ export function applyTabs(root){
       if(pane){
         pane.classList.toggle('is-hidden', !isActive);
         pane.setAttribute('aria-hidden', isActive ? 'false' : 'true');
-        if(pane.hasAttribute('hidden')){
+        if(isActive){
           pane.removeAttribute('hidden');
+        }else{
+          pane.setAttribute('hidden', '');
         }
       }
     });
