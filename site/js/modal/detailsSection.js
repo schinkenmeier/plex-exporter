@@ -1,6 +1,13 @@
 import { formatRating, humanYear } from '../utils.js';
 import { runtimeText, studioText } from './headerSection.js';
-import { getState } from '../state.js';
+
+let headingIdCounter = 0;
+
+function nextHeadingId(prefix){
+  headingIdCounter += 1;
+  const base = prefix ? `details-${prefix}` : 'details-card';
+  return `${base}-${headingIdCounter}`;
+}
 
 function releaseDateText(item){
   const tmdb = item?.tmdbDetail;
@@ -42,17 +49,6 @@ function namesFromList(source){
   }).filter(Boolean);
 }
 
-function genresFromItem(item){
-  const arr = Array.isArray(item?.genres) ? item.genres : [];
-  const tmdb = Array.isArray(item?.tmdbDetail?.genres) ? item.tmdbDetail.genres : [];
-  const mapped = [...arr, ...tmdb].map(entry=>{
-    if(!entry) return '';
-    if(typeof entry === 'string') return entry;
-    return entry.tag || entry.title || entry.name || '';
-  }).filter(Boolean);
-  return Array.from(new Set(mapped));
-}
-
 function tmdbCrew(detail, jobs){
   if(!detail?.credits || !Array.isArray(detail.credits.crew)) return [];
   const jobSet = Array.isArray(jobs) ? new Set(jobs) : new Set([jobs]);
@@ -63,14 +59,18 @@ function tmdbCrew(detail, jobs){
   return Array.from(new Set(names));
 }
 
-function mergeNameLists(primary, secondary){
+function mergeNameLists(...lists){
   const seen = new Set();
   const result = [];
-  [...primary, ...secondary].forEach(name => {
-    const trimmed = String(name || '').trim();
-    if(!trimmed || seen.has(trimmed.toLowerCase())) return;
-    seen.add(trimmed.toLowerCase());
-    result.push(trimmed);
+  lists.filter(Array.isArray).forEach(list => {
+    list.forEach(name => {
+      const trimmed = String(name || '').trim();
+      if(!trimmed) return;
+      const key = trimmed.toLowerCase();
+      if(seen.has(key)) return;
+      seen.add(key);
+      result.push(trimmed);
+    });
   });
   return result;
 }
@@ -99,34 +99,6 @@ function aggregateRatings(item){
   return ratings;
 }
 
-function watchProviderGroups(item){
-  const detail = item?.tmdbDetail;
-  if(!detail?.watchProviders) return [];
-  const region = (getState().cfg?.iso || getState().cfg?.region || 'DE').toUpperCase();
-  const source = detail.watchProviders?.[region] || detail.watchProviders?.DE || detail.watchProviders?.default || null;
-  if(!source) return [];
-  const map = [
-    ['flatrate', 'Streaming'],
-    ['rent', 'Leihen'],
-    ['buy', 'Kaufen'],
-    ['free', 'Kostenlos'],
-    ['ads', 'Mit Werbung'],
-  ];
-  const groups = [];
-  for(const [key, label] of map){
-    const list = Array.isArray(source[key]) ? source[key] : [];
-    const providers = list.map(entry => ({
-      id: entry?.id || entry?.provider_id || entry?.providerId || '',
-      name: entry?.provider_name || entry?.name || '',
-      logo: entry?.logo || entry?.logo_path || entry?.logoPath || '',
-    })).filter(entry => entry.name);
-    if(providers.length){
-      groups.push({ label, providers });
-    }
-  }
-  return groups;
-}
-
 function formatOptionalRating(value){
   if(value instanceof Number){
     return formatOptionalRating(value.valueOf());
@@ -143,22 +115,38 @@ function formatOptionalRating(value){
   return '';
 }
 
-function resolveDetailsPane(target){
-  if(!target) return null;
-  if(target instanceof HTMLElement){
-    return target.classList.contains('v2-details') ? target : target.querySelector('.v2-details');
-  }
-  if(target?.details instanceof HTMLElement) return target.details;
-  return null;
+function createCard(title, key){
+  const section = document.createElement('section');
+  section.className = 'card';
+  section.dataset.section = key;
+  section.setAttribute('role', 'group');
+
+  const headingId = nextHeadingId(key);
+  const heading = document.createElement('h3');
+  heading.className = 'card-title';
+  heading.id = headingId;
+  heading.textContent = title;
+
+  section.setAttribute('aria-labelledby', headingId);
+
+  const content = document.createElement('div');
+  content.className = 'card-content';
+
+  section.append(heading, content);
+  return { section, content };
 }
 
-function renderDetailsPane(pane, item){
-  pane.replaceChildren();
+function createFallback(text){
+  const p = document.createElement('p');
+  p.className = 'card-empty';
+  p.textContent = text;
+  return p;
+}
 
-  const grid = document.createElement('div');
-  grid.className = 'v2-details-grid';
-
+function createGeneralCard(item){
+  const { section, content } = createCard('Allgemein', 'general');
   const general = [];
+
   const release = releaseDateText(item);
   if(release) general.push(['Veröffentlichung', release]);
   const runtime = runtimeText(item);
@@ -189,11 +177,6 @@ function renderDetailsPane(pane, item){
     }
   }
 
-  const countries = mergeNameLists(
-    namesFromList(item?.countries),
-    Array.isArray(item?.tmdbDetail?.productionCountries) ? item.tmdbDetail.productionCountries : []
-  );
-  if(countries.length) general.push(['Länder', countries.join(', ')]);
   const collections = mergeNameLists(
     namesFromList(item?.collections),
     item?.tmdbDetail?.collection?.name ? [item.tmdbDetail.collection.name] : []
@@ -205,14 +188,8 @@ function renderDetailsPane(pane, item){
   if(item?.originalTitle && item.originalTitle !== item.title) general.push(['Originaltitel', item.originalTitle]);
 
   if(general.length){
-    const section = document.createElement('section');
-    section.className = 'v2-details-section';
-    section.dataset.section = 'general';
-    const heading = document.createElement('h3');
-    heading.className = 'v2-details-heading';
-    heading.textContent = 'Allgemein';
     const list = document.createElement('dl');
-    list.className = 'v2-details-list';
+    list.className = 'card-definition-list';
     general.forEach(([label, value])=>{
       if(!label || !value) return;
       const dt = document.createElement('dt');
@@ -222,31 +199,19 @@ function renderDetailsPane(pane, item){
       list.append(dt, dd);
     });
     if(list.childElementCount){
-      section.append(heading, list);
-      grid.append(section);
+      content.appendChild(list);
+    }else{
+      content.append(createFallback('Keine allgemeinen Details verfügbar.'));
     }
+  }else{
+    content.append(createFallback('Keine allgemeinen Details verfügbar.'));
   }
 
-  const genres = genresFromItem(item);
-  if(genres.length){
-    const section = document.createElement('section');
-    section.className = 'v2-details-section';
-    section.dataset.section = 'genres';
-    const heading = document.createElement('h3');
-    heading.className = 'v2-details-heading';
-    heading.textContent = 'Genres';
-    const chips = document.createElement('div');
-    chips.className = 'v2-chip-group';
-    genres.forEach(name=>{
-      const span = document.createElement('span');
-      span.className = 'chip';
-      span.textContent = name;
-      chips.appendChild(span);
-    });
-    section.append(heading, chips);
-    grid.append(section);
-  }
+  return { section };
+}
 
+function createCreditsCard(item){
+  const { section, content } = createCard('Credits', 'credits');
   const crew = [];
   const directors = mergeNameLists(
     namesFromList(item?.directors),
@@ -270,152 +235,187 @@ function renderDetailsPane(pane, item){
   if(item?.type === 'tv' && creators.length) crew.push(['Creator', creators.join(', ')]);
 
   if(crew.length){
-    const section = document.createElement('section');
-    section.className = 'v2-details-section';
-    section.dataset.section = 'crew';
-    const heading = document.createElement('h3');
-    heading.className = 'v2-details-heading';
-    heading.textContent = 'Credits';
-    const list = document.createElement('dl');
-    list.className = 'v2-details-list';
+    const grid = document.createElement('div');
+    grid.className = 'credits-grid';
     crew.forEach(([label, value])=>{
       if(!label || !value) return;
-      const dt = document.createElement('dt');
-      dt.textContent = label;
-      const dd = document.createElement('dd');
-      dd.textContent = value;
-      list.append(dt, dd);
+      const card = document.createElement('div');
+      card.className = 'credit-item';
+      const term = document.createElement('p');
+      term.className = 'credit-label';
+      term.textContent = label;
+      const val = document.createElement('p');
+      val.className = 'credit-value';
+      val.textContent = value;
+      card.append(term, val);
+      grid.appendChild(card);
     });
-    if(list.childElementCount){
-      section.append(heading, list);
-      grid.append(section);
+    if(grid.childElementCount){
+      content.appendChild(grid);
+    }else{
+      content.append(createFallback('Keine Credits verfügbar.'));
     }
+  }else{
+    content.append(createFallback('Keine Credits verfügbar.'));
   }
 
-  const providers = watchProviderGroups(item);
-  if(providers.length){
-    const section = document.createElement('section');
-    section.className = 'v2-details-section';
-    section.dataset.section = 'providers';
-    const heading = document.createElement('h3');
-    heading.className = 'v2-details-heading';
-    heading.textContent = 'Verfügbarkeit';
-    const groupsWrap = document.createElement('div');
-    groupsWrap.className = 'v2-provider-groups';
-    providers.forEach(group => {
-      const groupEl = document.createElement('div');
-      groupEl.className = 'v2-provider-group';
-      const labelEl = document.createElement('p');
-      labelEl.className = 'v2-provider-label';
-      labelEl.textContent = group.label;
-      const listEl = document.createElement('div');
-      listEl.className = 'v2-provider-list';
-      group.providers.forEach(provider => {
-        const itemEl = document.createElement('span');
-        itemEl.className = 'v2-provider';
-        itemEl.setAttribute('data-provider', provider.id || provider.name);
-        if(provider.logo){
-          const logo = document.createElement('img');
-          logo.src = provider.logo;
-          logo.alt = provider.name;
-          logo.loading = 'lazy';
-          logo.decoding = 'async';
-          itemEl.appendChild(logo);
-        }
-        const name = document.createElement('span');
-        name.className = 'v2-provider-name';
-        name.textContent = provider.name;
-        itemEl.appendChild(name);
-        listEl.appendChild(itemEl);
-      });
-      groupEl.append(labelEl, listEl);
-      groupsWrap.appendChild(groupEl);
+  return { section };
+}
+
+function createCompaniesCard(item){
+  const { section, content } = createCard('Produktionsfirmen', 'companies');
+  const localStudios = mergeNameLists(
+    namesFromList(item?.studios),
+    item?.studio ? [item.studio] : []
+  );
+  const tmdbCompanies = namesFromList(item?.tmdbDetail?.productionCompanies);
+  const companies = mergeNameLists(localStudios, tmdbCompanies);
+
+  if(companies.length){
+    const list = document.createElement('ul');
+    list.className = 'card-list';
+    companies.forEach(name => {
+      const li = document.createElement('li');
+      li.textContent = name;
+      list.appendChild(li);
     });
-    section.append(heading, groupsWrap);
-    grid.append(section);
+    content.appendChild(list);
+  }else{
+    content.append(createFallback('Keine Produktionsfirmen hinterlegt.'));
   }
 
-  const networks = Array.isArray(item?.tmdbDetail?.networks)
-    ? item.tmdbDetail.networks.map(entry => ({
-      name: String(entry?.name || '').trim(),
-      logo: String(entry?.logo || entry?.logoPath || entry?.logo_path || '').trim(),
-    })).filter(entry => entry.name || entry.logo)
-    : [];
-  if(networks.length){
-    const section = document.createElement('section');
-    section.className = 'v2-details-section';
-    section.dataset.section = 'networks';
-    const heading = document.createElement('h3');
-    heading.className = 'v2-details-heading';
-    heading.textContent = 'Netzwerke';
-    const list = document.createElement('div');
-    list.className = 'v2-chip-group network-chip-group';
-    networks.forEach(network => {
-      const chip = document.createElement('span');
-      chip.className = 'network-chip';
-      const label = network.name || 'Unbekanntes Netzwerk';
-      if(network.logo){
+  return { section };
+}
+
+function createCountriesCard(item){
+  const { section, content } = createCard('Länder', 'countries');
+  const production = mergeNameLists(
+    namesFromList(item?.countries),
+    namesFromList(item?.tmdbDetail?.productionCountries)
+  );
+  const origin = mergeNameLists(
+    Array.isArray(item?.tmdbDetail?.originCountry) ? item.tmdbDetail.originCountry : [],
+    item?.country ? [item.country] : []
+  );
+
+  const blocks = [];
+  if(production.length) blocks.push(['Produktion', production]);
+  if(origin.length) blocks.push(['Original', origin]);
+
+  if(blocks.length){
+    const stack = document.createElement('div');
+    stack.className = 'card-stack';
+    blocks.forEach(([label, values]) => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'card-subsection';
+      const title = document.createElement('p');
+      title.className = 'card-subtitle';
+      title.textContent = label;
+      const value = document.createElement('p');
+      value.className = 'card-meta';
+      value.textContent = values.join(', ');
+      wrapper.append(title, value);
+      stack.appendChild(wrapper);
+    });
+    content.appendChild(stack);
+  }else{
+    content.append(createFallback('Keine Länderinformationen verfügbar.'));
+  }
+
+  return { section };
+}
+
+function collectLogoEntries(item){
+  const entries = [];
+  const addEntry = (logo, name, type)=>{
+    const src = String(logo || '').trim();
+    const label = String(name || '').trim();
+    if(!src) return;
+    entries.push({ logo: src, name: label || 'Unbenannt', type });
+  };
+
+  if(Array.isArray(item?.tmdbDetail?.networks)){
+    item.tmdbDetail.networks.forEach(network => {
+      addEntry(network?.logo || network?.logoPath || network?.logo_path || '', network?.name || '', 'network');
+    });
+  }
+
+  if(Array.isArray(item?.tmdbDetail?.productionCompanies)){
+    item.tmdbDetail.productionCompanies.forEach(company => {
+      addEntry(company?.logo || company?.logoPath || company?.logo_path || '', company?.name || '', 'company');
+    });
+  }
+
+  const seen = new Set();
+  return entries.filter(entry => {
+    const key = `${entry.logo}|${entry.name}`.toLowerCase();
+    if(seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function createLogoGalleryCard(item){
+  const { section, content } = createCard('Logos', 'logos');
+  const logos = collectLogoEntries(item);
+
+  if(logos.length){
+    const list = document.createElement('ul');
+    list.className = 'logo-grid';
+    logos.forEach(entry => {
+      const li = document.createElement('li');
+      li.className = 'logo-grid-item';
+      if(entry.logo){
         const img = document.createElement('img');
-        img.src = network.logo;
-        img.alt = label;
+        img.src = entry.logo;
+        img.alt = entry.name || 'Logo';
         img.loading = 'lazy';
         img.decoding = 'async';
-        chip.appendChild(img);
+        li.appendChild(img);
       }
-      const name = document.createElement('span');
-      name.textContent = label;
-      chip.appendChild(name);
-      chip.title = label;
-      list.appendChild(chip);
+      const caption = document.createElement('span');
+      caption.textContent = entry.name || 'Unbekannt';
+      li.appendChild(caption);
+      list.appendChild(li);
     });
-    if(list.childElementCount){
-      section.append(heading, list);
-      grid.append(section);
-    }
+    content.appendChild(list);
+  }else{
+    content.append(createFallback('Keine Logos verfügbar.'));
   }
 
-  const spokenLanguages = Array.isArray(item?.tmdbDetail?.spokenLanguages)
-    ? item.tmdbDetail.spokenLanguages.map(entry => ({
-      code: String(entry?.code || entry?.iso6391 || '').trim(),
-      name: String(entry?.name || '').trim(),
-    })).filter(entry => entry.name || entry.code)
-    : [];
-  if(spokenLanguages.length){
-    const section = document.createElement('section');
-    section.className = 'v2-details-section';
-    section.dataset.section = 'languages';
-    const heading = document.createElement('h3');
-    heading.className = 'v2-details-heading';
-    heading.textContent = 'Sprachen';
-    const list = document.createElement('div');
-    list.className = 'v2-chip-group network-chip-group';
-    spokenLanguages.forEach(lang => {
-      const chip = document.createElement('span');
-      chip.className = 'network-chip';
-      const labelParts = [];
-      if(lang.name) labelParts.push(lang.name);
-      const upperCode = lang.code ? lang.code.toUpperCase() : '';
-      if(upperCode && (!lang.name || upperCode !== lang.name.toUpperCase())){
-        labelParts.push(upperCode);
-      }
-      const label = labelParts.join(' • ') || 'Unbekannte Sprache';
-      chip.textContent = label;
-      chip.title = label;
-      list.appendChild(chip);
-    });
-    if(list.childElementCount){
-      section.append(heading, list);
-      grid.append(section);
-    }
+  return { section };
+}
+
+function resolveDetailsPane(target){
+  if(!target) return null;
+  if(target instanceof HTMLElement){
+    return target.classList.contains('v2-details') ? target : target.querySelector('.v2-details');
   }
+  if(target?.details instanceof HTMLElement) return target.details;
+  return null;
+}
+
+function renderDetailsPane(pane, item){
+  pane.replaceChildren();
+
+  const sections = [
+    createGeneralCard(item),
+    createCreditsCard(item),
+    createCompaniesCard(item),
+    createCountriesCard(item),
+    createLogoGalleryCard(item),
+  ];
+
+  const grid = document.createElement('div');
+  grid.className = 'grid-2';
+  sections.forEach(section => {
+    if(section?.section) grid.appendChild(section.section);
+  });
 
   if(grid.childElementCount){
     pane.appendChild(grid);
   }else{
-    const fallback = document.createElement('p');
-    fallback.className = 'v2-details-empty';
-    fallback.textContent = 'Keine zusätzlichen Details verfügbar.';
-    pane.appendChild(fallback);
+    pane.appendChild(createFallback('Keine zusätzlichen Details verfügbar.'));
   }
 }
 
