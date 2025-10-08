@@ -190,17 +190,17 @@ export function renderModalV2(item){
   root.innerHTML = `
     <article class="v2-shell">
       <header class="v2-head" id="modal-head" data-tmdb-section>
-        <div class="v2-head-visual" data-head-visual>
-          <div class="v2-head-hero" data-head-hero>
-            <div class="v2-head-backdrop" data-head-backdrop></div>
-            <div class="v2-head-overlay-logo" data-head-overlay-logo hidden></div>
-            <div class="v2-head-overlay-meta" data-head-overlay-meta hidden></div>
+        <div class="v2-head__visual" data-head-visual>
+          <div class="v2-head__hero" data-head-hero>
+            <div class="v2-head__backdrop" data-head-backdrop></div>
+            <div class="v2-head__overlay-logo" data-head-overlay-logo hidden></div>
+            <div class="v2-head__overlay-meta" data-head-overlay-meta hidden></div>
           </div>
-          <div class="v2-head-logo" data-head-logo hidden></div>
+          <div class="v2-head__logo" data-head-logo hidden></div>
         </div>
-        <p class="v2-head-status" data-head-status hidden aria-live="polite" aria-atomic="true"></p>
-        <div class="v2-titlebar">
-          <div class="v2-title-wrap">
+        <p class="v2-head__status" data-head-status hidden aria-live="polite" aria-atomic="true"></p>
+        <div class="v2-head__titlebar">
+          <div class="v2-head__titlewrap">
             <div class="v2-badges" id="modal-badges" aria-label="Bewertungen & Zertifikate" hidden>
               <span class="badge badge--tmdb" data-badge-tmdb hidden></span>
               <span class="badge badge--certification" data-badge-certification hidden></span>
@@ -235,9 +235,9 @@ export function renderModalV2(item){
         </div>
         <div class="v2-chips" id="modal-chips" aria-label="Attribute"></div>
       </header>
-      <div class="v2-body">
-        <section class="v2-layout">
-          <aside class="v2-side" id="modal-aside">
+      <div class="v2-shell__body">
+        <section class="v2-shell-columns">
+          <aside class="v2-shell-aside" id="modal-aside">
             <div class="v2-poster-card" id="modal-poster-card">
               <div class="v2-poster-media" id="modal-poster" aria-hidden="true">
                 <img id="modal-poster-img" alt="">
@@ -248,14 +248,14 @@ export function renderModalV2(item){
               </section>
             </div>
           </aside>
-          <main class="v2-info" id="modal-main">
+          <main class="v2-shell-main" id="modal-main">
             <nav class="v2-tabs" aria-label="Details Navigation" role="tablist">
               <button type="button" data-t="overview" class="active" id="tab-overview" role="tab" aria-controls="pane-overview" aria-selected="true">Überblick</button>
               <button type="button" data-t="details" id="tab-details" role="tab" aria-controls="pane-details" aria-selected="false">Details</button>
               ${hasSeasons ? '<button type="button" data-t="seasons" id="tab-seasons" role="tab" aria-controls="pane-seasons" aria-selected="false">Staffeln</button>' : ''}
               <button type="button" data-t="cast" id="tab-cast" role="tab" aria-controls="pane-cast" aria-selected="false">Cast</button>
             </nav>
-            <section class="v2-body" id="modal-panes">
+            <section class="v2-pane-stack" id="modal-panes">
               <div class="v2-pane v2-overview" data-pane="overview" id="pane-overview" role="tabpanel" aria-labelledby="tab-overview"></div>
               <div class="v2-pane v2-details" data-pane="details" id="pane-details" role="tabpanel" aria-labelledby="tab-details" hidden></div>
               ${hasSeasons ? '<div class="v2-pane v2-seasons" data-pane="seasons" id="pane-seasons" role="tabpanel" aria-labelledby="tab-seasons" hidden></div>' : ''}
