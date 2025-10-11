@@ -192,6 +192,12 @@ function createPaneStack(viewModel){
 
   const head = createHead(viewModel);
   const headRoot = head?.root || null;
+  const closeButton = head?.elements?.close || headRoot?.querySelector('#action-close');
+  if(closeButton){
+    closeButton.hidden = false;
+    closeButton.removeAttribute('hidden');
+    closeButton.addEventListener('click', closeDetailV3);
+  }
   if(headRoot) article.appendChild(headRoot);
 
   const body = document.createElement('div');
