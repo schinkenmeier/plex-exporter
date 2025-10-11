@@ -90,6 +90,18 @@ body.modalv3-open {
     border-radius: var(--radius-lg);
     max-height: 100vh;
   }
+
+  .v3-head__actions {
+    top: clamp(10px, 5vw, 20px);
+    right: clamp(10px, 5vw, 20px);
+  }
+
+  .v3-head__close {
+    width: 38px;
+    height: 38px;
+    border-radius: 14px;
+    font-size: 1.2rem;
+  }
 }
 
 /* --- Shell --- */
@@ -187,6 +199,16 @@ body.modalv3-open {
 
   .v3-shell {
     padding: clamp(20px, 6vw, 28px);
+  }
+
+  .v3-head__actions {
+    top: clamp(12px, 4vw, 24px);
+    right: clamp(12px, 4vw, 24px);
+  }
+
+  .v3-head__close {
+    width: 40px;
+    height: 40px;
   }
 
   .v3-shell-columns {
@@ -326,9 +348,64 @@ body.modalv3-open {
 
 /* --- Head Section --- */
 .v3-head {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: clamp(16px, 3vw, 26px);
+}
+
+.v3-head__actions {
+  position: absolute;
+  top: clamp(12px, 3vw, 28px);
+  right: clamp(12px, 3vw, 28px);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+}
+
+.v3-head__close {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--modalv3-border) 65%, transparent);
+  background: rgba(12, 18, 28, 0.82);
+  color: var(--fg);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.v3-head__close:hover,
+.v3-head__close:focus-visible {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, rgba(12, 18, 28, 0.82) 60%, var(--accent) 40%);
+  transform: translateY(-1px);
+}
+
+.v3-head__close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px color-mix(in srgb, rgba(12, 18, 28, 0.82) 60%, transparent);
+}
+
+.v3-head__close:active {
+  transform: translateY(0);
+  background: color-mix(in srgb, rgba(12, 18, 28, 0.82) 75%, var(--accent) 25%);
+}
+
+.v3-head__close-icon {
+  display: block;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.v3-head__close[hidden] {
+  display: none;
 }
 
 .v3-head__visual {

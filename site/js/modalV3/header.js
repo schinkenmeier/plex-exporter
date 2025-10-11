@@ -132,6 +132,23 @@ function createHeadStructure(){
   const root = ensureElement('header', 'v3-head');
   if(!root) return null;
 
+  const actions = ensureElement('div', 'v3-head__actions');
+  const closeButton = ensureElement('button', 'v3-head__close');
+  if(actions && closeButton){
+    closeButton.id = 'action-close';
+    closeButton.type = 'button';
+    closeButton.setAttribute('aria-label', 'Schließen');
+    const icon = ensureElement('span', 'v3-head__close-icon');
+    if(icon){
+      icon.setAttribute('aria-hidden', 'true');
+      icon.textContent = '×';
+      closeButton.append(icon);
+    }
+    closeButton.hidden = false;
+    closeButton.removeAttribute('hidden');
+    actions.append(closeButton);
+  }
+
   const visual = ensureElement('div', 'v3-head__visual');
   visual.dataset.v3HeadVisual = '1';
   const hero = ensureElement('div', 'v3-head__hero');
@@ -172,6 +189,7 @@ function createHeadStructure(){
   titlewrap.append(badges, title, subtitle, meta);
   titlebar.append(titlewrap);
 
+  if(actions && actions.childElementCount) root.append(actions);
   root.append(visual, status, titlebar);
   return root;
 }
@@ -221,6 +239,7 @@ function createHeadRefs(root){
       title: root.querySelector('[data-v3-head-title]'),
       subtitle: root.querySelector('[data-v3-head-subtitle]'),
       meta: root.querySelector('[data-v3-head-meta]'),
+      close: root.querySelector('#action-close'),
     },
   };
 }
