@@ -12,13 +12,13 @@ Alle kritischen und hochpriorisierten Verbesserungen aus dem Code-Review wurden 
 ## ✅ Durchgeführte Verbesserungen
 
 ### 1. **XSS-Fix für URL-Sanitization** (Kritisch)
-**Datei:** [site/js/modal/headerSection.js](site/js/modal/headerSection.js#L107-L134)
+**Datei:** [site/js/modalV3/header.js](site/js/modalV3/header.js#L1-L40)
 
 **Problem:** Backdrop-URLs wurden ohne Validierung in CSS `backgroundImage` eingefügt → XSS-Risiko
 
 **Lösung:**
 - Neue `sanitizeUrl()` Funktion für URL-Validierung
-- Whitelist für `http(s)://` und `data:image/` URLs
+- Whitelist für `http(s)://`, `//` (wird zu `https://`) und `data:image/` URLs
 - Entfernung gefährlicher Zeichen aus relativen Pfaden
 
 ```javascript
@@ -26,9 +26,9 @@ function sanitizeUrl(url){
   if(!url) return '';
   const str = String(url).trim();
   if(!str) return '';
-  // Only allow http(s) and data URLs
   if(/^https?:\/\//i.test(str) || /^data:image\//i.test(str)) return str;
-  // For relative paths, ensure they don't contain quotes or special chars
+  if(str.startsWith('//')) return `https:${str}`;
+  if(str.startsWith('data/')) return str;
   return str.replace(/["'()]/g, '');
 }
 ```
@@ -62,7 +62,7 @@ function normaliseId(id){
 ---
 
 ### 3. **Memory-Leak-Behebung** (Hoch)
-**Datei:** [site/js/modal/seasonsAccordion.js](site/js/modal/seasonsAccordion.js#L7-L127)
+**Datei:** [site/js/modalV3/seasons.js](site/js/modalV3/seasons.js#L396-L471)
 
 **Problem:** Event-Listener wurden bei Re-Render nicht entfernt → Memory Leaks
 
@@ -84,52 +84,79 @@ card._cleanup = () => {
 ---
 
 ### 4. **Race-Condition-Fix** (Hoch)
-**Datei:** [site/js/modalV2.js](site/js/modalV2.js#L341-L354)
+**Dateien:**
+- [site/js/modalV3/state.js](site/js/modalV3/state.js#L1-L37)
+- [site/js/modalV3/index.js](site/js/modalV3/index.js#L308-L377)
 
-**Problem:** Mutable State-Updates bei parallel laufenden TMDB-Anfragen
+**Problem:** Parallel gestartete Renderläufe überschrieben sich gegenseitig → inkonsistente UI
 
 **Lösung:**
-- Immutable Updates via Shallow Clone
-- Rückgabe des enriched Objects statt direkter Mutation
-- Konsistente State-Updates
+- `startRender()` vergibt sequentielle Tokens pro Anfrage
+- `renderDetail()` prüft `isCurrentRender(token)` bevor DOM-Updates erfolgen
+- `cancelRender()` + Fokus-Restore sorgen für sauberen Abbruch beim Schließen
 
 ```javascript
-function attachTmdbDetail(item, detail){
-  if(!item || !detail) return item;
-  const enriched = { ...item };
-  enriched.tmdbDetail = detail;
-  enriched.tmdb = { ...(item.tmdb || {}) };
-  // ... weitere Felder
-  return enriched;
+export function startRender(kind = null, item = null){
+  state.renderSequence += 1;
+  state.activeRenderToken = state.renderSequence;
+  state.activeKind = kind || null;
+  state.activeItem = item || null;
+  return state.activeRenderToken;
+}
+
+export function renderDetail(content, options = {}){
+  const { token } = options || {};
+  if(token && !isCurrentRender(token)) return null;
+  // ...
+  return root;
 }
 ```
 
 ---
 
-### 5. **Error-Differenzierung** (Hoch)
-**Datei:** [site/js/modalV2.js](site/js/modalV2.js#L310-L325)
+### 5. **Error-Differenzierung & Status-Messaging** (Hoch)
+**Dateien:**
+- [site/js/modalV3/index.js](site/js/modalV3/index.js#L338-L370)
+- [site/js/modalV3/header.js](site/js/modalV3/header.js#L640-L666)
 
 **Problem:** Generische Error-Messages ohne Kontext
 
 **Lösung:**
-- Spezifische Fehlermeldungen für:
-  - `429` Rate-Limit: "TMDB-Rate-Limit erreicht. Bitte versuchen Sie es später erneut."
-  - `404` Not Found: "Inhalt nicht in TMDB gefunden."
-  - Netzwerkfehler: "Netzwerkfehler. Bitte überprüfen Sie Ihre Verbindung."
+- `openMovieDetailV3` / `openSeriesDetailV3` liefern spezifische Fehlermeldungen im Modal
+- ARIA-kompatible Statusfläche (`setHeadStatus`) für Fehler-/Ladezustände
 
 ```javascript
-let errorMessage = 'TMDB-Daten konnten nicht geladen werden.';
-if(err?.status === 429){
-  errorMessage = 'TMDB-Rate-Limit erreicht. Bitte versuchen Sie es später erneut.';
-}else if(err?.status === 404){
-  errorMessage = 'Inhalt nicht in TMDB gefunden.';
+function renderDetailError(message, options = {}){
+  const root = renderDetail(String(message || 'Details konnten nicht geladen werden.'), options);
+  clearActiveItem();
+  return root;
+}
+
+export function setHeadStatus(target, payload){
+  const head = coerceHeadTarget(target);
+  const statusEl = head?.elements?.status;
+  if(!statusEl) return;
+  if(!payload){
+    statusEl.hidden = true;
+    statusEl.textContent = '';
+    if(statusEl.dataset) statusEl.dataset.state = '';
+    statusEl.setAttribute('aria-hidden', 'true');
+    return;
+  }
+  const message = payload.message ? String(payload.message).trim() : '';
+  const state = payload.state ? String(payload.state).trim() : '';
+  statusEl.textContent = message;
+  if(statusEl.dataset) statusEl.dataset.state = state;
+  const hasMessage = Boolean(message);
+  statusEl.hidden = !hasMessage;
+  statusEl.setAttribute('aria-hidden', hasMessage ? 'false' : 'true');
 }
 ```
 
 ---
 
 ### 6. **N+1 Performance-Optimierung** (Mittel)
-**Datei:** [site/js/modal/castSection.js](site/js/modal/castSection.js#L53-L82)
+**Datei:** [site/js/modalV3/castData.js](site/js/modalV3/castData.js#L33-L102)
 
 **Problem:** `toLowerCase()` in Loop + unnötige `.map().filter()` Chains
 
@@ -139,16 +166,12 @@ if(err?.status === 429){
 - Reduzierte String-Operationen
 
 ```javascript
-// Pre-normalize and deduplicate local cast
-localSource.forEach(person => {
-  const entry = normalizeLocalCast(person);
-  if(!entry) return;
-  const lowerName = entry.name.toLowerCase();
-  if(!seen.has(lowerName)){
-    seen.set(lowerName, true);
-    combined.push(entry);
-  }
-});
+const seen = new Map();
+// ...
+if(!seen.has(lowerName)){
+  seen.set(lowerName, true);
+  combined.push(entry);
+}
 ```
 
 ---
@@ -233,8 +256,8 @@ async function getMovieEnriched(id, options = {})
 
 ### 10. **Accessibility: Live-Regions** (Niedrig)
 **Dateien:**
-- [site/js/modalV2.js](site/js/modalV2.js#L204)
-- [site/js/modal/castSection.js](site/js/modal/castSection.js#L185-L190)
+- [site/js/modalV3/header.js](site/js/modalV3/header.js#L186-L199)
+- [site/js/modalV3/cast.js](site/js/modalV3/cast.js#L242-L262)
 
 **Problem:** Dynamische TMDB-Updates nicht für Screen-Reader zugänglich
 
@@ -243,7 +266,7 @@ async function getMovieEnriched(id, options = {})
 - Automatische Ankündigung von Lade-Zuständen
 
 ```html
-<p class="v2-head-status" data-head-status hidden
+<p class="v3-head__status" data-v3-head-status
    aria-live="polite" aria-atomic="true"></p>
 ```
 
@@ -302,15 +325,17 @@ Cache Module: ✅ 5/5 Tests erfolgreich
 ## 📝 Geänderte Dateien
 
 ```
-site/js/modal/headerSection.js       | +28 -6
-site/js/tmdbMapper.js                | +8  -3
-site/js/modal/seasonsAccordion.js    | +27 -8
-site/js/modalV2.js                   | +18 -6
-site/js/modal/castSection.js         | +24 -10
-site/js/metadataService.js           | +44 -6
-site/js/cacheStore.js                | +29 -3
-site/js/tmdbClient.js                | +13 -1
-IMPROVEMENTS_SUMMARY.md              | +318 (neu)
+site/js/modalV3/header.js            | Head-/Backdrop-Rendering & Sanitization
+site/js/modalV3/index.js             | Render-Flow, Token-Handling & Fehlerpfade
+site/js/modalV3/state.js             | Render-Tokens & Fokusverwaltung
+site/js/modalV3/seasons.js           | Staffel-Accordion inkl. Cleanup & AbortController
+site/js/modalV3/cast.js              | ARIA-Status & Listen-Rendering
+site/js/modalV3/castData.js          | Deduplication & Cast-Merging
+site/js/tmdbMapper.js                | ID-Validierung & Mapping-Anpassungen
+site/js/metadataService.js           | Null-Safety & Fallback-Objekte
+site/js/cacheStore.js                | clearExpired()/size() API
+site/js/tmdbClient.js                | Retry-/Credential-Handling
+IMPROVEMENTS_SUMMARY.md              | Dokumentation
 ```
 
 **Gesamtänderungen:** ~500 Zeilen (inkl. Kommentare)
@@ -319,7 +344,7 @@ IMPROVEMENTS_SUMMARY.md              | +318 (neu)
 
 ## ✨ Fazit
 
-Alle kritischen Sicherheits- und Performance-Probleme wurden behoben. Das TMDB-Modal-System ist nun:
+Alle kritischen Sicherheits- und Performance-Probleme wurden behoben. Das TMDB-Modal-System (V3) ist nun:
 
 ✅ **Produktionsbereit** mit robuster Error-Handling
 ✅ **Sicher** gegen XSS und Injection-Angriffe

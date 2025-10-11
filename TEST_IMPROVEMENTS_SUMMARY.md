@@ -137,12 +137,12 @@ describe('metadataService')
 
 ### Priorität 2: Modal-Komponenten
 
-#### 5. **castSection.test.js** (AUSSTEHEND)
+#### 5. **modalV3/cast.test.js** (AUSSTEHEND)
 **Geplante Tests:** ~15
-- `buildCastList()` - Neue Optimierung (Map statt Set)
-- Case-insensitive Deduplication
-- Local + TMDB Merge
-- `setCastStatus()` - ARIA live-region
+- `buildCastList()` (`castData.js`) - Map-basierte Deduplication
+- Case-insensitive Merge aus lokalen & TMDB-Daten
+- `setCastStatus()` - ARIA-Live-Region & Button-Platzierung
+- Lazy-Loading/`useTmdbOn()`-Toggle für Profilbilder
 
 **Testet Verbesserungen:**
 - ✅ N+1 Performance-Fix
@@ -150,43 +150,43 @@ describe('metadataService')
 
 ---
 
-#### 6. **headerSection.test.js** (ERWEITERN)
+#### 6. **modalV3/header.test.js** (ERWEITERN)
 **Aktuell:** 2 Tests
 **Geplant:** +15 Tests
 
 **Neue Tests:**
-- `sanitizeUrl()` - XSS-Fix validieren
-- `pickBackdrop()` - Fallback-Chain
-- `pickLogo()` - Netzwerk/Company Logos
-- `runtimeText()` - Zero-Runtime-Handling
+- `sanitizeUrl()` - XSS-Fix inkl. `//`-Fallback
+- `applyBackdrop()` - Lazy-Loading & Dataset-Guards
+- `pickHeroLogo()/pickLogo()` - Logo-Präferenzen
+- `setHeadStatus()` - aria-live States
 
 **Testet Verbesserungen:**
 - ✅ XSS-Fix (URL-Sanitization)
-- ✅ Runtime-Fallback-Chain
+- ✅ Sichtbare Statusmeldungen & Logo-Fallbacks
 
 ---
 
-#### 7. **modalV2.test.js** (AUSSTEHEND)
+#### 7. **modalV3/index.test.js** (AUSSTEHEND)
 **Geplante Tests:** ~12
-- `attachTmdbDetail()` - Immutability
-- `maybeStartTmdbEnrichment()` - Error-Differenzierung
-- Token-Cancellation via `renderToken`
-- Spezifische Error-Messages (429, 404, Network)
+- `startRender()/isCurrentRender()` - Token-Abbruch bei Parallel-Loads
+- `renderDetailError()` - Typbezogene Fehlermeldungen
+- `closeDetailV3()` - Fokus-Restore & Cancel
+- Integration mit `setHeadStatus()` für Lade-/Fehlerzustände
 
 **Testet Verbesserungen:**
-- ✅ Race-Condition-Fix (immutable updates)
-- ✅ Error-Differenzierung
+- ✅ Race-Condition-Fix (Render-Tokens)
+- ✅ Error-/Status-Messaging
 
 ---
 
-#### 8. **seasonsAccordion.test.js** (ERWEITERN)
+#### 8. **modalV3/seasons.test.js** (ERWEITERN)
 **Aktuell:** 1 Test
 **Geplant:** +8 Tests
 
 **Neue Tests:**
 - `card._cleanup()` - Memory-Leak-Fix
-- AbortController-Integration
-- Re-Render Cleanup
+- AbortController-Integration & Signal-Abbruch
+- Re-Render Cleanup + Default-Open-State
 
 **Testet Verbesserungen:**
 - ✅ Memory-Leak-Behebung
@@ -219,9 +219,10 @@ describe('metadataService')
 | **tmdbMapper.js** | 0% | **~85%** | 90% |
 | **tmdbClient.js** | 0% | 0% | 75% |
 | **metadataService.js** | 0% | 0% | 70% |
-| **modal/castSection.js** | 0% | 0% | 60% |
-| **modal/headerSection.js** | ~15% | ~15% | 70% |
-| **modalV2.js** | 0% | 0% | 50% |
+| **modalV3/cast.js & castData.js** | 0% | 0% | 60% |
+| **modalV3/header.js** | ~15% | ~15% | 70% |
+| **modalV3/index.js & state.js** | 0% | 0% | 60% |
+| **modalV3/seasons.js** | 0% | 0% | 60% |
 | **Gesamt TMDB-System** | ~10% | **~25%** | **70%** |
 
 ---
@@ -235,10 +236,10 @@ describe('metadataService')
 4. ⏳ `metadataService.test.js` - **AUSSTEHEND**
 
 ### Mittel (Prio 2)
-5. ⏳ `castSection.test.js`
-6. ⏳ `headerSection.test.js` erweitern
-7. ⏳ `modalV2.test.js`
-8. ⏳ `seasonsAccordion.test.js` erweitern
+5. ⏳ `modalV3/cast.test.js`
+6. ⏳ `modalV3/header.test.js` erweitern
+7. ⏳ `modalV3/index.test.js`
+8. ⏳ `modalV3/seasons.test.js` erweitern
 
 ### Optional (Prio 3)
 9. ⏳ `imageHelper.test.js`
@@ -310,16 +311,16 @@ export function waitForAsync(ms = 10) {
 
 Die neuen Tests validieren **alle 10 durchgeführten Code-Verbesserungen**:
 
-1. ✅ XSS-Fix → `headerSection.test.js` (geplant: `sanitizeUrl`)
+1. ✅ XSS-Fix → `modalV3/header.test.js` (geplant: `sanitizeUrl`)
 2. ✅ Input-Validierung → `tmdbMapper.test.js` (`normaliseId` - 7 Tests)
-3. ✅ Memory-Leak-Fix → `seasonsAccordion.test.js` (geplant: `cleanup`)
-4. ✅ Race-Condition-Fix → `modalV2.test.js` (geplant: immutability)
-5. ✅ Error-Differenzierung → `modalV2.test.js` (geplant: 429/404)
-6. ✅ N+1 Performance → `castSection.test.js` (geplant: Map vs Set)
+3. ✅ Memory-Leak-Fix → `modalV3/seasons.test.js` (geplant: `cleanup`)
+4. ✅ Race-Condition-Fix → `modalV3/index.test.js` (geplant: Render-Tokens)
+5. ✅ Error-Differenzierung → `modalV3/index.test.js` (geplant: Statusmeldungen)
+6. ✅ N+1 Performance → `modalV3/cast.test.js` (geplant: Map vs Set)
 7. ✅ Null-Checks → `metadataService.test.js` (geplant: show fallback)
 8. ✅ Cache `clearExpired()` → `cacheStore.test.js` (**15 Tests bestanden**)
 9. ✅ Cache `size()` → `cacheStore.test.js` (**3 Tests bestanden**)
-10. ✅ ARIA Live-Regions → `castSection.test.js` (geplant)
+10. ✅ ARIA Live-Regions → `modalV3/cast.test.js` (geplant)
 
 ---
 
