@@ -514,7 +514,7 @@ function normalizeSeasonTitle(season, fallbackNumber){
 }
 
 function resolveSeasonKey(season){
-  const number = Number(season?.seasonNumber ?? season?.index ?? season?.season ?? season?.season_index);
+  const number = Number(season?.seasonNumber ?? season?.index ?? season?.season ?? season?.season_index ?? season?.season_number);
   if(Number.isFinite(number)) return `season-${number}`;
   const id = trimString(firstString(season?.id, season?.guid));
   if(id) return `id-${id}`;
@@ -524,7 +524,7 @@ function resolveSeasonKey(season){
 }
 
 function resolveEpisodeCount(season){
-  const fromField = Number(season?.episodeCount ?? season?.childCount);
+  const fromField = Number(season?.episodeCount ?? season?.childCount ?? season?.episode_count);
   if(Number.isFinite(fromField) && fromField >= 0) return fromField;
   const episodes = asArray(season?.episodes);
   if(episodes.length) return episodes.length;
@@ -535,6 +535,7 @@ function resolveSeasonPoster(title, season, source){
   const candidates = [
     { value: season?.poster, source },
     { value: season?.posterPath, source },
+    { value: season?.poster_path, source },
     { value: season?.thumbFile, source: 'local' },
     { value: season?.thumb, source: 'local' },
     { value: season?.art, source: 'local' },
@@ -562,10 +563,10 @@ function buildSeasonSummaries(show, tmdb){
   const pushSeason = (season, source)=>{
     if(!season) return;
     const key = resolveSeasonKey(season);
-    const numberRaw = season?.seasonNumber ?? season?.index ?? season?.season;
+    const numberRaw = season?.seasonNumber ?? season?.index ?? season?.season ?? season?.season_index ?? season?.season_number;
     const seasonNumber = Number.isFinite(Number(numberRaw)) ? Number(numberRaw) : null;
     const title = normalizeSeasonTitle(season, seasonNumber ?? (results.length + 1)) || (seasonNumber != null ? `Staffel ${seasonNumber}` : 'Staffel');
-    const airDate = firstString(season?.airDate, season?.premiereDate, season?.originallyAvailableAt);
+    const airDate = firstString(season?.airDate, season?.premiereDate, season?.originallyAvailableAt, season?.air_date);
     const year = parseYear(season?.year) || parseYear(airDate);
     const overview = firstString(season?.overview, season?.summary, season?.description);
     const poster = resolveSeasonPoster(title, season, source);
