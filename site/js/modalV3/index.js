@@ -25,7 +25,6 @@ function normalizeTabLabel(rawLabel, fallback){
 }
 
 const LOG_PREFIX = '[modalV3]';
-const FALLBACK_FEATURE_KEY = 'detailModalV2Fallback';
 let moviesCache = null;
 let showsCache = null;
 const demoModule = { promise: null };
@@ -34,17 +33,6 @@ function isViewModelCandidate(content){
   if(!content || typeof content !== 'object' || Array.isArray(content)) return false;
   if(!Array.isArray(content.tabs)) return false;
   return typeof content.kind === 'string' || typeof content.title === 'string';
-}
-
-function getFeatureFlag(name){
-  try{
-    if(typeof window === 'undefined') return false;
-    const features = window.FEATURES || {};
-    return Boolean(features?.[name]);
-  }catch(err){
-    console.warn(LOG_PREFIX, 'Failed to read feature flag', name, err?.message || err);
-    return false;
-  }
 }
 
 function matchesIdentifier(item, rawId){
@@ -164,24 +152,6 @@ async function loadSeriesDetailViewModel(payload, options = {}){
     console.warn(LOG_PREFIX, 'Failed to build series view model:', err?.message || err);
     return null;
   }
-}
-
-async function maybeUseModalV2(kind, payload){
-  if(!getFeatureFlag(FALLBACK_FEATURE_KEY)) return false;
-  try{
-    const module = await import('../modalV2.js');
-    if(kind === 'show' && typeof module.openSeriesModalV2 === 'function'){
-      await module.openSeriesModalV2(payload);
-      return true;
-    }
-    if(kind === 'movie' && typeof module.openMovieModalV2 === 'function'){
-      await module.openMovieModalV2(payload);
-      return true;
-    }
-  }catch(err){
-    console.warn(LOG_PREFIX, 'V2 fallback failed:', err?.message || err);
-  }
-  return false;
 }
 
 function createPaneStack(viewModel){
@@ -441,7 +411,6 @@ function renderDetailError(message, options = {}){
 }
 
 export async function openMovieDetailV3(payload = null, options = {}){
-  if(await maybeUseModalV2('movie', payload)) return null;
   captureLastFocused();
   const token = startRender('movie', payload);
   showLoading();
@@ -463,7 +432,6 @@ export async function openMovieDetailV3(payload = null, options = {}){
 }
 
 export async function openSeriesDetailV3(payload = null, options = {}){
-  if(await maybeUseModalV2('show', payload)) return null;
   captureLastFocused();
   const token = startRender('show', payload);
   showLoading();

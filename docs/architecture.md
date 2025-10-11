@@ -65,14 +65,14 @@ Dieser Leitfaden skizziert den Aufbau der Plex-Exporter-Weboberfläche sowie wic
 5. Berechnet Facetten (`Filter.computeFacets()`), speichert Kataloge & Facetten im State und initialisiert Filter-UI (`Filter.renderFacets()`, `Filter.initFilters()`).
 6. Baut die Ansicht (`renderSwitch()`, `renderStats(true)`, `renderFooterMeta()`, `renderGrid()`) und versteckt anschließend den Loader.
 7. Startet optionale Module: TMDB-Hydration (per `requestIdleCallback`), Watchlist (`Watch.initUi()`), Settings-Overlay (inkl. TMDb-Troubleshooting), Advanced-Filter-Toggle, Header/Scroll-Helfer sowie Debug-Overlay. Das automatische Ausblenden von Hero und Filterbar läuft primär über Scroll-Driven CSS-Animationen (`animation-timeline: scroll`); `initFilterBarAutoHideFallback()` aktiviert ein rAF-basiertes JS-Fallback in Browsern ohne Scroll-Timeline-Unterstützung und respektiert dabei Fokus-/Pointer-Interaktionen sowie die Reduce-Motion-Präferenz.
-8. Ein `hashchange`-Listener unterstützt View-Wechsel (`#/movies`, `#/shows`) und öffnet bei `#/movie/<id>` bzw. `#/show/<id>` die neue Detailansicht (`openMovieDetailV3()`/`openSeriesDetailV3()`). Zusätzlich löst das Event `HeroPipeline.ensureHeroPool()` aus, um bei Bibliothekswechseln keine redundanten Requests zu erzeugen. Über das Feature-Flag `window.FEATURES.detailModalV2Fallback` lässt sich bei Bedarf wieder auf die alte V2-Implementierung zurückschalten.
+8. Ein `hashchange`-Listener unterstützt View-Wechsel (`#/movies`, `#/shows`) und öffnet bei `#/movie/<id>` bzw. `#/show/<id>` die neue Detailansicht (`openMovieDetailV3()`/`openSeriesDetailV3()`). Zusätzlich löst das Event `HeroPipeline.ensureHeroPool()` aus, um bei Bibliothekswechseln keine redundanten Requests zu erzeugen.
 
 ## Detail-System (`site/js/modalV3/index.js`)
 
 * **Zentrale Steuerung:**
   * Module importieren `openMovieDetailV3()` und `openSeriesDetailV3()` direkt aus `site/js/modalV3/index.js`. Beide Funktionen akzeptieren IDs oder bereits geladene Datensätze, kümmern sich um Demo- und TMDB-Hydration und steuern Render-Sessions über Tokens (`startRender()`/`isCurrentRender()`).
   * `renderMediaDetail(target, viewModel, options)` rendert den Pane-Stack außerhalb des Modals (z. B. auf `site/details.html`). Standardmäßig wird das Markup ersetzt; `options.layout = 'standalone'` aktiviert einen eigenständigen Card-Look.
-  * Für Legacy-Setups bleibt `modalV2` über ein Feature-Flag erreichbar. Schlägt der V3-Pfad fehl oder ist das Flag aktiv, importiert `maybeUseModalV2()` das alte Modul dynamisch und delegiert den Aufruf (`openMovieModalV2()`/`openSeriesModalV2()`).
+  * Die Anwendung nutzt ausschließlich die V3-Renderer; die alten V2-Module werden nicht mehr dynamisch geladen.
 
 * **Cinematic Shell (`site/js/modalV3`)**
   * `createPaneStack()` erzeugt das semantische Grundgerüst (Header, Poster-Sidebar, Tab-Stack). Spezialisierte Renderer (`header.js`, `overview.js`, `details.js`, `cast.js`, `seasons.js`) füllen die einzelnen Segmente.

@@ -15,7 +15,7 @@ import * as HeroPolicy from './hero/policy.js';
 import * as HeroPipeline from './hero/pipeline.js';
 import { syncDefaultMetadataService } from './metadataService.js';
 
-const DEFAULT_FEATURE_FLAGS = { tmdbEnrichment: false, detailModalV2Fallback: false };
+const DEFAULT_FEATURE_FLAGS = { tmdbEnrichment: false };
 const globalFeatures = (()=>{
   const existing = typeof window !== 'undefined' && window.FEATURES ? window.FEATURES : {};
   const merged = { ...DEFAULT_FEATURE_FLAGS, ...existing };
@@ -29,13 +29,6 @@ function applyFeatureFlags(cfg){
   try{
     if(globalFeatures){
       globalFeatures.tmdbEnrichment = !!(cfg && cfg.tmdbEnabled);
-      if(cfg && (cfg.detailModalV2Fallback != null || cfg.useModalV2Fallback != null || cfg.modalV2Fallback != null)){
-        const explicit = cfg.detailModalV2Fallback;
-        const legacy = cfg.useModalV2Fallback;
-        const legacy2 = cfg.modalV2Fallback;
-        const value = explicit ?? legacy ?? legacy2;
-        globalFeatures.detailModalV2Fallback = Boolean(value);
-      }
     }
     if(typeof window !== 'undefined' && window.FEATURES && window.FEATURES !== globalFeatures){
       window.FEATURES = { ...window.FEATURES, ...globalFeatures };
