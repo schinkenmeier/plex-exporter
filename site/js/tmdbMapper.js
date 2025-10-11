@@ -366,7 +366,15 @@ export function mapTvDetail(detail, options = {}){
     productionCompanies: mapProductionCompanies(detail.production_companies, cfg),
     seasons: mapSeasons(detail.seasons, cfg),
     contentRating: getContentRatingDE(detail),
-    credits: mapCredits(detail.aggregate_credits || detail.credits, cfg),
+    credits: (() => {
+      const rawCredits = detail.credits || null;
+      const hasDirectCredits = rawCredits && (
+        (Array.isArray(rawCredits.cast) && rawCredits.cast.length > 0) ||
+        (Array.isArray(rawCredits.crew) && rawCredits.crew.length > 0)
+      );
+      const source = hasDirectCredits ? rawCredits : (detail.aggregate_credits || null);
+      return mapCredits(source, cfg);
+    })(),
     images: {
       posters: buildImageCollection(detail.images?.posters, entry => ({
         path: entry.file_path,

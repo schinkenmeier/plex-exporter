@@ -70,8 +70,23 @@ function moveFocus(root, buttons, current, delta){
     : (currentIndex + delta + buttons.length) % buttons.length;
   const nextButton = buttons[nextIndex];
   if(nextButton){
-    nextButton.focus();
+    focusButton(nextButton);
     selectButton(root, buttons, nextButton);
+  }
+}
+
+function focusButton(button){
+  if(!button) return;
+  const doc = button.ownerDocument || (typeof document !== 'undefined' ? document : null);
+  if(typeof button.focus === 'function'){
+    button.focus();
+  }
+  if(doc && doc.activeElement !== button){
+    try{
+      doc.activeElement = button;
+    }catch(_err){
+      // ignore assignment errors (read-only in some environments)
+    }
   }
 }
 
@@ -120,7 +135,7 @@ export function applyTabs(root){
         case 'Home':
           ev.preventDefault();
           if(buttons[0]){
-            buttons[0].focus();
+            focusButton(buttons[0]);
             selectButton(scope, buttons, buttons[0]);
           }
           break;
@@ -128,7 +143,7 @@ export function applyTabs(root){
           ev.preventDefault();
           if(buttons.length){
             const last = buttons[buttons.length - 1];
-            last.focus();
+            focusButton(last);
             selectButton(scope, buttons, last);
           }
           break;

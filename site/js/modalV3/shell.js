@@ -12,8 +12,6 @@ function ensureContainer(){
   const container = document.getElementById('modal-root');
   if(!container) return null;
   overlayContainer = container;
-  container.classList.remove('modalv2-overlay');
-  delete container.dataset.modalv2Ready;
   container.classList.add('modalv3-overlay');
   if(!container.hasAttribute('hidden')) container.setAttribute('hidden', '');
   if(!container.hasAttribute('aria-hidden')) container.setAttribute('aria-hidden', 'true');
@@ -60,7 +58,6 @@ export function openShell({ onRequestClose } = {}){
   overlay.hidden = false;
   overlay.setAttribute('aria-hidden', 'false');
   if(typeof document !== 'undefined' && document.body){
-    document.body.classList.remove('modalv2-open');
     document.body.classList.add('modalv3-open');
   }
   if(scroll) scroll.scrollTop = 0;
@@ -75,7 +72,6 @@ export function closeShell(){
   overlayContainer.setAttribute('aria-hidden', 'true');
   if(typeof document !== 'undefined' && document.body){
     document.body.classList.remove('modalv3-open');
-    document.body.classList.remove('modalv2-open');
   }
   unbindFocusTrap();
   unbindEscape();

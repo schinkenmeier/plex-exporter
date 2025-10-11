@@ -3,7 +3,7 @@
  * Tests service orchestration, cache integration, and error fallbacks
  */
 
-import { describe, it, beforeEach } from 'node:test';
+import { describe, it, beforeEach, afterEach, after } from 'node:test';
 import assert from 'node:assert';
 
 // Mock localStorage
@@ -21,9 +21,13 @@ console.warn = (...args) => {
   warnLogs.push(args.join(' '));
 };
 
+after(() => {
+  console.warn = originalWarn;
+});
+
 // Mock fetch
 let fetchResponses = {};
-global.fetch = async (url) => {
+const defaultFetch = async (url) => {
   const path = url.toString().split('?')[0].split('/3')[1] || url.toString();
   if (fetchResponses[path]) {
     return fetchResponses[path];
@@ -34,6 +38,8 @@ global.fetch = async (url) => {
     json: async () => ({ id: 123, title: 'Default' }),
   };
 };
+
+global.fetch = defaultFetch;
 
 // Import after mocks
 const {
@@ -49,6 +55,11 @@ describe('metadataService', () => {
     Object.keys(mockLocalStorage).forEach(key => delete mockLocalStorage[key]);
     warnLogs.length = 0;
     fetchResponses = {};
+    global.fetch = defaultFetch;
+  });
+
+  afterEach(() => {
+    global.fetch = defaultFetch;
   });
 
   describe('getMovieEnriched', () => {
@@ -508,5 +519,3 @@ describe('metadataService', () => {
   });
 });
 
-// Restore console.warn
-console.warn = originalWarn;
