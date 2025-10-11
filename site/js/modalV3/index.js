@@ -279,7 +279,7 @@ function onOverlayClick(ev){
   if(!shell) return;
   const { overlay } = shell;
   const target = ev.target;
-  if(target === overlay || (target && target.dataset && target.dataset.modalv2Backdrop)){
+  if(target === overlay || (target && target.classList && target.classList.contains('modalv3-backdrop'))){
     closeDetailV3();
   }
 }
@@ -293,7 +293,7 @@ export function showLoading(message = 'Details werden geladen …'){
   root.hidden = false;
   root.removeAttribute('hidden');
   const loading = document.createElement('div');
-  loading.className = 'modalv2-loading';
+  loading.className = 'modalv3-loading';
   loading.textContent = String(message || 'Details werden geladen …');
   root.replaceChildren(loading);
   focusInitial();

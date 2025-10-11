@@ -117,7 +117,7 @@ function createDom(){
         </div>
         <div id="scrollProgress"></div>
         <button id="scrollTop" type="button"></button>
-        <div id="modal-root-v2" hidden></div>
+        <div id="modal-root" hidden></div>
       </body>
     </html>`);
 
@@ -337,7 +337,7 @@ test('boot flow integrates view switch, filtering and modal opening', async () =
     assert.equal(heroCta?.getAttribute('aria-disabled'), 'false');
     assert.equal(heroCta?.getAttribute('aria-label'), 'View movie details: Action Blast');
 
-    const modalRoot = document.getElementById('modal-root-v2');
+    const modalRoot = document.getElementById('modal-root');
     heroCta?.click();
     await settle();
     const heroModalTitle = document.getElementById('modal-title');

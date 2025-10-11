@@ -35,7 +35,7 @@ function loadDemoDataModule(){
 
 function resolveRoot(){
   if(rootEl) return rootEl;
-  const container = document.getElementById('modal-root-v2');
+  const container = document.getElementById('modal-root');
   if(!container) return null;
   overlayContainer = container;
   container.classList.add('modalv2-overlay');
