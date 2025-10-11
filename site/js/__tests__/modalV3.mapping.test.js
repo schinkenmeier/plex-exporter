@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 
-import { mapMovie, mapShow, mergeShowDetail, normalizeGenresList } from '../modalV3/mapping.js';
+import { mapMovie, mapShow, mergeShowDetail, normalizeGenresList, normalizePeopleList } from '../modalV3/mapping.js';
 
 describe('modalV3/mapping', () => {
   describe('mapMovie', () => {
@@ -51,6 +51,16 @@ describe('modalV3/mapping', () => {
         { tag: 'Drama' },
         { name: 'drama', tag: 'drama' },
         { name: 'Comedy', tag: 'Comedy' },
+      ]);
+    });
+  });
+
+  describe('normalizePeopleList', () => {
+    it('preserves string entries by converting them into cast objects', () => {
+      const cast = normalizePeopleList(['Hero', { tag: 'Villain' }, null, ' ']);
+      assert.deepStrictEqual(cast, [
+        { tag: 'Hero', name: 'Hero' },
+        { tag: 'Villain', name: 'Villain' },
       ]);
     });
   });

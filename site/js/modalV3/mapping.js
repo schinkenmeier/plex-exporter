@@ -182,8 +182,17 @@ function normalizeThumbField(obj){
 function normalizePeopleList(list){
   if(!Array.isArray(list)) return [];
   return list.map(entry => {
+    if(typeof entry === 'string'){
+      const tag = entry.trim();
+      if(!tag) return null;
+      const normalized = { tag, name: tag };
+      prefixShowThumb(normalized);
+      return normalized;
+    }
     if(!entry || typeof entry !== 'object') return null;
-    const name = entry?.tag || entry?.name || entry?.title || '';
+    const rawName = entry?.tag || entry?.name || entry?.title || '';
+    const name = String(rawName).trim();
+    if(!name) return null;
     const normalized = {
       ...entry,
       tag: name,
