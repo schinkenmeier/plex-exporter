@@ -88,7 +88,7 @@ export function unbindEscape(){
 export function focusInitial(container){
   const elementCtor = typeof HTMLElement !== 'undefined' ? HTMLElement : null;
   if(!elementCtor || !(container instanceof elementCtor)) return;
-  const closeBtn = container.querySelector('#action-close, #v2Close');
+  const closeBtn = container.querySelector('#action-close');
   const focusables = getFocusableElements(container);
   let target = (closeBtn && !closeBtn.hasAttribute('hidden')) ? closeBtn : focusables[0];
   if(!target) target = container;

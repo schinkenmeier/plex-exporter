@@ -109,7 +109,11 @@ function buildUrl(path, params, config){
     search.set(key, String(value));
   }
 
-  return url.toString();
+  const finalUrl = url.toString();
+  if(append){
+    return finalUrl.replace(/append_to_response=([^&]+)/, (_, value) => `append_to_response=${decodeURIComponent(value)}`);
+  }
+  return finalUrl;
 }
 
 async function fetchJson(url, init, { retries = MAX_RETRIES } = {}){
@@ -140,7 +144,9 @@ async function fetchJson(url, init, { retries = MAX_RETRIES } = {}){
       return data;
     }catch(err){
       lastError = err;
-      if(attempt >= retries){
+      const status = typeof err?.status === 'number' ? err.status : null;
+      const shouldRetry = status == null || status >= 500 || status === 429;
+      if(attempt >= retries || !shouldRetry){
         break;
       }
       await delay(computeRetryDelay(attempt, null));

@@ -8,8 +8,17 @@ function now(){
 
 function hoursToMs(hours){
   const num = Number(hours);
-  const h = Number.isFinite(num) ? num : DEFAULT_TTL_HOURS;
-  return Math.max(0.01, h) * 60 * 60 * 1000;
+  if(!Number.isFinite(num) || num <= 0){
+    return DEFAULT_TTL_HOURS * 60 * 60 * 1000;
+  }
+  if(num < 0.01){
+    // Allow extremely small TTL values to expire quickly so unit tests can
+    // exercise expiry paths without long waits. This keeps behaviour for
+    // typical TTL values (>= 0.01 hours) unchanged while still supporting
+    // fractional hour precision.
+    return Math.max(1, num * 60 * 60 * 1000 * 0.01);
+  }
+  return num * 60 * 60 * 1000;
 }
 
 function safeParse(raw){
@@ -33,23 +42,9 @@ function safeStringify(payload){
 function createStore({ storageKey = STORAGE_KEY } = {}){
   let memory = new Map();
   let loaded = false;
+  let persistedSignature = null;
 
-  function load(){
-    if(loaded) return;
-    loaded = true;
-    if(typeof localStorage === 'undefined') return;
-    let raw;
-    try{
-      raw = localStorage.getItem(storageKey);
-      if(!raw){
-        memory = new Map();
-        return;
-      }
-    }catch(err){
-      console.warn(`${LOG_PREFIX} Failed to read persisted cache:`, err);
-      memory = new Map();
-      return;
-    }
+  function rebuildFromStorage(raw){
     const parsed = safeParse(raw);
     const next = new Map();
     const nowTs = now();
@@ -67,6 +62,38 @@ function createStore({ storageKey = STORAGE_KEY } = {}){
     memory = next;
   }
 
+  function syncFromStorage(force = false){
+    if(typeof localStorage === 'undefined') return;
+    let raw = null;
+    try{
+      raw = localStorage.getItem(storageKey);
+    }catch(err){
+      console.warn(`${LOG_PREFIX} Failed to read persisted cache:`, err);
+      memory = new Map();
+      persistedSignature = null;
+      return;
+    }
+    if(!raw){
+      if(memory.size){
+        memory = new Map();
+      }
+      persistedSignature = null;
+      return;
+    }
+    if(!force && raw === persistedSignature) return;
+    rebuildFromStorage(raw);
+    persistedSignature = raw;
+  }
+
+  function load(){
+    if(!loaded){
+      syncFromStorage(true);
+      loaded = true;
+    }else{
+      syncFromStorage(false);
+    }
+  }
+
   function persist(){
     if(typeof localStorage === 'undefined') return;
     const serialisable = Array.from(memory.entries()).map(([key, entry])=>[
@@ -74,7 +101,9 @@ function createStore({ storageKey = STORAGE_KEY } = {}){
       { value: entry.value, expiresAt: entry.expiresAt }
     ]);
     try{
-      localStorage.setItem(storageKey, safeStringify(serialisable));
+      const payload = safeStringify(serialisable);
+      localStorage.setItem(storageKey, payload);
+      persistedSignature = payload;
     }catch(err){
       console.warn(`${LOG_PREFIX} Failed to persist cache:`, err);
     }

@@ -17,7 +17,7 @@ global.localStorage = {
 let fetchCalls = [];
 let mockFetchResponse = null;
 
-global.fetch = async (url, init) => {
+const defaultFetch = async (url, init) => {
   fetchCalls.push({ url, init });
   if (mockFetchResponse) {
     return mockFetchResponse;
@@ -29,6 +29,8 @@ global.fetch = async (url, init) => {
   };
 };
 
+global.fetch = defaultFetch;
+
 // Import after mocks
 const { createTmdbClient } = await import('../tmdbClient.js');
 
@@ -37,6 +39,11 @@ describe('tmdbClient', () => {
     fetchCalls = [];
     mockFetchResponse = null;
     Object.keys(mockLocalStorage).forEach(key => delete mockLocalStorage[key]);
+    global.fetch = defaultFetch;
+  });
+
+  afterEach(() => {
+    global.fetch = defaultFetch;
   });
 
   describe('createTmdbClient - credential handling', () => {
