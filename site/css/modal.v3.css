@@ -18,6 +18,10 @@
   --modalv3-chip-bg: color-mix(in srgb, var(--chip) 82%, transparent);
   color: var(--fg);
   font-family: var(--font-body);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
 }
 
 .modalv3,
