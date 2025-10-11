@@ -1,0 +1,532 @@
+/* Cinematic modal layout (V3) */
+/*
+  Die Styles setzen auf die globalen Variablen aus base.css auf und
+  konzentrieren sich auf Shell-, Spalten- und Tab-Layout für den neuen
+  Modal-Dialog. Poster/Meta-Inhalte stehen links, die Inhalte rechts.
+*/
+
+.modalv3 {
+  --modalv3-overlay-bg: var(--bg-overlay);
+  --modalv3-shell-padding: clamp(24px, 4vw, 40px);
+  --modalv3-shell-gap: clamp(24px, 4vw, 40px);
+  --modalv3-pane-gap: clamp(20px, 3vw, 32px);
+  --modalv3-tabs-gap: clamp(10px, 2vw, 16px);
+  --modalv3-tabs-radius: var(--radius-lg);
+  --modalv3-sticky-offset: clamp(16px, 4vw, 28px); /* übernommen aus V2 */
+  --modalv3-border: var(--border-strong);
+  --modalv3-surface: linear-gradient(180deg, rgba(11, 16, 24, 0.96), rgba(11, 15, 24, 0.88));
+  --modalv3-chip-bg: color-mix(in srgb, var(--chip) 82%, transparent);
+  color: var(--fg);
+  font-family: var(--font-body);
+}
+
+.modalv3,
+.modalv3 *,
+.modalv3 *::before,
+.modalv3 *::after {
+  box-sizing: border-box;
+}
+
+body.modalv3-open {
+  overflow: hidden;
+}
+
+.modalv3[hidden] {
+  display: none;
+}
+
+/* --- Overlay & Dialog --- */
+.modalv3-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(20px, 4vw, 48px);
+  background: var(--modalv3-overlay-bg);
+  backdrop-filter: blur(22px); /* übernommenes Overlay-Token */
+  -webkit-backdrop-filter: blur(22px);
+}
+
+.modalv3-overlay[hidden] {
+  display: none;
+}
+
+.modalv3-backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 24% 18%, rgba(94, 138, 210, 0.26), rgba(7, 11, 18, 0.82));
+}
+
+.modalv3-dialog {
+  position: relative;
+  z-index: 1;
+  width: min(1080px, 100%);
+  max-height: min(94vh, 940px);
+  display: flex;
+  flex-direction: column;
+  border-radius: calc(var(--radius-lg) + 6px);
+  border: 1px solid var(--modalv3-border);
+  background: var(--modalv3-surface);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.modalv3-scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-padding-top: calc(var(--modalv3-sticky-offset) + 70px);
+  scrollbar-gutter: stable both-edges;
+}
+
+@media (max-width: 640px) {
+  .modalv3-overlay {
+    padding: clamp(12px, 4vw, 24px);
+  }
+
+  .modalv3-dialog {
+    border-radius: var(--radius-lg);
+    max-height: 100vh;
+  }
+}
+
+/* --- Shell --- */
+.v3-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--modalv3-shell-gap);
+  padding: var(--modalv3-shell-padding);
+  background: transparent;
+}
+
+.v3-shell__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--modalv3-shell-gap);
+}
+
+.v3-shell-columns {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: var(--modalv3-shell-gap);
+  align-items: flex-start;
+}
+
+.v3-shell-aside {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(18px, 3vw, 28px);
+}
+
+.v3-shell-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--modalv3-pane-gap);
+}
+
+@media (min-width: 921px) {
+  .v3-shell-aside {
+    position: sticky;
+    top: var(--modalv3-sticky-offset);
+    align-self: flex-start;
+  }
+}
+
+@media (max-width: 920px) {
+  .modalv3-dialog {
+    max-height: 100vh;
+  }
+
+  .v3-shell {
+    padding: clamp(20px, 6vw, 28px);
+  }
+
+  .v3-shell-columns {
+    grid-template-columns: 1fr;
+    gap: clamp(18px, 6vw, 28px);
+  }
+
+  .v3-shell-aside {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: clamp(14px, 4vw, 22px);
+  }
+
+  .v3-shell-main {
+    order: 2;
+  }
+}
+
+/* --- Poster & Quick Facts --- */
+.v3-poster-card {
+  display: grid;
+  gap: clamp(16px, 3vw, 24px);
+}
+
+.v3-poster-media {
+  position: relative;
+}
+
+.v3-poster-media img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--bg-elevated) 78%, transparent);
+  box-shadow: var(--shadow-card);
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
+.v3-poster-media img.is-ready {
+  opacity: 1;
+}
+
+.v3-quickfacts {
+  background: color-mix(in srgb, var(--bg-translucent) 94%, transparent);
+  border: 1px solid var(--modalv3-border);
+  border-radius: var(--radius-md);
+  padding: clamp(16px, 3vw, 22px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.v3-quickfacts[hidden] {
+  display: none;
+}
+
+.v3-quickfacts-title {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.v3-quickfacts-list {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+.v3-quickfacts-list dt {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.v3-quickfacts-list dd {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--fg);
+}
+
+/* --- Head Section --- */
+.v3-head {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(16px, 3vw, 26px);
+}
+
+.v3-head__status {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.v3-head__status[data-state="error"] {
+  color: #ffb3b3;
+}
+
+.v3-head__status[data-state="loading"] {
+  color: color-mix(in srgb, var(--accent) 80%, white 20%);
+}
+
+.v3-head__titlebar {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.v3-head__titlewrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.v3-title {
+  margin: 0;
+  font-size: clamp(26px, 3vw, 42px);
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  color: var(--fg);
+}
+
+.v3-subtitle {
+  margin: 0;
+  font-size: clamp(16px, 2vw, 20px);
+  color: var(--fg-secondary);
+}
+
+.v3-badges {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.v3-badges[hidden] {
+  display: none;
+}
+
+.v3-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.35rem 0.85rem;
+  border-radius: var(--radius-pill);
+  background: var(--modalv3-chip-bg);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* --- Tabs --- */
+.v3-tabs {
+  position: sticky;
+  top: var(--modalv3-sticky-offset);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: var(--modalv3-tabs-gap);
+  padding: 10px;
+  margin: -6px 0 6px;
+  border-radius: var(--modalv3-tabs-radius);
+  background: color-mix(in srgb, var(--bg-translucent) 88%, transparent);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 18px 42px rgba(5, 8, 15, 0.45);
+  overflow-x: auto;
+  scroll-padding-inline: 12px;
+  scroll-padding-block: 12px;
+  scrollbar-width: none;
+}
+
+.v3-tabs::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid var(--border-strong);
+  pointer-events: none;
+}
+
+.v3-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.v3-tabs button {
+  position: relative;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-elevated) 92%, transparent);
+  color: color-mix(in srgb, var(--fg) 92%, white 8%);
+  border-radius: var(--radius-pill);
+  padding: 10px 18px;
+  cursor: pointer;
+  transition: background var(--transition-base), border-color var(--transition-base), color var(--transition-base), box-shadow var(--transition-base);
+  font-size: 0.92rem;
+  font-weight: 500;
+}
+
+.v3-tabs button:hover:not(.active) {
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--border) 52%);
+  color: var(--fg);
+}
+
+.v3-tabs button.active {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--border-strong) 30%);
+  background: color-mix(in srgb, var(--accent-soft) 70%, var(--bg-elevated) 30%);
+  box-shadow: 0 8px 22px rgba(12, 18, 28, 0.6);
+}
+
+.v3-tabs button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--bg) 85%, black 15%), 0 0 0 5px color-mix(in srgb, var(--accent) 80%, transparent);
+}
+
+/* --- Body & Pane Stack --- */
+.v3-pane-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--modalv3-pane-gap);
+  padding-bottom: var(--modalv3-pane-gap);
+}
+
+.v3-pane {
+  scroll-margin-top: calc(var(--modalv3-sticky-offset) + 70px);
+  background: color-mix(in srgb, var(--card) 80%, transparent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: clamp(18px, 3vw, 26px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 2vw, 22px);
+}
+
+.v3-pane__title {
+  margin: 0;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.v3-pane__content {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 2vw, 18px);
+}
+
+.v3-pane--muted {
+  background: color-mix(in srgb, var(--bg-translucent) 85%, transparent);
+  border-style: dashed;
+}
+
+/* --- Utility-Dokumentation für Cast & Accordion --- */
+/*
+  .v3-cast-grid         → Responsive Grid für Darstellerkarten
+  .v3-cast-status       → Status-/Fehlermeldungen im Cast-Bereich
+  .v3-accordion         → Container für aufklappbare Detail-Abschnitte
+  .v3-accordion__item   → Einzelnes Akkordeon-Panel
+  .v3-accordion__header → Button/Trigger für das Panel
+  .v3-accordion__panel  → Ein-/ausklappbarer Inhaltsbereich
+*/
+
+.v3-cast-grid {
+  display: grid;
+  gap: clamp(14px, 3vw, 20px);
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.v3-cast-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--card) 86%, transparent);
+  border: 1px solid var(--border);
+}
+
+.v3-cast-card__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.92rem;
+}
+
+.v3-cast-status {
+  margin: 12px 4px 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.v3-cast-status[data-state="error"] {
+  color: #ffb3b3;
+}
+
+.v3-cast-status::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
+}
+
+.v3-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.v3-accordion__item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--card) 82%, transparent);
+  overflow: hidden;
+}
+
+.v3-accordion__header {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.95rem;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.v3-accordion__header:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-ring);
+}
+
+.v3-accordion__panel {
+  padding: 0 18px 18px;
+  display: grid;
+  gap: 12px;
+}
+
+/* --- Misc --- */
+.v3-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.v3-chip {
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--radius-pill);
+  background: var(--modalv3-chip-bg);
+  border: 1px solid var(--border);
+  font-size: 0.84rem;
+  color: var(--fg);
+}
+
+@media (max-width: 540px) {
+  .modalv3-dialog {
+    width: 100%;
+    border-radius: 0;
+  }
+
+  .v3-shell {
+    padding: clamp(18px, 6vw, 26px);
+    min-height: 100vh;
+  }
+
+  .modalv3-scroll {
+    scroll-padding-top: calc(var(--modalv3-sticky-offset) + 64px);
+  }
+}
