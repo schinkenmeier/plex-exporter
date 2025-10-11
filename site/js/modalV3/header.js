@@ -474,10 +474,12 @@ function renderPoster(target, viewModel){
   const source = viewModel?.poster?.source || '';
   if(media.dataset) media.dataset.source = source || '';
   const url = sanitizeUrl(viewModel?.poster?.url);
+  const currentUrl = url || '';
   const title = viewModel?.title || viewModel?.item?.title || '';
   const altText = viewModel?.poster?.alt || (title ? `Poster: ${title}` : 'Poster');
   const newImg = ensureElement('img', '');
   newImg.dataset.v3PosterImage = '1';
+  newImg.dataset.posterUrl = currentUrl;
   newImg.alt = altText;
   newImg.loading = 'lazy';
   newImg.decoding = 'async';
@@ -488,13 +490,16 @@ function renderPoster(target, viewModel){
     if(node !== newImg) node.remove();
   });
   const skeleton = poster.skeleton;
+  if(media.dataset) media.dataset.posterUrl = currentUrl;
   if(url){
     setPosterState(media, 'loading');
     newImg.addEventListener('load', () => {
+      if(media.dataset?.posterUrl !== currentUrl || newImg.dataset.posterUrl !== currentUrl) return;
       newImg.classList.add('is-ready');
       setPosterState(media, 'ready');
     }, { once: true });
     newImg.addEventListener('error', () => {
+      if(media.dataset?.posterUrl !== currentUrl || newImg.dataset.posterUrl !== currentUrl) return;
       newImg.classList.add('is-ready');
       setPosterState(media, 'error');
     }, { once: true });
