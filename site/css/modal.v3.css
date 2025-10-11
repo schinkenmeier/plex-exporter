@@ -644,28 +644,100 @@ body.modalv3-open {
 
 /* --- Utility-Dokumentation für Cast & Accordion --- */
 /*
-  .v3-cast-grid         → Responsive Grid für Darstellerkarten
-  .v3-cast-status       → Status-/Fehlermeldungen im Cast-Bereich
-  .v3-accordion         → Container für aufklappbare Detail-Abschnitte
-  .v3-accordion__item   → Einzelnes Akkordeon-Panel
-  .v3-accordion__header → Button/Trigger für das Panel
-  .v3-accordion__panel  → Ein-/ausklappbarer Inhaltsbereich
+  .v3-cast             → Container für Cast-Sektion
+  .v3-cast__scroller   → Horizontaler Scroll-Container für Darstellerkarten
+  .v3-cast-status      → Status-/Fehlermeldungen im Cast-Bereich
+  .v3-accordion        → Container für aufklappbare Detail-Abschnitte
+  .v3-accordion__item  → Einzelnes Akkordeon-Panel
+  .v3-accordion__header→ Button/Trigger für das Panel
+  .v3-accordion__panel → Ein-/ausklappbarer Inhaltsbereich
 */
 
-.v3-cast-grid {
-  display: grid;
-  gap: clamp(14px, 3vw, 20px);
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+.v3-cast {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 2vw, 18px);
+}
+
+.v3-cast__scroller {
+  display: flex;
+  gap: clamp(12px, 3vw, 18px);
+  overflow-x: auto;
+  padding: 4px;
+  margin: -4px;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  mask-image: linear-gradient(90deg, transparent 0, #000 32px, #000 calc(100% - 32px), transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 32px, #000 calc(100% - 32px), transparent 100%);
+}
+
+.v3-cast__scroller::-webkit-scrollbar {
+  display: none;
 }
 
 .v3-cast-card {
+  flex: 0 0 auto;
+  width: clamp(128px, 22vw, 156px);
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 14px;
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--card) 86%, transparent);
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: clamp(14px, 2.4vw, 18px);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--card) 88%, transparent);
   border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+  scroll-snap-align: start;
+  transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+  outline: none;
+}
+
+.v3-cast-card:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: 0 12px 28px rgba(8, 12, 20, 0.45);
+}
+
+.v3-cast-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: 0 14px 32px rgba(8, 12, 20, 0.55);
+}
+
+.v3-cast-card__avatar {
+  width: clamp(72px, 10vw, 90px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--bg-translucent) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+}
+
+.v3-cast-card__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.v3-cast-card__avatar.has-image img {
+  filter: saturate(1.05);
+}
+
+.v3-cast-card__avatar:not(.has-image) {
+  color: var(--muted);
+}
+
+.v3-cast-card__initials {
+  font-size: clamp(1.3rem, 4vw, 1.6rem);
+  font-weight: 600;
+  letter-spacing: 0.04em;
 }
 
 .v3-cast-card__meta {
@@ -673,6 +745,39 @@ body.modalv3-open {
   flex-direction: column;
   gap: 4px;
   font-size: 0.92rem;
+}
+
+.v3-cast-card__name {
+  margin: 0;
+  font-weight: 600;
+}
+
+.v3-cast-card__role {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.v3-cast__more {
+  align-self: flex-start;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+  background: color-mix(in srgb, var(--bg-translucent) 82%, transparent);
+  color: inherit;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
+}
+
+.v3-cast__more:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--bg-translucent) 92%, transparent);
+  transform: translateY(-1px);
+}
+
+.v3-cast__more:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
 }
 
 .v3-cast-status {
