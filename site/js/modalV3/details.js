@@ -1,3 +1,5 @@
+import { runtimeText, ratingText, studioText } from './formatting.js';
+
 function ensureContainer(target){
   if(!target) return null;
   const elementCtor = typeof HTMLElement !== 'undefined' ? HTMLElement : null;
@@ -17,6 +19,26 @@ function cleanString(value){
   if(value == null) return '';
   const str = String(value);
   return str.trim();
+}
+
+function resolveBaseItem(viewModel){
+  if(!viewModel) return null;
+  const item = viewModel.item || {};
+  const tmdbDetail = viewModel.tmdb || item.tmdbDetail || null;
+  const type = viewModel.kind === 'show' ? 'tv' : item.type;
+  return { ...item, tmdbDetail, type };
+}
+
+function deriveMeta(viewModel){
+  const baseItem = resolveBaseItem(viewModel);
+  return {
+    runtime: cleanString(viewModel?.meta?.runtime) || (baseItem ? runtimeText(baseItem) : ''),
+    rating: cleanString(viewModel?.meta?.rating) || (baseItem ? ratingText(baseItem) : ''),
+    tmdbRating: cleanString(viewModel?.meta?.tmdbRating),
+    studio: cleanString(viewModel?.meta?.studio) || (baseItem ? studioText(baseItem) : ''),
+    contentRating: cleanString(viewModel?.meta?.contentRating),
+    seasonCount: viewModel?.meta?.seasonCount ?? null,
+  };
 }
 
 function mergeUniqueStrings(...lists){
@@ -96,13 +118,14 @@ function gatherLanguages(viewModel){
 
 function buildHighlightChips(viewModel){
   const chips = [];
-  const studio = cleanString(viewModel?.meta?.studio);
+  const meta = deriveMeta(viewModel);
+  const studio = meta.studio;
   if(studio){
     chips.push({ label: viewModel?.kind === 'show' ? 'Netzwerk' : 'Studio', value: studio, key: 'studio' });
   }
   const release = cleanString(viewModel?.releaseDate) || cleanString(viewModel?.year);
   if(release) chips.push({ label: 'Veröffentlichung', value: release, key: 'release' });
-  const rating = cleanString(viewModel?.meta?.rating) || cleanString(viewModel?.meta?.tmdbRating);
+  const rating = meta.rating || meta.tmdbRating;
   if(rating) chips.push({ label: 'Bewertung', value: rating, key: 'rating' });
   if(!chips.length) return null;
   const wrapper = document.createElement('div');
@@ -146,13 +169,12 @@ function buildDefinitionSection(title, entries){
 
 function gatherGeneralEntries(viewModel){
   const entries = [];
+  const meta = deriveMeta(viewModel);
   const release = cleanString(viewModel?.releaseDate) || cleanString(viewModel?.year);
   if(release) entries.push({ term: 'Veröffentlichung', value: release });
-  const runtime = cleanString(viewModel?.meta?.runtime);
-  if(runtime) entries.push({ term: 'Laufzeit', value: runtime });
-  const contentRating = cleanString(viewModel?.meta?.contentRating);
-  if(contentRating) entries.push({ term: 'Freigabe', value: contentRating });
-  const seasonCount = formatSeasonCount(viewModel?.meta?.seasonCount);
+  if(meta.runtime) entries.push({ term: 'Laufzeit', value: meta.runtime });
+  if(meta.contentRating) entries.push({ term: 'Freigabe', value: meta.contentRating });
+  const seasonCount = formatSeasonCount(meta.seasonCount);
   if(seasonCount) entries.push({ term: 'Staffeln', value: seasonCount });
   const genres = Array.isArray(viewModel?.genres) ? viewModel.genres.filter(Boolean) : [];
   if(genres.length) entries.push({ term: 'Genres', value: genres.join(', ') });
