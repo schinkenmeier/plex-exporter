@@ -159,6 +159,10 @@ body.modalv3-open {
   .v3-shell-main {
     order: 2;
   }
+
+  .v3-shell-aside .v3-quickfacts {
+    flex: 1 1 240px;
+  }
 }
 
 /* --- Poster & Quick Facts --- */
@@ -185,6 +189,51 @@ body.modalv3-open {
 
 .v3-poster-media img.is-ready {
   opacity: 1;
+}
+
+@keyframes v3PosterShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.v3-poster-skeleton {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--bg-elevated) 88%, transparent) 20%,
+    color-mix(in srgb, var(--bg-elevated) 70%, transparent) 40%,
+    color-mix(in srgb, var(--bg-elevated) 88%, transparent) 60%
+  );
+  background-size: 200% 100%;
+  animation: v3PosterShimmer 1.4s ease-in-out infinite;
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
+.v3-poster-media[data-state="loading"] .v3-poster-skeleton,
+.v3-poster-media[data-state="empty"] .v3-poster-skeleton {
+  opacity: 1;
+}
+
+.v3-poster-media[data-state="ready"] .v3-poster-skeleton,
+.v3-poster-media[data-state="error"] .v3-poster-skeleton {
+  opacity: 0;
+}
+
+.v3-poster-media[data-state="error"]::after {
+  content: "Poster konnte nicht geladen werden";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-lg);
+  padding: 12px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: color-mix(in srgb, var(--muted) 90%, white 10%);
+  background: color-mix(in srgb, var(--bg-translucent) 82%, transparent);
 }
 
 .v3-quickfacts {
@@ -237,10 +286,127 @@ body.modalv3-open {
   gap: clamp(16px, 3vw, 26px);
 }
 
+.v3-head__visual {
+  position: relative;
+  border-radius: calc(var(--radius-lg) + 2px);
+  overflow: hidden;
+  min-height: clamp(160px, 28vw, 240px);
+  background: radial-gradient(circle at 30% 30%, rgba(42, 58, 86, 0.55), rgba(12, 18, 28, 0.75));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  isolation: isolate;
+}
+
+.v3-head__hero {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.v3-head__hero::before,
+.v3-head__hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.v3-head__hero::before {
+  background: linear-gradient(180deg, rgba(8, 10, 16, 0.32), rgba(8, 12, 20, 0.78));
+  mix-blend-mode: multiply;
+}
+
+.v3-head__hero::after {
+  background: radial-gradient(circle at 20% 20%, rgba(106, 166, 255, 0.28), transparent 65%);
+  mix-blend-mode: screen;
+  opacity: 0.8;
+}
+
+.v3-head__backdrop {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  filter: brightness(0.65);
+  opacity: 0;
+  transition: opacity var(--transition-slow);
+  transform: scale(1.02);
+}
+
+.v3-head__backdrop[data-state="ready"] {
+  opacity: 1;
+}
+
+.v3-head__overlay-logo {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(16px, 3vw, 30px);
+}
+
+.v3-head__overlay-logo[hidden] {
+  display: none;
+}
+
+.v3-head__overlay-logo img {
+  display: block;
+  max-width: min(70%, 420px);
+  max-height: clamp(64px, 12vw, 110px);
+  object-fit: contain;
+  filter: drop-shadow(0 18px 48px rgba(0, 0, 0, 0.55));
+  mix-blend-mode: screen;
+}
+
+.v3-head__overlay-meta {
+  position: absolute;
+  right: clamp(22px, 4vw, 34px);
+  bottom: clamp(22px, 4vw, 34px);
+  z-index: 3;
+  display: block;
+  max-width: min(340px, calc(100% - (clamp(22px, 4vw, 34px) * 2)));
+  text-align: right;
+  pointer-events: none;
+}
+
+.v3-head__overlay-meta > * {
+  pointer-events: auto;
+}
+
+.v3-head__overlay-meta[hidden] {
+  display: none;
+}
+
+.v3-head__logo {
+  position: relative;
+  z-index: 1;
+  padding: clamp(20px, 3vw, 28px);
+}
+
+.v3-head__logo[hidden] {
+  display: none;
+}
+
+.v3-head__logo img {
+  display: block;
+  max-width: min(72%, 420px);
+  max-height: 92px;
+  object-fit: contain;
+  filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.45));
+}
+
 .v3-head__status {
   margin: 0;
   font-size: 0.9rem;
   color: var(--muted);
+}
+
+.v3-head__status[hidden] {
+  display: none;
 }
 
 .v3-head__status[data-state="error"] {
@@ -280,6 +446,20 @@ body.modalv3-open {
   color: var(--fg-secondary);
 }
 
+.v3-subtitle[hidden] {
+  display: none;
+}
+
+.v3-submeta {
+  margin: 0;
+  font-size: clamp(14px, 1.6vw, 16px);
+  color: var(--muted);
+}
+
+.v3-submeta[hidden] {
+  display: none;
+}
+
 .v3-badges {
   display: flex;
   gap: 10px;
@@ -302,6 +482,62 @@ body.modalv3-open {
   color: var(--fg);
   font-size: 0.82rem;
   font-weight: 600;
+}
+
+.v3-badge__label {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.v3-badge__value {
+  font-weight: 700;
+  color: var(--fg);
+}
+
+.v3-badge[data-source="tmdb"] {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border) 45%);
+  color: color-mix(in srgb, var(--accent) 70%, var(--fg) 30%);
+}
+
+.v3-head__rating-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.4rem 0.9rem;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, rgba(18, 26, 40, 0.86) 92%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--border-strong) 45%);
+  color: #f4fbff;
+  font-weight: 600;
+  box-shadow: 0 16px 34px rgba(8, 12, 20, 0.55);
+}
+
+.v3-head__rating-chip[data-score="high"] {
+  background: linear-gradient(135deg, rgba(48, 202, 140, 0.4), rgba(14, 80, 52, 0.65));
+  border-color: rgba(48, 202, 140, 0.75);
+}
+
+.v3-head__rating-chip[data-score="medium"] {
+  background: linear-gradient(135deg, rgba(255, 194, 82, 0.32), rgba(120, 70, 14, 0.55));
+  border-color: rgba(255, 194, 82, 0.62);
+}
+
+.v3-head__rating-chip[data-score="low"] {
+  background: linear-gradient(135deg, rgba(255, 108, 108, 0.32), rgba(120, 22, 22, 0.55));
+  border-color: rgba(255, 108, 108, 0.62);
+}
+
+.v3-head__rating-label {
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(206, 222, 255, 0.75);
+}
+
+.v3-head__rating-value {
+  font-size: 1rem;
 }
 
 /* --- Tabs --- */
