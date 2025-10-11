@@ -9,27 +9,29 @@ let rootEl = null;
 function ensureContainer(){
   if(typeof document === 'undefined') return null;
   if(overlayContainer) return overlayContainer;
-  const container = document.getElementById('modal-root-v2');
+  const container = document.getElementById('modal-root');
   if(!container) return null;
   overlayContainer = container;
-  container.classList.add('modalv2-overlay');
+  container.classList.remove('modalv2-overlay');
+  delete container.dataset.modalv2Ready;
+  container.classList.add('modalv3-overlay');
   if(!container.hasAttribute('hidden')) container.setAttribute('hidden', '');
   if(!container.hasAttribute('aria-hidden')) container.setAttribute('aria-hidden', 'true');
   container.dataset.modalv3Ready = '1';
 
-  if(!container.querySelector('.modalv2-dialog')){
+  if(!container.querySelector('.modalv3-dialog')){
     container.innerHTML = `
-      <div class="modalv2-backdrop" data-modalv2-backdrop="1"></div>
-      <div class="modalv2-dialog" role="dialog" aria-modal="true">
-        <div class="modalv2-scroll" data-modalv2-scroll></div>
+      <div class="modalv3-backdrop"></div>
+      <div class="modalv3-dialog" role="dialog" aria-modal="true">
+        <div class="modalv3-scroll" data-modalv3-scroll></div>
       </div>
     `;
   }
 
-  dialogEl = container.querySelector('.modalv2-dialog');
+  dialogEl = container.querySelector('.modalv3-dialog');
   if(dialogEl && !dialogEl.hasAttribute('tabindex')) dialogEl.setAttribute('tabindex', '-1');
-  scrollContainer = container.querySelector('[data-modalv2-scroll]');
-  backdropEl = container.querySelector('[data-modalv2-backdrop]');
+  scrollContainer = container.querySelector('[data-modalv3-scroll]');
+  backdropEl = container.querySelector('.modalv3-backdrop');
 
   if(scrollContainer){
     rootEl = scrollContainer.querySelector('[data-modalv3-root]');
@@ -58,7 +60,8 @@ export function openShell({ onRequestClose } = {}){
   overlay.hidden = false;
   overlay.setAttribute('aria-hidden', 'false');
   if(typeof document !== 'undefined' && document.body){
-    document.body.classList.add('modalv2-open');
+    document.body.classList.remove('modalv2-open');
+    document.body.classList.add('modalv3-open');
   }
   if(scroll) scroll.scrollTop = 0;
   bindFocusTrap(dialog);
@@ -71,6 +74,7 @@ export function closeShell(){
   overlayContainer.hidden = true;
   overlayContainer.setAttribute('aria-hidden', 'true');
   if(typeof document !== 'undefined' && document.body){
+    document.body.classList.remove('modalv3-open');
     document.body.classList.remove('modalv2-open');
   }
   unbindFocusTrap();

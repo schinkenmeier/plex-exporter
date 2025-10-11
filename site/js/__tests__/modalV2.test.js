@@ -23,7 +23,7 @@ function createStorage(){
 }
 
 function setupDom(){
-  const { window } = parseHTML(`<!DOCTYPE html><html lang="de"><body><div id="modal-root-v2" hidden></div></body></html>`);
+  const { window } = parseHTML(`<!DOCTYPE html><html lang="de"><body><div id="modal-root" hidden></div></body></html>`);
   const cleanups = [];
   const MISSING = Symbol('missing');
   const safeAssign = (key, value)=>{
@@ -176,7 +176,7 @@ describe('modalV2 - Cinematic shell DOM', () => {
 
     await settle(3);
 
-    const modalRoot = document.getElementById('modal-root-v2');
+    const modalRoot = document.getElementById('modal-root');
     assert.equal(modalRoot?.hidden, false);
     assert.ok(document.body.classList.contains('modalv2-open'));
 
