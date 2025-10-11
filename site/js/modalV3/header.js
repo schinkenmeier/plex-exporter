@@ -1,4 +1,5 @@
 import { formatRating } from '../utils.js';
+import { runtimeText, ratingText, studioText } from './formatting.js';
 
 function sanitizeUrl(url){
   if(!url) return '';
@@ -30,6 +31,25 @@ function logoEntryLanguage(entry){
   if(!entry || typeof entry !== 'object') return '';
   const lang = entry.iso6391 || entry.iso_639_1 || entry.language || '';
   return typeof lang === 'string' ? lang.toLowerCase() : '';
+}
+
+function resolveBaseItem(viewModel){
+  if(!viewModel) return null;
+  const item = viewModel.item || {};
+  const tmdbDetail = viewModel.tmdb || item.tmdbDetail || null;
+  const type = viewModel.kind === 'show' ? 'tv' : item.type;
+  return { ...item, tmdbDetail, type };
+}
+
+function deriveMeta(viewModel){
+  const baseItem = resolveBaseItem(viewModel);
+  const runtime = viewModel?.meta?.runtime || (baseItem ? runtimeText(baseItem) : '');
+  const rating = viewModel?.meta?.rating || (baseItem ? ratingText(baseItem) : '');
+  const tmdbRating = viewModel?.meta?.tmdbRating || '';
+  const studio = viewModel?.meta?.studio || (baseItem ? studioText(baseItem) : '');
+  const contentRating = viewModel?.meta?.contentRating || '';
+  const seasonCount = viewModel?.meta?.seasonCount ?? null;
+  return { runtime, rating, tmdbRating, studio, contentRating, seasonCount };
 }
 
 function resolveDetail(viewModel){
@@ -427,15 +447,15 @@ function renderTitleSection(target, viewModel){
   const head = coerceHeadTarget(target);
   if(!head) return;
   const { title, subtitle, meta } = head.elements;
+  const derivedMeta = deriveMeta(viewModel);
   if(title) title.textContent = viewModel?.title || '';
   const tagline = viewModel?.tagline || '';
   const metaParts = [];
   if(viewModel?.year) metaParts.push(viewModel.year);
-  const runtime = viewModel?.meta?.runtime;
-  if(runtime) metaParts.push(runtime);
-  const rating = viewModel?.meta?.rating || viewModel?.meta?.tmdbRating;
+  if(derivedMeta.runtime) metaParts.push(derivedMeta.runtime);
+  const rating = derivedMeta.rating || derivedMeta.tmdbRating;
   if(rating) metaParts.push(rating);
-  const studio = viewModel?.meta?.studio;
+  const studio = derivedMeta.studio;
   if(studio) metaParts.push(studio);
   const fallback = metaParts.join(' • ');
   if(subtitle){
@@ -545,20 +565,16 @@ function renderQuickfactsSection(target, viewModel){
   const { quickfactsRoot, quickfactsList } = poster;
   if(!quickfactsRoot || !quickfactsList) return;
   clearElement(quickfactsList);
+  const derivedMeta = deriveMeta(viewModel);
   const entries = [];
   if(viewModel?.year) entries.push(['Jahr', viewModel.year]);
   if(viewModel?.releaseDate) entries.push(['Veröffentlichung', viewModel.releaseDate]);
-  const contentRating = viewModel?.meta?.contentRating;
-  if(contentRating) entries.push(['Freigabe', contentRating]);
-  const runtime = viewModel?.meta?.runtime;
-  if(runtime) entries.push(['Laufzeit', runtime]);
-  const rating = viewModel?.meta?.rating;
-  if(rating) entries.push(['Bewertung', rating]);
-  const tmdbRating = viewModel?.meta?.tmdbRating;
-  if(tmdbRating) entries.push(['TMDB', tmdbRating]);
-  const studio = viewModel?.meta?.studio;
-  if(studio) entries.push([viewModel?.kind === 'show' ? 'Netzwerk' : 'Studio', studio]);
-  const seasonCount = formatSeasonCount(viewModel?.meta?.seasonCount);
+  if(derivedMeta.contentRating) entries.push(['Freigabe', derivedMeta.contentRating]);
+  if(derivedMeta.runtime) entries.push(['Laufzeit', derivedMeta.runtime]);
+  if(derivedMeta.rating) entries.push(['Bewertung', derivedMeta.rating]);
+  if(derivedMeta.tmdbRating) entries.push(['TMDB', derivedMeta.tmdbRating]);
+  if(derivedMeta.studio) entries.push([viewModel?.kind === 'show' ? 'Netzwerk' : 'Studio', derivedMeta.studio]);
+  const seasonCount = formatSeasonCount(derivedMeta.seasonCount);
   if(seasonCount) entries.push(['Staffeln', seasonCount]);
   const originalTitle = viewModel?.originalTitle;
   if(originalTitle && originalTitle !== viewModel?.title){

@@ -1,4 +1,4 @@
-import { buildCastList } from '../modal/castSection.js';
+import { buildCastList } from './castData.js';
 import { useTmdbOn } from '../utils.js';
 
 const MAX_INITIAL_CAST = 12;

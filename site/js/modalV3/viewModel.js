@@ -1,6 +1,6 @@
 import metadataService from '../metadataService.js';
-import { runtimeText, ratingText, studioText } from '../modal/headerSection.js';
-import { mapMovie, mapShow, mergeShowDetail, normalizeGenresList } from '../modal/shared.js';
+import { runtimeText, ratingText, studioText } from './formatting.js';
+import { mapMovie, mapShow, mergeShowDetail, normalizeGenresList } from './mapping.js';
 import { buildFallbackPoster, buildFallbackBackdrop, buildFallbackProfile, makeInitials } from '../imageHelper.js';
 
 const LOG_PREFIX = '[modalV3/viewModel]';

@@ -1,5 +1,6 @@
 import metadataService from '../metadataService.js';
 import { urlEpisode, makeInitials } from '../imageHelper.js';
+import { runtimeText } from './formatting.js';
 
 const LOG_PREFIX = '[modalV3/seasons]';
 let seasonInstanceCounter = 0;
@@ -143,7 +144,9 @@ function combineEpisodeData(ep){
     }
     return null;
   })();
-  const runtimeText = Number.isFinite(durationMin) && durationMin > 0 ? `${durationMin} min` : '';
+  const runtimeTextValue = Number.isFinite(durationMin) && durationMin > 0
+    ? runtimeText({ runtimeMin: durationMin })
+    : '';
   const rating = (()=>{
     const candidates = [
       tmdb?.voteAverage,
@@ -165,7 +168,7 @@ function combineEpisodeData(ep){
   return {
     title,
     code,
-    runtimeText,
+    runtimeText: runtimeTextValue,
     rating,
     overview,
     airDate,
