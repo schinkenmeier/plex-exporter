@@ -1,5 +1,5 @@
 import { getState } from './state.js';
-import { openMovieModalV2, openSeriesModalV2 } from './modalV2.js';
+import { openMovieDetailV3, openSeriesDetailV3 } from './modalV3/index.js';
 import { humanYear, formatRating, useTmdbOn } from './utils.js';
 import { recordHeroHistory, getStoredPool } from './hero/storage.js';
 
@@ -599,8 +599,8 @@ function openHeroModal(entry){
   const id = cta?.id || entry.id;
   if(!kind || !id) return;
   navigateToItemHash(kind, id, cta?.target);
-  if(kind === 'show') openSeriesModalV2(id);
-  else openMovieModalV2(id);
+  if(kind === 'show') openSeriesDetailV3(id);
+  else openMovieDetailV3(id);
 }
 
 function navigateToItemHash(kind, id, explicitTarget){

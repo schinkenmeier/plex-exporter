@@ -9,12 +9,13 @@ Der Plex Exporter stellt einen statischen Katalog deiner Plex-Bibliotheken berei
 - Schnelle Datenladewege mit Fallbacks für eingebettete JSON-Blöcke oder ältere Exporte (`site/js/data.js`).
 - Watchlist mit Export- und Importmöglichkeiten (lokal im Browser gespeichert, Logik in `site/js/watchlist.js`).
 - Debug-Overlay zur Fehlersuche mit Quellinformationen, TMDB-Status und Filterzusammenfassung (`site/js/debug.js`).
-- Cinematic-Modal für Film- und Serien-Details mit Sticky-Poster, Schnellinfos, Tabs und optional reduzierter Bewegung (implementiert in `site/js/modalV2.js`).
+- Cinematic-Detailansicht (Modal V3) für Filme & Serien mit Sticky-Poster, Schnellinfos, Tabs und optional reduzierter Bewegung (implementiert in `site/js/modalV3/`). Ein Feature-Flag (`window.FEATURES.detailModalV2Fallback`) aktiviert bei Bedarf weiterhin die V2-Ansicht.
 
 ## Projektstruktur
 | Pfad | Beschreibung |
 | --- | --- |
 | `site/index.html` | Einstiegspunkt und UI-Markup für den Katalog. |
+| `site/details.html` | Standalone-Detailansicht, die dieselben Renderer wie das Modal nutzt. |
 | `site/config.json` | Laufzeitkonfiguration (Startansicht, TMDB-Schalter, Sprache). |
 | `site/js/main.js` | Bootstrapping der Anwendung, Initialisierung von Filtern, Watchlist, Debug und Einstellungen. |
 | `site/hero.policy.json` | Steuerdatei für die Hero-Rotation (Poolgrößen, Slots, Cache-Laufzeiten). |
@@ -83,7 +84,7 @@ Der Plex Exporter stellt einen statischen Katalog deiner Plex-Bibliotheken berei
 ### Cache-Strategie & On-Demand-Laden
 - Die TMDB-Metadaten werden mehrstufig gecacht. Kern-Keys lauten `tmdb:movie:{id}:v1`, `tmdb:tv:{id}:v1` sowie `tmdb:tv:{id}:season:{number}:v1` und landen im gemeinsamen Cache-Store (`site/js/cacheStore.js`).
 - Die Standard-TTL beträgt 24 Stunden. Sie lässt sich in `site/config.json` über `ttlHours`/`tmdbTtlHours` überschreiben. Lädt eine Anreicherung erneut, wird der Cache-Eintrag aktualisiert und die TTL pro Key respektiert.
-- Modals und Staffeln bleiben schlank: `site/js/modalV2.js` lädt TMDB-Details erst beim Öffnen einer Detailansicht und verwendet zunächst vorhandene Plex-Daten. Staffel- und Episodeninformationen (`site/js/modal/seasonsAccordion.js`) werden lazy nachgeladen, sobald Nutzer:innen eine Staffel aufklappen; erst dann ruft das Frontend `getSeasonEnriched` ab und mapt Stillbilder.
+- Modals und Staffeln bleiben schlank: `site/js/modalV3/index.js` lädt TMDB-Details erst beim Öffnen einer Detailansicht und verwendet zunächst vorhandene Plex-Daten. Staffel- und Episodeninformationen (`site/js/modalV3/seasons.js`) werden lazy nachgeladen, sobald Nutzer:innen eine Staffel aufklappen; erst dann ruft das Frontend `getSeasonEnriched` ab und mapt Stillbilder.
 
 ### Fallbacks, Fehlerbehandlung & Sprachindikator
 - Fehlt eine TMDB-ID, versucht der Dienst zunächst die IMDb-ID (`resolveByExternalId`) zu übersetzen oder fällt auf eine Suche nach Titel & Jahr zurück. Scheitern alle Schritte, wird die Session gecacht (`SESSION_CACHE`) und das UI bleibt bei den Plex-Daten.
