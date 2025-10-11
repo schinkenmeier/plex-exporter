@@ -3,7 +3,7 @@ import { showLoader, setLoader, hideLoader, showSkeleton, clearSkeleton } from '
 import * as Data from './data.js';
 import * as Filter from './filter.js';
 import { renderGrid } from './grid.js';
-import { openMovieModalV2, openSeriesModalV2 } from './modalV2.js';
+import { openMovieDetailV3, openSeriesDetailV3 } from './modalV3/index.js';
 import { hydrateOptional } from './services/tmdb.js';
 import * as Watch from './watchlist.js';
 import * as Debug from './debug.js';
@@ -15,7 +15,7 @@ import * as HeroPolicy from './hero/policy.js';
 import * as HeroPipeline from './hero/pipeline.js';
 import { syncDefaultMetadataService } from './metadataService.js';
 
-const DEFAULT_FEATURE_FLAGS = { tmdbEnrichment: false };
+const DEFAULT_FEATURE_FLAGS = { tmdbEnrichment: false, detailModalV2Fallback: false };
 const globalFeatures = (()=>{
   const existing = typeof window !== 'undefined' && window.FEATURES ? window.FEATURES : {};
   const merged = { ...DEFAULT_FEATURE_FLAGS, ...existing };
@@ -29,6 +29,13 @@ function applyFeatureFlags(cfg){
   try{
     if(globalFeatures){
       globalFeatures.tmdbEnrichment = !!(cfg && cfg.tmdbEnabled);
+      if(cfg && (cfg.detailModalV2Fallback != null || cfg.useModalV2Fallback != null || cfg.modalV2Fallback != null)){
+        const explicit = cfg.detailModalV2Fallback;
+        const legacy = cfg.useModalV2Fallback;
+        const legacy2 = cfg.modalV2Fallback;
+        const value = explicit ?? legacy ?? legacy2;
+        globalFeatures.detailModalV2Fallback = Boolean(value);
+      }
     }
     if(typeof window !== 'undefined' && window.FEATURES && window.FEATURES !== globalFeatures){
       window.FEATURES = { ...window.FEATURES, ...globalFeatures };
@@ -363,8 +370,8 @@ function applyHashNavigation(hash){
   const pool = kind === 'movie' ? getState().movies : getState().shows;
   const item = (pool||[]).find(x => (x?.ids?.imdb===id || x?.ids?.tmdb===id || String(x?.ratingKey)===id));
   if(!item) return false;
-  if(kind === 'show') openSeriesModalV2(item);
-  else openMovieModalV2(item);
+  if(kind === 'show') openSeriesDetailV3(item);
+  else openMovieDetailV3(item);
   return true;
 }
 

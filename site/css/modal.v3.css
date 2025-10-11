@@ -101,6 +101,51 @@ body.modalv3-open {
   background: transparent;
 }
 
+.v3-shell--standalone {
+  max-width: min(1120px, 100%);
+  margin: clamp(28px, 8vw, 80px) auto;
+  padding: clamp(28px, 6vw, 52px);
+  border-radius: calc(var(--radius-lg) + 6px);
+  border: 1px solid var(--modalv3-border);
+  background: var(--modalv3-surface);
+  box-shadow: 0 40px 80px -60px rgba(2, 6, 12, 0.7);
+}
+
+.detail-header {
+  padding: clamp(16px, 4vw, 28px) 0;
+}
+
+.detail-header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.detail-header__brand {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(1.1rem, 2vw, 1.4rem);
+  letter-spacing: 0.03em;
+}
+
+.detail-main__inner {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(20px, 5vw, 32px);
+  padding-bottom: clamp(40px, 10vw, 80px);
+}
+
+.detail-status {
+  margin: 0;
+  font-size: clamp(1rem, 1.4vw, 1.1rem);
+  line-height: 1.6;
+  color: var(--fg-secondary);
+}
+
+.detail-status[data-state="error"] {
+  color: #ffb6b6;
+}
+
 .v3-shell__body {
   display: flex;
   flex-direction: column;

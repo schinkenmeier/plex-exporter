@@ -6,6 +6,9 @@ import { renderDetails } from './details.js';
 import { renderCast } from './cast.js';
 import { renderSeasons } from './seasons.js';
 import { applyTabs } from './tabs.js';
+import { getState as getAppState } from '../state.js';
+import { loadMovies, loadShows, loadShowDetail } from '../data.js';
+import { buildMovieViewModel, buildSeriesViewModel } from './viewModel.js';
 
 function normalizeTabId(rawId, index){
   const fallback = `tab-${index + 1}`;
@@ -21,10 +24,164 @@ function normalizeTabLabel(rawLabel, fallback){
   return str || fallback;
 }
 
+const LOG_PREFIX = '[modalV3]';
+const FALLBACK_FEATURE_KEY = 'detailModalV2Fallback';
+let moviesCache = null;
+let showsCache = null;
+const demoModule = { promise: null };
+
 function isViewModelCandidate(content){
   if(!content || typeof content !== 'object' || Array.isArray(content)) return false;
   if(!Array.isArray(content.tabs)) return false;
   return typeof content.kind === 'string' || typeof content.title === 'string';
+}
+
+function getFeatureFlag(name){
+  try{
+    if(typeof window === 'undefined') return false;
+    const features = window.FEATURES || {};
+    return Boolean(features?.[name]);
+  }catch(err){
+    console.warn(LOG_PREFIX, 'Failed to read feature flag', name, err?.message || err);
+    return false;
+  }
+}
+
+function matchesIdentifier(item, rawId){
+  if(!item) return false;
+  const str = rawId == null ? '' : String(rawId).trim();
+  if(!str) return false;
+  if(item?.ids?.imdb && String(item.ids.imdb) === str) return true;
+  if(item?.ids?.tmdb && String(item.ids.tmdb) === str) return true;
+  if(item?.ratingKey != null && String(item.ratingKey) === str) return true;
+  if(item?.rating_key != null && String(item.rating_key) === str) return true;
+  if(item?.id != null && String(item.id) === str) return true;
+  return false;
+}
+
+async function ensureDemoModule(){
+  if(!demoModule.promise){
+    demoModule.promise = import('../modal/demoData.js').catch(err => {
+      console.warn(LOG_PREFIX, 'Demo-Daten konnten nicht geladen werden.', err?.message || err);
+      return { DEMO_MOVIE: null, DEMO_SERIES: null };
+    });
+  }
+  return demoModule.promise;
+}
+
+async function ensureMovies(){
+  if(Array.isArray(moviesCache)) return moviesCache;
+  try{
+    moviesCache = await loadMovies();
+  }catch(err){
+    moviesCache = [];
+    console.warn(LOG_PREFIX, 'Failed to load movie library for detail view:', err?.message || err);
+  }
+  return moviesCache;
+}
+
+async function ensureShows(){
+  if(Array.isArray(showsCache)) return showsCache;
+  try{
+    showsCache = await loadShows();
+  }catch(err){
+    showsCache = [];
+    console.warn(LOG_PREFIX, 'Failed to load show library for detail view:', err?.message || err);
+  }
+  return showsCache;
+}
+
+function findInList(list, id){
+  if(!Array.isArray(list) || !list.length) return null;
+  return list.find(entry => matchesIdentifier(entry, id)) || null;
+}
+
+async function resolveMoviePayload(input){
+  if(input === 'demo'){
+    const { DEMO_MOVIE } = await ensureDemoModule();
+    return DEMO_MOVIE ? { item: DEMO_MOVIE } : null;
+  }
+  if(input && typeof input === 'object'){
+    if(input.item || input.movie) return { item: input.item || input.movie };
+    return { item: input };
+  }
+  const id = input == null ? '' : String(input).trim();
+  if(!id) return null;
+  const state = getAppState();
+  let match = findInList(state?.movies, id);
+  if(!match){
+    const library = await ensureMovies();
+    match = findInList(library, id);
+  }
+  return match ? { item: match } : null;
+}
+
+async function resolveSeriesPayload(input){
+  if(input === 'demo'){
+    const { DEMO_SERIES } = await ensureDemoModule();
+    return DEMO_SERIES ? { item: DEMO_SERIES } : null;
+  }
+  if(input && typeof input === 'object'){
+    const base = input.item || input.show || input.media || input;
+    const detail = input.detail || input.showDetail || input.tmdbDetail || null;
+    return { item: base, detail: detail || null };
+  }
+  const id = input == null ? '' : String(input).trim();
+  if(!id) return null;
+  const state = getAppState();
+  let match = findInList(state?.shows, id);
+  if(!match){
+    const library = await ensureShows();
+    match = findInList(library, id);
+  }
+  if(!match) return null;
+  let detail = null;
+  try{
+    detail = await loadShowDetail(match);
+  }catch(err){
+    console.warn(LOG_PREFIX, 'Failed to load show detail payload for', id, err?.message || err);
+  }
+  return { item: match, detail: detail || null };
+}
+
+async function loadMovieDetailViewModel(payload, options = {}){
+  const resolved = await resolveMoviePayload(payload);
+  if(!resolved || !resolved.item) return null;
+  try{
+    return await buildMovieViewModel(resolved, options);
+  }catch(err){
+    console.warn(LOG_PREFIX, 'Failed to build movie view model:', err?.message || err);
+    return null;
+  }
+}
+
+async function loadSeriesDetailViewModel(payload, options = {}){
+  const resolved = await resolveSeriesPayload(payload);
+  if(!resolved || !resolved.item) return null;
+  try{
+    return await buildSeriesViewModel({ ...resolved, detail: resolved.detail }, options);
+  }catch(err){
+    console.warn(LOG_PREFIX, 'Failed to build series view model:', err?.message || err);
+    return null;
+  }
+}
+
+async function maybeUseModalV2(kind, payload){
+  if(!getFeatureFlag(FALLBACK_FEATURE_KEY)) return false;
+  try{
+    const module = await import('../modalV2.js');
+    if(kind === 'show' && typeof module.openSeriesModalV2 === 'function'){
+      await module.openSeriesModalV2(payload);
+      return true;
+    }
+    if(kind === 'movie' && typeof module.openMovieModalV2 === 'function'){
+      await module.openMovieModalV2(payload);
+      return true;
+    }
+  }catch(err){
+    console.warn(LOG_PREFIX, 'V2 fallback failed:', err?.message || err);
+  }
+  return false;
 }
 
 function createPaneStack(viewModel){
@@ -185,6 +342,48 @@ function resolveNodes(content){
   return null;
 }
 
+function resolveTargetElement(target){
+  const elementCtor = typeof HTMLElement !== 'undefined' ? HTMLElement : null;
+  if(!target) return null;
+  if(elementCtor && target instanceof elementCtor) return target;
+  if(typeof target === 'string' && typeof document !== 'undefined'){
+    try{ return document.querySelector(target); }
+    catch(err){ console.warn(LOG_PREFIX, 'Failed to query target element:', err?.message || err); }
+  }
+  if(elementCtor && target.root instanceof elementCtor) return target.root;
+  if(elementCtor && target.content instanceof elementCtor) return target.content;
+  return null;
+}
+
+export function renderMediaDetail(target, viewModel, options = {}){
+  if(!isViewModelCandidate(viewModel)) return null;
+  const container = resolveTargetElement(target);
+  if(!container) return null;
+  const { layout = 'modal', replace = true, className, onRendered } = options || {};
+  const view = createPaneStack(viewModel);
+  if(!view?.root) return null;
+  view.root.hidden = false;
+  view.root.removeAttribute('hidden');
+  if(layout === 'standalone'){
+    view.root.classList.add('v3-shell--standalone');
+  }
+  if(className){
+    const classes = Array.isArray(className) ? className : String(className).split(/\s+/);
+    classes.filter(Boolean).forEach(cls => view.root.classList.add(cls));
+  }
+  if(replace){
+    container.replaceChildren(view.root);
+  }else{
+    container.appendChild(view.root);
+  }
+  applyTabs(view.root);
+  if(typeof onRendered === 'function'){
+    try{ onRendered(view); }
+    catch(err){ console.warn(LOG_PREFIX, 'renderMediaDetail onRendered failed:', err?.message || err); }
+  }
+  return view;
+}
+
 export function renderDetail(content, options = {}){
   const { token, media, kind } = options || {};
   if(token && !isCurrentRender(token)) return null;
@@ -202,45 +401,80 @@ export function renderDetail(content, options = {}){
   root.hidden = false;
   root.removeAttribute('hidden');
 
-  let didBuildView = false;
+  let handledByViewModel = false;
   if(isViewModelCandidate(content)){
-    const view = createPaneStack(content);
-    if(view?.root){
-      content = view.root;
-      didBuildView = true;
+    const rendered = renderMediaDetail(root, content, { replace: true, layout: 'modal' });
+    handledByViewModel = Boolean(rendered);
+  }
+
+  if(!handledByViewModel){
+    const nodes = resolveNodes(content);
+    if(nodes){
+      root.replaceChildren(...nodes);
+    }else if(typeof content === 'string'){
+      root.innerHTML = content;
+    }else if(content != null){
+      root.textContent = String(content);
+    }else{
+      root.innerHTML = '';
     }
-  }
 
-  const nodes = resolveNodes(content);
-  if(nodes){
-    root.replaceChildren(...nodes);
-  }else if(typeof content === 'string'){
-    root.innerHTML = content;
-  }else if(content != null){
-    root.textContent = String(content);
-  }else{
-    root.innerHTML = '';
-  }
-
-  if(didBuildView || root.querySelector('.v3-tabs')){
-    applyTabs(root);
+    if(root.querySelector('.v3-tabs')){
+      applyTabs(root);
+    }
   }
 
   focusInitial();
   return root;
 }
 
-export function openMovieDetailV3(payload = null){
+function renderDetailError(message, options = {}){
+  const root = renderDetail(String(message || 'Details konnten nicht geladen werden.'), options);
+  clearActiveItem();
+  return root;
+}
+
+export async function openMovieDetailV3(payload = null, options = {}){
+  if(await maybeUseModalV2('movie', payload)) return null;
   captureLastFocused();
   const token = startRender('movie', payload);
   showLoading();
+  try{
+    const viewModel = await loadMovieDetailViewModel(payload, options);
+    if(!isCurrentRender(token)) return token;
+    if(!viewModel){
+      renderDetailError('Film konnte nicht geladen werden.', { token });
+      return token;
+    }
+    renderDetail(viewModel, { token, kind: 'movie', media: viewModel.item });
+  }catch(err){
+    console.warn(LOG_PREFIX, 'Failed to open movie detail:', err?.message || err);
+    if(isCurrentRender(token)){
+      renderDetailError('Film konnte nicht geladen werden.', { token });
+    }
+  }
   return token;
 }
 
-export function openSeriesDetailV3(payload = null){
+export async function openSeriesDetailV3(payload = null, options = {}){
+  if(await maybeUseModalV2('show', payload)) return null;
   captureLastFocused();
   const token = startRender('show', payload);
   showLoading();
+  try{
+    const viewModel = await loadSeriesDetailViewModel(payload, options);
+    if(!isCurrentRender(token)) return token;
+    if(!viewModel){
+      renderDetailError('Seriendetails konnten nicht geladen werden.', { token });
+      return token;
+    }
+    renderDetail(viewModel, { token, kind: 'show', media: viewModel.item });
+  }catch(err){
+    console.warn(LOG_PREFIX, 'Failed to open series detail:', err?.message || err);
+    if(isCurrentRender(token)){
+      renderDetailError('Seriendetails konnten nicht geladen werden.', { token });
+    }
+  }
   return token;
 }
 
@@ -252,3 +486,4 @@ export function closeDetailV3(){
 }
 
 export { closeDetailV3 as hideDetailV3 };
+export { loadMovieDetailViewModel, loadSeriesDetailViewModel };
