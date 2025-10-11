@@ -3,6 +3,7 @@ import { startRender, isCurrentRender, cancelRender, clearActiveItem, captureLas
 import { createHead, createPosterCard } from './header.js';
 import { renderOverview } from './overview.js';
 import { renderDetails } from './details.js';
+import { renderCast } from './cast.js';
 import { applyTabs } from './tabs.js';
 
 function normalizeTabId(rawId, index){
@@ -109,6 +110,9 @@ function createPaneStack(viewModel){
   }
   if(paneMap.has('details')){
     renderDetails(paneMap.get('details').content, viewModel);
+  }
+  if(paneMap.has('cast')){
+    renderCast(paneMap.get('cast').content, viewModel);
   }
 
   paneMap.forEach((entry, id) => {
