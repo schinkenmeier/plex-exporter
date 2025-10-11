@@ -80,7 +80,7 @@ function createDom(){
                 <div class="hero__meta-row" data-row="secondary" id="heroMetaSecondary"></div>
                 <div class="hero__meta-row" data-row="tertiary" id="heroMetaTertiary"></div>
               </div>
-              <button type="button" class="hero__cta" id="heroCta" data-modal-target="modalV2">Browse featured titles</button>
+              <button type="button" class="hero__cta" id="heroCta" data-modal-target="modalV3">Browse featured titles</button>
             </div>
           </div>
           <div id="heroTimer" class="hero-timer" aria-hidden="true">
@@ -340,25 +340,25 @@ test('boot flow integrates view switch, filtering and modal opening', async () =
     const modalRoot = document.getElementById('modal-root');
     heroCta?.click();
     await settle();
-    const heroModalTitle = document.getElementById('modal-title');
+    const heroModalTitle = document.querySelector('[data-v3-head-title]');
     assert.equal(modalRoot?.hidden, false);
     assert.equal(heroModalTitle?.textContent?.trim(), 'Action Blast');
 
-    const overviewTab = document.getElementById('tab-overview');
+    const overviewTab = document.getElementById('v3-tab-overview');
     assert.equal(overviewTab?.getAttribute('aria-selected'), 'true');
 
-    const overviewPane = document.getElementById('pane-overview');
-    const overviewText = overviewPane?.querySelector('.v2-overview-text');
+    const overviewPane = document.getElementById('v3-pane-overview');
+    const overviewText = overviewPane?.querySelector('.v3-overview__text');
     assert.ok(overviewPane, 'expected overview pane to exist');
     assert.equal(overviewPane?.hasAttribute('hidden'), false);
     assert.equal(overviewPane?.getAttribute('aria-hidden'), 'false');
     assert.equal(overviewText?.textContent?.trim(), 'Action-packed adventure.');
 
-    const detailsPane = document.getElementById('pane-details');
+    const detailsPane = document.getElementById('v3-pane-details');
     assert.equal(detailsPane?.getAttribute('aria-hidden'), 'true');
     assert.equal(detailsPane?.hasAttribute('hidden'), true);
 
-    const castPane = document.getElementById('pane-cast');
+    const castPane = document.getElementById('v3-pane-cast');
     assert.equal(castPane?.getAttribute('aria-hidden'), 'true');
     assert.equal(castPane?.hasAttribute('hidden'), true);
     assert.ok(castPane?.textContent?.includes('Lead'));
@@ -398,16 +398,16 @@ test('boot flow integrates view switch, filtering and modal opening', async () =
     firstCard.click();
     await settle();
 
-    const titleEl = document.getElementById('modal-title');
+    const titleEl = document.querySelector('[data-v3-head-title]');
     assert.equal(modalRoot.hidden, false);
-    assert.ok(document.body.classList.contains('modalv2-open'));
+    assert.ok(document.body.classList.contains('modalv3-open'));
     assert.equal(titleEl?.textContent?.trim(), 'Drama Piece');
 
-    const activeTab = document.getElementById('tab-overview');
+    const activeTab = document.getElementById('v3-tab-overview');
     assert.equal(activeTab?.getAttribute('aria-selected'), 'true');
 
-    const modalOverviewPane = document.getElementById('pane-overview');
-    const modalOverviewText = modalOverviewPane?.querySelector('.v2-overview-text');
+    const modalOverviewPane = document.getElementById('v3-pane-overview');
+    const modalOverviewText = modalOverviewPane?.querySelector('.v3-overview__text');
     assert.ok(modalOverviewPane, 'expected modal overview pane to exist');
     assert.equal(modalOverviewPane?.hasAttribute('hidden'), false);
     assert.equal(modalOverviewPane?.getAttribute('aria-hidden'), 'false');
