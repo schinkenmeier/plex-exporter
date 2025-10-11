@@ -89,7 +89,7 @@ button:not(:disabled):active,
   }
 }
 
-.modalv2-dialog {
+.modalv3-dialog {
   animation: modalSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -103,7 +103,7 @@ button:not(:disabled):active,
   }
 }
 
-.modalv2-overlay[aria-hidden="false"] {
+.modalv3-overlay[aria-hidden="false"] {
   animation: overlayFadeIn 0.2s ease-out;
 }
 
