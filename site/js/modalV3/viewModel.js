@@ -675,6 +675,26 @@ function buildMeta(kind, item, tmdb){
   };
 }
 
+function ensureTmdbLogos(detail){
+  if(!detail || typeof detail !== 'object') return;
+  const images = detail.images;
+  const hasImagesObject = images && typeof images === 'object' && !Array.isArray(images);
+  if(hasImagesObject){
+    const normalized = Array.isArray(images.logos) ? images.logos.filter(Boolean) : [];
+    if(normalized.length){
+      images.logos = normalized;
+      return;
+    }
+  }
+  const legacy = Array.isArray(detail.logos) ? detail.logos.filter(Boolean) : [];
+  if(!legacy.length) return;
+  if(hasImagesObject){
+    images.logos = legacy;
+  }else{
+    detail.images = { logos: legacy };
+  }
+}
+
 function resolveMovieInput(payload){
   if(!payload || typeof payload !== 'object') return payload;
   return payload.item || payload.movie || payload.media || payload;
@@ -806,8 +826,12 @@ export async function buildMovieViewModel(payload, options = {}){
   const rawItem = resolveMovieInput(payload);
   const item = normalizeMovieItem(rawItem);
   if(!item) return null;
+  if(item.tmdbDetail) ensureTmdbLogos(item.tmdbDetail);
   const tmdb = await fetchTmdbMovie(item, { ...options, tmdb: options.tmdb || payload?.tmdb || payload?.tmdbDetail });
-  if(tmdb) assignTmdbDetail(item, tmdb);
+  if(tmdb){
+    ensureTmdbLogos(tmdb);
+    assignTmdbDetail(item, tmdb);
+  }
   return buildBaseViewModel('movie', item, tmdb);
 }
 

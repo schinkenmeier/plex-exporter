@@ -59,21 +59,51 @@ function resolveDetail(viewModel){
 
 function pickHeroLogo(viewModel){
   const detail = resolveDetail(viewModel);
-  const logos = Array.isArray(detail?.images?.logos) ? detail.images.logos : [];
+  const seen = new Set();
+  const logos = [];
+
+  const pushList = list => {
+    if(!Array.isArray(list)) return;
+    for(const entry of list){
+      if(!entry) continue;
+      const url = sanitizeUrl(logoEntryToUrl(entry));
+      if(!url || seen.has(url)) continue;
+      seen.add(url);
+      logos.push({ entry, url });
+    }
+  };
+
+  const pushDetail = source => {
+    if(!source) return;
+    pushList(source.images?.logos);
+    pushList(source.logos);
+  };
+
+  pushDetail(detail);
+  const item = viewModel?.item || null;
+  if(item){
+    const itemDetail = item.tmdbDetail || null;
+    if(itemDetail && itemDetail !== detail) pushDetail(itemDetail);
+    const itemTmdb = item.tmdb || null;
+    if(itemTmdb && itemTmdb !== detail && itemTmdb !== itemDetail) pushDetail(itemTmdb);
+  }
+  const tmdbDetail = viewModel?.tmdb || null;
+  if(tmdbDetail && tmdbDetail !== detail && tmdbDetail !== item?.tmdbDetail && tmdbDetail !== item?.tmdb){
+    pushDetail(tmdbDetail);
+  }
+
   if(!logos.length) return '';
   const preferences = ['de', 'en', ''];
   for(const pref of preferences){
-    const match = logos.find(entry => {
+    const match = logos.find(({ entry }) => {
       const lang = logoEntryLanguage(entry);
       if(pref){ return lang === pref; }
       return !lang;
     });
-    const url = sanitizeUrl(logoEntryToUrl(match));
-    if(url) return url;
+    if(match?.url) return match.url;
   }
   for(const entry of logos){
-    const url = sanitizeUrl(logoEntryToUrl(entry));
-    if(url) return url;
+    if(entry?.url) return entry.url;
   }
   return '';
 }
