@@ -1,5 +1,4 @@
 import { buildCastList } from './castData.js';
-import { useTmdbOn } from '../utils.js';
 
 const MAX_INITIAL_CAST = 12;
 const castState = new WeakMap();
@@ -44,10 +43,50 @@ function ensureList(root){
 function getState(root){
   let state = castState.get(root);
   if(!state){
-    state = { entries: [], expanded: false };
+    state = { entries: [], expanded: false, tmdbEnabled: false };
     castState.set(root, state);
   }
   return state;
+}
+
+function isNonEmptyString(value){
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function hasTmdbProfileCandidate(entry){
+  if(!entry || typeof entry !== 'object') return false;
+  if(entry.source === 'tmdb') return true;
+  if(entry.image && typeof entry.image === 'object'){
+    if(entry.image.source === 'tmdb') return true;
+    if(isNonEmptyString(entry.image.url) && /image\.tmdb\.org\/t\/p\//.test(entry.image.url)) return true;
+  }
+  const raw = entry.raw && typeof entry.raw === 'object' ? entry.raw : {};
+  const candidates = [
+    entry.tmdbProfile,
+    entry.profile,
+    entry.profile_path,
+    entry.profilePath,
+    raw.tmdbProfile,
+    raw.profile,
+    raw.profile_path,
+    raw.profilePath,
+    raw.tmdb?.profile,
+    raw.tmdb?.profile_path,
+    raw.tmdb?.profilePath,
+  ];
+  return candidates.some(isNonEmptyString);
+}
+
+function hasTmdbCastData(payload){
+  if(Array.isArray(payload?.cast) && payload.cast.some(hasTmdbProfileCandidate)){
+    return true;
+  }
+  const source = payload?.item || payload;
+  const tmdbCast = source?.tmdbDetail?.credits?.cast;
+  if(Array.isArray(tmdbCast)){
+    return tmdbCast.some(hasTmdbProfileCandidate);
+  }
+  return false;
 }
 
 function normalizeTmdbProfile(path){
@@ -157,7 +196,8 @@ function createCastCard(entry, tmdbEnabled){
 function renderEntries(root, entries, expanded){
   const list = ensureList(root);
   if(!list) return;
-  const tmdbEnabled = useTmdbOn();
+  const state = getState(root);
+  const tmdbEnabled = Boolean(state.tmdbEnabled);
   const visible = expanded ? entries : entries.slice(0, MAX_INITIAL_CAST);
   list.replaceChildren(...visible.map(entry => createCastCard(entry, tmdbEnabled)).filter(Boolean));
   if(visible.length){
@@ -269,6 +309,7 @@ export function renderCast(target, payload){
   const state = getState(root);
   state.entries = entries;
   state.expanded = false;
+  state.tmdbEnabled = hasTmdbCastData(payload);
   setCastLoading(root, false);
   if(!entries.length){
     ensureList(root).replaceChildren();
