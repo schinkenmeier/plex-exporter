@@ -140,7 +140,11 @@ function normaliseImageUrl(candidate, size){
   if(raw.startsWith('data/') || raw.startsWith('./') || raw.startsWith('../')) return raw;
   if(raw.startsWith('assets/')) return raw;
   if(raw.includes('://')) return raw;
-  if(raw.startsWith('/')) return `${TMDB_IMAGE_BASE}/${size}${raw}`;
+  if(raw.startsWith('/')){
+    const fullUrl = `${TMDB_IMAGE_BASE}/${size}${raw}`;
+    console.log(`${LOG_PREFIX} normaliseImageUrl: "${raw}" -> "${fullUrl}"`);
+    return fullUrl;
+  }
   if(raw.startsWith('t/p/')){
     return `${TMDB_IMAGE_BASE}/${size}/${raw.slice(4)}`;
   }
@@ -149,6 +153,7 @@ function normaliseImageUrl(candidate, size){
     const suffix = parts.slice(1).join('/');
     return suffix ? `${TMDB_IMAGE_BASE}/${size}/${suffix}` : `${TMDB_IMAGE_BASE}/${size}`;
   }
+  console.log(`${LOG_PREFIX} normaliseImageUrl: unhandled format "${raw}"`);
   return raw;
 }
 
@@ -282,6 +287,7 @@ function buildPosterEntry(item, tmdb){
   const candidates = [
     { value: tmdb?.poster, source: 'tmdb' },
     { value: tmdb?.posterPath, source: 'tmdb' },
+    { value: tmdb?.poster_path, source: 'tmdb' },
     { value: tmdb?.collection?.poster, source: 'tmdb' },
     { value: item?.tmdbPoster, source: 'tmdb' },
     { value: item?.poster, source: 'local' },
@@ -295,15 +301,25 @@ function buildPosterEntry(item, tmdb){
 
 function buildBackdropEntry(item, tmdb){
   const title = pickTitle(item, tmdb);
+  console.log(`${LOG_PREFIX} buildBackdropEntry for "${title}":`, {
+    tmdbBackdrop: tmdb?.backdrop,
+    tmdbBackdropPath: tmdb?.backdropPath,
+    tmdbBackdrop_path: tmdb?.backdrop_path,
+    collectionBackdrop: tmdb?.collection?.backdrop,
+    itemArt: item?.art,
+    itemBackground: item?.background
+  });
   const candidates = [
     { value: tmdb?.backdrop, source: 'tmdb' },
     { value: tmdb?.backdropPath, source: 'tmdb' },
+    { value: tmdb?.backdrop_path, source: 'tmdb' },
     { value: tmdb?.collection?.backdrop, source: 'tmdb' },
     { value: item?.art, source: 'local' },
     { value: item?.background, source: 'local' },
     { value: item?.thumb, source: 'local' },
   ];
   const image = selectImage(candidates, buildFallbackBackdrop, IMAGE_SIZES.backdrop, title);
+  console.log(`${LOG_PREFIX} Selected backdrop:`, image);
   return { ...image, alt: title };
 }
 
@@ -433,6 +449,13 @@ function buildCastEntries(item, tmdb){
   const seen = new Set();
   const localCast = asArray(item?.cast).length ? asArray(item?.cast) : asArray(item?.roles);
   const tmdbCredits = asArray(tmdb?.credits?.cast || item?.tmdbDetail?.credits?.cast);
+  console.log(`${LOG_PREFIX} buildCastEntries:`, {
+    localCastCount: localCast.length,
+    tmdbCreditsCount: tmdbCredits.length,
+    sampleTmdbCredit: tmdbCredits[0],
+    hasTmdbCredits: Boolean(tmdb?.credits?.cast),
+    hasItemTmdbCredits: Boolean(item?.tmdbDetail?.credits?.cast)
+  });
 
   const pushEntry = (entry)=>{
     if(!entry || !entry.name) return;
@@ -475,11 +498,22 @@ function buildCastEntries(item, tmdb){
     const name = firstString(person?.name, person?.original_name);
     if(!name) return;
     const character = firstString(person?.character, person?.role);
+    if(index === 0){
+      console.log(`${LOG_PREFIX} First TMDB cast member:`, {
+        name,
+        profile: person?.profile,
+        profile_path: person?.profile_path,
+        profilePath: person?.profilePath
+      });
+    }
     const image = buildProfileImage(name, [
       { value: person?.profile, source: 'tmdb' },
       { value: person?.profile_path, source: 'tmdb' },
       { value: person?.profilePath, source: 'tmdb' },
     ]);
+    if(index === 0){
+      console.log(`${LOG_PREFIX} First cast image result:`, image);
+    }
     const id = trimString(person?.id != null ? String(person.id) : name);
     pushEntry({
       id: id || name,

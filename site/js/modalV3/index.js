@@ -411,16 +411,20 @@ function renderDetailError(message, options = {}){
 }
 
 export async function openMovieDetailV3(payload = null, options = {}){
+  console.log(LOG_PREFIX, 'openMovieDetailV3 called with payload:', payload);
   captureLastFocused();
   const token = startRender('movie', payload);
   showLoading();
   try{
     const viewModel = await loadMovieDetailViewModel(payload, options);
+    console.log(LOG_PREFIX, 'Movie ViewModel loaded:', viewModel);
     if(!isCurrentRender(token)) return token;
     if(!viewModel){
       renderDetailError('Film konnte nicht geladen werden.', { token });
       return token;
     }
+    console.log(LOG_PREFIX, 'Movie backdrop:', viewModel.backdrop);
+    console.log(LOG_PREFIX, 'Movie cast count:', viewModel.cast?.length || 0);
     renderDetail(viewModel, { token, kind: 'movie', media: viewModel.item });
   }catch(err){
     console.warn(LOG_PREFIX, 'Failed to open movie detail:', err?.message || err);
@@ -432,16 +436,20 @@ export async function openMovieDetailV3(payload = null, options = {}){
 }
 
 export async function openSeriesDetailV3(payload = null, options = {}){
+  console.log(LOG_PREFIX, 'openSeriesDetailV3 called with payload:', payload);
   captureLastFocused();
   const token = startRender('show', payload);
   showLoading();
   try{
     const viewModel = await loadSeriesDetailViewModel(payload, options);
+    console.log(LOG_PREFIX, 'Series ViewModel loaded:', viewModel);
     if(!isCurrentRender(token)) return token;
     if(!viewModel){
       renderDetailError('Seriendetails konnten nicht geladen werden.', { token });
       return token;
     }
+    console.log(LOG_PREFIX, 'Series backdrop:', viewModel.backdrop);
+    console.log(LOG_PREFIX, 'Series cast count:', viewModel.cast?.length || 0);
     renderDetail(viewModel, { token, kind: 'show', media: viewModel.item });
   }catch(err){
     console.warn(LOG_PREFIX, 'Failed to open series detail:', err?.message || err);

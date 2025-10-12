@@ -1,3 +1,4 @@
+console.log('[main] Loading main.js - Modal V3 debugging enabled');
 import { setState, getState } from './state.js';
 import { showLoader, setLoader, hideLoader, showSkeleton, clearSkeleton } from './loader.js';
 import * as Data from './data.js';
@@ -14,6 +15,7 @@ import { initHeroAutoplay } from './hero-autoplay.js';
 import * as HeroPolicy from './hero/policy.js';
 import * as HeroPipeline from './hero/pipeline.js';
 import { syncDefaultMetadataService } from './metadataService.js';
+console.log('[main] Imports loaded, Modal V3 functions:', { openMovieDetailV3, openSeriesDetailV3 });
 
 const DEFAULT_FEATURE_FLAGS = { tmdbEnrichment: false };
 const globalFeatures = (()=>{
