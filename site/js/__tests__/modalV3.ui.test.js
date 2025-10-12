@@ -4,6 +4,8 @@ import { parseHTML } from 'linkedom';
 
 import { applyTabs } from '../modalV3/tabs.js';
 import { renderOverview } from '../modalV3/overview.js';
+import { createHead } from '../modalV3/header.js';
+import { buildMovieViewModel } from '../modalV3/viewModel.js';
 import { setState, getState } from '../state.js';
 
 function setupDom(){
@@ -149,5 +151,46 @@ describe('modalV3 UI helpers', () => {
     const badge = container.querySelector('[data-badge="language"]');
     assert.ok(badge, 'Language badge should be rendered');
     assert.equal(badge.textContent, 'EN');
+  });
+
+  it('renders hero logo for movies when TMDB logos are available', async () => {
+    const tmdbDetail = {
+      id: 123,
+      title: 'Logo Film',
+      releaseDate: '2020-01-01',
+      images: {
+        logos: [
+          { file_path: '/de-logo.png', url: 'https://image.tmdb.org/t/p/w500/de-logo.png', iso_639_1: 'de' },
+          { file_path: '/en-logo.png', url: 'https://image.tmdb.org/t/p/w500/en-logo.png', iso_639_1: 'en' },
+        ],
+      },
+    };
+
+    const viewModel = await buildMovieViewModel({
+      item: {
+        type: 'movie',
+        title: 'Logo Film',
+        ids: { tmdb: '123' },
+        tmdbId: '123',
+      },
+    }, { tmdb: tmdbDetail });
+
+    assert.ok(Array.isArray(viewModel?.tmdb?.images?.logos), 'View model should expose TMDB logos');
+    assert.equal(viewModel.tmdb.images.logos.length, 2);
+
+    const head = createHead(viewModel);
+    assert.ok(head?.elements?.overlayLogo, 'Overlay logo slot should exist');
+
+    const overlayLogo = head.elements.overlayLogo;
+    const overlayImg = overlayLogo.querySelector('img');
+    assert.ok(overlayImg, 'Overlay logo slot should contain an image');
+    assert.equal(overlayLogo.hidden, false);
+    assert.equal(overlayLogo.dataset.state, 'ready');
+    assert.equal(overlayImg.getAttribute('src'), tmdbDetail.images.logos[0].url);
+
+    const secondaryLogo = head.elements.logo;
+    const secondaryImg = secondaryLogo?.querySelector('img');
+    assert.ok(secondaryImg, 'Secondary logo slot should contain an image');
+    assert.equal(secondaryImg.getAttribute('src'), tmdbDetail.images.logos[1].url);
   });
 });

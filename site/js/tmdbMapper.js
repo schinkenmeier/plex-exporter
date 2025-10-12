@@ -321,6 +321,13 @@ export function mapMovieDetail(detail, options = {}){
         voteCount: entry.vote_count,
         language: entry.iso_639_1 || '',
       })),
+      logos: buildImageCollection(detail.images?.logos, entry => ({
+        path: entry.file_path,
+        url: urlLogo(entry.file_path, { imageBase: cfg.imageBase, size: cfg.logoSize, title: detail.title }),
+        width: entry.width,
+        height: entry.height,
+        language: entry.iso_639_1 || '',
+      })),
     },
     watchProviders: mapWatchProviders(detail['watch/providers'], cfg),
     url: detail.id ? `https://www.themoviedb.org/movie/${detail.id}` : '',
