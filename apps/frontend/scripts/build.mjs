@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const frontendDir = path.resolve(__dirname, '..');
-const distDir = path.join(frontendDir, 'dist');
+const distDir = path.join(frontendDir, 'public', 'dist');
 
 const watch = process.argv.includes('--watch');
 
@@ -29,7 +29,7 @@ const jsOptions = {
   minify: true,
   sourcemap: !watch,
   logLevel: 'info',
-  entryPoints: [path.join(frontendDir, 'src', 'main.js')],
+  entryPoints: [path.join(frontendDir, 'src', 'js', 'main.js')],
   format: 'esm',
   target: ['es2019'],
   outfile: path.join(distDir, 'main.js'),
