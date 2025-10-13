@@ -1,7 +1,7 @@
-import { getState } from './state.js';
-import { renderGrid } from './grid.js';
-import * as HeroPipeline from './hero/pipeline.js';
-import { syncDefaultMetadataService } from './metadataService.js';
+import { getState } from '../core/state.js';
+import { renderGrid } from '../features/grid/index.js';
+import * as HeroPipeline from '../features/hero/pipeline.js';
+import { syncDefaultMetadataService } from '../core/metadataService.js';
 
 let heroRefreshHandler = null;
 let reduceMotionHandler = null;

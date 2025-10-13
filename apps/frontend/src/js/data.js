@@ -1,4 +1,4 @@
-import { getCache, setCache } from './cache.js';
+import { getCache, setCache } from '../shared/cache.js';
 import { validateLibraryList } from './data/validators.js';
 
 const LOG_PREFIX = '[data]';
@@ -151,7 +151,7 @@ function notifyUiError(title, message){
     console.warn(`${LOG_PREFIX} Skipping UI error feedback (environment missing DOM APIs): ${title} - ${message}`);
     return;
   }
-  import('./errorHandler.js').then(mod=>{
+  import('../core/errorHandler.js').then(mod=>{
     try{
       mod.showError?.(title, message, 8000);
     }catch(err){
