@@ -1,6 +1,6 @@
 /**
  * Unit tests for cache.js
- * Run with: node --test site/js/__tests__/cache.test.js
+ * Run with: node --test apps/frontend/src/js/__tests__/cache.test.js
  */
 
 import { describe, it, beforeEach, after } from 'node:test';

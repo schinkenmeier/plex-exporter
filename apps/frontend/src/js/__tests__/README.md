@@ -21,14 +21,14 @@ Dieser Durchlauf benötigt Node.js >= 20 und installiert die Dev-Abhängigkeit [
 ### Einzelne Test-Datei ausführen
 
 ```bash
-node --test site/js/__tests__/cache.test.js
-node --test site/js/__tests__/utils.test.js
+node --test apps/frontend/src/js/__tests__/cache.test.js
+node --test apps/frontend/src/js/__tests__/utils.test.js
 ```
 
 ### Mit Coverage
 
 ```bash
-node --test --experimental-test-coverage site/js/__tests__/*.test.js
+node --test --experimental-test-coverage apps/frontend/src/js/__tests__/*.test.js
 ```
 
 ## Test-Struktur

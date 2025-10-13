@@ -23,8 +23,17 @@ const globalExporterBag = (()=>{
   return null;
 })();
 
-const MOVIE_THUMB_BASE = 'data/movies/';
-const SHOW_THUMB_BASE = 'data/series/';
+const DATA_ROOT = '..';
+const MOVIE_THUMB_BASE = `${DATA_ROOT}/data/movies/`;
+const SHOW_THUMB_BASE = `${DATA_ROOT}/data/series/`;
+const dataPath = relative => {
+  const trimmed = String(relative || '').replace(/^\/+/, '').replace(/^data\//, '');
+  return `${DATA_ROOT}/data/${trimmed}`;
+};
+const legacyDataPath = relative => {
+  const trimmed = String(relative || '').replace(/^\/+/, '').replace(/^data\//, '');
+  return `data/${trimmed}`;
+};
 const SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i;
 
 export async function fetchJson(url, retries = 2, useCache = true){
@@ -184,7 +193,11 @@ export function prefixThumbValue(value, base){
     normalizedSegments.push(segment);
   }
   const normalizedPath = normalizedSegments.join('/');
-  if(normalizedPath.startsWith('data/')) return encodePath(normalizedPath);
+  if(/^\.\.\/data\//.test(normalizedPath) || normalizedPath.startsWith('data/')){
+    const withoutRoot = normalizedPath.replace(/^\.\.\//, '');
+    const encoded = encodePath(withoutRoot);
+    return `${DATA_ROOT}/${encoded}`;
+  }
   let relativeSegments = normalizedSegments;
   if(normalizedBase && relativeSegments.length){
     const baseDir = normalizedBase.replace(/\/+$/, '').split('/').pop();
@@ -249,14 +262,16 @@ function normalizeShowThumbs(list){
 
 export async function loadMovies(){
   try {
-    const rawMovies = await loadWithCompat('data/movies/movies.json', {
+    const rawMovies = await loadWithCompat(dataPath('movies/movies.json'), {
       label: 'movies',
       embedId: 'movies-json',
       exportKey: 'movies',
       globalVar: '__PLEX_MOVIES__',
       altUrls: [
+        legacyDataPath('movies/movies.json'),
+        dataPath('movies.json'),
         'movies/movies.json',
-        'data/movies.json',
+        legacyDataPath('movies.json'),
         'Filme/movies.json',
         'movies.json',
       ],
@@ -282,15 +297,17 @@ export async function loadMovies(){
 }
 export async function loadShows(){
   try {
-    const rawShows = await loadWithCompat('data/series/series_index.json', {
+    const rawShows = await loadWithCompat(dataPath('series/series_index.json'), {
       label: 'shows',
       embedId: 'series-json',
       exportKey: 'shows',
       globalVar: '__PLEX_SHOWS__',
       altUrls: [
+        legacyDataPath('series/series_index.json'),
+        dataPath('shows.json'),
         'series/series_index.json',
-        'data/shows.json',
-        'data/series.json',
+        legacyDataPath('shows.json'),
+        legacyDataPath('series.json'),
         'Serien/series.json',
         'series/series.json',
         'series.json',
@@ -407,21 +424,28 @@ function storeDetail(keys, value, item){
 
 function detailUrlCandidates(item){
   const urls = new Set();
+  const addDataUrl = relative => {
+    const trimmed = String(relative || '').replace(/^\/+/, '');
+    const withoutPrefix = trimmed.replace(/^data\//, '');
+    urls.add(dataPath(withoutPrefix));
+    urls.add(legacyDataPath(withoutPrefix));
+  };
+
   const hrefKey = normalizeHrefKey(item?.href);
   if(hrefKey){
     if(/^https?:/i.test(hrefKey)){ urls.add(hrefKey); }
     else{
-      if(hrefKey.startsWith('data/')) urls.add(hrefKey);
-      else urls.add(`data/${hrefKey}`);
+      if(hrefKey.startsWith('data/')) addDataUrl(hrefKey);
+      else addDataUrl(`data/${hrefKey}`);
       const withoutData = hrefKey.replace(/^data\//,'');
-      if(!withoutData.startsWith('series/')) urls.add(`data/series/${withoutData}`);
+      if(!withoutData.startsWith('series/')) addDataUrl(`series/${withoutData}`);
       const idPart = withoutData.replace(/^series\//,'').replace(/^details\//,'').replace(/\.json$/,'');
-      if(idPart) urls.add(`data/series/details/${idPart}.json`);
+      if(idPart) addDataUrl(`series/details/${idPart}.json`);
     }
   }
   const rk = item?.ratingKey;
   if(rk !== undefined && rk !== null){
-    urls.add(`data/series/details/${String(rk)}.json`);
+    addDataUrl(`series/details/${String(rk)}.json`);
   }
   return Array.from(urls);
 }

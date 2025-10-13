@@ -1,6 +1,6 @@
 /**
  * Unit tests for utils.js
- * Run with: node --test site/js/__tests__/utils.test.js
+ * Run with: node --test apps/frontend/src/js/__tests__/utils.test.js
  */
 
 import { describe, it } from 'node:test';

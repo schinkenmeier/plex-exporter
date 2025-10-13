@@ -4,12 +4,12 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "build": "node tools/build.mjs",
-    "build:watch": "node tools/build.mjs --watch",
+    "build": "node apps/frontend/scripts/build.mjs",
+    "build:watch": "node apps/frontend/scripts/build.mjs --watch",
     "split:series": "node tools/split_series.mjs site/data/series/series_full.json site/data/series",
-    "test": "node --test site/js/__tests__/*.test.js",
-    "test:coverage": "node --test --experimental-test-coverage site/js/__tests__/*.test.js",
-    "test:integration": "node --test site/js/__tests__/app.integration.test.js",
+    "test": "node --test apps/frontend/src/js/__tests__/*.test.js",
+    "test:coverage": "node --test --experimental-test-coverage apps/frontend/src/js/__tests__/*.test.js",
+    "test:integration": "node --test apps/frontend/src/js/__tests__/app.integration.test.js",
     "analyze": "node tools/analyze-bundle.mjs"
   },
   "devDependencies": {
