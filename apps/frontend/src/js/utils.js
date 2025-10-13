@@ -1,4 +1,4 @@
-import { getState } from './state.js';
+import { getState } from '../core/state.js';
 
 const LOG_PREFIX = '[utils]';
 

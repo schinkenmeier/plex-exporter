@@ -1,8 +1,8 @@
-import { getState } from './state.js';
+import { getState } from '../core/state.js';
 import { getSources } from './data.js';
-import { getCacheStats, clearAllCache, clearExpiredCache } from './cache.js';
-import * as HeroPolicy from './hero/policy.js';
-import * as HeroPipeline from './hero/pipeline.js';
+import { getCacheStats, clearAllCache, clearExpiredCache } from '../shared/cache.js';
+import * as HeroPolicy from '../features/hero/policy.js';
+import * as HeroPipeline from '../features/hero/pipeline.js';
 
 export function initDebugUi(){
   const open = document.getElementById('openDebug');
