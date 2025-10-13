@@ -2,7 +2,7 @@ import { getState } from './state.js';
 import { el } from './dom.js';
 import { humanYear, formatRating, renderChipsLimited, useTmdbForCards, isNew, getGenreNames, collectionTags } from './utils.js';
 import * as Watch from './watchlist.js';
-import { openMovieModalV2, openSeriesModalV2 } from './modalV2.js';
+import { openMovieDetailV3, openSeriesDetailV3 } from './modalV3/index.js';
 import { navigateToHash } from './main.js';
 import { VirtualList } from './grid/virtualList.js';
 
@@ -459,6 +459,6 @@ function openDetail(item){
   const kind = item?.type === 'tv' ? 'show' : 'movie';
   const id = resolveItemId(item);
   if(id) updateHash(kind, id);
-  if(kind === 'show') openSeriesModalV2(item);
-  else openMovieModalV2(item);
+  if(kind === 'show') openSeriesDetailV3(item);
+  else openMovieDetailV3(item);
 }

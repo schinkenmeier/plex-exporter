@@ -65,23 +65,24 @@ Dieser Leitfaden skizziert den Aufbau der Plex-Exporter-Weboberfläche sowie wic
 5. Berechnet Facetten (`Filter.computeFacets()`), speichert Kataloge & Facetten im State und initialisiert Filter-UI (`Filter.renderFacets()`, `Filter.initFilters()`).
 6. Baut die Ansicht (`renderSwitch()`, `renderStats(true)`, `renderFooterMeta()`, `renderGrid()`) und versteckt anschließend den Loader.
 7. Startet optionale Module: TMDB-Hydration (per `requestIdleCallback`), Watchlist (`Watch.initUi()`), Settings-Overlay (inkl. TMDb-Troubleshooting), Advanced-Filter-Toggle, Header/Scroll-Helfer sowie Debug-Overlay. Das automatische Ausblenden von Hero und Filterbar läuft primär über Scroll-Driven CSS-Animationen (`animation-timeline: scroll`); `initFilterBarAutoHideFallback()` aktiviert ein rAF-basiertes JS-Fallback in Browsern ohne Scroll-Timeline-Unterstützung und respektiert dabei Fokus-/Pointer-Interaktionen sowie die Reduce-Motion-Präferenz.
-8. Ein `hashchange`-Listener unterstützt View-Wechsel (`#/movies`, `#/shows`) und öffnet bei `#/movie/<id>` bzw. `#/show/<id>` die Detail-Modal (`openMovieModalV2()`/`openSeriesModalV2()`). Zusätzlich löst das Event `HeroPipeline.ensureHeroPool()` aus, um bei Bibliothekswechseln keine redundanten Requests zu erzeugen.
+8. Ein `hashchange`-Listener unterstützt View-Wechsel (`#/movies`, `#/shows`) und öffnet bei `#/movie/<id>` bzw. `#/show/<id>` die neue Detailansicht (`openMovieDetailV3()`/`openSeriesDetailV3()`). Zusätzlich löst das Event `HeroPipeline.ensureHeroPool()` aus, um bei Bibliothekswechseln keine redundanten Requests zu erzeugen.
 
-## Modal-System (`site/js/modalV2.js`)
+## Detail-System (`site/js/modalV3/index.js`)
 
 * **Zentrale Steuerung:**
-  * Module importieren `openMovieModalV2()` und `openSeriesModalV2()` direkt aus `site/js/modalV2.js`. Das Cinematic-Modal ist die einzige Detailansicht und benötigt keinen zusätzlichen Wrapper.
+  * Module importieren `openMovieDetailV3()` und `openSeriesDetailV3()` direkt aus `site/js/modalV3/index.js`. Beide Funktionen akzeptieren IDs oder bereits geladene Datensätze, kümmern sich um Demo- und TMDB-Hydration und steuern Render-Sessions über Tokens (`startRender()`/`isCurrentRender()`).
+  * `renderMediaDetail(target, viewModel, options)` rendert den Pane-Stack außerhalb des Modals (z. B. auf `site/details.html`). Standardmäßig wird das Markup ersetzt; `options.layout = 'standalone'` aktiviert einen eigenständigen Card-Look.
+  * Die Anwendung nutzt ausschließlich die V3-Renderer; die alten V2-Module werden nicht mehr dynamisch geladen.
 
-* **Cinematic-Modal (`site/js/modalV2.js`):**
-  * Baut die strukturierte Oberfläche aus Kopfbereich, Schnellinfos, Tabs und Content-Panes. `renderModalV2()` erzeugt das Markup und delegiert an spezialisierte Updater (`populateHead()`, `updateOverview()`, `updateDetails()`, `updateCast()`).
-  * Die Tab-Navigation (`applyTabs()`) setzt ARIA-Rollen, Tastatur-Shortcuts (Links/Rechts, Home/End) und steuert Sichtbarkeit/Focus der Pane-Inhalte (`data-pane`). Damit lassen sich Überblick, Detail-Gitter, Staffeln und Cast parallel vorhalten.
-  * `updateDetails()` generiert das mehrspaltige „Details-Grid“ (Sektionen für Allgemein, Genres, Credits). `updateCast()` erstellt Cast-Karten inkl. TMDB/Thumb-Auflösung, fallback auf Initialen sowie Rollenbeschriftung. `populateHead()` liefert Schnellinfos, Chip-Gruppen und Poster-Handling inklusive Lazy-Loading-Indikator.
-  * Einbettung externer Aktionen geschieht zentral in `setExternalLinks()`: Die Funktion aktiviert/deaktiviert TMDB-/IMDb-Links und Trailer-Button (öffnet neues Tab via `window.open`).
-  * Demo-Datensätze für Debug- und Showcase-Szenarien liegen ausgelagert in `site/js/modal/demoData.js` und werden erst bei Bedarf via Dynamic Import geladen (`openMovieModalV2('demo')`/`openSeriesModalV2('demo')`). Reguläre Builds werden so nicht mit den Beispielpayloads gebündelt.
+* **Cinematic Shell (`site/js/modalV3`)**
+  * `createPaneStack()` erzeugt das semantische Grundgerüst (Header, Poster-Sidebar, Tab-Stack). Spezialisierte Renderer (`header.js`, `overview.js`, `details.js`, `cast.js`, `seasons.js`) füllen die einzelnen Segmente.
+  * Die Tab-Navigation (`applyTabs()`) setzt ARIA-Rollen, Tastatur-Shortcuts (Links/Rechts, Home/End) und steuert Sichtbarkeit/Focus der Pane-Inhalte (`data-pane`). Damit lassen sich Überblick, Details, Staffeln und Cast parallel vorhalten – identisch zur V2-UX, aber modularisiert.
+  * `loadMovieDetailViewModel()`/`loadSeriesDetailViewModel()` kombinieren State-Daten, `Data.loadMovies()`/`Data.loadShows()`, optionale `loadShowDetail()`-Requests und TMDB-Anreicherungen (`metadataService`). Das Resultat ist das strukturierte `MediaDetailViewModel`, das Layout, Badges, Chips und Metadaten vorbefüllt.
+  * Demo-Datensätze für Debug- und Showcase-Szenarien liegen weiterhin in `site/js/modal/demoData.js` und werden erst bei Bedarf via Dynamic Import geladen (`openMovieDetailV3('demo')`/`openSeriesDetailV3('demo')`).
 
 * **Hilfsmodule & Zusammenspiel:**
-  * Staffel-/Episodenlisten rendert `site/js/modal/seasonsAccordion.js`, das aus Staffel-Objekten Akkordeon-Karten mit Lazy-Poster, Episoden-Badges und Toggle-Verhalten erzeugt. Das Cinematic-Modal bindet die Ausgabe im Tab „Staffeln“ über `renderSeasonsAccordion()` ein.
-  * Neue externe Links/Tabs werden zentral über `setExternalLinks()` und `applyTabs()` in `modalV2.js` gepflegt. Für zusätzliche Tabs genügt es, in `renderModalV2()` einen weiteren Button + Pane anzulegen und ihn im Tab-Controller zu berücksichtigen. Externe Aktionen folgen dem bestehenden Muster: Button oder Link markieren, Attribut-/`hidden`-Status dynamisch setzen.
+  * Staffel-/Episodenlisten rendert `site/js/modalV3/seasons.js` (Lazy-Poster, Episoden-Badges, Toggle-Verhalten). Das Modal bindet die Ausgabe im Tab „Staffeln“ über `renderSeasons()` ein.
+  * Neue Tabs werden zentral über `createPaneStack()` + `applyTabs()` erweitert. Zusätzliche Abschnitte müssen nur einen Button + Pane definieren; die Tab-Logik übernimmt Fokus- und Sichtbarkeitsverwaltung automatisch.
 
 ## Erweiterungspunkte
 

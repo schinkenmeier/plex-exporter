@@ -1,9 +1,10 @@
+console.log('[main] Loading main.js - Modal V3 debugging enabled');
 import { setState, getState } from './state.js';
 import { showLoader, setLoader, hideLoader, showSkeleton, clearSkeleton } from './loader.js';
 import * as Data from './data.js';
 import * as Filter from './filter.js';
 import { renderGrid } from './grid.js';
-import { openMovieModalV2, openSeriesModalV2 } from './modalV2.js';
+import { openMovieDetailV3, openSeriesDetailV3 } from './modalV3/index.js';
 import { hydrateOptional } from './services/tmdb.js';
 import * as Watch from './watchlist.js';
 import * as Debug from './debug.js';
@@ -13,6 +14,31 @@ import { refreshHero, setHeroNavigation, showHeroFallback } from './hero.js';
 import { initHeroAutoplay } from './hero-autoplay.js';
 import * as HeroPolicy from './hero/policy.js';
 import * as HeroPipeline from './hero/pipeline.js';
+import { syncDefaultMetadataService } from './metadataService.js';
+console.log('[main] Imports loaded, Modal V3 functions:', { openMovieDetailV3, openSeriesDetailV3 });
+
+const DEFAULT_FEATURE_FLAGS = { tmdbEnrichment: false };
+const globalFeatures = (()=>{
+  const existing = typeof window !== 'undefined' && window.FEATURES ? window.FEATURES : {};
+  const merged = { ...DEFAULT_FEATURE_FLAGS, ...existing };
+  if(typeof window !== 'undefined'){
+    window.FEATURES = merged;
+  }
+  return merged;
+})();
+
+function applyFeatureFlags(cfg){
+  try{
+    if(globalFeatures){
+      globalFeatures.tmdbEnrichment = !!(cfg && cfg.tmdbEnabled);
+    }
+    if(typeof window !== 'undefined' && window.FEATURES && window.FEATURES !== globalFeatures){
+      window.FEATURES = { ...window.FEATURES, ...globalFeatures };
+    }
+  }catch(err){
+    console.warn('[main] Failed to apply feature flags:', err?.message || err);
+  }
+}
 
 let taglineTicker = null;
 const heroFallbackNotice = { reason: null };
@@ -197,6 +223,8 @@ export async function boot(){
   });
 
   const [cfg, heroPolicy] = await Promise.all([configPromise, policyPromise]);
+  applyFeatureFlags(cfg);
+  syncDefaultMetadataService(cfg);
   const heroPipelineInfo = HeroPipeline.configure({ cfg, policy: heroPolicy });
   setState({
     cfg,
@@ -337,8 +365,8 @@ function applyHashNavigation(hash){
   const pool = kind === 'movie' ? getState().movies : getState().shows;
   const item = (pool||[]).find(x => (x?.ids?.imdb===id || x?.ids?.tmdb===id || String(x?.ratingKey)===id));
   if(!item) return false;
-  if(kind === 'show') openSeriesModalV2(item);
-  else openMovieModalV2(item);
+  if(kind === 'show') openSeriesDetailV3(item);
+  else openMovieDetailV3(item);
   return true;
 }
 

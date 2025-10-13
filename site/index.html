@@ -23,6 +23,7 @@
   <link rel="preload" as="image" href="assets/Plex-Katalog-Logo.svg" type="image/svg+xml" fetchpriority="high">
   <link rel="preload" as="style" href="dist/app.css">
   <link rel="stylesheet" href="dist/app.css">
+  <link rel="stylesheet" href="css/modal.v3.css">
   <link rel="stylesheet" href="css/hero.css">
   <link rel="stylesheet" href="css/error-handler.css">
   <link rel="modulepreload" href="dist/main.js" />
@@ -109,7 +110,7 @@
           <div class="hero__meta-row" data-row="secondary" id="heroMetaSecondary"></div>
           <div class="hero__meta-row" data-row="tertiary" id="heroMetaTertiary"></div>
         </div>
-        <button type="button" class="hero__cta" id="heroCta" data-modal-target="modalV2">Browse featured titles</button>
+        <button type="button" class="hero__cta" id="heroCta" data-modal-target="modalV3">Browse featured titles</button>
       </div>
     </div>
     <div id="heroTimer" class="hero-timer" aria-hidden="true">
@@ -264,7 +265,7 @@
     </div>
   </div>
 
-  <div id="modal-root-v2" hidden></div>
+  <div id="modal-root" hidden></div>
   <script src="js/fallback.js" defer></script>
 </body>
 </html>

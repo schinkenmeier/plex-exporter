@@ -1,165 +1,250 @@
-// Optional TMDB enrichment. Supports v4 Bearer token or v3 API key.
+import cacheStore, { clear as clearCacheStore } from '../cacheStore.js';
+import { createMetadataService } from '../metadataService.js';
 
 const API_V3 = 'https://api.themoviedb.org/3';
-const IMG = 'https://image.tmdb.org/t/p/';
-const POSTER_W = 'w342';
-const BACKDROP_W = 'w780';
-
 const LOG_PREFIX = '[tmdb]';
+const SESSION_CACHE = new Map();
 
-let cache;
+let metadataInstance = null;
+let metadataSignature = '';
 
-function loadCache(){
-  try{
-    return new Map(JSON.parse(localStorage.getItem('tmdbCache')||'[]'));
-  }catch(err){
-    console.warn(`${LOG_PREFIX} Failed to load persisted TMDB cache:`, err);
-    return new Map();
+function logWarn(...args){
+  try {
+    console.warn(LOG_PREFIX, ...args);
+  } catch (_err) {
+    // ignore
   }
 }
-function persist(){
-  try{
-    localStorage.setItem('tmdbCache', JSON.stringify(Array.from(cache.entries())));
-  }catch(err){
-    console.warn(`${LOG_PREFIX} Failed to persist TMDB cache:`, err);
-  }
+
+function normalizeConfig(cfg = {}){
+  const language = cfg.lang || cfg.language || 'de-DE';
+  const region = cfg.region || cfg.iso || 'DE';
+  const ttlHours = Number(cfg.ttlHours || cfg.tmdbTtlHours || 24) || 24;
+  const imageBase = cfg.imageBase || cfg.tmdbImageBase;
+  return { language, region, ttlHours, imageBase };
 }
+
+function buildSignature(cfg, auth){
+  const { language, region, ttlHours, imageBase } = normalizeConfig(cfg);
+  const authSig = auth?.kind ? `${auth.kind}:${auth.value || ''}` : 'none';
+  return JSON.stringify({ language, region, ttlHours, imageBase, auth: authSig });
+}
+
+function ensureMetadata(cfg = {}, auth){
+  const signature = buildSignature(cfg, auth);
+  if(metadataInstance && metadataSignature === signature){
+    return metadataInstance;
+  }
+  const { language, region, ttlHours, imageBase } = normalizeConfig(cfg);
+  const options = {
+    cacheStore,
+    language,
+    region,
+    ttlHours,
+  };
+  if(imageBase) options.imageBase = imageBase;
+  if(auth?.kind === 'bearer' && auth.value){
+    options.token = auth.value;
+  } else if(auth?.kind === 'apikey' && auth.value){
+    options.apiKey = auth.value;
+  }
+  metadataInstance = createMetadataService(options);
+  metadataSignature = signature;
+  return metadataInstance;
+}
+
+function keyFor(item){
+  const type = (item?.type === 'tv') ? 'tv' : 'movie';
+  const imdb = item?.ids?.imdb || '';
+  const tmdb = item?.ids?.tmdb || '';
+  const title = (item?.title || item?.name || '').toLowerCase();
+  const year = String(item?.year || '').slice(0, 4);
+  return [type, imdb, tmdb, title, year].filter(Boolean).join('|');
+}
+
 export function clearCache(){
   try{
     localStorage.removeItem('tmdbCache');
   }catch(err){
-    console.warn(`${LOG_PREFIX} Failed to clear TMDB cache from storage:`, err);
+    logWarn('Failed to clear legacy TMDB cache from storage:', err);
   }
-  cache = new Map();
+  SESSION_CACHE.clear();
+  try{
+    clearCacheStore('tmdb:');
+  }catch(err){
+    logWarn('Failed to clear metadata cache store:', err);
+  }
+  if(metadataInstance){
+    try{
+      metadataInstance.clear?.('tmdb:');
+    }catch(err){
+      logWarn('Failed to clear metadata service cache:', err);
+    }
+  }
 }
 
 function tokenFromEnv(cfg){
   try{
-    const t = localStorage.getItem('tmdbToken');
-    if(t) return { kind:'bearer', value: t };
+    const token = localStorage.getItem('tmdbToken');
+    if(token && token.trim()) return { kind: 'bearer', value: token.trim() };
   }catch(err){
-    console.warn(`${LOG_PREFIX} Failed to read TMDB token from storage:`, err);
+    logWarn('Failed to read TMDB token from storage:', err);
   }
-  if(cfg?.tmdbApiKey) return { kind:'apikey', value: String(cfg.tmdbApiKey) };
-  return { kind:'none', value: '' };
+  if(cfg?.tmdbToken){
+    const val = String(cfg.tmdbToken).trim();
+    if(val) return { kind: 'bearer', value: val };
+  }
+  if(cfg?.tmdbApiKey){
+    const val = String(cfg.tmdbApiKey).trim();
+    if(val) return { kind: 'apikey', value: val };
+  }
+  return { kind: 'none', value: '' };
 }
 
-function keyFor(item){
-  const t = (item.type==='tv') ? 'tv' : 'movie';
-  const imdb = item?.ids?.imdb || '';
-  const tmdb = item?.ids?.tmdb || '';
-  const title = (item.title||'').toLowerCase();
-  const year = String(item.year || '').slice(0,4);
-  return [t, imdb, tmdb, title, year].filter(Boolean).join('|');
+async function resolveByExternalId(type, imdbId, cfg, auth){
+  if(!imdbId) return null;
+  try{
+    const service = ensureMetadata(cfg, auth);
+    const client = service.client;
+    const json = await client.get(`/find/${encodeURIComponent(imdbId)}`, {
+      external_source: 'imdb_id',
+    });
+    if(type === 'movie'){
+      return json?.movie_results?.[0]?.id ?? null;
+    }
+    return json?.tv_results?.[0]?.id ?? null;
+  }catch(err){
+    logWarn(`Failed to resolve external id ${imdbId}:`, err);
+    return null;
+  }
 }
 
-function withAuth(url, auth){
-  if(!auth || auth.kind==='none') return { url, init:{} };
-  if(auth.kind==='bearer') return { url, init: { headers: { 'Authorization': `Bearer ${auth.value}`, 'Accept':'application/json' } } };
-  // v3 api key via query param
-  const sep = url.includes('?') ? '&' : '?';
-  return { url: `${url}${sep}api_key=${encodeURIComponent(auth.value)}`, init: { headers: { 'Accept':'application/json' } } };
-}
-
-async function getJson(url, auth){
-  const { url: u, init } = withAuth(url, auth);
-  const res = await fetch(u, init);
-  if(!res.ok) throw new Error('HTTP '+res.status);
-  return res.json();
-}
-
-function pickBestPoster(p){ return p?.file_path ? IMG+POSTER_W+p.file_path : ''; }
-function pickBestBackdrop(p){ return p?.file_path ? IMG+BACKDROP_W+p.file_path : ''; }
-
-async function byId(type, id, lang, auth){
-  const inf = await getJson(`${API_V3}/${type}/${id}?language=${encodeURIComponent(lang||'de-DE')}`, auth);
-  const images = await getJson(`${API_V3}/${type}/${id}/images`, auth).catch((err)=>{
-    console.warn(`${LOG_PREFIX} Failed to fetch TMDB images for ${type}#${id}:`, err);
-    return { posters:[], backdrops:[] };
-  });
-  const poster = pickBestPoster((images.posters||[])[0]) || (inf.poster_path ? IMG+POSTER_W+inf.poster_path : '');
-  const backdrop = pickBestBackdrop((images.backdrops||[])[0]) || (inf.backdrop_path ? IMG+BACKDROP_W+inf.backdrop_path : '');
-  return { id: inf.id, poster, backdrop, url: `https://www.themoviedb.org/${type}/${inf.id}` };
-}
-
-async function bySearch(type, title, year, lang, auth){
-  const q = encodeURIComponent(title||'');
-  const yParam = year ? `&year=${encodeURIComponent(String(year))}` : '';
-  const res = await getJson(`${API_V3}/search/${type}?query=${q}${yParam}&language=${encodeURIComponent(lang||'de-DE')}`, auth);
-  const first = (res.results||[])[0];
-  if(!first) throw new Error('not found');
-  return byId(type, first.id, lang, auth);
+async function resolveBySearch(type, title, year, cfg, auth){
+  const name = String(title || '').trim();
+  if(!name) return null;
+  try{
+    const service = ensureMetadata(cfg, auth);
+    const client = service.client;
+    const params = {
+      query: name,
+      include_adult: false,
+    };
+    if(year){
+      if(type === 'movie') params.year = year;
+      else params.first_air_date_year = year;
+    }
+    const json = await client.get(`/search/${type}`, params);
+    const result = Array.isArray(json?.results) ? json.results[0] : null;
+    return result?.id ?? null;
+  }catch(err){
+    logWarn(`Search failed for ${type} ${title}:`, err);
+    return null;
+  }
 }
 
 async function hydrateItem(item, cfg, auth){
-  const type = (item.type==='tv') ? 'tv' : 'movie';
-  const k = keyFor(item);
-  if(cache.has(k)) return cache.get(k);
-  let out;
-  try{
-    if(item?.ids?.tmdb){ out = await byId(type, item.ids.tmdb, cfg.lang, auth); }
-    else if(item?.ids?.imdb){
-      // find by external id
-      const json = await getJson(`${API_V3}/find/${item.ids.imdb}?external_source=imdb_id&language=${encodeURIComponent(cfg.lang||'de-DE')}`, auth);
-      const hit = (type==='movie' ? (json.movie_results||[])[0] : (json.tv_results||[])[0]);
-      if(hit) out = await byId(type, hit.id, cfg.lang, auth); else throw new Error('not found');
-    }else{
-      out = await bySearch(type, item.title, item.year, cfg.lang, auth);
-    }
-  }catch(e){
-    console.warn(`${LOG_PREFIX} Hydration failed for ${type} ${item?.title || item?.ids?.tmdb || 'unknown'}:`, e);
-    out = null;
+  const type = (item?.type === 'tv') ? 'tv' : 'movie';
+  const cacheKey = keyFor(item);
+  if(SESSION_CACHE.has(cacheKey)){
+    return SESSION_CACHE.get(cacheKey);
   }
-  cache.set(k, out);
-  persist();
-  return out;
+  const service = ensureMetadata(cfg, auth);
+  let tmdbId = item?.ids?.tmdb;
+  if(!tmdbId && item?.ids?.imdb){
+    tmdbId = await resolveByExternalId(type, item.ids.imdb, cfg, auth);
+  }
+  if(!tmdbId){
+    const year = item?.year ? Number(String(item.year).slice(0, 4)) : undefined;
+    tmdbId = await resolveBySearch(type, item?.title || item?.name, year, cfg, auth);
+  }
+  if(!tmdbId){
+    SESSION_CACHE.set(cacheKey, null);
+    return null;
+  }
+  try{
+    const detail = type === 'tv'
+      ? await service.getTvEnriched(tmdbId)
+      : await service.getMovieEnriched(tmdbId);
+    if(!detail){
+      SESSION_CACHE.set(cacheKey, null);
+      return null;
+    }
+    const enriched = {
+      id: detail.id || String(tmdbId),
+      poster: detail.poster || '',
+      backdrop: detail.backdrop || '',
+      url: detail.url || `https://www.themoviedb.org/${type}/${tmdbId}`,
+    };
+    SESSION_CACHE.set(cacheKey, enriched);
+    return enriched;
+  }catch(err){
+    logWarn(`Hydration failed for ${type} ${tmdbId}:`, err);
+    SESSION_CACHE.set(cacheKey, null);
+    return null;
+  }
 }
 
-export async function hydrateOptional(movies, shows, cfg={}){
+export async function hydrateOptional(movies, shows, cfg = {}){
   try{
-    cache = cache || loadCache();
     const auth = tokenFromEnv(cfg);
-    if(!auth.value) return;
-    const work = (movies||[]).concat(shows||[]);
-    let i = 0; const limit = 40; // keep it light
-    const next = async()=>{
-      const chunk = work.slice(i, i+4); i += 4;
-      await Promise.all(chunk.map(async (it)=>{
+    if(!auth.value){
+      return;
+    }
+    ensureMetadata(cfg, auth);
+    const work = [...(movies || []), ...(shows || [])];
+    const limit = 40;
+    let index = 0;
+    const processChunk = async () => {
+      const chunk = work.slice(index, index + 4);
+      index += 4;
+      await Promise.all(chunk.map(async (it) => {
         const data = await hydrateItem(it, cfg, auth);
         if(data){
-          it.tmdb = { id:data.id, poster:data.poster, backdrop:data.backdrop, url:data.url };
-          it.ids = it.ids||{}; if(!it.ids.tmdb && data.id) it.ids.tmdb = String(data.id);
+          it.tmdb = { id: data.id, poster: data.poster, backdrop: data.backdrop, url: data.url };
+          it.ids = it.ids || {};
+          if(!it.ids.tmdb && data.id){
+            it.ids.tmdb = String(data.id);
+          }
         }
       }));
       try{
-        window.dispatchEvent(new CustomEvent('tmdb:chunk', { detail: { updated: chunk.length, index: i } }));
+        window.dispatchEvent(new CustomEvent('tmdb:chunk', { detail: { updated: chunk.length, index } }));
       }catch(err){
-        console.warn(`${LOG_PREFIX} Failed to dispatch tmdb:chunk event:`, err);
+        logWarn('Failed to dispatch tmdb:chunk event:', err);
       }
-      if(i < Math.min(work.length, limit)){
+      const hasMore = index < Math.min(work.length, limit);
+      if(hasMore){
         if(window.requestIdleCallback){
-          window.requestIdleCallback(next, { timeout: 500 });
+          window.requestIdleCallback(processChunk, { timeout: 500 });
         }else{
-          setTimeout(next, 250);
+          setTimeout(processChunk, 250);
         }
-      }
-      else{
+      }else{
         try{
           window.dispatchEvent(new CustomEvent('tmdb:done', { detail: { total: Math.min(work.length, limit) } }));
         }catch(err){
-          console.warn(`${LOG_PREFIX} Failed to dispatch tmdb:done event:`, err);
+          logWarn('Failed to dispatch tmdb:done event:', err);
         }
       }
     };
-    next();
+    processChunk();
   }catch(err){
-    console.warn(`${LOG_PREFIX} hydrateOptional failed to start:`, err);
+    logWarn('hydrateOptional failed to start:', err);
   }
+}
+
+function withAuth(url, auth){
+  if(!auth || auth.kind === 'none') return { url, init: {} };
+  if(auth.kind === 'bearer'){
+    return { url, init: { headers: { Authorization: `Bearer ${auth.value}`, Accept: 'application/json' } } };
+  }
+  const separator = url.includes('?') ? '&' : '?';
+  return { url: `${url}${separator}api_key=${encodeURIComponent(auth.value)}`, init: { headers: { Accept: 'application/json' } } };
 }
 
 // Lightweight token validation used by settings UI
 export async function validateToken(raw){
-  const token = String(raw||'').trim();
+  const token = String(raw || '').trim();
   if(!token) throw new Error('empty');
   const looksLikeV3 = /^[a-f0-9]{32}$/i.test(token);
   const looksLikeJwt = /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/.test(token);
@@ -170,12 +255,11 @@ export async function validateToken(raw){
       const json = atob(pad(part.replace(/-/g,'+').replace(/_/g,'/')));
       return JSON.parse(json);
     }catch(err){
-      console.warn(`${LOG_PREFIX} Failed to decode TMDB JWT payload:`, err);
+      logWarn('Failed to decode TMDB JWT payload:', err);
       return null;
     }
   };
 
-  // If it looks like a v3 API key, validate it against a protected v3 config endpoint
   if(looksLikeV3){
     const { url, init } = withAuth(`${API_V3}/configuration`, { kind:'apikey', value: token });
     const res = await fetch(url, init);
@@ -183,9 +267,6 @@ export async function validateToken(raw){
     return { ok:false, as:'apikey', hint:'looksV3' };
   }
 
-  // Heuristic validation for v4 Bearer tokens (API Read Access Token):
-  // - Check JWT shape and issuer claim if present
-  // - Perform a benign v3 request with Bearer header to confirm CORS/connectivity
   if(looksLikeJwt){
     const payload = decodeJwtPayload(token);
     if(payload && typeof payload === 'object'){
@@ -199,9 +280,8 @@ export async function validateToken(raw){
       const res = await fetch(url, init);
       if(res.ok) return { ok:true, as:'bearer', hint:null };
     }catch(err){
-      console.warn(`${LOG_PREFIX} Bearer token validation request failed:`, err);
+      logWarn('Bearer token validation request failed:', err);
     }
-    // Some public endpoints ignore invalid Authorization headers; fall back to structural pass
     return { ok:true, as:'bearer', hint:'structOnly' };
   }
 

@@ -1,6 +1,7 @@
 import { getState } from './state.js';
 import { renderGrid } from './grid.js';
 import * as HeroPipeline from './hero/pipeline.js';
+import { syncDefaultMetadataService } from './metadataService.js';
 
 let heroRefreshHandler = null;
 let reduceMotionHandler = null;
@@ -369,12 +370,14 @@ export function initSettingsOverlay(cfg){
     try{ localStorage.setItem('tmdbToken', raw); }
     catch(err){ console.warn('[settingsOverlay] Failed to persist tmdbToken:', err?.message || err); }
     if(!raw){
+      syncDefaultMetadataService(cfg, { preferStoredToken: false, token: '' });
       setTmdbStatus('Kein Token hinterlegt. TMDB ist deaktiviert.', 'info');
       setUseTmdbAvailability(!!(cfg&&cfg.tmdbApiKey));
       HeroPipeline.updateTmdbActive(useTmdb?.checked ?? false);
       runHeroRegeneration('all', 'Highlights aktualisieren (Token entfernt)…');
       return;
     }
+    syncDefaultMetadataService(cfg, { preferStoredToken: false, token: raw });
     setTmdbStatus('Prüfe Token...', 'pending');
     try{
       const svc = await import('./services/tmdb.js');
