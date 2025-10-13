@@ -12,7 +12,7 @@ Alle kritischen und hochpriorisierten Verbesserungen aus dem Code-Review wurden 
 ## ✅ Durchgeführte Verbesserungen
 
 ### 1. **XSS-Fix für URL-Sanitization** (Kritisch)
-**Datei:** [site/js/modalV3/header.js](site/js/modalV3/header.js#L1-L40)
+**Datei:** [apps/frontend/src/js/modalV3/header.js](apps/frontend/src/js/modalV3/header.js#L1-L40)
 
 **Problem:** Backdrop-URLs wurden ohne Validierung in CSS `backgroundImage` eingefügt → XSS-Risiko
 
@@ -36,7 +36,7 @@ function sanitizeUrl(url){
 ---
 
 ### 2. **Input-Validierung für TMDB-IDs** (Kritisch)
-**Datei:** [site/js/tmdbMapper.js](site/js/tmdbMapper.js#L29-L40)
+**Datei:** [apps/frontend/src/js/tmdbMapper.js](apps/frontend/src/js/tmdbMapper.js#L29-L40)
 
 **Problem:** Beliebige Strings wurden als IDs akzeptiert → potenzielle API-Injection
 
@@ -62,7 +62,7 @@ function normaliseId(id){
 ---
 
 ### 3. **Memory-Leak-Behebung** (Hoch)
-**Datei:** [site/js/modalV3/seasons.js](site/js/modalV3/seasons.js#L396-L471)
+**Datei:** [apps/frontend/src/js/modalV3/seasons.js](apps/frontend/src/js/modalV3/seasons.js#L396-L471)
 
 **Problem:** Event-Listener wurden bei Re-Render nicht entfernt → Memory Leaks
 
@@ -85,8 +85,8 @@ card._cleanup = () => {
 
 ### 4. **Race-Condition-Fix** (Hoch)
 **Dateien:**
-- [site/js/modalV3/state.js](site/js/modalV3/state.js#L1-L37)
-- [site/js/modalV3/index.js](site/js/modalV3/index.js#L308-L377)
+- [apps/frontend/src/js/modalV3/state.js](apps/frontend/src/js/modalV3/state.js#L1-L37)
+- [apps/frontend/src/js/modalV3/index.js](apps/frontend/src/js/modalV3/index.js#L308-L377)
 
 **Problem:** Parallel gestartete Renderläufe überschrieben sich gegenseitig → inkonsistente UI
 
@@ -116,8 +116,8 @@ export function renderDetail(content, options = {}){
 
 ### 5. **Error-Differenzierung & Status-Messaging** (Hoch)
 **Dateien:**
-- [site/js/modalV3/index.js](site/js/modalV3/index.js#L338-L370)
-- [site/js/modalV3/header.js](site/js/modalV3/header.js#L640-L666)
+- [apps/frontend/src/js/modalV3/index.js](apps/frontend/src/js/modalV3/index.js#L338-L370)
+- [apps/frontend/src/js/modalV3/header.js](apps/frontend/src/js/modalV3/header.js#L640-L666)
 
 **Problem:** Generische Error-Messages ohne Kontext
 
@@ -156,7 +156,7 @@ export function setHeadStatus(target, payload){
 ---
 
 ### 6. **N+1 Performance-Optimierung** (Mittel)
-**Datei:** [site/js/modalV3/castData.js](site/js/modalV3/castData.js#L33-L102)
+**Datei:** [apps/frontend/src/js/modalV3/castData.js](apps/frontend/src/js/modalV3/castData.js#L33-L102)
 
 **Problem:** `toLowerCase()` in Loop + unnötige `.map().filter()` Chains
 
@@ -177,7 +177,7 @@ if(!seen.has(lowerName)){
 ---
 
 ### 7. **Null-Check-Verbesserungen** (Mittel)
-**Datei:** [site/js/metadataService.js](site/js/metadataService.js#L137-L150)
+**Datei:** [apps/frontend/src/js/metadataService.js](apps/frontend/src/js/metadataService.js#L137-L150)
 
 **Problem:** `show` konnte `null` bleiben → NPE in `mapSeasonDetail`
 
@@ -202,7 +202,7 @@ if(!show){
 ---
 
 ### 8. **Cache-Invalidierung erweitern** (Mittel)
-**Datei:** [site/js/cacheStore.js](site/js/cacheStore.js#L123-L178)
+**Datei:** [apps/frontend/src/js/cacheStore.js](apps/frontend/src/js/cacheStore.js#L123-L178)
 
 **Problem:** Keine Möglichkeit, nur abgelaufene Einträge zu löschen
 
@@ -231,8 +231,8 @@ function clearExpired(){
 
 ### 9. **JSDoc Type Annotations** (Niedrig)
 **Dateien:**
-- [site/js/metadataService.js](site/js/metadataService.js#L77-L113)
-- [site/js/tmdbClient.js](site/js/tmdbClient.js#L153-L165)
+- [apps/frontend/src/js/metadataService.js](apps/frontend/src/js/metadataService.js#L77-L113)
+- [apps/frontend/src/js/tmdbClient.js](apps/frontend/src/js/tmdbClient.js#L153-L165)
 
 **Problem:** Fehlende Type-Hints → schlechte IDE-Unterstützung
 
@@ -256,8 +256,8 @@ async function getMovieEnriched(id, options = {})
 
 ### 10. **Accessibility: Live-Regions** (Niedrig)
 **Dateien:**
-- [site/js/modalV3/header.js](site/js/modalV3/header.js#L186-L199)
-- [site/js/modalV3/cast.js](site/js/modalV3/cast.js#L242-L262)
+- [apps/frontend/src/js/modalV3/header.js](apps/frontend/src/js/modalV3/header.js#L186-L199)
+- [apps/frontend/src/js/modalV3/cast.js](apps/frontend/src/js/modalV3/cast.js#L242-L262)
 
 **Problem:** Dynamische TMDB-Updates nicht für Screen-Reader zugänglich
 
@@ -325,16 +325,16 @@ Cache Module: ✅ 5/5 Tests erfolgreich
 ## 📝 Geänderte Dateien
 
 ```
-site/js/modalV3/header.js            | Head-/Backdrop-Rendering & Sanitization
-site/js/modalV3/index.js             | Render-Flow, Token-Handling & Fehlerpfade
-site/js/modalV3/state.js             | Render-Tokens & Fokusverwaltung
-site/js/modalV3/seasons.js           | Staffel-Accordion inkl. Cleanup & AbortController
-site/js/modalV3/cast.js              | ARIA-Status & Listen-Rendering
-site/js/modalV3/castData.js          | Deduplication & Cast-Merging
-site/js/tmdbMapper.js                | ID-Validierung & Mapping-Anpassungen
-site/js/metadataService.js           | Null-Safety & Fallback-Objekte
-site/js/cacheStore.js                | clearExpired()/size() API
-site/js/tmdbClient.js                | Retry-/Credential-Handling
+apps/frontend/src/js/modalV3/header.js            | Head-/Backdrop-Rendering & Sanitization
+apps/frontend/src/js/modalV3/index.js             | Render-Flow, Token-Handling & Fehlerpfade
+apps/frontend/src/js/modalV3/state.js             | Render-Tokens & Fokusverwaltung
+apps/frontend/src/js/modalV3/seasons.js           | Staffel-Accordion inkl. Cleanup & AbortController
+apps/frontend/src/js/modalV3/cast.js              | ARIA-Status & Listen-Rendering
+apps/frontend/src/js/modalV3/castData.js          | Deduplication & Cast-Merging
+apps/frontend/src/js/tmdbMapper.js                | ID-Validierung & Mapping-Anpassungen
+apps/frontend/src/js/metadataService.js           | Null-Safety & Fallback-Objekte
+apps/frontend/src/js/cacheStore.js                | clearExpired()/size() API
+apps/frontend/src/js/tmdbClient.js                | Retry-/Credential-Handling
 IMPROVEMENTS_SUMMARY.md              | Dokumentation
 ```
 

@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://image.tmdb.org" crossorigin />
   <link rel="preconnect" href="https://api.themoviedb.org" crossorigin />
   <link rel="stylesheet" href="dist/app.css" />
-  <link rel="stylesheet" href="css/modal.v3.css" />
+  <link rel="stylesheet" href="../styles/modal.v3.css" />
   <meta name="color-scheme" content="dark light" />
 </head>
 <body class="detail-page">
@@ -25,8 +25,8 @@
     </div>
   </main>
   <script type="module">
-    import { renderMediaDetail, loadMovieDetailViewModel, loadSeriesDetailViewModel } from './js/modalV3/index.js';
-    import { syncDefaultMetadataService } from './js/metadataService.js';
+    import { renderMediaDetail, loadMovieDetailViewModel, loadSeriesDetailViewModel } from '../src/js/modalV3/index.js';
+    import { syncDefaultMetadataService } from '../src/js/metadataService.js';
 
     const LOG_PREFIX = '[details]';
     const DEFAULT_FEATURE_FLAGS = { tmdbEnrichment: false };

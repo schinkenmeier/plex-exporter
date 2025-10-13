@@ -4,9 +4,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const rootDir = path.resolve(__dirname, '..');
-const siteDir = path.join(rootDir, 'site');
-const distDir = path.join(siteDir, 'dist');
+const frontendDir = path.resolve(__dirname, '..');
+const distDir = path.join(frontendDir, 'dist');
 
 const watch = process.argv.includes('--watch');
 
@@ -30,7 +29,7 @@ const jsOptions = {
   minify: true,
   sourcemap: !watch,
   logLevel: 'info',
-  entryPoints: [path.join(siteDir, 'js', 'main.js')],
+  entryPoints: [path.join(frontendDir, 'src', 'main.js')],
   format: 'esm',
   target: ['es2019'],
   outfile: path.join(distDir, 'main.js'),
@@ -48,8 +47,8 @@ const cssOptions = {
   sourcemap: !watch,
   logLevel: 'info',
   entryPoints: [
-    path.join(siteDir, 'css', 'app.css'),
-    path.join(siteDir, 'css', 'hero.css')
+    path.join(frontendDir, 'styles', 'app.css'),
+    path.join(frontendDir, 'styles', 'hero.css')
   ],
   outdir: distDir,
   entryNames: '[name]',

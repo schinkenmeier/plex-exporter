@@ -8,7 +8,7 @@
 ## ✅ Durchgeführte Arbeiten
 
 ### 1. **cacheStore.test.js** (NEU - 22 Tests)
-**Dateipfad:** [`site/js/__tests__/cacheStore.test.js`](site/js/__tests__/cacheStore.test.js)
+**Dateipfad:** [`apps/frontend/src/js/__tests__/cacheStore.test.js`](apps/frontend/src/js/__tests__/cacheStore.test.js)
 
 **Abdeckung:**
 - ✅ Neue `clearExpired()` Methode (5 Tests)
@@ -34,7 +34,7 @@
 ---
 
 ### 2. **tmdbMapper.test.js** (NEU - 45+ Tests)
-**Dateipfad:** [`site/js/__tests__/tmdbMapper.test.js`](site/js/__tests__/tmdbMapper.test.js)
+**Dateipfad:** [`apps/frontend/src/js/__tests__/tmdbMapper.test.js`](apps/frontend/src/js/__tests__/tmdbMapper.test.js)
 
 **Abdeckung:**
 - ✅ **ID-Validierung** (`normaliseId`) - 7 Tests
@@ -249,7 +249,7 @@ describe('metadataService')
 
 ## 🛠️ Test-Utilities (Empfehlung)
 
-Erstellen Sie `site/js/__tests__/helpers/tmdb.js` für wiederverwendbare Mocks:
+Erstellen Sie `apps/frontend/src/js/__tests__/helpers/tmdb.js` für wiederverwendbare Mocks:
 
 ```javascript
 /**

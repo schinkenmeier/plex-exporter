@@ -1,4 +1,4 @@
-// Example TMDB configuration. Copy this file to `site/js/config.js` and adjust
+// Example TMDB configuration. Copy this file to `apps/frontend/src/js/config.js` and adjust
 // the values to match your local setup. Keep `config.js` out of version control
 // so credentials and personal defaults stay local to your machine.
 
