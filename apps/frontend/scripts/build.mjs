@@ -79,7 +79,7 @@ const jsOptions = {
   minify: true,
   sourcemap: !watch,
   logLevel: 'info',
-  entryPoints: [path.join(frontendDir, 'src', 'js', 'main.js')],
+  entryPoints: [path.join(frontendDir, 'src', 'main.js')],
   format: 'esm',
   target: ['es2019'],
   outfile: path.join(distDir, 'main.js'),

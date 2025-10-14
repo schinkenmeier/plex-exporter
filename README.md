@@ -7,7 +7,7 @@ Neu hinzugekommen ist ein Backend-Grundgerüst (`apps/backend/`), das perspektiv
 
 ## Funktionsumfang
 - Umschaltbare Film- und Serienansichten inklusive Deep-Linking über die URL-Fragmentnavigation (`#/movies`, `#/shows`).
-- Umfangreiche Filter mit Genres, Jahrspannenauswahl, Sortierung und optionalen TMDB-Postern (gesteuert in `apps/frontend/src/js/main.js` und `apps/frontend/src/js/filter.js`).
+- Umfangreiche Filter mit Genres, Jahrspannenauswahl, Sortierung und optionalen TMDB-Postern (gesteuert in `apps/frontend/src/main.js` und `apps/frontend/src/js/filter.js`).
 - Schnelle Datenladewege mit Fallbacks für eingebettete JSON-Blöcke oder ältere Exporte (`apps/frontend/src/js/data.js`).
 - Watchlist mit Export- und Importmöglichkeiten (lokal im Browser gespeichert, Logik in `apps/frontend/src/js/watchlist.js`).
 - Debug-Overlay zur Fehlersuche mit Quellinformationen, TMDB-Status und Filterzusammenfassung (`apps/frontend/src/js/debug.js`).
@@ -25,7 +25,7 @@ Neu hinzugekommen ist ein Backend-Grundgerüst (`apps/backend/`), das perspektiv
 | `apps/frontend/package.json` | npm-Skripte und Dev-Abhängigkeiten für das Frontend. |
 | `config/frontend.json` | Laufzeitkonfiguration (Startansicht, TMDB-Schalter, Sprache) für Deployments. |
 | `config/frontend.json.sample` | Beispielkonfiguration; das Frontend-Build kopiert sie nach `apps/frontend/public/config/frontend.json`. |
-| `apps/frontend/src/js/main.js` | Bootstrapping der Anwendung, Initialisierung von Filtern, Watchlist, Debug und Einstellungen. |
+| `apps/frontend/src/main.js` | Bootstrapping der Anwendung, Initialisierung von Filtern, Watchlist, Debug und Einstellungen. |
 | `apps/frontend/public/hero.policy.json` | Steuerdatei für die Hero-Rotation (Poolgrößen, Slots, Cache-Laufzeiten). |
 | `apps/frontend/src/js/hero/…` | Pipeline für Hero-Highlights (Policy, Pooling, Normalisierung, Storage, TMDB-Anbindung). |
 | `apps/frontend/src/js/data.js` | Datenlader mit Unterstützung für lokale Dateien (`data/exports/...`) und Legacy-Fallbacks. |
@@ -108,7 +108,7 @@ Das Repository ist als npm-Workspace organisiert. Relevante Befehle:
 ### TMDB-Laufzeitkonfiguration (`config/frontend.json`)
 - Kopiere `config/frontend.json.sample` nach `config/frontend.json`, um Defaults für Sprache, Region, API-Basis und TTL zu setzen. Das Frontend-Build spiegelt die Datei als `apps/frontend/public/config/frontend.json`, damit lokale Demos ohne Backend funktionieren. Halte die produktive Variante aus Repos fern, falls sie persönliche API Keys/Tokens enthält.
 - Ergänze `tmdbApiKey` (v3) oder trage einen v4 Bearer Token via Einstellungs-Overlay ein. Das UI kombiniert beide Quellen: Tokens landen im `localStorage.tmdbToken`, während API Keys ausschließlich aus `config/frontend.json` gelesen werden.
-- Aktiviere das Feature-Flag für die Modal-Anreicherung über `tmdbEnabled: true` in `config/frontend.json`. Beim Bootstrapping synchronisiert `apps/frontend/src/js/main.js` dieses Flag mit `window.FEATURES.tmdbEnrichment`, sodass du das Verhalten auch manuell via `window.FEATURES = { tmdbEnrichment: true }` im Browser vorladen kannst.
+- Aktiviere das Feature-Flag für die Modal-Anreicherung über `tmdbEnabled: true` in `config/frontend.json`. Beim Bootstrapping synchronisiert `apps/frontend/src/main.js` dieses Flag mit `window.FEATURES.tmdbEnrichment`, sodass du das Verhalten auch manuell via `window.FEATURES = { tmdbEnrichment: true }` im Browser vorladen kannst.
 
 ### Cache-Strategie & On-Demand-Laden
 - Die TMDB-Metadaten werden mehrstufig gecacht. Kern-Keys lauten `tmdb:movie:{id}:v1`, `tmdb:tv:{id}:v1` sowie `tmdb:tv:{id}:season:{number}:v1` und landen im gemeinsamen Cache-Store (`apps/frontend/src/js/cacheStore.js`).

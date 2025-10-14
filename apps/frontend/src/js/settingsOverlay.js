@@ -380,7 +380,7 @@ export function initSettingsOverlay(cfg){
     syncDefaultMetadataService(cfg, { preferStoredToken: false, token: raw });
     setTmdbStatus('Prüfe Token...', 'pending');
     try{
-      const svc = await import('./services/tmdb.js');
+      const svc = await import('../services/tmdb.js');
       const res = await svc.validateToken?.(raw);
       if(res && res.ok){
         setUseTmdbAvailability(true);
@@ -408,7 +408,7 @@ export function initSettingsOverlay(cfg){
     if(!raw){ setTmdbStatus('Bitte Token eingeben.', 'error'); return; }
     setTmdbStatus('Prüfe Token...', 'pending');
     try{
-      const svc = await import('./services/tmdb.js');
+      const svc = await import('../services/tmdb.js');
       const res = await svc.validateToken?.(raw);
       if(res && res.ok){
         if(res.as==='bearer') setTmdbStatus('Token gültig (v4 Bearer).', 'success');
@@ -429,7 +429,7 @@ export function initSettingsOverlay(cfg){
       }
     });
     // Also clear the TMDB service cache
-    import('./services/tmdb.js').then(m=>m.clearCache?.());
+    import('../services/tmdb.js').then(m=>m.clearCache?.());
     runHeroRegeneration('all', 'Highlights aktualisieren (TMDB-Cache geleert)…');
   });
   reduce && reduce.addEventListener('change', ()=>{
@@ -443,7 +443,7 @@ export function initSettingsOverlay(cfg){
     // Start TMDB hydration when enabling the toggle (if not already started)
     if(useTmdb.checked && !tmdbHydrationStarted){
       tmdbHydrationStarted = true;
-      import('./services/tmdb.js').then(m=>{
+      import('../services/tmdb.js').then(m=>{
         const s = getState();
         m.hydrateOptional?.(s.movies, s.shows, s.cfg);
       }).catch(err=>{ console.warn('[settingsOverlay] Failed to hydrate TMDB data:', err?.message || err); });
@@ -471,7 +471,7 @@ export function initSettingsOverlay(cfg){
       genreRoot.dataset.state = 'empty';
       genreRoot.dataset.count = '0';
     }
-    import('./filter.js').then(F=>{
+    import('../features/filter/index.js').then(F=>{
       const result = F.applyFilters();
       renderGrid(getState().view);
       notifyHeroRefresh(result);
