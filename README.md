@@ -7,11 +7,11 @@ Neu hinzugekommen ist ein Backend-Grundgerüst (`apps/backend/`), das perspektiv
 
 ## Funktionsumfang
 - Umschaltbare Film- und Serienansichten inklusive Deep-Linking über die URL-Fragmentnavigation (`#/movies`, `#/shows`).
-- Umfangreiche Filter mit Genres, Jahrspannenauswahl, Sortierung und optionalen TMDB-Postern (gesteuert in `apps/frontend/src/main.js` und `apps/frontend/src/js/filter.js`).
+- Umfangreiche Filter mit Genres, Jahrspannenauswahl, Sortierung und optionalen TMDB-Postern (gesteuert in `apps/frontend/src/main.js` und `apps/frontend/src/features/filter/index.js`).
 - Schnelle Datenladewege mit Fallbacks für eingebettete JSON-Blöcke oder ältere Exporte (`apps/frontend/src/js/data.js`).
-- Watchlist mit Export- und Importmöglichkeiten (lokal im Browser gespeichert, Logik in `apps/frontend/src/js/watchlist.js`).
+- Watchlist mit Export- und Importmöglichkeiten (lokal im Browser gespeichert, Logik in `apps/frontend/src/features/watchlist/index.js`).
 - Debug-Overlay zur Fehlersuche mit Quellinformationen, TMDB-Status und Filterzusammenfassung (`apps/frontend/src/js/debug.js`).
-- Cinematic-Detailansicht (Modal V3) für Filme & Serien mit Sticky-Poster, Schnellinfos, Tabs und optional reduzierter Bewegung (implementiert in `apps/frontend/src/js/modalV3/`).
+- Cinematic-Detailansicht (Modal V3) für Filme & Serien mit Sticky-Poster, Schnellinfos, Tabs und optional reduzierter Bewegung (implementiert in `apps/frontend/src/features/modal/modalV3/`).
 
 ## Projektstruktur
 | Pfad | Beschreibung |
@@ -27,9 +27,10 @@ Neu hinzugekommen ist ein Backend-Grundgerüst (`apps/backend/`), das perspektiv
 | `config/frontend.json.sample` | Beispielkonfiguration; das Frontend-Build kopiert sie nach `apps/frontend/public/config/frontend.json`. |
 | `apps/frontend/src/main.js` | Bootstrapping der Anwendung, Initialisierung von Filtern, Watchlist, Debug und Einstellungen. |
 | `apps/frontend/public/hero.policy.json` | Steuerdatei für die Hero-Rotation (Poolgrößen, Slots, Cache-Laufzeiten). |
-| `apps/frontend/src/js/hero/…` | Pipeline für Hero-Highlights (Policy, Pooling, Normalisierung, Storage, TMDB-Anbindung). |
+| `apps/frontend/src/features/hero/…` | Pipeline für Hero-Highlights (Policy, Pooling, Normalisierung, Storage, TMDB-Anbindung). |
 | `apps/frontend/src/js/data.js` | Datenlader mit Unterstützung für lokale Dateien (`data/exports/...`) und Legacy-Fallbacks. |
-| `apps/frontend/src/js/…` | Weitere Module für Filter, Grid, Modals, Services, Utils und Watchlist. |
+| `apps/frontend/src/features/…` | Funktionale Module für Filter, Grid, Hero, Modals und Watchlist. |
+| `apps/frontend/src/js/…` | Geteilte Utilities, Datenzugriff, Debug-Tools und Browser-spezifische Helfer. |
 | `data/exports/movies/` | Exportierte Filmdaten (`movies.json`) und optionale Posterordner (`Movie - … .images`). |
 | `data/exports/series/` | Serienindex (`series_index.json`), Detaildateien (`details/<ratingKey>.json`) und Posterordner (`Show - … .images`). |
 | `apps/frontend/public/assets/` | Statische Assets wie Favicons und Illustrationen. |
@@ -88,22 +89,22 @@ Das Repository ist als npm-Workspace organisiert. Relevante Befehle:
 ## Hero-Rotation & Policy-Datei
 - Die Hero-Fläche liest ihre Steuerung aus `apps/frontend/public/hero.policy.json`. Die Datei definiert Poolgrößen (`poolSizeMovies`, `poolSizeSeries`), Slot-Quoten (`slots.*`), Diversitäts-Gewichte, Rotations-Intervalle sowie bevorzugte Fallback-Quellen und Text-Limits.
 - `cache.ttlHours` und `cache.graceMinutes` steuern die Wiederverwendung bereits berechneter Hero-Pools. Innerhalb der TTL (Standard 24 Stunden) wird ein vorhandener Pool aus `localStorage`/`sessionStorage` erneut genutzt; die Grace-Periode erlaubt einen sanften Übergang, bevor ein Neuaufbau erzwungen wird.
-- `apps/frontend/src/js/hero/policy.js` lädt die Policy (mit Fallback auf eingebaute Defaults), validiert Werte und stellt abgeleitete Helfer (`getPoolSizes()`, `getCacheTtl()`, …) bereit. Die Datei akzeptiert Hot-Reload ohne Seitenneustart: Änderungen an `hero.policy.json` werden beim nächsten `initHeroPolicy()`-Aufruf übernommen.
-- `apps/frontend/src/js/hero/pool.js` baut – gesteuert von Policy und Feature-Flags – Bibliotheksübergreifende Kandidatenpools. Die Ergebnisse werden per `apps/frontend/src/js/hero/storage.js` sowohl im aktuellen Tab (`sessionStorage`) als auch Browser-weit (`localStorage`) abgelegt, inklusive Policy-Hash, Laufzeit-Metadaten und Fehlerhistorie.
-- `apps/frontend/src/js/hero/normalizer.js` aggregiert Plex-Daten, führt optionale TMDb-Anreicherungen durch und harmonisiert Titel, Taglines, Laufzeiten, Zertifizierungen und Backdrops. Dadurch kann das Hero-Modul (`apps/frontend/src/js/hero.js`) sofort renderbare Einträge verarbeiten.
-- Ein Feature-Flag steuert den gesamten Pipeline-Pfad: `apps/frontend/src/js/hero/pipeline.js` liest zuerst einen lokalen Override (`localStorage.feature.heroPipeline`), fällt dann auf `config/frontend.json` (`heroPipelineEnabled` oder `features.heroPipeline`) zurück und aktiviert die Pipeline standardmäßig, wenn kein Flag gesetzt ist. Wird die Pipeline deaktiviert, blendet das Frontend automatisch das statische Fallback-Hero ein.
+- `apps/frontend/src/features/hero/policy.js` lädt die Policy (mit Fallback auf eingebaute Defaults), validiert Werte und stellt abgeleitete Helfer (`getPoolSizes()`, `getCacheTtl()`, …) bereit. Die Datei akzeptiert Hot-Reload ohne Seitenneustart: Änderungen an `hero.policy.json` werden beim nächsten `initHeroPolicy()`-Aufruf übernommen.
+- `apps/frontend/src/features/hero/pool.js` baut – gesteuert von Policy und Feature-Flags – Bibliotheksübergreifende Kandidatenpools. Die Ergebnisse werden per `apps/frontend/src/features/hero/storage.js` sowohl im aktuellen Tab (`sessionStorage`) als auch Browser-weit (`localStorage`) abgelegt, inklusive Policy-Hash, Laufzeit-Metadaten und Fehlerhistorie.
+- `apps/frontend/src/features/hero/normalizer.js` aggregiert Plex-Daten, führt optionale TMDb-Anreicherungen durch und harmonisiert Titel, Taglines, Laufzeiten, Zertifizierungen und Backdrops. Dadurch kann das Hero-Modul (`apps/frontend/src/features/hero/index.js`) sofort renderbare Einträge verarbeiten.
+- Ein Feature-Flag steuert den gesamten Pipeline-Pfad: `apps/frontend/src/features/hero/pipeline.js` liest zuerst einen lokalen Override (`localStorage.feature.heroPipeline`), fällt dann auf `config/frontend.json` (`heroPipelineEnabled` oder `features.heroPipeline`) zurück und aktiviert die Pipeline standardmäßig, wenn kein Flag gesetzt ist. Wird die Pipeline deaktiviert, blendet das Frontend automatisch das statische Fallback-Hero ein.
 
 ## Einstellungs-Overlay & TMDB-Zugangsdaten
 - Der Einstellungsdialog verwaltet TMDb-Zugänge getrennt nach Laufzeit-Token (v4 Bearer) und dauerhaftem API Key (v3). Ein eingetragener Token wird ausschließlich im Browser (`localStorage.tmdbToken`) gespeichert und eignet sich für persönliche Setups oder temporäre Freigaben. Ein API Key gehört in `config/frontend.json` (`tmdbApiKey`), damit er beim Bauen/Verteilen des statischen Katalogs berücksichtigt wird.
 - Empfehlung: Teile das veröffentlichte Archiv ohne Browser-Token. Hinterlege falls nötig einen v3 API Key im Build (`config/frontend.json`) und ergänze persönliche v4 Token erst lokal im Overlay, sodass sie nicht in Repos oder Deployments landen.
 - Statusmeldungen im Overlay unterscheiden automatisch zwischen Token (`as: 'token'`) und API Key (`as: 'apikey'`). Wird ein v3 Key irrtümlich als Token eingegeben, informiert das UI und verweist auf die `config/frontend.json`.
-- Der Abschnitt „TMDb Cache“ enthält Schaltflächen zum Testen und Leeren: `Cache leeren` ruft `apps/frontend/src/js/services/tmdb.js#clearCache()` auf und entfernt heruntergeladene Metadaten aus `localStorage`. Bei Problemen mit veralteten Postern lohnt sich das Löschen des Caches sowie ein erneutes Speichern/Testen des Tokens.
+- Der Abschnitt „TMDb Cache“ enthält Schaltflächen zum Testen und Leeren: `Cache leeren` ruft `apps/frontend/src/services/tmdb.js#clearCache()` auf und entfernt heruntergeladene Metadaten aus `localStorage`. Bei Problemen mit veralteten Postern lohnt sich das Löschen des Caches sowie ein erneutes Speichern/Testen des Tokens.
 - Weitere Troubleshooting-Hinweise blendet das Overlay automatisch ein, etwa wenn `tmdbEnabled=false` gesetzt ist oder wenn ein gespeicherter Token ungültig wurde (der Token wird dann gelöscht und die Eingabe geleert).
 
 ## TMDB-Integration
 - Setze `tmdbEnabled` in `config/frontend.json` auf `true`, um TMDB-Aufrufe zu erlauben. Standardmäßig bleiben alle Anfragen deaktiviert.
 - Hinterlege einen TMDB v4 Bearer Token zur Laufzeit im Einstellungsdialog oder trage deinen API Key dauerhaft im Feld `tmdbApiKey` ein. Tokens werden im Browser in `localStorage` gespeichert.
-- Sobald TMDB aktiviert ist, lädt das Frontend Cover und Backdrops nach (`apps/frontend/src/js/services/tmdb.js`). Die Nutzung ist optional und kann jederzeit über den UI-Toggle abgeschaltet werden.
+- Sobald TMDB aktiviert ist, lädt das Frontend Cover und Backdrops nach (`apps/frontend/src/services/tmdb.js`). Die Nutzung ist optional und kann jederzeit über den UI-Toggle abgeschaltet werden.
 
 ### TMDB-Laufzeitkonfiguration (`config/frontend.json`)
 - Kopiere `config/frontend.json.sample` nach `config/frontend.json`, um Defaults für Sprache, Region, API-Basis und TTL zu setzen. Das Frontend-Build spiegelt die Datei als `apps/frontend/public/config/frontend.json`, damit lokale Demos ohne Backend funktionieren. Halte die produktive Variante aus Repos fern, falls sie persönliche API Keys/Tokens enthält.
@@ -111,9 +112,9 @@ Das Repository ist als npm-Workspace organisiert. Relevante Befehle:
 - Aktiviere das Feature-Flag für die Modal-Anreicherung über `tmdbEnabled: true` in `config/frontend.json`. Beim Bootstrapping synchronisiert `apps/frontend/src/main.js` dieses Flag mit `window.FEATURES.tmdbEnrichment`, sodass du das Verhalten auch manuell via `window.FEATURES = { tmdbEnrichment: true }` im Browser vorladen kannst.
 
 ### Cache-Strategie & On-Demand-Laden
-- Die TMDB-Metadaten werden mehrstufig gecacht. Kern-Keys lauten `tmdb:movie:{id}:v1`, `tmdb:tv:{id}:v1` sowie `tmdb:tv:{id}:season:{number}:v1` und landen im gemeinsamen Cache-Store (`apps/frontend/src/js/cacheStore.js`).
+- Die TMDB-Metadaten werden mehrstufig gecacht. Kern-Keys lauten `tmdb:movie:{id}:v1`, `tmdb:tv:{id}:v1` sowie `tmdb:tv:{id}:season:{number}:v1` und landen im gemeinsamen Cache-Store (`apps/frontend/src/shared/cacheStore.js`).
 - Die Standard-TTL beträgt 24 Stunden. Sie lässt sich in `config/frontend.json` über `ttlHours`/`tmdbTtlHours` überschreiben. Lädt eine Anreicherung erneut, wird der Cache-Eintrag aktualisiert und die TTL pro Key respektiert.
-- Modals und Staffeln bleiben schlank: `apps/frontend/src/js/modalV3/index.js` lädt TMDB-Details erst beim Öffnen einer Detailansicht und verwendet zunächst vorhandene Plex-Daten. Staffel- und Episodeninformationen (`apps/frontend/src/js/modalV3/seasons.js`) werden lazy nachgeladen, sobald Nutzer:innen eine Staffel aufklappen; erst dann ruft das Frontend `getSeasonEnriched` ab und mapt Stillbilder.
+- Modals und Staffeln bleiben schlank: `apps/frontend/src/features/modal/modalV3/index.js` lädt TMDB-Details erst beim Öffnen einer Detailansicht und verwendet zunächst vorhandene Plex-Daten. Staffel- und Episodeninformationen (`apps/frontend/src/features/modal/modalV3/seasons.js`) werden lazy nachgeladen, sobald Nutzer:innen eine Staffel aufklappen; erst dann ruft das Frontend `getSeasonEnriched` ab und mapt Stillbilder.
 
 ### Fallbacks, Fehlerbehandlung & Sprachindikator
 - Fehlt eine TMDB-ID, versucht der Dienst zunächst die IMDb-ID (`resolveByExternalId`) zu übersetzen oder fällt auf eine Suche nach Titel & Jahr zurück. Scheitern alle Schritte, wird die Session gecacht (`SESSION_CACHE`) und das UI bleibt bei den Plex-Daten.
