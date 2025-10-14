@@ -63,7 +63,7 @@ Dieser Leitfaden skizziert den Aufbau der Plex-Exporter-Weboberfläche, das neue
 3. Schreibt pro Serie eine Detaildatei nach `<out>/details/<ratingKey>.json` und baut einen sortierten Index (`series_index.json`) für das Frontend.
 4. Protokolliert mögliche Warnungen (z. B. sehr große Detail-Dateien) auf `stderr`.
 
-## Boot-Sequenz (`apps/frontend/src/js/main.js`)
+## Boot-Sequenz (`apps/frontend/src/main.js`)
 
 1. `boot()` setzt zunächst Motion-Preferences (`applyReduceMotionPref()`), zeigt Loader/Skeleton.
 2. Lädt `config/frontend.json` (`fetch`) und setzt `cfg` + Start-View im State. Parallel wird `HeroPolicy.initHeroPolicy()` gestartet; Validierungsfehler erscheinen im Debug-Overlay.
@@ -116,7 +116,7 @@ Dieser Leitfaden skizziert den Aufbau der Plex-Exporter-Weboberfläche, das neue
 
 Weiterführende Referenzen:
 
-* `apps/frontend/src/js/main.js`
+* `apps/frontend/src/main.js`
 * `apps/frontend/src/js/filter.js`
 * `apps/frontend/src/js/grid.js`
 * `apps/frontend/src/js/services/tmdb.js`
