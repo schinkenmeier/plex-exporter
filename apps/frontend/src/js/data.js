@@ -24,7 +24,7 @@ const globalExporterBag = (()=>{
 })();
 
 const DATA_ROOT = 'data/exports';
-const DATA_FALLBACK_ROOTS = ['../data/exports', './data/exports', '/data/exports'];
+const DATA_FALLBACK_ROOTS = ['../../data/exports', '../data/exports', './data/exports', '/data/exports'];
 const MOVIE_THUMB_BASE = `${DATA_ROOT}/movies/`;
 const SHOW_THUMB_BASE = `${DATA_ROOT}/series/`;
 
