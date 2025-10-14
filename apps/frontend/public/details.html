@@ -27,6 +27,7 @@
   <script type="module">
     import { renderMediaDetail, loadMovieDetailViewModel, loadSeriesDetailViewModel } from '../src/js/modalV3/index.js';
     import { syncDefaultMetadataService } from '../src/js/metadataService.js';
+    import { loadFrontendConfig, DEFAULT_FRONTEND_CONFIG } from '../src/core/configLoader.js';
 
     const LOG_PREFIX = '[details]';
     const DEFAULT_FEATURE_FLAGS = { tmdbEnrichment: false };
@@ -102,16 +103,11 @@
 
     async function loadConfig(){
       try {
-        const response = await fetch('config.json');
-        if(!response.ok){
-          throw new Error(`HTTP ${response.status}`);
-        }
-        const data = await response.json();
-        return data || {};
+        return await loadFrontendConfig();
       } catch (err) {
-        console.warn(`${LOG_PREFIX} Failed to load config.json, using defaults:`, err?.message || err);
+        console.warn(`${LOG_PREFIX} Failed to load frontend config, using defaults:`, err?.message || err);
         setStatus('Konfiguration konnte nicht geladen werden. Verwende Standardeinstellungen.', 'warning');
-        return { startView: 'movies', tmdbEnabled: false };
+        return { ...DEFAULT_FRONTEND_CONFIG };
       }
     }
 

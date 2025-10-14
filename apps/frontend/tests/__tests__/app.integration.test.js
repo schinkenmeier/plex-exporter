@@ -273,13 +273,13 @@ test('boot flow integrates view switch, filtering and modal opening', async () =
           })
         };
       }
-      if(typeof url === 'string' && url.endsWith('config.json')){
+      if(typeof url === 'string' && (url.endsWith('config/frontend.json') || url.endsWith('config.json'))){
         return { ok: true, json: async () => ({ startView: 'movies', tmdbEnabled: false }) };
       }
-      if(typeof url === 'string' && url.endsWith('data/movies/movies.json')){
+      if(typeof url === 'string' && (url.endsWith('data/exports/movies/movies.json') || url.endsWith('data/movies/movies.json'))){
         return { ok: true, json: async () => MOVIES_FIXTURE };
       }
-    if(typeof url === 'string' && url.endsWith('data/series/series_index.json')){
+    if(typeof url === 'string' && (url.endsWith('data/exports/series/series_index.json') || url.endsWith('data/series/series_index.json'))){
       return { ok: true, json: async () => SHOWS_FIXTURE };
     }
     throw new Error(`Unexpected fetch call for ${url}`);

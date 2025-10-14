@@ -1,11 +1,60 @@
 import { build, context } from 'esbuild';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, cp, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const frontendDir = path.resolve(__dirname, '..');
 const distDir = path.join(frontendDir, 'public', 'dist');
+const publicDir = path.join(frontendDir, 'public');
+const repoRoot = path.resolve(frontendDir, '..', '..');
+
+async function ensureConfigSample(){
+  const source = path.join(repoRoot, 'config', 'frontend.json.sample');
+  try{
+    const stats = await stat(source);
+    if(!stats.isFile()) return;
+  }catch{
+    return;
+  }
+
+  const targetDir = path.join(publicDir, 'config');
+  await mkdir(targetDir, { recursive: true });
+  const sampleTarget = path.join(targetDir, 'frontend.json.sample');
+  await cp(source, sampleTarget, { force: true });
+
+  const target = path.join(targetDir, 'frontend.json');
+  try{
+    await stat(target);
+  }catch{
+    await cp(source, target, { force: true });
+  }
+}
+
+async function copySampleExports(){
+  const exportsDir = path.join(repoRoot, 'data', 'exports');
+  try{
+    const stats = await stat(exportsDir);
+    if(!stats.isDirectory()) return;
+  }catch{
+    return;
+  }
+
+  const targetDir = path.join(publicDir, 'data', 'exports');
+  await mkdir(path.dirname(targetDir), { recursive: true });
+  await cp(exportsDir, targetDir, { recursive: true, force: true });
+}
+
+async function prepareStaticArtifacts(){
+  await Promise.all([
+    ensureConfigSample().catch(err => {
+      console.warn('[build] Konnte config/frontend.json.sample nicht kopieren:', err?.message || err);
+    }),
+    copySampleExports().catch(err => {
+      console.warn('[build] Konnte Beispieldaten nicht kopieren:', err?.message || err);
+    })
+  ]);
+}
 
 const watch = process.argv.includes('--watch');
 
@@ -23,6 +72,7 @@ const maxJsKb = getLimit('MAX_JS_KB', 250);
 const maxCssKb = getLimit('MAX_CSS_KB', 150);
 
 await mkdir(distDir, { recursive: true });
+await prepareStaticArtifacts();
 
 const jsOptions = {
   bundle: true,

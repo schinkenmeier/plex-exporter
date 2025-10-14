@@ -23,16 +23,33 @@ const globalExporterBag = (()=>{
   return null;
 })();
 
-const DATA_ROOT = '..';
-const MOVIE_THUMB_BASE = `${DATA_ROOT}/data/movies/`;
-const SHOW_THUMB_BASE = `${DATA_ROOT}/data/series/`;
+const DATA_ROOT = 'data/exports';
+const DATA_FALLBACK_ROOTS = ['../../data/exports', '../data/exports', './data/exports', '/data/exports'];
+const MOVIE_THUMB_BASE = `${DATA_ROOT}/movies/`;
+const SHOW_THUMB_BASE = `${DATA_ROOT}/series/`;
+
+function normalizeRelative(relative){
+  return String(relative || '').replace(/^\/+/, '').replace(/^data\//, '').replace(/^exports\//, '');
+}
+
 const dataPath = relative => {
-  const trimmed = String(relative || '').replace(/^\/+/, '').replace(/^data\//, '');
-  return `${DATA_ROOT}/data/${trimmed}`;
+  const trimmed = normalizeRelative(relative);
+  return `${DATA_ROOT}/${trimmed}`;
 };
 const legacyDataPath = relative => {
-  const trimmed = String(relative || '').replace(/^\/+/, '').replace(/^data\//, '');
+  const trimmed = normalizeRelative(relative);
   return `data/${trimmed}`;
+};
+const fallbackDataPaths = relative => {
+  const trimmed = normalizeRelative(relative);
+  const uniq = new Set();
+  for(const root of DATA_FALLBACK_ROOTS){
+    const normalizedRoot = String(root || '').replace(/\/+$/, '');
+    uniq.add(`${normalizedRoot}/${trimmed}`);
+  }
+  uniq.add(`data/${trimmed}`);
+  uniq.add(trimmed);
+  return Array.from(uniq);
 };
 const SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i;
 
@@ -115,7 +132,7 @@ function fromWindow(varName){
 }
 
 async function loadWithCompat(primaryUrl, opts){
-  // default: try site/data first
+  // default: try data/exports first
   let data = null;
   try{
     data = await fetchJson(primaryUrl);
@@ -193,8 +210,8 @@ export function prefixThumbValue(value, base){
     normalizedSegments.push(segment);
   }
   const normalizedPath = normalizedSegments.join('/');
-  if(/^\.\.\/data\//.test(normalizedPath) || normalizedPath.startsWith('data/')){
-    const withoutRoot = normalizedPath.replace(/^\.\.\//, '');
+  if(/^(?:\.\.\/)?data\//.test(normalizedPath)){
+    const withoutRoot = normalizedPath.replace(/^(?:\.\.\/)?data(?:\/exports)?\//, '');
     const encoded = encodePath(withoutRoot);
     return `${DATA_ROOT}/${encoded}`;
   }
@@ -268,6 +285,7 @@ export async function loadMovies(){
       exportKey: 'movies',
       globalVar: '__PLEX_MOVIES__',
       altUrls: [
+        ...fallbackDataPaths('movies/movies.json'),
         legacyDataPath('movies/movies.json'),
         dataPath('movies.json'),
         'movies/movies.json',
@@ -303,6 +321,7 @@ export async function loadShows(){
       exportKey: 'shows',
       globalVar: '__PLEX_SHOWS__',
       altUrls: [
+        ...fallbackDataPaths('series/series_index.json'),
         legacyDataPath('series/series_index.json'),
         dataPath('shows.json'),
         'series/series_index.json',

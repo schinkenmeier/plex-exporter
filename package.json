@@ -6,7 +6,7 @@
   "scripts": {
     "build": "node apps/frontend/scripts/build.mjs",
     "build:watch": "node apps/frontend/scripts/build.mjs --watch",
-    "split:series": "node tools/split_series.mjs site/data/series/series_full.json site/data/series",
+    "split:series": "node tools/split_series.mjs data/exports/series/series_full.json data/exports/series",
     "test": "node --test apps/frontend/tests/__tests__/*.test.js",
     "test:coverage": "node --test --experimental-test-coverage apps/frontend/tests/__tests__/*.test.js",
     "test:integration": "node --test apps/frontend/tests/__tests__/app.integration.test.js",
