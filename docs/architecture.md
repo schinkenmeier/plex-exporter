@@ -1,6 +1,13 @@
 # Architekturleitfaden
 
-Dieser Leitfaden skizziert den Aufbau der Plex-Exporter-Weboberfläche sowie wichtige Datenflüsse und Erweiterungspunkte.
+Dieser Leitfaden skizziert den Aufbau der Plex-Exporter-Weboberfläche, das neue Backend-Grundgerüst sowie wichtige Datenflüsse und Erweiterungspunkte.
+
+## Backend-Grundlagen (`apps/backend`)
+
+* **Server (`src/server.ts`):** Startet einen Express-Server, hängt gemeinsame Middleware ein und bindet Routen (zunächst `/health`). Der Standard-Port beträgt `4000`; `npm run start --workspace @plex-exporter/backend` bootet den Server ohne Watch-Mode, `npm run dev --workspace @plex-exporter/backend` aktiviert Hot-Reload über `tsx`.
+* **Health-Route (`src/routes/health.ts`):** Liefert einen minimalen JSON-Status (`{ status: 'ok', timestamp }`). Diese Route eignet sich für Container-Liveness-Checks sowie Monitoring.
+* **Tests (`tests/`):** Enthält Platzhalter für künftige Unit-, Integrations- oder Contract-Tests.
+* **Shared Models:** Das Backend greift perspektivisch auf Interfaces aus `packages/shared` zu, um API-Antworten und Exportdaten konsistent zum Frontend zu halten.
 
 ## State-Management (`apps/frontend/src/js/state.js`)
 
@@ -92,6 +99,20 @@ Dieser Leitfaden skizziert den Aufbau der Plex-Exporter-Weboberfläche sowie wic
 * **Services & Integrationen:** Neue Hintergrunddienste (z. B. weitere Metadaten-Anbieter) können als Module unter `apps/frontend/src/js/services/` abgelegt werden. `boot()` ist der passende Ort, sie nach Bedarf zu initialisieren.
 * **Watchlist-Änderungen:** `Watch.toggle`, `Watch.renderPanel` und `Watch.exportJson` liefern Einstiegspunkte für alternative Persistenz (z. B. Remote-API). Ein eigener Storage-Adapter ließe sich an den Aufrufen in `watchlist.js` austauschen.
 * **Debug/Diagnostics:** `apps/frontend/src/js/debug.js` kann erweitert werden, um zusätzliche State- oder Umgebungsinformationen bereitzustellen. `getSources()` dient dabei als Referenz für Datenpfade.
+
+## Shared Models (`packages/shared/src/index.ts`)
+
+* `MediaItem` und `MediaLibrary` beschreiben den strukturierten Plex-Export aus Sicht beider Anwendungen.
+* `TmdbCredentials` vereinheitlicht die Übergabe von TMDB-Zugangsdaten (API-Key oder v4-Token).
+* `HealthStatus` kann sowohl für interne Checks als auch externe Monitoring-Endpunkte verwendet werden.
+
+## Build- und Startbefehle
+
+* Frontend bauen: `npm run build --workspace @plex-exporter/frontend`
+* Frontend-Tests: `npm run test --workspace @plex-exporter/frontend`
+* Backend starten: `npm run start --workspace @plex-exporter/backend`
+* Backend-Entwicklung: `npm run dev --workspace @plex-exporter/backend`
+* Werkzeuge (z. B. Serien splitten): `npm run split:series --workspace @plex-exporter/tools`
 
 Weiterführende Referenzen:
 
