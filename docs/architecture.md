@@ -19,7 +19,7 @@ Dieser Leitfaden skizziert den Aufbau der Plex-Exporter-Weboberfläche sowie wic
 
 ## Datenpfade und Normalisierung (`apps/frontend/src/js/data.js`)
 
-* `loadMovies()` und `loadShows()` laden JSON-Daten bevorzugt aus `site/data/...` und fallen bei Bedarf auf eingebettete `<script>`-Tags, globale Variablen oder alternative Legacy-Pfade zurück. Jede erfolgreiche Quelle wird in `lastSources` protokolliert (`getSources()`).
+* `loadMovies()` und `loadShows()` laden JSON-Daten bevorzugt aus `data/exports/...` und fallen bei Bedarf auf eingebettete `<script>`-Tags, globale Variablen oder alternative Legacy-Pfade zurück. Jede erfolgreiche Quelle wird in `lastSources` protokolliert (`getSources()`).
 * `loadShowDetail(item)` lädt Detailseiten für Serien lazy nach und cached Ergebnisse per `cacheKeys()` in `showDetailCache`, damit Modals nicht erneut angefragt werden müssen.
 * `prefixMovieThumb()`, `prefixShowThumb()` und `prefixShowTree()` normalisieren Poster-Pfade (inkl. URL-Encoding), sodass das Grid konsistent auf `thumbFile` zugreifen kann.
 
@@ -59,7 +59,7 @@ Dieser Leitfaden skizziert den Aufbau der Plex-Exporter-Weboberfläche sowie wic
 ## Boot-Sequenz (`apps/frontend/src/js/main.js`)
 
 1. `boot()` setzt zunächst Motion-Preferences (`applyReduceMotionPref()`), zeigt Loader/Skeleton.
-2. Lädt `config.json` (`fetch`) und setzt `cfg` + Start-View im State. Parallel wird `HeroPolicy.initHeroPolicy()` gestartet; Validierungsfehler erscheinen im Debug-Overlay.
+2. Lädt `config/frontend.json` (`fetch`) und setzt `cfg` + Start-View im State. Parallel wird `HeroPolicy.initHeroPolicy()` gestartet; Validierungsfehler erscheinen im Debug-Overlay.
 3. Ruft sequentiell `Data.loadMovies()` und `Data.loadShows()` auf; Fortschrittstexte werden via `setLoader()` aktualisiert.
 4. Konfiguriert die Hero-Pipeline (`HeroPipeline.configure({ cfg, policy })`). Ist das Feature deaktiviert, wechselt das UI sofort in den Fallback-Modus; andernfalls prüft die Pipeline vorhandene Cache-Pools und feuert asynchrone Aufbauten an.
 5. Berechnet Facetten (`Filter.computeFacets()`), speichert Kataloge & Facetten im State und initialisiert Filter-UI (`Filter.renderFacets()`, `Filter.initFilters()`).

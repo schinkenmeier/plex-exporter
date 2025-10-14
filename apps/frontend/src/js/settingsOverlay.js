@@ -290,7 +290,7 @@ export function initSettingsOverlay(cfg){
           catch(err){ console.warn('[settingsOverlay] Failed to remove tmdbToken from storage:', err?.message || err); }
           if(tmdbInput) tmdbInput.value = '';
           setUseTmdbAvailability(true);
-          const m = 'Ungültiger Token entfernt. Verwende API Key aus config.json.';
+          const m = 'Ungültiger Token entfernt. Verwende API Key aus config/frontend.json.';
           tmdbStatus.textContent = m;
           tmdbStatus.dataset.kind = 'info';
           if(tmdbBadge){ tmdbBadge.dataset.kind = 'info'; tmdbBadge.title = m; }
@@ -330,7 +330,7 @@ export function initSettingsOverlay(cfg){
 
     // Check if TMDB is disabled in config
     if(cfg && cfg.tmdbEnabled === false){
-      setTmdbStatus('⚠️ TMDB ist in config.json deaktiviert (tmdbEnabled: false). Hero-Banner benötigt TMDB!', 'error');
+      setTmdbStatus('⚠️ TMDB ist in config/frontend.json deaktiviert (tmdbEnabled: false). Hero-Banner benötigt TMDB!', 'error');
     }else if(!token){
       setTmdbStatus('Kein Token hinterlegt. TMDB ist deaktiviert.', 'info');
     }
@@ -344,10 +344,10 @@ export function initSettingsOverlay(cfg){
           if(res && res.ok){
             setUseTmdbAvailability(true);
             if(res.as==='bearer') setTmdbStatus('Token gültig (v4 Bearer).', 'success');
-            else if(res.as==='apikey') setTmdbStatus('API Key gültig (v3). Tipp: dauerhaft in site/config.json unter "tmdbApiKey" eintragen.', 'success');
+            else if(res.as==='apikey') setTmdbStatus('API Key gültig (v3). Tipp: dauerhaft in config/frontend.json unter "tmdbApiKey" eintragen.', 'success');
           }else{
             setUseTmdbAvailability(false);
-            if(res?.hint==='looksV3') setTmdbStatus('Eingegebener Wert sieht wie ein v3 API Key aus. Bitte in config.json als "tmdbApiKey" eintragen oder v4 Bearer Token verwenden.', 'error');
+            if(res?.hint==='looksV3') setTmdbStatus('Eingegebener Wert sieht wie ein v3 API Key aus. Bitte in config/frontend.json als "tmdbApiKey" eintragen oder v4 Bearer Token verwenden.', 'error');
             else setTmdbStatus('Token ungültig oder keine Berechtigung (401).', 'error');
           }
         }catch(e){ setTmdbStatus('Prüfung fehlgeschlagen. Netzwerk/Browser-Konsole prüfen.', 'error'); }
@@ -385,17 +385,17 @@ export function initSettingsOverlay(cfg){
       if(res && res.ok){
         setUseTmdbAvailability(true);
         if(res.as==='bearer') setTmdbStatus('Token gültig (v4 Bearer).', 'success');
-        else if(res.as==='apikey') setTmdbStatus('API Key gültig (v3). Tipp: dauerhaft in site/config.json unter "tmdbApiKey" eintragen.', 'success');
+        else if(res.as==='apikey') setTmdbStatus('API Key gültig (v3). Tipp: dauerhaft in config/frontend.json unter "tmdbApiKey" eintragen.', 'success');
       }else{
         setUseTmdbAvailability(false);
-        if(res?.hint==='looksV3') setTmdbStatus('Eingegebener Wert sieht wie ein v3 API Key aus. Bitte in config.json als "tmdbApiKey" eintragen oder v4 Bearer Token verwenden.', 'error');
+        if(res?.hint==='looksV3') setTmdbStatus('Eingegebener Wert sieht wie ein v3 API Key aus. Bitte in config/frontend.json als "tmdbApiKey" eintragen oder v4 Bearer Token verwenden.', 'error');
         else setTmdbStatus('Token ungültig oder keine Berechtigung (401).', 'error');
       }
     }catch(e){ setTmdbStatus('Prüfung fehlgeschlagen. Netzwerk/Browser-Konsole prüfen.', 'error'); }
 
     // Check if tmdbEnabled is false and warn user
     if(cfg && cfg.tmdbEnabled === false && raw){
-      setTmdbStatus('⚠️ Token gespeichert, aber TMDB in config.json deaktiviert. Bitte "tmdbEnabled": true setzen!', 'error');
+      setTmdbStatus('⚠️ Token gespeichert, aber TMDB in config/frontend.json deaktiviert. Bitte "tmdbEnabled": true setzen!', 'error');
     }
 
     // Hero uses TMDB automatically when token is available - update pipeline state
@@ -412,9 +412,9 @@ export function initSettingsOverlay(cfg){
       const res = await svc.validateToken?.(raw);
       if(res && res.ok){
         if(res.as==='bearer') setTmdbStatus('Token gültig (v4 Bearer).', 'success');
-        else if(res.as==='apikey') setTmdbStatus('API Key gültig (v3). Tipp: dauerhaft in site/config.json unter "tmdbApiKey" eintragen.', 'success');
+        else if(res.as==='apikey') setTmdbStatus('API Key gültig (v3). Tipp: dauerhaft in config/frontend.json unter "tmdbApiKey" eintragen.', 'success');
       }else{
-        if(res?.hint==='looksV3') setTmdbStatus('Eingegebener Wert sieht wie ein v3 API Key aus. Dieser funktioniert hier nicht als Bearer. Bitte in config.json als "tmdbApiKey" eintragen oder v4 Bearer Token verwenden.', 'error');
+        if(res?.hint==='looksV3') setTmdbStatus('Eingegebener Wert sieht wie ein v3 API Key aus. Dieser funktioniert hier nicht als Bearer. Bitte in config/frontend.json als "tmdbApiKey" eintragen oder v4 Bearer Token verwenden.', 'error');
         else setTmdbStatus('Token ungültig oder keine Berechtigung (401).', 'error');
       }
     }catch(e){ setTmdbStatus('Prüfung fehlgeschlagen. Netzwerk/Browser-Konsole prüfen.', 'error'); }

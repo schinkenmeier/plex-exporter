@@ -6,8 +6,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Pfade
-const moviesDataDir = path.join(__dirname, '../site/data/movies');
-const seriesDataDir = path.join(__dirname, '../site/data/series');
+const moviesDataDir = path.join(__dirname, '../data/exports/movies');
+const seriesDataDir = path.join(__dirname, '../data/exports/series');
 const moviesJsonPath = path.join(moviesDataDir, 'movies.json');
 const seriesJsonPath = path.join(seriesDataDir, 'series_index.json');
 const seriesDetailsDir = path.join(seriesDataDir, 'details');

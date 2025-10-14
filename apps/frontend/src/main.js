@@ -15,6 +15,7 @@ import { initHeroAutoplay } from './features/hero/autoplay.js';
 import * as HeroPolicy from './features/hero/policy.js';
 import * as HeroPipeline from './features/hero/pipeline.js';
 import { syncDefaultMetadataService } from './core/metadataService.js';
+import { loadFrontendConfig, DEFAULT_FRONTEND_CONFIG } from './core/configLoader.js';
 console.log('[main] Imports loaded, Modal V3 functions:', { openMovieDetailV3, openSeriesDetailV3 });
 
 const DEFAULT_FEATURE_FLAGS = { tmdbEnrichment: false };
@@ -212,10 +213,10 @@ export async function boot(){
   setLoader('Initialisiere …', 8);
   showSkeleton(18);
 
-  const configPromise = fetch('config.json').then(r=>r.json()).catch((err)=>{
-    console.warn('[main] Failed to load config.json, using defaults:', err.message);
+  const configPromise = loadFrontendConfig().catch((err)=>{
+    console.warn('[main] Failed to load frontend config, using defaults:', err?.message || err);
     showError('Konfiguration konnte nicht geladen werden', 'Verwende Standardeinstellungen');
-    return { startView:'movies', tmdbEnabled:false };
+    return { ...DEFAULT_FRONTEND_CONFIG };
   });
   const policyPromise = HeroPolicy.initHeroPolicy().catch((err)=>{
     console.warn('[main] Failed to initialise hero policy:', err?.message || err);
