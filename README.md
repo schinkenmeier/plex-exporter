@@ -1,7 +1,9 @@
 # Plex Exporter – Offline Katalog
 
 ## Überblick
-Der Plex Exporter stellt einen statischen Katalog deiner Plex-Bibliotheken bereit. Die Weboberfläche lebt jetzt unter `apps/frontend/` – die auslieferbaren Dateien liegen in `apps/frontend/public/`, die Quellmodule in `apps/frontend/src/`. Starte den Katalog direkt über `apps/frontend/public/index.html`. Dadurch lässt sich der Katalog ohne Webserver per Doppelklick oder über ein einfaches Hosting mit rein statischen Dateien öffnen. Deine exportierten Plex-Daten verbleiben unverändert unter `data/exports/`.
+Der Plex Exporter stellt einen statischen Katalog deiner Plex-Bibliotheken bereit. Die Weboberfläche lebt unter `apps/frontend/` – die auslieferbaren Dateien liegen in `apps/frontend/public/`, die Quellmodule in `apps/frontend/src/`. Starte den Katalog direkt über `apps/frontend/public/index.html`. Dadurch lässt sich der Katalog ohne Webserver per Doppelklick oder über ein einfaches Hosting mit rein statischen Dateien öffnen. Deine exportierten Plex-Daten verbleiben unverändert unter `data/exports/`.
+
+Neu hinzugekommen ist ein Backend-Grundgerüst (`apps/backend/`), das perspektivisch API-Endpunkte für diese Exporte ausliefert. Gemeinsame Typdefinitionen werden unter `packages/shared/` vorgehalten und stehen sowohl Frontend als auch Backend zur Verfügung.
 
 ## Funktionsumfang
 - Umschaltbare Film- und Serienansichten inklusive Deep-Linking über die URL-Fragmentnavigation (`#/movies`, `#/shows`).
@@ -16,6 +18,11 @@ Der Plex Exporter stellt einen statischen Katalog deiner Plex-Bibliotheken berei
 | --- | --- |
 | `apps/frontend/public/index.html` | Einstiegspunkt und UI-Markup für den Katalog. |
 | `apps/frontend/public/details.html` | Standalone-Detailansicht, die dieselben Renderer wie das Modal nutzt. |
+| `apps/backend/src/server.ts` | Express-Server mit vorbereiteten Middleware-Hooks und Health-Routing. |
+| `apps/backend/src/routes/health.ts` | Health-Check-Endpunkt für Betriebs- und Monitoring-Checks. |
+| `apps/backend/tests/` | Platz für Unit- und Integrations-Tests des Backends. |
+| `apps/backend/README.md` | Einstieg in das neue Backend-Paket (Ziele, nächste Schritte). |
+| `apps/frontend/package.json` | npm-Skripte und Dev-Abhängigkeiten für das Frontend. |
 | `config/frontend.json` | Laufzeitkonfiguration (Startansicht, TMDB-Schalter, Sprache) für Deployments. |
 | `config/frontend.json.sample` | Beispielkonfiguration; das Frontend-Build kopiert sie nach `apps/frontend/public/config/frontend.json`. |
 | `apps/frontend/src/js/main.js` | Bootstrapping der Anwendung, Initialisierung von Filtern, Watchlist, Debug und Einstellungen. |
@@ -26,8 +33,23 @@ Der Plex Exporter stellt einen statischen Katalog deiner Plex-Bibliotheken berei
 | `data/exports/movies/` | Exportierte Filmdaten (`movies.json`) und optionale Posterordner (`Movie - … .images`). |
 | `data/exports/series/` | Serienindex (`series_index.json`), Detaildateien (`details/<ratingKey>.json`) und Posterordner (`Show - … .images`). |
 | `apps/frontend/public/assets/` | Statische Assets wie Favicons und Illustrationen. |
+| `packages/shared/src/index.ts` | Gemeinsame Interfaces (z. B. `MediaItem`, `TmdbCredentials`) für Frontend & Backend. |
+| `packages/shared/README.md` | Dokumentation der teilbaren Modelle. |
 | `tools/split_series.mjs` | Hilfsskript zum Aufteilen großer Serien-JSONs in Index- und Detaildateien. |
-| `package.json` | Projektmetadaten und npm-Skripte (z. B. `split:series`). |
+| `tools/package.json` | npm-Skripte für Werkzeuge (z. B. `split:series`, Bundle-Analyse). |
+| `package.json` | Workspace-Konfiguration mit Frontend-, Backend- und Shared-Paketen. |
+
+## Workspaces & Entwicklung
+Das Repository ist als npm-Workspace organisiert. Relevante Befehle:
+
+| Befehl | Beschreibung |
+| --- | --- |
+| `npm run build --workspace @plex-exporter/frontend` | Baut das Frontend mit `esbuild`. |
+| `npm run build:watch --workspace @plex-exporter/frontend` | Startet das inkrementelle Frontend-Build. |
+| `npm run test --workspace @plex-exporter/frontend` | Führt die Frontend-Test-Suite aus. |
+| `npm run start --workspace @plex-exporter/backend` | Startet den Backend-API-Server (Standard-Port `4000`). |
+| `npm run dev --workspace @plex-exporter/backend` | Beobachtet den Backend-Server mit automatischem Reload. |
+| `npm run split:series --workspace @plex-exporter/tools` | Teilt eine Serien-Exportdatei in Index- und Detaildateien auf. |
 
 ## Konfiguration (`config/frontend.json`)
 | Schlüssel | Typ | Beschreibung |
