@@ -1,0 +1,35 @@
+name: Backend Docker Build
+
+on:
+  push:
+    paths:
+      - 'apps/backend/**'
+      - 'tools/tautulli-mock/**'
+      - 'docker-compose.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/backend-docker.yml'
+  pull_request:
+    paths:
+      - 'apps/backend/**'
+      - 'tools/tautulli-mock/**'
+      - 'docker-compose.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/backend-docker.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate docker-compose configuration
+        run: docker compose config
+
+      - name: Build backend Docker image
+        run: docker build -f apps/backend/Dockerfile .
+
+      - name: Build docker-compose services
+        run: docker compose build backend tautulli-mock

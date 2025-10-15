@@ -1,3 +1,6 @@
 node_modules/
 npm-debug.log*
 .DS_Store
+data/sqlite/
+data/exports/*.sqlite
+apps/backend/dist/

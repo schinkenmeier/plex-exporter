@@ -1,0 +1,44 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    image: plex-exporter-backend:local
+    ports:
+      - "${BACKEND_PORT:-4000}:4000"
+    environment:
+      NODE_ENV: ${BACKEND_NODE_ENV:-production}
+      PORT: ${BACKEND_PORT:-4000}
+      SQLITE_PATH: ${BACKEND_SQLITE_PATH:-/app/storage/sqlite/plex-exporter.sqlite}
+      SMTP_HOST: ${BACKEND_SMTP_HOST:-mailhog}
+      SMTP_PORT: ${BACKEND_SMTP_PORT:-1025}
+      SMTP_USER: ${BACKEND_SMTP_USER:-}
+      SMTP_PASS: ${BACKEND_SMTP_PASS:-}
+      SMTP_FROM: ${BACKEND_SMTP_FROM:-plex-exporter@example.test}
+      SMTP_SECURE: ${BACKEND_SMTP_SECURE:-false}
+      TAUTULLI_URL: ${BACKEND_TAUTULLI_URL:-}
+      TAUTULLI_API_KEY: ${BACKEND_TAUTULLI_API_KEY:-}
+    volumes:
+      - ./data/exports:/app/data/exports
+      - ./data/sqlite:/app/storage/sqlite
+    depends_on:
+      mailhog:
+        condition: service_started
+    restart: unless-stopped
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    ports:
+      - "${MAILHOG_HTTP_PORT:-8025}:8025"
+    restart: unless-stopped
+
+  tautulli-mock:
+    build:
+      context: .
+      dockerfile: tools/tautulli-mock/Dockerfile
+    profiles: ["tautulli"]
+    environment:
+      PORT: 8181
+    ports:
+      - "${TAUTULLI_HTTP_PORT:-8181}:8181"
+    restart: unless-stopped
