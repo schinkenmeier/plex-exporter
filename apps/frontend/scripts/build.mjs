@@ -10,24 +10,39 @@ const publicDir = path.join(frontendDir, 'public');
 const repoRoot = path.resolve(frontendDir, '..', '..');
 
 async function ensureConfigSample(){
-  const source = path.join(repoRoot, 'config', 'frontend.json.sample');
-  try{
-    const stats = await stat(source);
-    if(!stats.isFile()) return;
-  }catch{
+  const sampleSource = path.join(repoRoot, 'config', 'frontend.json.sample');
+  const realSource = path.join(repoRoot, 'config', 'frontend.json');
+
+  const [sampleAvailable, realAvailable] = await Promise.all([
+    pathIsFile(sampleSource),
+    pathIsFile(realSource)
+  ]);
+
+  if(!sampleAvailable && !realAvailable){
     return;
   }
 
   const targetDir = path.join(publicDir, 'config');
   await mkdir(targetDir, { recursive: true });
-  const sampleTarget = path.join(targetDir, 'frontend.json.sample');
-  await cp(source, sampleTarget, { force: true });
+
+  if(sampleAvailable){
+    const sampleTarget = path.join(targetDir, 'frontend.json.sample');
+    await cp(sampleSource, sampleTarget, { force: true });
+  }
 
   const target = path.join(targetDir, 'frontend.json');
+  const sourceForTarget = realAvailable ? realSource : sampleSource;
+  if(sourceForTarget){
+    await cp(sourceForTarget, target, { force: true });
+  }
+}
+
+async function pathIsFile(filePath){
   try{
-    await stat(target);
+    const stats = await stat(filePath);
+    return stats.isFile();
   }catch{
-    await cp(source, target, { force: true });
+    return false;
   }
 }
 
