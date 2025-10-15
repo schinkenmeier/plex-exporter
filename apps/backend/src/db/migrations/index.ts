@@ -12,8 +12,8 @@ export const runMigrations = (db: SqliteDatabase) => {
     );
   `);
 
-  const selectStmt = db.prepare('SELECT id FROM schema_migrations');
-  const appliedMigrations = new Set<string>(selectStmt.all().map((row: { id: string }) => row.id));
+  const selectStmt = db.prepare<[], { id: string }>('SELECT id FROM schema_migrations');
+  const appliedMigrations = new Set<string>(selectStmt.all().map((row) => row.id));
 
   const insertStmt = db.prepare(
     "INSERT INTO schema_migrations (id, applied_at) VALUES (?, datetime('now'))",

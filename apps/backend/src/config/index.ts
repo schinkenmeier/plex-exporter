@@ -49,7 +49,7 @@ const optionalPort = z.preprocess(
     return value;
   },
   z
-    .number({ invalid_type_error: 'Expected number for port.' })
+    .number()
     .int()
     .min(1)
     .max(65535)

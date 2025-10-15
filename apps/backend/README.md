@@ -28,6 +28,33 @@ Die Anwendung liest ihre Konfiguration beim Start aus Umgebungsvariablen und val
 
 ² `TAUTULLI_URL` und `TAUTULLI_API_KEY` müssen gemeinsam gesetzt werden, sobald eine Integration aktiv ist.
 
+## Build & Betrieb mit Docker
+
+### Produktionsbuild erstellen
+- Lokaler Build ohne Container: `npm run build --workspace @plex-exporter/backend`
+- Der Build erzeugt ein transpiliertes Bundle unter `apps/backend/dist/` und nutzt das neue Skript `start:prod`, um den Server via `node dist/server.js` zu starten.
+
+### Lokale Umgebung mit Docker Compose
+- Docker-Image bauen: `docker compose build backend`
+- Backend & Mailhog starten: `docker compose up -d backend mailhog`
+- Optionales Tautulli-Mock aktivieren: `docker compose --profile tautulli up -d backend tautulli-mock`
+  (liefert eine kleine statische Antwort aus `tools/tautulli-mock/server.cjs`).
+- Logs einsehen: `docker compose logs -f backend`
+- Umgebung stoppen: `docker compose down`
+
+### Persistente Daten & Volumes
+- Exporte (`data/exports/`) werden als Bind-Mount in den Container eingebunden und bleiben auf dem Host erhalten.
+- Die SQLite-Datenbank liegt standardmäßig unter `data/sqlite/plex-exporter.sqlite`. Lege den Ordner einmalig an (`mkdir -p data/sqlite`), damit Docker Compose die Datei persistent ablegen kann.
+- In `.gitignore` sind sowohl `data/sqlite/` als auch `*.sqlite` im Export-Verzeichnis ausgeschlossen, damit keine Laufzeitdaten eingecheckt werden.
+
+### Migrationen & Initialisierung
+- Beim Containerstart wird `npm run start:prod` ausgeführt, wodurch der Server automatisch alle hinterlegten SQLite-Migrationen anwendet (`apps/backend/src/db/migrations/`). Manuelle Eingriffe sind nicht notwendig.
+
+### Environment-Variablen in Docker Compose
+- Die Compose-Datei akzeptiert über `.env` im Projektwurzelverzeichnis verschiedene Parameter (`BACKEND_PORT`, `BACKEND_INTERNAL_PORT`, `BACKEND_SQLITE_PATH`, `BACKEND_SMTP_*`, `BACKEND_TAUTULLI_*`).
+- Standardmäßig lauscht das Backend auf Port `4000`, SMTP-Aufrufe werden an den `mailhog`-Container weitergeleitet (`SMTP_HOST=mailhog`, `SMTP_PORT=1025`).
+- Für die Nutzung des Tautulli-Mocks setze `BACKEND_TAUTULLI_URL=http://tautulli-mock:8181/api/v2` sowie einen beliebigen `BACKEND_TAUTULLI_API_KEY`, damit die Validierung greift.
+
 ## Nächste Schritte
 - Anbindung an reale Exportdaten aus `data/exports/`.
 - Ergänzung weiterer Routen (z. B. `/movies`, `/shows`).

@@ -1,3 +1,4 @@
+import type Database from 'better-sqlite3';
 import type { SqliteDatabase } from '../db/connection.js';
 
 interface MediaRow {
@@ -72,12 +73,14 @@ const mapRowToRecord = (row: MediaRow): MediaRecord => ({
 const toNullable = <T>(value: T | null | undefined): T | null =>
   value === undefined ? null : value;
 
+type Statement<Params extends unknown[] = unknown[], Result = unknown> = Database.Statement<Params, Result>;
+
 export class MediaRepository {
-  private readonly insertStmt: ReturnType<SqliteDatabase['prepare']>;
-  private readonly getByIdStmt: ReturnType<SqliteDatabase['prepare']>;
-  private readonly getByPlexIdStmt: ReturnType<SqliteDatabase['prepare']>;
-  private readonly listStmt: ReturnType<SqliteDatabase['prepare']>;
-  private readonly deleteStmt: ReturnType<SqliteDatabase['prepare']>;
+  private readonly insertStmt: Statement;
+  private readonly getByIdStmt: Statement<[number], MediaRow>;
+  private readonly getByPlexIdStmt: Statement<[string], MediaRow>;
+  private readonly listStmt: Statement<[], MediaRow>;
+  private readonly deleteStmt: Statement<[number]>;
 
   constructor(private readonly db: SqliteDatabase) {
     this.insertStmt = this.db.prepare(`
@@ -94,12 +97,18 @@ export class MediaRepository {
       ) VALUES (@plexId, @title, @librarySectionId, @mediaType, @year, @guid, @summary, @plexAddedAt, @plexUpdatedAt)
     `);
 
-    this.getByIdStmt = this.db.prepare('SELECT * FROM media_metadata WHERE id = ?');
-    this.getByPlexIdStmt = this.db.prepare('SELECT * FROM media_metadata WHERE plex_id = ?');
-    this.listStmt = this.db.prepare(
+    this.getByIdStmt = this.db.prepare<[number], MediaRow>(
+      'SELECT * FROM media_metadata WHERE id = ?',
+    );
+    this.getByPlexIdStmt = this.db.prepare<[string], MediaRow>(
+      'SELECT * FROM media_metadata WHERE plex_id = ?',
+    );
+    this.listStmt = this.db.prepare<[], MediaRow>(
       'SELECT * FROM media_metadata ORDER BY title COLLATE NOCASE ASC',
     );
-    this.deleteStmt = this.db.prepare('DELETE FROM media_metadata WHERE id = ?');
+    this.deleteStmt = this.db.prepare<[number]>(
+      'DELETE FROM media_metadata WHERE id = ?',
+    );
   }
 
   create(input: MediaCreateInput): MediaRecord {
@@ -125,17 +134,17 @@ export class MediaRepository {
   }
 
   getById(id: number): MediaRecord | null {
-    const row = this.getByIdStmt.get(id) as MediaRow | undefined;
+    const row = this.getByIdStmt.get(id);
     return row ? mapRowToRecord(row) : null;
   }
 
   getByPlexId(plexId: string): MediaRecord | null {
-    const row = this.getByPlexIdStmt.get(plexId) as MediaRow | undefined;
+    const row = this.getByPlexIdStmt.get(plexId);
     return row ? mapRowToRecord(row) : null;
   }
 
   listAll(): MediaRecord[] {
-    const rows = this.listStmt.all() as MediaRow[];
+    const rows = this.listStmt.all();
     return rows.map((row) => mapRowToRecord(row));
   }
 
