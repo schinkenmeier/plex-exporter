@@ -1,8 +1,9 @@
-import { Router, type Request, type Response } from 'express';
+import { Router, type NextFunction, type Request, type Response } from 'express';
 import { createSqliteConnection } from '../db/connection.js';
 import MediaRepository from '../repositories/mediaRepository.js';
 import ThumbnailRepository from '../repositories/thumbnailRepository.js';
 import path from 'node:path';
+import { HttpError } from '../middleware/errorHandler.js';
 
 export const createV1Router = (): Router => {
   const router = Router();
@@ -51,7 +52,7 @@ export const createV1Router = (): Router => {
    * GET /api/v1/movies
    * List all movies from database
    */
-  router.get('/movies', (req: Request, res: Response) => {
+  router.get('/movies', (req: Request, res: Response, next: NextFunction) => {
     try {
       const allMedia = mediaRepo.listAll();
       const movies = allMedia.filter(m => m.mediaType === 'movie');
@@ -72,8 +73,7 @@ export const createV1Router = (): Router => {
       res.setHeader('Cache-Control', 'public, max-age=300'); // 5 min cache
       res.json(response);
     } catch (error) {
-      console.error('[v1] Error fetching movies:', error);
-      res.status(500).json({ error: 'Failed to fetch movies' });
+      next(new HttpError(500, 'Failed to fetch movies', { cause: error instanceof Error ? error : undefined }));
     }
   });
 
@@ -81,14 +81,13 @@ export const createV1Router = (): Router => {
    * GET /api/v1/movies/:id
    * Get movie details by plexId (includes extended metadata)
    */
-  router.get('/movies/:id', (req: Request, res: Response) => {
+  router.get('/movies/:id', (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
       const movie = mediaRepo.getByPlexId(id);
 
       if (!movie || movie.mediaType !== 'movie') {
-        res.status(404).json({ error: 'Movie not found' });
-        return;
+        return next(new HttpError(404, 'Movie not found'));
       }
 
       const thumbnails = thumbRepo.listByMediaId(movie.id);
@@ -100,8 +99,11 @@ export const createV1Router = (): Router => {
       res.setHeader('Cache-Control', 'public, max-age=600'); // 10 min cache
       res.json(response);
     } catch (error) {
-      console.error('[v1] Error fetching movie details:', error);
-      res.status(500).json({ error: 'Failed to fetch movie details' });
+      next(
+        new HttpError(500, 'Failed to fetch movie details', {
+          cause: error instanceof Error ? error : undefined,
+        }),
+      );
     }
   });
 
@@ -109,7 +111,7 @@ export const createV1Router = (): Router => {
    * GET /api/v1/series
    * List all series from database
    */
-  router.get('/series', (req: Request, res: Response) => {
+  router.get('/series', (req: Request, res: Response, next: NextFunction) => {
     try {
       const allMedia = mediaRepo.listAll();
       const series = allMedia.filter(m => m.mediaType === 'tv');
@@ -130,8 +132,7 @@ export const createV1Router = (): Router => {
       res.setHeader('Cache-Control', 'public, max-age=300'); // 5 min cache
       res.json(response);
     } catch (error) {
-      console.error('[v1] Error fetching series:', error);
-      res.status(500).json({ error: 'Failed to fetch series' });
+      next(new HttpError(500, 'Failed to fetch series', { cause: error instanceof Error ? error : undefined }));
     }
   });
 
@@ -139,14 +140,13 @@ export const createV1Router = (): Router => {
    * GET /api/v1/series/:id
    * Get series details by plexId (includes extended metadata)
    */
-  router.get('/series/:id', (req: Request, res: Response) => {
+  router.get('/series/:id', (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
       const series = mediaRepo.getByPlexId(id);
 
       if (!series || series.mediaType !== 'tv') {
-        res.status(404).json({ error: 'Series not found' });
-        return;
+        return next(new HttpError(404, 'Series not found'));
       }
 
       const thumbnails = thumbRepo.listByMediaId(series.id);
@@ -158,8 +158,11 @@ export const createV1Router = (): Router => {
       res.setHeader('Cache-Control', 'public, max-age=600'); // 10 min cache
       res.json(response);
     } catch (error) {
-      console.error('[v1] Error fetching series details:', error);
-      res.status(500).json({ error: 'Failed to fetch series details' });
+      next(
+        new HttpError(500, 'Failed to fetch series details', {
+          cause: error instanceof Error ? error : undefined,
+        }),
+      );
     }
   });
 
@@ -167,7 +170,7 @@ export const createV1Router = (): Router => {
    * GET /api/v1/stats
    * Get database statistics
    */
-  router.get('/stats', (req: Request, res: Response) => {
+  router.get('/stats', (req: Request, res: Response, next: NextFunction) => {
     try {
       const allMedia = mediaRepo.listAll();
       const movies = allMedia.filter(m => m.mediaType === 'movie');
@@ -182,8 +185,7 @@ export const createV1Router = (): Router => {
       res.setHeader('Cache-Control', 'public, max-age=60'); // 1 min cache
       res.json(response);
     } catch (error) {
-      console.error('[v1] Error fetching stats:', error);
-      res.status(500).json({ error: 'Failed to fetch stats' });
+      next(new HttpError(500, 'Failed to fetch stats', { cause: error instanceof Error ? error : undefined }));
     }
   });
 
@@ -192,7 +194,7 @@ export const createV1Router = (): Router => {
    * Filter media with query parameters
    * Query params: type, year, yearFrom, yearTo, search, limit, offset, sortBy, sortOrder
    */
-  router.get('/filter', (req: Request, res: Response) => {
+  router.get('/filter', (req: Request, res: Response, next: NextFunction) => {
     try {
       const {
         type,
@@ -254,8 +256,7 @@ export const createV1Router = (): Router => {
       res.setHeader('Cache-Control', 'public, max-age=300'); // 5 min cache
       res.json(response);
     } catch (error) {
-      console.error('[v1] Error filtering media:', error);
-      res.status(500).json({ error: 'Failed to filter media' });
+      next(new HttpError(500, 'Failed to filter media', { cause: error instanceof Error ? error : undefined }));
     }
   });
 
@@ -264,13 +265,12 @@ export const createV1Router = (): Router => {
    * Search media by title or summary
    * Query param: q (search query), type (optional), limit (optional)
    */
-  router.get('/search', (req: Request, res: Response) => {
+  router.get('/search', (req: Request, res: Response, next: NextFunction) => {
     try {
       const { q, type, limit = '20' } = req.query;
 
       if (!q || typeof q !== 'string') {
-        res.status(400).json({ error: 'Search query parameter "q" is required' });
-        return;
+        return next(new HttpError(400, 'Search query parameter "q" is required'));
       }
 
       const filterOptions: any = {
@@ -294,8 +294,7 @@ export const createV1Router = (): Router => {
       res.setHeader('Cache-Control', 'public, max-age=180'); // 3 min cache
       res.json({ query: q, total, results });
     } catch (error) {
-      console.error('[v1] Error searching media:', error);
-      res.status(500).json({ error: 'Failed to search media' });
+      next(new HttpError(500, 'Failed to search media', { cause: error instanceof Error ? error : undefined }));
     }
   });
 
@@ -304,7 +303,7 @@ export const createV1Router = (): Router => {
    * Get recently added media
    * Query params: limit (default: 20), type (optional: 'movie' or 'tv')
    */
-  router.get('/recent', (req: Request, res: Response) => {
+  router.get('/recent', (req: Request, res: Response, next: NextFunction) => {
     try {
       const { limit = '20', type } = req.query;
 
@@ -319,8 +318,7 @@ export const createV1Router = (): Router => {
       res.setHeader('Cache-Control', 'public, max-age=60'); // 1 min cache
       res.json({ items: results, count: results.length });
     } catch (error) {
-      console.error('[v1] Error fetching recent media:', error);
-      res.status(500).json({ error: 'Failed to fetch recent media' });
+      next(new HttpError(500, 'Failed to fetch recent media', { cause: error instanceof Error ? error : undefined }));
     }
   });
 

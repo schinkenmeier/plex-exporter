@@ -18,6 +18,8 @@ import MediaRepository from './repositories/mediaRepository.js';
 import ThumbnailRepository from './repositories/thumbnailRepository.js';
 import TautulliSnapshotRepository from './repositories/tautulliSnapshotRepository.js';
 import { createMediaRouter } from './routes/media.js';
+import { errorHandler, requestLogger } from './middleware/errorHandler.js';
+import logger from './services/logger.js';
 
 export interface ServerDependencies {
   smtpService?: MailSender | null;
@@ -101,6 +103,10 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
   );
   app.use('/media', createMediaRouter({ mediaRepository, thumbnailRepository }));
 
+  // Logging & error handling
+  app.use(requestLogger);
+  app.use(errorHandler);
+
   return app;
 };
 
@@ -108,7 +114,10 @@ const appConfig = config;
 const app = createServer(appConfig);
 
 app.listen(appConfig.server.port, () => {
-  console.log(`Plex Exporter backend listening on http://localhost:${appConfig.server.port}`);
+  logger.info('Plex Exporter backend listening', {
+    url: `http://localhost:${appConfig.server.port}`,
+    port: appConfig.server.port,
+  });
 });
 
 export default app;

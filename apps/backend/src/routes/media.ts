@@ -1,9 +1,10 @@
-import { Router } from 'express';
+import { Router, type NextFunction, type Request, type Response } from 'express';
 import { z } from 'zod';
 
 import type MediaRepository from '../repositories/mediaRepository.js';
 import type { MediaCreateInput, MediaRecord, MediaUpdateInput } from '../repositories/mediaRepository.js';
 import type ThumbnailRepository from '../repositories/thumbnailRepository.js';
+import { HttpError } from '../middleware/errorHandler.js';
 
 export interface MediaRouterOptions {
   mediaRepository: MediaRepository;
@@ -86,7 +87,7 @@ const toCreateInput = (data: z.infer<typeof createMediaSchema>): MediaCreateInpu
 export const createMediaRouter = ({ mediaRepository, thumbnailRepository }: MediaRouterOptions) => {
   const router = Router();
 
-  router.get('/', (_req, res) => {
+  router.get('/', (_req: Request, res: Response) => {
     const mediaRecords = mediaRepository.listAll();
     const items = mediaRecords.map((record) => {
       const thumbnails = thumbnailRepository.listByMediaId(record.id);
@@ -99,19 +100,17 @@ export const createMediaRouter = ({ mediaRepository, thumbnailRepository }: Medi
     res.json({ media: items });
   });
 
-  router.get('/:id', (req, res) => {
+  router.get('/:id', (req: Request, res: Response, next: NextFunction) => {
     const id = parseId(req.params.id);
 
     if (!id) {
-      res.status(400).json({ error: 'Invalid media identifier.' });
-      return;
+      return next(new HttpError(400, 'Invalid media identifier.'));
     }
 
     const record = mediaRepository.getById(id);
 
     if (!record) {
-      res.status(404).json({ error: 'Media not found.' });
-      return;
+      return next(new HttpError(404, 'Media not found.'));
     }
 
     const thumbnails = thumbnailRepository.listByMediaId(record.id);
@@ -124,12 +123,11 @@ export const createMediaRouter = ({ mediaRepository, thumbnailRepository }: Medi
     );
   });
 
-  router.post('/', (req, res) => {
+  router.post('/', (req: Request, res: Response, next: NextFunction) => {
     const parsed = createMediaSchema.safeParse(req.body);
 
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.flatten() });
-      return;
+      return next(new HttpError(400, 'Validation failed', { details: parsed.error.flatten() }));
     }
 
     const { thumbnails = [], ...mediaData } = parsed.data;
@@ -148,35 +146,31 @@ export const createMediaRouter = ({ mediaRepository, thumbnailRepository }: Medi
       );
     } catch (error) {
       if (error instanceof Error && error.message.includes('UNIQUE')) {
-        res.status(409).json({ error: 'Media with this Plex ID already exists.' });
-        return;
+        return next(new HttpError(409, 'Media with this Plex ID already exists.'));
       }
 
-      throw error;
+      next(error);
     }
   });
 
-  router.put('/:id', (req, res) => {
+  router.put('/:id', (req: Request, res: Response, next: NextFunction) => {
     const id = parseId(req.params.id);
 
     if (!id) {
-      res.status(400).json({ error: 'Invalid media identifier.' });
-      return;
+      return next(new HttpError(400, 'Invalid media identifier.'));
     }
 
     const parsed = updateMediaSchema.safeParse(req.body ?? {});
 
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.flatten() });
-      return;
+      return next(new HttpError(400, 'Validation failed', { details: parsed.error.flatten() }));
     }
 
     const { thumbnails, ...updateData } = parsed.data;
     const updated = mediaRepository.update(id, toUpdateInput(updateData));
 
     if (!updated) {
-      res.status(404).json({ error: 'Media not found.' });
-      return;
+      return next(new HttpError(404, 'Media not found.'));
     }
 
     const storedThumbnails = Array.isArray(thumbnails)
@@ -191,19 +185,17 @@ export const createMediaRouter = ({ mediaRepository, thumbnailRepository }: Medi
     );
   });
 
-  router.delete('/:id', (req, res) => {
+  router.delete('/:id', (req: Request, res: Response, next: NextFunction) => {
     const id = parseId(req.params.id);
 
     if (!id) {
-      res.status(400).json({ error: 'Invalid media identifier.' });
-      return;
+      return next(new HttpError(400, 'Invalid media identifier.'));
     }
 
     const deleted = mediaRepository.delete(id);
 
     if (!deleted) {
-      res.status(404).json({ error: 'Media not found.' });
-      return;
+      return next(new HttpError(404, 'Media not found.'));
     }
 
     res.status(204).send();

@@ -1,7 +1,9 @@
-import { Router } from 'express';
+import { Router, type NextFunction, type Request, type Response } from 'express';
 
 import type TautulliSnapshotRepository from '../repositories/tautulliSnapshotRepository.js';
 import type { TautulliClient } from '../services/tautulliService.js';
+import { HttpError } from '../middleware/errorHandler.js';
+import logger from '../services/logger.js';
 
 export interface LibrariesRouterOptions {
   tautulliService: TautulliClient | null;
@@ -14,15 +16,13 @@ export const createLibrariesRouter = ({
 }: LibrariesRouterOptions) => {
   const router = Router();
 
-  router.get('/', async (_req, res) => {
+  router.get('/', async (_req: Request, res: Response, next: NextFunction) => {
     if (!tautulliService) {
-      res.status(503).json({ error: 'Tautulli service is not configured.' });
-      return;
+      return next(new HttpError(503, 'Tautulli service is not configured.'));
     }
 
     if (!snapshotRepository) {
-      res.status(500).json({ error: 'Snapshot repository is not configured.' });
-      return;
+      return next(new HttpError(500, 'Snapshot repository is not configured.'));
     }
 
     try {
@@ -31,15 +31,18 @@ export const createLibrariesRouter = ({
       try {
         snapshotRepository.recordSnapshot({ libraries });
       } catch (snapshotError) {
-        // eslint-disable-next-line no-console
-        console.error('Failed to persist Tautulli snapshot.', snapshotError);
+        logger.warn('Failed to persist Tautulli snapshot.', {
+          error: snapshotError instanceof Error
+            ? { name: snapshotError.name, message: snapshotError.message }
+            : { value: snapshotError },
+        });
       }
 
       res.json({ libraries });
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Failed to fetch libraries from Tautulli.';
-      res.status(502).json({ error: message });
+      next(new HttpError(502, message));
     }
   });
 
