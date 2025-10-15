@@ -5,10 +5,10 @@ services:
       dockerfile: apps/backend/Dockerfile
     image: plex-exporter-backend:local
     ports:
-      - "${BACKEND_PORT:-4000}:4000"
+      - "${BACKEND_PORT:-4000}:${BACKEND_INTERNAL_PORT:-4000}"
     environment:
       NODE_ENV: ${BACKEND_NODE_ENV:-production}
-      PORT: ${BACKEND_PORT:-4000}
+      PORT: ${BACKEND_INTERNAL_PORT:-4000}
       SQLITE_PATH: ${BACKEND_SQLITE_PATH:-/app/storage/sqlite/plex-exporter.sqlite}
       SMTP_HOST: ${BACKEND_SMTP_HOST:-mailhog}
       SMTP_PORT: ${BACKEND_SMTP_PORT:-1025}

@@ -51,7 +51,7 @@ Die Anwendung liest ihre Konfiguration beim Start aus Umgebungsvariablen und val
 - Beim Containerstart wird `npm run start:prod` ausgeführt, wodurch der Server automatisch alle hinterlegten SQLite-Migrationen anwendet (`apps/backend/src/db/migrations/`). Manuelle Eingriffe sind nicht notwendig.
 
 ### Environment-Variablen in Docker Compose
-- Die Compose-Datei akzeptiert über `.env` im Projektwurzelverzeichnis verschiedene Parameter (`BACKEND_PORT`, `BACKEND_SQLITE_PATH`, `BACKEND_SMTP_*`, `BACKEND_TAUTULLI_*`).
+- Die Compose-Datei akzeptiert über `.env` im Projektwurzelverzeichnis verschiedene Parameter (`BACKEND_PORT`, `BACKEND_INTERNAL_PORT`, `BACKEND_SQLITE_PATH`, `BACKEND_SMTP_*`, `BACKEND_TAUTULLI_*`).
 - Standardmäßig lauscht das Backend auf Port `4000`, SMTP-Aufrufe werden an den `mailhog`-Container weitergeleitet (`SMTP_HOST=mailhog`, `SMTP_PORT=1025`).
 - Für die Nutzung des Tautulli-Mocks setze `BACKEND_TAUTULLI_URL=http://tautulli-mock:8181/api/v2` sowie einen beliebigen `BACKEND_TAUTULLI_API_KEY`, damit die Validierung greift.
 
