@@ -1,0 +1,6118 @@
+[
+  {
+    "addedAt": "2023-10-28T07:03:54",
+    "audienceRating": 5.9,
+    "audienceRatingImage": "imdb://image.rating",
+    "contentRating": "de/16",
+    "duration": 6454865,
+    "durationHuman": "1 hr 48 mins",
+    "editionTitle": null,
+    "guid": "plex://movie/5d7768265af944001f1f6977",
+    "hasCreditsMarker": true,
+    "originalTitle": null,
+    "originallyAvailableAt": "2003-06-05",
+    "rating": null,
+    "ratingImage": null,
+    "ratingKey": 22256,
+    "studio": "Ardustry Entertainment",
+    "summary": "Dem Cop Brian O'Conner werden nach einem Einsatz in der illegalen Rennszene wegen nicht ganz legaler Ermittlungsmethoden Führerschein und Dienstmarke entzogen. Nun erhält der auf Eis gelegte Gesetzeshüter eine Chance zur Bewährung: Gemeinsam mit der Undercover-Agentin Monica soll er Licht ins Dunkel diffuser Transaktionen eines verdächtigen Geschäftsmannes in Miami bringen. Wie es sich so fügt, ist jener auch ein begeisterter Anhänger destruktiver Sportwagenevents.",
+    "tagline": "Wie schnell möchtest Du es?",
+    "thumbFile": "Movie - 2 Fast 2 Furious [22256].images/2 Fast 2 Furious [22256].thumb.jpg",
+    "title": "2 Fast 2 Furious",
+    "titleSort": "2 Fast 2 Furious",
+    "type": "movie",
+    "userRating": null,
+    "year": 2003,
+    "collections": [
+      {
+        "tag": "The Fast and the Furious Filmreihe"
+      }
+    ],
+    "countries": [
+      {
+        "tag": "Germany"
+      },
+      {
+        "tag": "United States of America"
+      }
+    ],
+    "directors": [
+      {
+        "tag": "John Singleton"
+      }
+    ],
+    "fields": [
+      {
+        "locked": null,
+        "name": null
+      }
+    ],
+    "genres": [
+      {
+        "tag": "Action"
+      },
+      {
+        "tag": "Krimi"
+      },
+      {
+        "tag": "Thriller"
+      }
+    ],
+    "guids": [
+      {
+        "id": "imdb://tt0322259"
+      },
+      {
+        "id": "tmdb://584"
+      },
+      {
+        "id": "tvdb://20800"
+      }
+    ],
+    "labels": [
+      {
+        "tag": null
+      }
+    ],
+    "markers": [
+      {
+        "end": 6087378,
+        "final": null,
+        "first": true,
+        "start": 6039378,
+        "type": "credits"
+      },
+      {
+        "end": 6454865,
+        "final": true,
+        "first": false,
+        "start": 6105378,
+        "type": "credits"
+      }
+    ],
+    "producers": [
+      {
+        "tag": "Neal H. Moritz"
+      }
+    ],
+    "roles": [
+      {
+        "role": "Brian O'Conner",
+        "tag": "Paul Walker"
+      },
+      {
+        "role": "Roman Pearce",
+        "tag": "Tyrese Gibson"
+      },
+      {
+        "role": "Monica Fuentes",
+        "tag": "Eva Mendes"
+      },
+      {
+        "role": "Carter Verone",
+        "tag": "Cole Hauser"
+      },
+      {
+        "role": "Tej Parker",
+        "tag": "Ludacris"
+      },
+      {
+        "role": "Agent Markham",
+        "tag": "James Remar"
+      },
+      {
+        "role": "Agent Bilkins",
+        "tag": "Thom Barry"
+      },
+      {
+        "role": "Slap Jack",
+        "tag": "Michael Ealy"
+      },
+      {
+        "role": "Detective Whitworth",
+        "tag": "Mark Boone Junior"
+      },
+      {
+        "role": "Suki",
+        "tag": "Devon Aoki"
+      },
+      {
+        "role": "Roberto",
+        "tag": "Roberto 'Sanz' Sanchez"
+      },
+      {
+        "role": "Enrique",
+        "tag": "Mo Gallini"
+      },
+      {
+        "role": "Agent Dunn",
+        "tag": "Edward Finlay"
+      },
+      {
+        "role": "Jimmy",
+        "tag": "Au-Yeung Jin"
+      },
+      {
+        "role": "Orange Julius",
+        "tag": "Amaury Nolasco"
+      },
+      {
+        "role": "Darden",
+        "tag": "Eric Etebari"
+      },
+      {
+        "role": "Korpi",
+        "tag": "John Cenatiempo"
+      },
+      {
+        "role": "Swerving Cop",
+        "tag": "Neal H. Moritz"
+      },
+      {
+        "role": "Paul Hackett",
+        "tag": "Troy Brown"
+      },
+      {
+        "role": "Max Campisi",
+        "tag": "Corey Michael Eubanks"
+      },
+      {
+        "role": "Joe Osborne",
+        "tag": "Sammy Maloof"
+      },
+      {
+        "role": "Feliz Vispone",
+        "tag": "Troy Robinson"
+      },
+      {
+        "role": "Slap Jack's Girlfriend",
+        "tag": "Sincerely A. Ward"
+      },
+      {
+        "role": "Suki's Girl",
+        "tag": "Nievecita Dubuque"
+      },
+      {
+        "role": "Detective",
+        "tag": "Mateo Herreros"
+      },
+      {
+        "role": "Police Chase Cop",
+        "tag": "Kerry Rossall"
+      },
+      {
+        "role": "Agent",
+        "tag": "Marc Macaulay"
+      },
+      {
+        "role": "Gardener",
+        "tag": "Tony Bolano"
+      },
+      {
+        "role": "Police Chopper Pilot",
+        "tag": "Marianne M. Arreaga"
+      },
+      {
+        "role": "Seductress",
+        "tag": "Tara Carroll"
+      },
+      {
+        "role": "Customs Technician",
+        "tag": "Tamara Jones"
+      }
+    ],
+    "writers": [
+      {
+        "tag": "Michael Brandt"
+      },
+      {
+        "tag": "Derek Haas"
+      },
+      {
+        "tag": "Gary Scott Thompson"
+      }
+    ]
+  },
+  {
+    "addedAt": "2023-09-02T14:01:40",
+    "audienceRating": 6.7,
+    "audienceRatingImage": "imdb://image.rating",
+    "contentRating": "de/16",
+    "duration": 6549014,
+    "durationHuman": "1 hr 49 mins",
+    "editionTitle": null,
+    "guid": "plex://movie/5d7769a023d5a3001f4fa465",
+    "hasCreditsMarker": true,
+    "originalTitle": null,
+    "originallyAvailableAt": "2013-08-01",
+    "rating": null,
+    "ratingImage": null,
+    "ratingKey": 2,
+    "studio": "Universal Pictures",
+    "summary": "Seit 12 Monaten müssen der DEA Agent Bobby Trench und der U.S. Naval Intelligence Officer Michael Stigman nun schon gegen ihren Willen zusammenarbeiten, denn die beiden wurden undercover in ein Drogen-Syndikat eingeschleust. Jeder der beiden misstraut seinem Partner mindestens genauso sehr wie den Kriminellen, die sie zur Strecke bringen sollen. Als ihr Versuch, ein mexikanisches Drogenkartell zu unterwandern und Millionen von Dollar sicher zu stellen, schief geht, werden Trench und Stigman plötzlich von ihren Vorgesetzten fallen gelassen. Jetzt, da jeder sie im Gefängnis oder tot sehen will, gibt es nur noch eine Person, auf die sie sich verlassen können – auf den jeweils anderen. Zum Leidwesen ihrer Verfolger. Denn die müssen bald feststellen, dass gute Jungs, die jahrelang so getan haben, als wären sie böse Jungs, nebenbei auch ein paar entsprechende Tricks aufgeschnappt haben ...",
+    "tagline": "2 Pistolen, 1 Bank.",
+    "thumbFile": "Movie - 2 Guns [2].images/2 Guns [2].thumb.jpg",
+    "title": "2 Guns",
+    "titleSort": "2 Guns",
+    "type": "movie",
+    "userRating": null,
+    "year": 2013,
+    "collections": [
+      {
+        "tag": null
+      }
+    ],
+    "countries": [
+      {
+        "tag": "United States of America"
+      }
+    ],
+    "directors": [
+      {
+        "tag": "Baltasar Kormákur"
+      }
+    ],
+    "fields": [
+      {
+        "locked": true,
+        "name": "thumb"
+      }
+    ],
+    "genres": [
+      {
+        "tag": "Thriller"
+      },
+      {
+        "tag": "Action"
+      },
+      {
+        "tag": "Krimi"
+      },
+      {
+        "tag": "Komödie"
+      }
+    ],
+    "guids": [
+      {
+        "id": "imdb://tt1272878"
+      },
+      {
+        "id": "tmdb://136400"
+      },
+      {
+        "id": "tvdb://1783"
+      }
+    ],
+    "labels": [
+      {
+        "tag": null
+      }
+    ],
+    "markers": [
+      {
+        "end": 6547014,
+        "final": null,
+        "first": true,
+        "start": 6068112,
+        "type": "credits"
+      }
+    ],
+    "producers": [
+      {
+        "tag": "Norton Herrick"
+      },
+      {
+        "tag": "Ross Richie"
+      },
+      {
+        "tag": "Adam Siegel"
+      },
+      {
+        "tag": "Marc Platt"
+      },
+      {
+        "tag": "Randall Emmett"
+      },
+      {
+        "tag": "George Furla"
+      },
+      {
+        "tag": "Andrew Cosby"
+      }
+    ],
+    "roles": [
+      {
+        "role": "Robert 'Bobby' Trench",
+        "tag": "Denzel Washington"
+      },
+      {
+        "role": "Michael 'Stig' Stigman",
+        "tag": "Mark Wahlberg"
+      },
+      {
+        "role": "Deb Rees",
+        "tag": "Paula Patton"
+      },
+      {
+        "role": "Papi Greco",
+        "tag": "Edward James Olmos"
+      },
+      {
+        "role": "Earl",
+        "tag": "Bill Paxton"
+      },
+      {
+        "role": "Quince",
+        "tag": "James Marsden"
+      },
+      {
+        "role": "Admiral Tuwey",
+        "tag": "Fred Ward"
+      },
+      {
+        "role": "Jessup",
+        "tag": "Robert John Burke"
+      },
+      {
+        "role": "Chief Lucas",
+        "tag": "Greg Sproles"
+      },
+      {
+        "role": "Dr. Ken",
+        "tag": "Patrick Fischler"
+      },
+      {
+        "role": "Ferret Nose Julio",
+        "tag": "Derek Solorsano"
+      },
+      {
+        "role": "Rudy (Papi's Men)",
+        "tag": "Edgar Arreola"
+      },
+      {
+        "role": "Teemo",
+        "tag": "Kyle Clements"
+      },
+      {
+        "role": "Thick",
+        "tag": "Christopher Matthew Cook"
+      },
+      {
+        "role": "Lean",
+        "tag": "Tim Bell"
+      },
+      {
+        "role": "Mini",
+        "tag": "Tait Fletcher"
+      },
+      {
+        "role": "Waitress Maggie",
+        "tag": "Azure Parsons"
+      },
+      {
+        "role": "Officer Dave",
+        "tag": "John McConnell"
+      },
+      {
+        "role": "Officer Phil",
+        "tag": "Jack Landry"
+      },
+      {
+        "role": "Chief of Police",
+        "tag": "Ritchie Montgomery"
+      },
+      {
+        "role": "Ms. Young",
+        "tag": "Ambyr Childers"
+      },
+      {
+        "role": "Bank Manager",
+        "tag": "Robert Larriviere"
+      },
+      {
+        "role": "Scared Woman",
+        "tag": "Lucy Faust"
+      },
+      {
+        "role": "Bank Guard",
+        "tag": "George Wilson"
+      },
+      {
+        "role": "Lead Agent (FBI Man)",
+        "tag": "Yohance Myles"
+      },
+      {
+        "role": "Patsy (Dr. Ken's Assistant)",
+        "tag": "Evie Thompson"
+      },
+      {
+        "role": "Roughneck (Papi's Men)",
+        "tag": "Jesus Jr."
+      },
+      {
+        "role": "Daisie",
+        "tag": "Doris Morgado"
+      },
+      {
+        "role": "Javier (Papi's Son)",
+        "tag": "Samuel Baca-Garcia"
+      },
+      {
+        "role": "Hard Case Border Patrol",
+        "tag": "Michael Beasley"
+      },
+      {
+        "role": "Border Guard",
+        "tag": "C. Paul Dempsey"
+      },
+      {
+        "role": "Uniformed Border Agent",
+        "tag": "Bill Stinchcomb"
+      },
+      {
+        "role": "Navy Firefighter",
+        "tag": "Mark Adam"
+      },
+      {
+        "role": "Lead MP (Shore Patrol)",
+        "tag": "David Kency"
+      },
+      {
+        "role": "Skinny Immigrant",
+        "tag": "Gilbert Rosales"
+      },
+      {
+        "role": "Doorman",
+        "tag": "Peter Gabb"
+      },
+      {
+        "role": "Tommy Boy",
+        "tag": "Jason Kirkpatrick"
+      },
+      {
+        "role": "Slim Jay",
+        "tag": "Tony Sanford"
+      },
+      {
+        "role": "Tim Corrales",
+        "tag": "Lucky Johnson"
+      },
+      {
+        "role": "Gina Corrales",
+        "tag": "Lindsey G. Smith"
+      },
+      {
+        "role": "Waitress Marjorie",
+        "tag": "Lindsey Gort"
+      },
+      {
+        "role": "Roughneck #2",
+        "tag": "Hillel M. Sharman"
+      },
+      {
+        "role": "Roughneck #3",
+        "tag": "Aaron Zell"
+      },
+      {
+        "role": "Roughneck #4",
+        "tag": "Henry Penzi"
+      },
+      {
+        "role": "Admiral's Assistant (uncredited)",
+        "tag": "Bonnie Bentley"
+      },
+      {
+        "role": "Grecos Gang (uncredited)",
+        "tag": "Edgar Leza"
+      }
+    ],
+    "writers": [
+      {
+        "tag": "Blake Masters"
+      },
+      {
+        "tag": "Steven Grant"
+      }
+    ]
+  },
+  {
+    "addedAt": "2024-05-13T22:13:52",
+    "audienceRating": 7.2,
+    "audienceRatingImage": "imdb://image.rating",
+    "contentRating": "de/12",
+    "duration": 6575915,
+    "durationHuman": "1 hr 50 mins",
+    "editionTitle": null,
+    "guid": "plex://movie/5d7768a6594b2b001e691db4",
+    "hasCreditsMarker": true,
+    "originalTitle": null,
+    "originallyAvailableAt": "2012-03-14",
+    "rating": null,
+    "ratingImage": null,
+    "ratingKey": 66526,
+    "studio": "Columbia Pictures",
+    "summary": "Die beiden jungen Polizisten Schmidt und Jenko werden aufgrund ihres jugendlichen Aussehens der geheimen Jump-Street-Einheit zugeteilt und treten in der örtlichen Highschool ihren Dienst undercover an. Schmidt und Jenko tauschen ihre Waffen und Dienstmarken gegen Rucksäcke ein und riskieren ihr Leben, um gegen einen gewalttätigen und gefährlichen Drogenring zu ermitteln. Dabei müssen sie bald feststellen, dass die Highschool von heute nicht mehr das ist, was sie mal war, als sie selbst vor einigen Jahren dort noch zur Schule gegangen sind. Außerdem hatten sie nicht damit gerechnet, sich noch einmal mit den Schrecken und Ängsten, ein Teenager zu sein, auseinandersetzen zu müssen oder mit all den anderen Problemen, von denen sie glaubten, sie lägen längst hinter ihnen.",
+    "tagline": "Sie dachten, auf den Straßen geht es mies zu. Bis sie zurück an die Highschool kamen.",
+    "thumbFile": "Movie - 21 Jump Street [66526].images/21 Jump Street [66526].thumb.jpg",
+    "title": "21 Jump Street",
+    "titleSort": "21 Jump Street",
+    "type": "movie",
+    "userRating": null,
+    "year": 2012,
+    "collections": [
+      {
+        "tag": "Jump Street Filmreihe"
+      }
+    ],
+    "countries": [
+      {
+        "tag": "United States of America"
+      }
+    ],
+    "directors": [
+      {
+        "tag": "Phil Lord"
+      },
+      {
+        "tag": "Christopher Miller"
+      }
+    ],
+    "fields": [
+      {
+        "locked": null,
+        "name": null
+      }
+    ],
+    "genres": [
+      {
+        "tag": "Komödie"
+      },
+      {
+        "tag": "Action"
+      },
+      {
+        "tag": "Krimi"
+      }
+    ],
+    "guids": [
+      {
+        "id": "imdb://tt1232829"
+      },
+      {
+        "id": "tmdb://64688"
+      },
+      {
+        "id": "tvdb://628"
+      }
+    ],
+    "labels": [
+      {
+        "tag": null
+      }
+    ],
+    "markers": [
+      {
+        "end": 6270323,
+        "final": null,
+        "first": true,
+        "start": 6188323,
+        "type": "credits"
+      },
+      {
+        "end": 6575915,
+        "final": true,
+        "first": false,
+        "start": 6290323,
+        "type": "credits"
+      }
+    ],
+    "producers": [
+      {
+        "tag": "Stephen J. Cannell"
+      },
+      {
+        "tag": "Neal H. Moritz"
+      }
+    ],
+    "roles": [
+      {
+        "role": "Schmidt",
+        "tag": "Jonah Hill"
+      },
+      {
+        "role": "Jenko",
+        "tag": "Channing Tatum"
+      },
+      {
+        "role": "Molly Tracey",
+        "tag": "Brie Larson"
+      },
+      {
+        "role": "Eric Molson",
+        "tag": "Dave Franco"
+      },
+      {
+        "role": "Mr. Walters",
+        "tag": "Rob Riggle"
+      },
+      {
+        "role": "Domingo",
+        "tag": "DeRay Davis"
+      },
+      {
+        "role": "Captain Dickson",
+        "tag": "Ice Cube"
+      },
+      {
+        "role": "Zack",
+        "tag": "Dax Flame"
+      },
+      {
+        "role": "Mr. Gordon",
+        "tag": "Chris Parnell"
+      },
+      {
+        "role": "Ms. Griggs",
+        "tag": "Ellie Kemper"
+      },
+      {
+        "role": "Principal Dadier",
+        "tag": "Jake Johnson"
+      },
+      {
+        "role": "Deputy Chief Hardy",
+        "tag": "Nick Offerman"
+      },
+      {
+        "role": "Officer Judy Hoffs",
+        "tag": "Holly Robinson Peete"
+      },
+      {
+        "role": "Delroy",
+        "tag": "Johnny Pemberton"
+      },
+      {
+        "role": "Roman",
+        "tag": "Stanley Wong"
+      },
+      {
+        "role": "Juario",
+        "tag": "Justin Hires"
+      },
+      {
+        "role": "Amir",
+        "tag": "Brett Lapeyrouse"
+      },
+      {
+        "role": "Lisa",
+        "tag": "Lindsey Broad"
+      },
+      {
+        "role": "Annie Schmidt",
+        "tag": "Caroline Aaron"
+      },
+      {
+        "role": "David Schmidt",
+        "tag": "Joe Chrest"
+      },
+      {
+        "role": "Phyllis",
+        "tag": "Geraldine Singer"
+      },
+      {
+        "role": "Fugazy",
+        "tag": "Dakota Johnson"
+      },
+      {
+        "role": "Jr. Jr.",
+        "tag": "Rye Rye"
+      },
+      {
+        "role": "Burns",
+        "tag": "Valerie Tian"
+      },
+      {
+        "role": "Sanders",
+        "tag": "Jaren Mitchell"
+      },
+      {
+        "role": "Billiam Willingham",
+        "tag": "Johnny Simmons"
+      },
+      {
+        "role": "DJ Ay Papi",
+        "tag": "Keith Kurtz"
+      },
+      {
+        "role": "Karl",
+        "tag": "Randal Reeder"
+      },
+      {
+        "role": "One-Percenter #1",
+        "tag": "Peter Epstein"
+      },
+      {
+        "role": "One-Percenter #2",
+        "tag": "Anthony Molinari"
+      },
+      {
+        "role": "One-Percenter #3 - Luis",
+        "tag": "Luis Da Silva, Jr."
+      },
+      {
+        "role": "One-Percenter #4 - Lukas",
+        "tag": "Dominic 'Taz' Alexander"
+      },
+      {
+        "role": "One-Percenter #5 - Ed",
+        "tag": "Mike Seal"
+      },
+      {
+        "role": "French Samuels",
+        "tag": "Spencer Boldman"
+      },
+      {
+        "role": "Scott",
+        "tag": "Joe Nin Williams"
+      },
+      {
+        "role": "Crazy",
+        "tag": "Chad Hessler"
+      },
+      {
+        "role": "Crazy",
+        "tag": "Kevin Michael Murphy"
+      },
+      {
+        "role": "Crazy",
+        "tag": "Victor Paguia"
+      },
+      {
+        "role": "Melodie",
+        "tag": "Chanel Celaya"
+      },
+      {
+        "role": "Hamilton Principal",
+        "tag": "Carol Sutton"
+      },
+      {
+        "role": "Cinnamon",
+        "tag": "Andrea Frankle"
+      },
+      {
+        "role": "Prostitute",
+        "tag": "Tiffney Wagoner"
+      },
+      {
+        "role": "Prostitute",
+        "tag": "Andrea Madison"
+      },
+      {
+        "role": "Accompanist",
+        "tag": "Hristo Birbochukov"
+      },
+      {
+        "role": "VW Bug Driver",
+        "tag": "Candi Brooks"
+      },
+      {
+        "role": "EMT",
+        "tag": "Turner Crumbley"
+      },
+      {
+        "role": "Eric's Friend",
+        "tag": "Haley Farris"
+      },
+      {
+        "role": "Eric's Friend",
+        "tag": "Brittney Alger"
+      },
+      {
+        "role": "Naked Drama Threesome",
+        "tag": "Joshua Nelms"
+      },
+      {
+        "role": "Naked Drama Threesome",
+        "tag": "Courtney Jarrell"
+      },
+      {
+        "role": "Naked Drama Threesome",
+        "tag": "Melissa Cordero"
+      },
+      {
+        "role": "Adorable Boy",
+        "tag": "Beau DeLatte"
+      },
+      {
+        "role": "Janitor",
+        "tag": "Charles Ferrara"
+      },
+      {
+        "role": "Police Chief",
+        "tag": "Mark Adams"
+      },
+      {
+        "role": "Instructor",
+        "tag": "Brian H. Rossitto"
+      },
+      {
+        "role": "Officer Doug Penhall (uncredited)",
+        "tag": "Peter DeLuise"
+      },
+      {
+        "role": "Officer Tom Hanson (uncredited)",
+        "tag": "Johnny Depp"
+      },
+      {
+        "role": "Scared Kid in Park (uncredited)",
+        "tag": "D.J. Mills"
+      },
+      {
+        "role": "Flashback Middle School Teacher (uncredited)",
+        "tag": "Tony Longo"
+      }
+    ],
+    "writers": [
+      {
+        "tag": "Michael Bacall"
+      },
+      {
+        "tag": "Jonah Hill"
+      },
+      {
+        "tag": "Patrick Hasburgh"
+      },
+      {
+        "tag": "Stephen J. Cannell"
+      }
+    ]
+  },
+  {
+    "addedAt": "2024-05-13T21:48:21",
+    "audienceRating": 7,
+    "audienceRatingImage": "imdb://image.rating",
+    "contentRating": "de/12",
+    "duration": 6716736,
+    "durationHuman": "1 hr 52 mins",
+    "editionTitle": null,
+    "guid": "plex://movie/5d776a097a53e9001e6f8491",
+    "hasCreditsMarker": true,
+    "originalTitle": null,
+    "originallyAvailableAt": "2014-06-05",
+    "rating": null,
+    "ratingImage": null,
+    "ratingKey": 66518,
+    "studio": "Columbia Pictures",
+    "summary": "Nachdem die Neu-Polizisten Schmidt und Jenko ihren ersten Fall erfolgreich lösen konnten, sollen sie erneut als verdeckte Ermittler arbeiten. Dieses Mal wird keine Highschool infiltriert, sondern ein örtliches College. Es kommt, wie es kommen muss: Schnell sind Schmidt und Jenko von ihrer eigentlichen Arbeit abgelenkt und verlieren sich in den Verlockungen des Studentenlebens. Jenko findet Anschluss im Football-Team, während Schmidt sich in Kreisen der gehobenen Kunst zu bewegen beginnt. Diese Einflüsse lassen die beiden Cops allerdings auch an ihrer Partnerschaft zweifeln. Gelingt es den beiden dennoch, sich zusammenzuraufen, ihren Fall zu lösen und endlich erwachsen zu werden? Oder bleibt ihre Freundschaft zwischen den Partys und Schießereien auf der Strecke?",
+    "tagline": "Sie sind keine 21 mehr",
+    "thumbFile": "Movie - 22 Jump Street [66518].images/22 Jump Street [66518].thumb.jpg",
+    "title": "22 Jump Street",
+    "titleSort": "22 Jump Street",
+    "type": "movie",
+    "userRating": null,
+    "year": 2014,
+    "collections": [
+      {
+        "tag": "Jump Street Filmreihe"
+      }
+    ],
+    "countries": [
+      {
+        "tag": "United States of America"
+      }
+    ],
+    "directors": [
+      {
+        "tag": "Phil Lord"
+      },
+      {
+        "tag": "Christopher Miller"
+      }
+    ],
+    "fields": [
+      {
+        "locked": null,
+        "name": null
+      }
+    ],
+    "genres": [
+      {
+        "tag": "Komödie"
+      },
+      {
+        "tag": "Krimi"
+      },
+      {
+        "tag": "Action"
+      }
+    ],
+    "guids": [
+      {
+        "id": "imdb://tt2294449"
+      },
+      {
+        "id": "tmdb://187017"
+      },
+      {
+        "id": "tvdb://735"
+      }
+    ],
+    "labels": [
+      {
+        "tag": null
+      }
+    ],
+    "markers": [
+      {
+        "end": 6716736,
+        "final": true,
+        "first": true,
+        "start": 6269062,
+        "type": "credits"
+      }
+    ],
+    "producers": [
+      {
+        "tag": "Jonah Hill"
+      },
+      {
+        "tag": "Channing Tatum"
+      },
+      {
+        "tag": "Neal H. Moritz"
+      }
+    ],
+    "roles": [
+      {
+        "role": "Schmidt",
+        "tag": "Jonah Hill"
+      },
+      {
+        "role": "Jenko",
+        "tag": "Channing Tatum"
+      },
+      {
+        "role": "The Ghost",
+        "tag": "Peter Stormare"
+      },
+      {
+        "role": "Zook",
+        "tag": "Wyatt Russell"
+      },
+      {
+        "role": "Maya",
+        "tag": "Amber Stevens West"
+      },
+      {
+        "role": "Mercedes",
+        "tag": "Jillian Bell"
+      },
+      {
+        "role": "Captain Dickson",
+        "tag": "Ice Cube"
+      },
+      {
+        "role": "Keith Yang",
+        "tag": "Keith Lucas"
+      },
+      {
+        "role": "Kenny Yang",
+        "tag": "Kenneth Lucas"
+      },
+      {
+        "role": "Deputy Chief Hardy",
+        "tag": "Nick Offerman"
+      },
+      {
+        "role": "Rooster",
+        "tag": "Jimmy Tatro"
+      },
+      {
+        "role": "Annie Schmidt",
+        "tag": "Caroline Aaron"
+      },
+      {
+        "role": "Spencer",
+        "tag": "Craig Roberts"
+      },
+      {
+        "role": "Dr. Murphy",
+        "tag": "Marc Evan Jackson"
+      },
+      {
+        "role": "David Schmidt",
+        "tag": "Joe Chrest"
+      },
+      {
+        "role": "Scarface",
+        "tag": "Eddie J. Fernandez"
+      },
+      {
+        "role": "Jr. Jr.",
+        "tag": "Rye Rye"
+      },
+      {
+        "role": "Delroy",
+        "tag": "Johnny Pemberton"
+      },
+      {
+        "role": "Roman",
+        "tag": "Stanley Wong"
+      },
+      {
+        "role": "Zack",
+        "tag": "Dax Flame"
+      },
+      {
+        "role": "Spring Break DJ",
+        "tag": "Diplo"
+      },
+      {
+        "role": "Stoned-Looking Kid",
+        "tag": "Tyler Forrest"
+      },
+      {
+        "role": "University of Internet Professor",
+        "tag": "John Bostic"
+      },
+      {
+        "role": "Booker",
+        "tag": "Richard Grieco"
+      },
+      {
+        "role": "Vietnamese Jesus",
+        "tag": "Dustin Nguyễn"
+      },
+      {
+        "role": "Improv Student",
+        "tag": "Ian Hoch"
+      },
+      {
+        "role": "Improv Student",
+        "tag": "Kate Adair"
+      },
+      {
+        "role": "Waiter",
+        "tag": "Drew Cross"
+      },
+      {
+        "role": "Girl in Bathroom",
+        "tag": "Katrina Despain"
+      },
+      {
+        "role": "Tattoo Artist",
+        "tag": "Oscar Gale"
+      },
+      {
+        "role": "Slam Poet",
+        "tag": "Janeline Hayes"
+      },
+      {
+        "role": "Slam Poet",
+        "tag": "Jackie Bohne"
+      },
+      {
+        "role": "Rathskellar Host",
+        "tag": "Jason R.A. Foster"
+      },
+      {
+        "role": "Boy at the Pond",
+        "tag": "Toby Nichols"
+      },
+      {
+        "role": "Mustached Goon",
+        "tag": "Toby Holguin"
+      },
+      {
+        "role": "Library Goon",
+        "tag": "Eddie Perez"
+      },
+      {
+        "role": "Drunk Beach Fight Girl",
+        "tag": "Mickey Facchinello"
+      },
+      {
+        "role": "Spring Break Student",
+        "tag": "Tom Ventura"
+      },
+      {
+        "role": "Spring Break Student",
+        "tag": "Brian Schacter"
+      },
+      {
+        "role": "Spring Break Student",
+        "tag": "Sam Schweikert"
+      },
+      {
+        "role": "Spring Break Student",
+        "tag": "Jack Maloney"
+      },
+      {
+        "role": "Mr. Walters (uncredited)",
+        "tag": "Rob Riggle"
+      },
+      {
+        "role": "Eric Molson (uncredited)",
+        "tag": "Dave Franco"
+      },
+      {
+        "role": "Mrs. Dickson (uncredited)",
+        "tag": "Queen Latifah"
+      },
+      {
+        "role": "MC State History Professor (uncredited)",
+        "tag": "Patton Oswalt"
+      },
+      {
+        "role": "MCS Football Coach (uncredited)",
+        "tag": "H. Jon Benjamin"
+      },
+      {
+        "role": "Anna (uncredited)",
+        "tag": "Anna Faris"
+      },
+      {
+        "role": "Culinary School Villain (uncredited)",
+        "tag": "Bill Hader"
+      },
+      {
+        "role": "Morton Schmidt Double (uncredited)",
+        "tag": "Seth Rogen"
+      },
+      {
+        "role": "'Previously' Narrator / Football Announcer (voice) (uncredited)",
+        "tag": "Will Forte"
+      },
+      {
+        "role": "Student in the Van (uncredited)",
+        "tag": "Ramiro 'Ramir' Delgado Ruiz"
+      },
+      {
+        "role": "Sorority Girl (uncredited)",
+        "tag": "Vanessa Amaya"
+      },
+      {
+        "role": "Driver on Bridge (uncredited)",
+        "tag": "Chris Angerdina"
+      },
+      {
+        "role": "Precinct Cop (uncredited)",
+        "tag": "John L. Armijo"
+      },
+      {
+        "role": "College Student (uncredited)",
+        "tag": "Eric Berris"
+      },
+      {
+        "role": "Beach Babe (uncredited)",
+        "tag": "Libby Blake"
+      },
+      {
+        "role": "MCPD Officer (uncredited)",
+        "tag": "Renaldo Brady"
+      },
+      {
+        "role": "Art Student (uncredited)",
+        "tag": "Emanuel Brooks"
+      },
+      {
+        "role": "Detective (uncredited)",
+        "tag": "Tom Bui"
+      },
+      {
+        "role": "Student (uncredited)",
+        "tag": "Gustavo Cardozo"
+      },
+      {
+        "role": "Local Mexican (uncredited)",
+        "tag": "Blas Diaz"
+      },
+      {
+        "role": "Tourist (uncredited)",
+        "tag": "Eddie Eniel"
+      },
+      {
+        "role": "Painted Football Fan (uncredited)",
+        "tag": "Joseph Fischer"
+      },
+      {
+        "role": "Spring Breaker (uncredited)",
+        "tag": "Julian Garnik"
+      },
+      {
+        "role": "Fan (uncredited)",
+        "tag": "Juan Gaspard"
+      },
+      {
+        "role": "Lamborghini Owner (uncredited)",
+        "tag": "Kurt Grossi"
+      },
+      {
+        "role": "Professor (uncredited)",
+        "tag": "Lyle R. Guidroz"
+      },
+      {
+        "role": "Inmate (uncredited)",
+        "tag": "Christopher Heskey"
+      },
+      {
+        "role": "Beach Babe (uncredited)",
+        "tag": "Skyler Joy"
+      },
+      {
+        "role": "End Credits Boy (uncredited)",
+        "tag": "Adam Karchmer"
+      },
+      {
+        "role": "Cupcake Wilson (uncredited)",
+        "tag": "Kurt Krause"
+      },
+      {
+        "role": "Mexican Thug (uncredited)",
+        "tag": "Joshua Lamboy"
+      },
+      {
+        "role": "Maya's Friend (uncredited)",
+        "tag": "Jaci LeJeune"
+      },
+      {
+        "role": "Student (uncredited)",
+        "tag": "Ashlyn McEvers"
+      },
+      {
+        "role": "Student / Fan / Partier (uncredited)",
+        "tag": "Anna Medley"
+      },
+      {
+        "role": "Blue Bills Head Coach (uncredited)",
+        "tag": "David Stephen Mitchell"
+      },
+      {
+        "role": "Assistant Coach (uncredited)",
+        "tag": "Jesse Moore"
+      },
+      {
+        "role": "Spring Breaker (uncredited)",
+        "tag": "Jean Pierre Prats"
+      },
+      {
+        "role": "College Student / Spring Breaker (uncredited)",
+        "tag": "Anthony Ramsey"
+      },
+      {
+        "role": "Parent (uncredited)",
+        "tag": "Gus Rhodes"
+      },
+      {
+        "role": "Detective (uncredited)",
+        "tag": "Edwin Richardson"
+      },
+      {
+        "role": "Football Referee (uncredited)",
+        "tag": "Jeff Sanders"
+      },
+      {
+        "role": "Wasted Spring Breaker (uncredited)",
+        "tag": "Larissa Santiago"
+      },
+      {
+        "role": "Cool Fraternity Dad (uncredited)",
+        "tag": "Robert Segari"
+      },
+      {
+        "role": "Campus Security (uncredited)",
+        "tag": "Carl Singleton"
+      },
+      {
+        "role": "Parent (uncredited)",
+        "tag": "Anne Speed"
+      },
+      {
+        "role": "Fan (uncredited)",
+        "tag": "Sean Stevens"
+      },
+      {
+        "role": "Constuction Supervisor (uncredited)",
+        "tag": "John Teal Jr."
+      },
+      {
+        "role": "Asian Gangster (uncredited)",
+        "tag": "Steve Terada"
+      },
+      {
+        "role": "Dad (uncredited)",
+        "tag": "Joseph Uzzell"
+      },
+      {
+        "role": "Football Player (uncredited)",
+        "tag": "Donald Watkins"
+      },
+      {
+        "role": "Jump Street Detective (uncredited)",
+        "tag": "Stephen Daniel Wayne"
+      },
+      {
+        "role": "Commissioner Adam Fuller (uncredited)",
+        "tag": "Steven Williams"
+      },
+      {
+        "role": "Quarterback Coach (uncredited)",
+        "tag": "Michael Wozniak"
+      },
+      {
+        "role": "Campus Security (uncredited)",
+        "tag": "Jesse Yarborough"
+      },
+      {
+        "role": "MCS Coach (uncredited)",
+        "tag": "Don Yesso"
+      },
+      {
+        "role": "Detective (uncredited)",
+        "tag": "Ahmed Zakzouk"
+      },
+      {
+        "role": "Bartender",
+        "tag": "Quintin McKemie II"
+      }
+    ],
+    "writers": [
+      {
+        "tag": "Michael Bacall"
+      },
+      {
+        "tag": "Oren Uziel"
+      },
+      {
+        "tag": "Rodney Rothman"
+      },
+      {
+        "tag": "Jonah Hill"
+      },
+      {
+        "tag": "Patrick Hasburgh"
+      }
+    ]
+  },
+  {
+    "addedAt": "2025-08-18T15:07:30",
+    "audienceRating": 6.7,
+    "audienceRatingImage": "imdb://image.rating",
+    "contentRating": "de/18",
+    "duration": 6906912,
+    "durationHuman": "1 hr 55 mins",
+    "editionTitle": null,
+    "guid": "plex://movie/5e1632e44c78f7003e7f16f1",
+    "hasCreditsMarker": true,
+    "originalTitle": null,
+    "originallyAvailableAt": "2025-06-18",
+    "rating": null,
+    "ratingImage": null,
+    "ratingKey": 93094,
+    "studio": "Columbia Pictures",
+    "summary": "Es ist fast drei Jahrzehnte her, dass das Rage-Virus aus einem biologischen Waffenlabor entkommen ist, und noch immer gilt eine strikt verordnete Quarantäne. Einige Menschen haben Wege gefunden, inmitten der Infizierten zu existieren. Eine solche Gruppe von Überlebenden lebt auf einer kleinen Insel, die durch einen einzigen, stark verteidigten Damm mit dem Festland verbunden ist. Als einer der Bewohner die Insel verlässt, um in das dunkle Innere des Festlandes vorzudringen, entdeckt er Geheimnisse, Wunder und Schrecken und dass nicht nur die Infizierten, sondern auch die Überlebenden mutiert sind.",
+    "tagline": "Zeit heilt nicht alles.",
+    "thumbFile": "Movie - 28 Years Later [93094].images/28 Years Later [93094].thumb.jpg",
+    "title": "28 Years Later",
+    "titleSort": "28 Years Later",
+    "type": "movie",
+    "userRating": null,
+    "year": 2025,
+    "collections": [
+      {
+        "tag": null
+      }
+    ],
+    "countries": [
+      {
+        "tag": "United Kingdom"
+      },
+      {
+        "tag": "United States of America"
+      }
+    ],
+    "directors": [
+      {
+        "tag": "Danny Boyle"
+      }
+    ],
+    "fields": [
+      {
+        "locked": null,
+        "name": null
+      }
+    ],
+    "genres": [
+      {
+        "tag": "Horror"
+      },
+      {
+        "tag": "Thriller"
+      },
+      {
+        "tag": "Science Fiction"
+      }
+    ],
+    "guids": [
+      {
+        "id": "imdb://tt10548174"
+      },
+      {
+        "id": "tmdb://1100988"
+      },
+      {
+        "id": "tvdb://307356"
+      }
+    ],
+    "labels": [
+      {
+        "tag": null
+      }
+    ],
+    "markers": [
+      {
+        "end": 6906912,
+        "final": true,
+        "first": true,
+        "start": 6580220,
+        "type": "credits"
+      }
+    ],
+    "producers": [
+      {
+        "tag": "Danny Boyle"
+      },
+      {
+        "tag": "Alex Garland"
+      },
+      {
+        "tag": "Andrew Macdonald"
+      },
+      {
+        "tag": "Peter Rice"
+      },
+      {
+        "tag": "Bernard Bellew"
+      }
+    ],
+    "roles": [
+      {
+        "role": "Isla",
+        "tag": "Jodie Comer"
+      },
+      {
+        "role": "Spike",
+        "tag": "Alfie Williams"
+      },
+      {
+        "role": "Jamie",
+        "tag": "Aaron Taylor-Johnson"
+      },
+      {
+        "role": "Dr. Ian Kelson",
+        "tag": "Ralph Fiennes"
+      },
+      {
+        "role": "Erik Sundqvist",
+        "tag": "Edvin Ryding"
+      },
+      {
+        "role": "Sam",
+        "tag": "Christopher Fulford"
+      },
+      {
+        "role": "Jenny",
+        "tag": "Stella Gonet"
+      },
+      {
+        "role": "Samson",
+        "tag": "Chi Lewis-Parry"
+      },
+      {
+        "role": "Jimmy Crystal",
+        "tag": "Jack O'Connell"
+      },
+      {
+        "role": "Young Jimmy",
+        "tag": "Rocco Haynes"
+      },
+      {
+        "role": "Jimmy's Mother",
+        "tag": "Kim Allan"
+      },
+      {
+        "role": "Jimmy’s Father",
+        "tag": "Sandy Batchelor"
+      },
+      {
+        "role": "Rosey",
+        "tag": "Amy Cameron"
+      },
+      {
+        "role": "Anthony",
+        "tag": "Geoffrey Newland"
+      },
+      {
+        "role": "Dave",
+        "tag": "Joe Blakemore"
+      },
+      {
+        "role": "Pregnant Infected",
+        "tag": "Celi Crossland"
+      },
+      {
+        "role": "Jimmy Jimmy",
+        "tag": "Robert Rhodes"
+      },
+      {
+        "role": "Jimmy Ink",
+        "tag": "Erin Kellyman"
+      },
+      {
+        "role": "Jimmy Fox",
+        "tag": "Sam Locke"
+      },
+      {
+        "role": "Jimmy Jones",
+        "tag": "Maura Bird"
+      },
+      {
+        "role": "Jimmy Snake",
+        "tag": "Ghazi Al Ruffai"
+      },
+      {
+        "role": "Jimmima",
+        "tag": "Emma Laird"
+      },
+      {
+        "role": "Jimmy Shite",
+        "tag": "Connor Newall"
+      },
+      {
+        "role": "Girl Villager",
+        "tag": "Sienna Giblin"
+      },
+      {
+        "role": "Teenage Girl Villager",
+        "tag": "Hayley Walters"
+      },
+      {
+        "role": "Slow Low #1",
+        "tag": "Peter Labas"
+      },
+      {
+        "role": "Slow Low #2",
+        "tag": "Kat Kitchener"
+      },
+      {
+        "role": "Slow Low #3",
+        "tag": "Jason Kuang Yao Lee"
+      },
+      {
+        "role": "Slow Low #4",
+        "tag": "Ember Storm"
+      },
+      {
+        "role": "Hanging Man",
+        "tag": "Jake Grimes"
+      },
+      {
+        "role": "Berserker",
+        "tag": "Chris Gregory"
+      },
+      {
+        "role": "Infected Woman",
+        "tag": "Helen Rowlands"
+      },
+      {
+        "role": "Jimmy's Auntie",
+        "tag": "Haley Flaherty"
+      },
+      {
+        "role": "Jimmy's Cousin Delilah",
+        "tag": "Harriet Taylor"
+      },
+      {
+        "role": "Jimmy's Sister",
+        "tag": "Hannah Allan-Robertson"
+      },
+      {
+        "role": "Jimmy's Sister",
+        "tag": "Annabelle Graham"
+      },
+      {
+        "role": "Jimmy's Sister",
+        "tag": "Olivia Morley"
+      },
+      {
+        "role": "Jimmy's Sister",
+        "tag": "Theadora Rawlings"
+      },
+      {
+        "role": "Jimmy's Sister",
+        "tag": "Darcie Smith"
+      },
+      {
+        "role": "Jimmy's Sister",
+        "tag": "Isla Vickers"
+      },
+      {
+        "role": "Baby Isla",
+        "tag": "Lachlan Tucker"
+      },
+      {
+        "role": "Baby Isla",
+        "tag": "Winnow Short"
+      },
+      {
+        "role": "Baby Isla",
+        "tag": "Olivia Grace Lee"
+      },
+      {
+        "role": "Baby Isla",
+        "tag": "Lucas Toole"
+      },
+      {
+        "role": "Baby Isla",
+        "tag": "Cohen Lewis Williamson"
+      },
+      {
+        "role": "Baby Isla",
+        "tag": "Myles Woodhouse"
+      },
+      {
+        "role": "Jonno (uncredited)",
+        "tag": "Gordon Alexander"
+      },
+      {
+        "role": "Emaciated Infected (uncredited)",
+        "tag": "Angus Neill"
+      },
+      {
+        "role": "Dead Body #6 (Uncredited)",
+        "tag": "Col Needham"
+      },
+      {
+        "role": "Accordionist (uncredited)",
+        "tag": "RuMac"
+      }
+    ],
+    "writers": [
+      {
+        "tag": "Alex Garland"
+      }
+    ]
+  },
+  {
+    "addedAt": "2011-06-08T09:56:06",
+    "audienceRating": 7.3,
+    "audienceRatingImage": "imdb://image.rating",
+    "contentRating": "de/12",
+    "duration": 7988256,
+    "durationHuman": "2 hrs 13 mins",
+    "editionTitle": null,
+    "guid": "plex://movie/5d77687bdecfcd001f2ea4f5",
+    "hasCreditsMarker": true,
+    "originalTitle": "The Next Three Days",
+    "originallyAvailableAt": "2010-11-18",
+    "rating": null,
+    "ratingImage": null,
+    "ratingKey": 7,
+    "studio": "Hwy61",
+    "summary": "Lara Brennan, die Frau von College-Professor John Brennan wird aus heiterem Himmel wegen Mordes verhaftet. Der schockierten Familienmutter wird vorgeworfen ihre Chefin ermordet zu haben. Alle Indizien sprechen eindeutig gegen sie, doch John glaubt an seine Frau. Obwohl er alles daran setzt ihre Unschuld zu beweisen, wird Lara vor Gericht schuldig gesprochen. Gemeinsam mit einem ehemaligen Gefängnisinsassen entwickelt John den scheinbar perfekten Ausbruchsplan. Dann soll seine Ehefrau jedoch in ein anderes Gefängnis verlegt werden – John bleiben nur noch 72 Stunden um Lara zu befreien.",
+    "tagline": "Was, wenn Sie nur 72 Stunden hätten um alles zu retten?",
+    "thumbFile": "Movie - 72 Stunden - The Next Three Days [7].images/72 Stunden - The Next Three Days [7].thumb.jpg",
+    "title": "72 Stunden - The Next Three Days",
+    "titleSort": "72 Stunden - The Next Three Days",
+    "type": "movie",
+    "userRating": null,
+    "year": 2010,
+    "collections": [
+      {
+        "tag": null
+      }
+    ],
+    "countries": [
+      {
+        "tag": "United States of America"
+      },
+      {
+        "tag": "France"
+      }
+    ],
+    "directors": [
+      {
+        "tag": "Paul Haggis"
+      }
+    ],
+    "fields": [
+      {
+        "locked": null,
+        "name": null
+      }
+    ],
+    "genres": [
+      {
+        "tag": "Liebesfilm"
+      },
+      {
+        "tag": "Drama"
+      },
+      {
+        "tag": "Thriller"
+      },
+      {
+        "tag": "Krimi"
+      },
+      {
+        "tag": "Action"
+      }
+    ],
+    "guids": [
+      {
+        "id": "imdb://tt1458175"
+      },
+      {
+        "id": "tmdb://43539"
+      },
+      {
+        "id": "tvdb://2827"
+      }
+    ],
+    "labels": [
+      {
+        "tag": null
+      }
+    ],
+    "markers": [
+      {
+        "end": 7988256,
+        "final": true,
+        "first": true,
+        "start": 7525430,
+        "type": "credits"
+      }
+    ],
+    "producers": [
+      {
+        "tag": "Olivier Delbosc"
+      },
+      {
+        "tag": "Eugénie Grandval"
+      },
+      {
+        "tag": "Paul Haggis"
+      },
+      {
+        "tag": "Marc Missonnier"
+      },
+      {
+        "tag": "Michael Nozik"
+      }
+    ],
+    "roles": [
+      {
+        "role": "John Brennan",
+        "tag": "Russell Crowe"
+      },
+      {
+        "role": "Lara",
+        "tag": "Elizabeth Banks"
+      },
+      {
+        "role": "George Brennan",
+        "tag": "Brian Dennehy"
+      },
+      {
+        "role": "Mouss",
+        "tag": "RZA"
+      },
+      {
+        "role": "Erit",
+        "tag": "Moran Atias"
+      },
+      {
+        "role": "Nicole",
+        "tag": "Olivia Wilde"
+      },
+      {
+        "role": "Detective Quinn",
+        "tag": "Jason Beghe"
+      },
+      {
+        "role": "Elaine",
+        "tag": "Nazanin Boniadi"
+      },
+      {
+        "role": "Mike",
+        "tag": "Tyrone Giordano"
+      },
+      {
+        "role": "Luke",
+        "tag": "Ty Simpkins"
+      },
+      {
+        "role": "Damon",
+        "tag": "Liam Neeson"
+      },
+      {
+        "role": "David",
+        "tag": "Jonathan Tucker"
+      },
+      {
+        "role": "Lieutenant Nabulsi",
+        "tag": "Lennie James"
+      },
+      {
+        "role": "Mick Brennan",
+        "tag": "Michael Buie"
+      },
+      {
+        "role": "Grace Brennan",
+        "tag": "Helen Carey"
+      },
+      {
+        "role": "Jenna",
+        "tag": "Remy Nozik"
+      },
+      {
+        "role": "Detective Collero",
+        "tag": "Aisha Hinds"
+      },
+      {
+        "role": "Elizabeth Gesas",
+        "tag": "Leslie Merrill"
+      },
+      {
+        "role": "Meyer Fisk",
+        "tag": "Daniel Stern"
+      },
+      {
+        "role": "Duty Nurse",
+        "tag": "Rachel Deacon"
+      },
+      {
+        "role": "Dr. Becsey",
+        "tag": "Derek Cecil"
+      },
+      {
+        "role": "Julie",
+        "tag": "Kaitlyn Wylde"
+      },
+      {
+        "role": "Alex",
+        "tag": "Kevin Corrigan"
+      },
+      {
+        "role": "Alex's Thug Buddy",
+        "tag": "Jeff Hochendoner"
+      },
+      {
+        "role": "Lyla",
+        "tag": "Lauren Haggis"
+      },
+      {
+        "role": "Harv",
+        "tag": "James Ransone"
+      },
+      {
+        "role": "Eugenie",
+        "tag": "Denise Dal Vera"
+      },
+      {
+        "role": "Hospital Security Guard",
+        "tag": "Glenn Taranto"
+      },
+      {
+        "role": "Female Guard 1",
+        "tag": "Veronica Brown"
+      },
+      {
+        "role": "Female Guard 2",
+        "tag": "Lisa Ann Goldsmith"
+      },
+      {
+        "role": "Junkie",
+        "tag": "Alissa Haggis"
+      },
+      {
+        "role": "Sergeant Harris",
+        "tag": "Allan Steele"
+      },
+      {
+        "role": "Photoshop Kid",
+        "tag": "Zachary Sondrini"
+      },
+      {
+        "role": "Notary",
+        "tag": "Etta Cox"
+      },
+      {
+        "role": "Jail Guard (Entry Hall)",
+        "tag": "Barry Bradford"
+      },
+      {
+        "role": "County Jail Captain",
+        "tag": "Rick Warner"
+      },
+      {
+        "role": "Phone Operator",
+        "tag": "Quantia Mali"
+      },
+      {
+        "role": "Dr. Byrdie Lifson",
+        "tag": "Trudie Styler"
+      },
+      {
+        "role": "Phone Repairman",
+        "tag": "Fabio Polanco"
+      },
+      {
+        "role": "Male Nurse",
+        "tag": "David Flick"
+      },
+      {
+        "role": "Prison Guard",
+        "tag": "Sean Huze"
+      },
+      {
+        "role": "Hospital Nurse",
+        "tag": "Tamara Gorski"
+      },
+      {
+        "role": "Hospital Guard",
+        "tag": "Patrick Brennan"
+      },
+      {
+        "role": "Brenda",
+        "tag": "Brenna McDonough"
+      },
+      {
+        "role": "Airport Security Chief",
+        "tag": "Patrick McDade"
+      },
+      {
+        "role": "Lab Van Driver",
+        "tag": "James Francis Kelly III"
+      },
+      {
+        "role": "Prison Visitor (uncredited)",
+        "tag": "Jackson Nunn"
+      },
+      {
+        "role": "Airline Clerk",
+        "tag": "Melissa Jackson"
+      }
+    ],
+    "writers": [
+      {
+        "tag": "Paul Haggis"
+      },
+      {
+        "tag": "Guillaume Lemans"
+      },
+      {
+        "tag": "Fred Cavayé"
+      }
+    ]
+  },
+  {
+    "addedAt": "2012-07-01T21:23:07",
+    "audienceRating": 7.7,
+    "audienceRatingImage": "imdb://image.rating",
+    "contentRating": "de/16",
+    "duration": 5603807,
+    "durationHuman": "1 hr 33 mins",
+    "editionTitle": null,
+    "guid": "plex://movie/5d7768324de0ee001fccab8b",
+    "hasCreditsMarker": true,
+    "originalTitle": "Taken",
+    "originallyAvailableAt": "2008-02-27",
+    "rating": null,
+    "ratingImage": null,
+    "ratingKey": 1058,
+    "studio": "EuropaCorp",
+    "summary": "Bryan Mills hat seinen Dienst als Agent der US-Regierung quittiert, um in der Nähe seiner 17-jährigen Tochter leben zu können. Die verwöhnte Kim wohnt bei Bryans Ex-Frau und deren reichem Mann und Bryan kommt kaum an sie heran. Als Kim mit ihrer Freundin nach Paris fährt, macht sich Bryan Sorgen. Tatsächlich werden die Mädchen dort von einer albanischen Bande entführt. Bryan fährt nach Paris, wo er seine Fähigkeiten als Mann für gefährliche Einsätze voll einsetzen muss.",
+    "tagline": "Sie nahmen ihm seine Tochter. Er wird sie jagen. Er wird sie finden. Und er wird sie töten.",
+    "thumbFile": "Movie - 96 Hours [1058].images/96 Hours [1058].thumb.jpg",
+    "title": "96 Hours",
+    "titleSort": "96 Hours",
+    "type": "movie",
+    "userRating": null,
+    "year": 2008,
+    "collections": [
+      {
+        "tag": "96 Hours Filmreihe"
+      }
+    ],
+    "countries": [
+      {
+        "tag": "France"
+      },
+      {
+        "tag": "United States of America"
+      }
+    ],
+    "directors": [
+      {
+        "tag": "Pierre Morel"
+      }
+    ],
+    "fields": [
+      {
+        "locked": null,
+        "name": null
+      }
+    ],
+    "genres": [
+      {
+        "tag": "Action"
+      },
+      {
+        "tag": "Thriller"
+      },
+      {
+        "tag": "Krimi"
+      }
+    ],
+    "guids": [
+      {
+        "id": "imdb://tt0936501"
+      },
+      {
+        "id": "tmdb://8681"
+      },
+      {
+        "id": "tvdb://525"
+      }
+    ],
+    "labels": [
+      {
+        "tag": null
+      }
+    ],
+    "markers": [
+      {
+        "end": 5603807,
+        "final": true,
+        "first": true,
+        "start": 5287426,
+        "type": "credits"
+      }
+    ],
+    "producers": [
+      {
+        "tag": "Pierre-Ange Le Pogam"
+      },
+      {
+        "tag": "Luc Besson"
+      }
+    ],
+    "roles": [
+      {
+        "role": "Bryan Mills",
+        "tag": "Liam Neeson"
+      },
+      {
+        "role": "Kim Mills",
+        "tag": "Maggie Grace"
+      },
+      {
+        "role": "Lenore St. John",
+        "tag": "Famke Janssen"
+      },
+      {
+        "role": "Jean-Claude Pitrel",
+        "tag": "Olivier Rabourdin"
+      },
+      {
+        "role": "Sam Gilroy",
+        "tag": "Leland Orser"
+      },
+      {
+        "role": "Mark Casey",
+        "tag": "Jon Gries"
+      },
+      {
+        "role": "Bernie Harris",
+        "tag": "David Warshofsky"
+      },
+      {
+        "role": "Sheerah",
+        "tag": "Holly Valance"
+      },
+      {
+        "role": "Patrice Saint-Clair",
+        "tag": "Gérard Watkins"
+      },
+      {
+        "role": "Marko Hoxha",
+        "tag": "Arben Bajraktaraj"
+      },
+      {
+        "role": "Stuart St. John",
+        "tag": "Xander Berkeley"
+      },
+      {
+        "role": "Amanda",
+        "tag": "Katie Cassidy"
+      },
+      {
+        "role": "Anton",
+        "tag": "Radivoje Bukvić"
+      },
+      {
+        "role": "Peter",
+        "tag": "Nicolas Giraud"
+      },
+      {
+        "role": "Ali",
+        "tag": "Jalil Naciri"
+      },
+      {
+        "role": "Gregor",
+        "tag": "Goran Kostić"
+      },
+      {
+        "role": "Isabelle Pitrel",
+        "tag": "Camille Japy"
+      },
+      {
+        "role": "Girl with the Jacket",
+        "tag": "Héléna Soubeyrand"
+      },
+      {
+        "role": "Singh",
+        "tag": "Opender Singh"
+      },
+      {
+        "role": "Sheik Raman",
+        "tag": "Nabil Massad"
+      },
+      {
+        "role": "Gio",
+        "tag": "Michel Flash"
+      },
+      {
+        "role": "Leka",
+        "tag": "Rubens Hyka"
+      },
+      {
+        "role": "Vinz",
+        "tag": "Valentin Kalaj"
+      },
+      {
+        "role": "Gilles",
+        "tag": "Christophe Kourotchkine"
+      },
+      {
+        "role": "Ingrid",
+        "tag": "Anca Radici"
+      },
+      {
+        "role": "Victor",
+        "tag": "Nathan Rippy"
+      },
+      {
+        "role": "Nezir",
+        "tag": "Tommy Spahija"
+      },
+      {
+        "role": "Dardan",
+        "tag": "Anatole Taubman"
+      },
+      {
+        "role": "Undercover Agent",
+        "tag": "Mathieu Busson"
+      },
+      {
+        "role": "Jean-Claude's Assistant",
+        "tag": "Edwin Krüger"
+      },
+      {
+        "role": "Prostitute",
+        "tag": "Fani Kolarova"
+      },
+      {
+        "role": "Taxi Driver",
+        "tag": "Bertrand Treuil"
+      },
+      {
+        "role": "Pharmacist",
+        "tag": "Marc Amyot"
+      },
+      {
+        "role": "Paper Shop Clerk",
+        "tag": "Christy Reese"
+      },
+      {
+        "role": "Security, Stuart's Mansion",
+        "tag": "George Hertzberg"
+      },
+      {
+        "role": "Maid",
+        "tag": "Ivette González"
+      }
+    ],
+    "writers": [
+      {
+        "tag": "Luc Besson"
+      },
+      {
+        "tag": "Robert Mark Kamen"
+      }
+    ]
+  },
+  {
+    "addedAt": "2017-03-25T12:16:25",
+    "audienceRating": 6.2,
+    "audienceRatingImage": "imdb://image.rating",
+    "contentRating": "de/16",
+    "duration": 5903627,
+    "durationHuman": "1 hr 38 mins",
+    "editionTitle": "Extended",
+    "guid": "plex://movie/5d7768c90ea56a001e2aa2d8",
+    "hasCreditsMarker": true,
+    "originalTitle": "Taken 2",
+    "originallyAvailableAt": "2012-09-29",
+    "rating": null,
+    "ratingImage": null,
+    "ratingKey": 92544,
+    "studio": "EuropaCorp",
+    "summary": "Nachdem der frühere CIA-Topagent Bryan Mills im ersten Teil seine Tochter Kim in Eigenregie aus den Klauen eines osteuropäischen Mädchenhändlerrings befreit hatte, braucht er diesmal selber Hilfe. Einem Vater der damaligen Kidnapper gefiel Mills Aufräumaktion so gar nicht, weshalb er den mit seiner Frau Leonore im Urlaub in Istanbul weilenden Ex-Agenten kurzerhand als Geisel nimmt. Mit Hilfe seiner Tochter gelingt es Mills, den Spieß umzudrehen und seine Familie in Sicherheit zu bringen. Auch dieses Mal springt der ehemalige Topagent dabei nicht gerade zimperlich mit seinen Widersachern um.",
+    "tagline": "Jetzt sind sie hinter ihm her.",
+    "thumbFile": "Movie - 96 Hours - Taken 2 [92544].images/96 Hours - Taken 2 [92544].thumb.jpg",
+    "title": "96 Hours - Taken 2",
+    "titleSort": "96 Hours - Taken 2",
+    "type": "movie",
+    "userRating": null,
+    "year": 2012,
+    "collections": [
+      {
+        "tag": "96 Hours Filmreihe"
+      }
+    ],
+    "countries": [
+      {
+        "tag": "France"
+      },
+      {
+        "tag": "Turkey"
+      },
+      {
+        "tag": "United States of America"
+      }
+    ],
+    "directors": [
+      {
+        "tag": "Olivier Megaton"
+      }
+    ],
+    "fields": [
+      {
+        "locked": null,
+        "name": null
+      }
+    ],
+    "genres": [
+      {
+        "tag": "Thriller"
+      },
+      {
+        "tag": "Action"
+      },
+      {
+        "tag": "Krimi"
+      }
+    ],
+    "guids": [
+      {
+        "id": "imdb://tt1397280"
+      },
+      {
+        "id": "tmdb://82675"
+      },
+      {
+        "id": "tvdb://1148"
+      }
+    ],
+    "labels": [
+      {
+        "tag": null
+      }
+    ],
+    "markers": [
+      {
+        "end": 5903627,
+        "final": true,
+        "first": true,
+        "start": 5727264,
+        "type": "credits"
+      }
+    ],
+    "producers": [
+      {
+        "tag": "Luc Besson"
+      }
+    ],
+    "roles": [
+      {
+        "role": "Bryan Mills",
+        "tag": "Liam Neeson"
+      },
+      {
+        "role": "Kim Mills",
+        "tag": "Maggie Grace"
+      },
+      {
+        "role": "Lenore St. John",
+        "tag": "Famke Janssen"
+      },
+      {
+        "role": "Sam Gilroy",
+        "tag": "Leland Orser"
+      },
+      {
+        "role": "Bernie Harris",
+        "tag": "D. B. Sweeney"
+      },
+      {
+        "role": "Mark Casey",
+        "tag": "Jon Gries"
+      },
+      {
+        "role": "Murad Krasniqi",
+        "tag": "Rade Šerbedžija"
+      },
+      {
+        "role": "Jamie",
+        "tag": "Luke Grimes"
+      },
+      {
+        "role": "Inspector Durmaz",
+        "tag": "Kevork Malikyan"
+      },
+      {
+        "role": "Suko",
+        "tag": "Alain Figlarz"
+      },
+      {
+        "role": "Car Wash Attendant",
+        "tag": "Frank Alvarez"
+      },
+      {
+        "role": "Custom Officer Albania",
+        "tag": "Murat Tuncelli"
+      },
+      {
+        "role": "Imam",
+        "tag": "Ali Yildirim"
+      },
+      {
+        "role": "Mirko",
+        "tag": "Ergun Kuyucu"
+      },
+      {
+        "role": "Border Guard #1",
+        "tag": "Cengiz Bozkurt"
+      },
+      {
+        "role": "Reception Clerk",
+        "tag": "Hakan Karahan"
+      },
+      {
+        "role": "Waiter",
+        "tag": "Saruhan Sari"
+      },
+      {
+        "role": "Cheikh",
+        "tag": "Naci Adıgüzel"
+      },
+      {
+        "role": "Cheikh's Aide",
+        "tag": "Aclan Büyüktürkoğlu"
+      },
+      {
+        "role": "Hotel Driver",
+        "tag": "Mehmet Polat"
+      },
+      {
+        "role": "Hotel Thug #1",
+        "tag": "Yilmaz Kovan"
+      },
+      {
+        "role": "Hotel Thug #2",
+        "tag": "Erdogan Yavuz"
+      },
+      {
+        "role": "Hotel Thug #3",
+        "tag": "Luran Ahmeti"
+      },
+      {
+        "role": "Hotel Duty Officer",
+        "tag": "Cengiz Daner"
+      },
+      {
+        "role": "Maid Lockers",
+        "tag": "Melis Erman"
+      },
+      {
+        "role": "Barber",
+        "tag": "Erkan Üçüncü"
+      },
+      {
+        "role": "Man in Street",
+        "tag": "Ugur Ugural"
+      },
+      {
+        "role": "Johnson",
+        "tag": "Alex Dawe"
+      },
+      {
+        "role": "Jean-Claude Pitrel",
+        "tag": "Olivier Rabourdin"
+      },
+      {
+        "role": "Jean-Claude's Driver",
+        "tag": "Michaël Vander-Meiren"
+      },
+      {
+        "role": "Jean-Claude's Concierge",
+        "tag": "Rochelle Gregorie"
+      },
+      {
+        "role": "Driving Instructor",
+        "tag": "Luenell"
+      },
+      {
+        "role": "Hammam Attendant",
+        "tag": "Emre Melemez"
+      },
+      {
+        "role": "Albanian Intelligence Officer",
+        "tag": "İlkay Akdağlı"
+      },
+      {
+        "role": "Waitress",
+        "tag": "Mylène Pilutik"
+      },
+      {
+        "role": "Newsreader",
+        "tag": "Nathan Rippy"
+      },
+      {
+        "role": "Border Guard #2",
+        "tag": "Atilla Pekoz"
+      },
+      {
+        "role": "Custom Officer #1",
+        "tag": "Serdar Okten"
+      },
+      {
+        "role": "Custom Officer #2",
+        "tag": "Mesut Makul"
+      },
+      {
+        "role": "Custom Officer #3",
+        "tag": "Mustafa Akin"
+      },
+      {
+        "role": "Police Man Car #1",
+        "tag": "Murat Karatas"
+      },
+      {
+        "role": "Police Man Car #2",
+        "tag": "Cuneyt Yanar"
+      },
+      {
+        "role": "Police Man Antique #1",
+        "tag": "Baris Adem"
+      },
+      {
+        "role": "Police Man Antique #2",
+        "tag": "Hasan Karagulle"
+      },
+      {
+        "role": "Cop #1",
+        "tag": "Gazenfer Kokoz"
+      },
+      {
+        "role": "Cop #2",
+        "tag": "Remzi Sezgin"
+      },
+      {
+        "role": "Taxi Driver Kim",
+        "tag": "Ahmet Orhan Ozcam"
+      },
+      {
+        "role": "Pool Attendant",
+        "tag": "Melike Acar"
+      },
+      {
+        "role": "Pool Waiter",
+        "tag": "Yasemin Yeltekin"
+      },
+      {
+        "role": "Pool Man Newspaper",
+        "tag": "Baris Aydin"
+      },
+      {
+        "role": "Marine",
+        "tag": "Kenneth James Dakan"
+      },
+      {
+        "role": "Coffin Puller",
+        "tag": "Adil Sak"
+      },
+      {
+        "role": "Coffin Puller",
+        "tag": "Bekir Aslantaş"
+      },
+      {
+        "role": "Coffin Puller",
+        "tag": "Ercan Kurt"
+      },
+      {
+        "role": "Coffin Puller",
+        "tag": "Cetin Arik"
+      },
+      {
+        "role": "Hammam Cop",
+        "tag": "Tamer Avkapan"
+      },
+      {
+        "role": "Antique Shop #1",
+        "tag": "Eraslan Sağlam"
+      },
+      {
+        "role": "Antique Shop #2",
+        "tag": "Mohammed Mouh"
+      },
+      {
+        "role": "DJ / Disco",
+        "tag": "Julian Vinay"
+      },
+      {
+        "role": "Maid Hotel",
+        "tag": "Gaelle Oilleau"
+      },
+      {
+        "role": "Enemy Fighter",
+        "tag": "Çağan Atakan Arslan"
+      }
+    ],
+    "writers": [
+      {
+        "tag": "Robert Mark Kamen"
+      },
+      {
+        "tag": "Luc Besson"
+      }
+    ]
+  },
+  {
+    "addedAt": "2017-03-25T12:30:11",
+    "audienceRating": 6,
+    "audienceRatingImage": "imdb://image.rating",
+    "contentRating": "de/16",
+    "duration": 6906337,
+    "durationHuman": "1 hr 55 mins",
+    "editionTitle": "Extended",
+    "guid": "plex://movie/5d776ab396b655001fdf6a1e",
+    "hasCreditsMarker": true,
+    "originalTitle": "Taken 3",
+    "originallyAvailableAt": "2014-12-16",
+    "rating": null,
+    "ratingImage": null,
+    "ratingKey": 92543,
+    "studio": "EuropaCorp",
+    "summary": "Ex-CIA-Agent und Familienvater Bryan Mills rettete seine Tochter Kim und deren Mutter Lenore bereits zwei Mal aus den bedrohlichsten Situationen. Diesmal muss er sich primär um die eigene Haut kümmern – Mills wird zum Hauptverdächtigen in einem Mordfall, dessen Opfer ihm sehr nahe stand. Der Einzelkämpfer sieht nur eine Möglichkeit, seine Unschuld zu beweisen: Er muss den Killer selbst ausfindig machen und zur Rechenschaft ziehen. Seine in vielen gefährlichen Missionen geschulten, ebenso besonderen wie tödlichen Fähigkeit setzt Mills aber nicht nur für die Jagt ein, sondern auch, um sich die Polizei vom Hals zu halten. Diese fahndet mit allen Mitteln nach dem früheren Spion, angeführt von dem hartnäckigen Polizeiinspektor Franck Dotzler …",
+    "tagline": "Alles endet hier",
+    "thumbFile": "Movie - 96 Hours - Taken 3 [92543].images/96 Hours - Taken 3 [92543].thumb.jpg",
+    "title": "96 Hours - Taken 3",
+    "titleSort": "96 Hours - Taken 3",
+    "type": "movie",
+    "userRating": null,
+    "year": 2014,
+    "collections": [
+      {
+        "tag": "96 Hours Filmreihe"
+      }
+    ],
+    "countries": [
+      {
+        "tag": "France"
+      },
+      {
+        "tag": "United States of America"
+      },
+      {
+        "tag": "Spain"
+      }
+    ],
+    "directors": [
+      {
+        "tag": "Olivier Megaton"
+      }
+    ],
+    "fields": [
+      {
+        "locked": null,
+        "name": null
+      }
+    ],
+    "genres": [
+      {
+        "tag": "Action"
+      },
+      {
+        "tag": "Thriller"
+      },
+      {
+        "tag": "Krimi"
+      }
+    ],
+    "guids": [
+      {
+        "id": "imdb://tt2446042"
+      },
+      {
+        "id": "tmdb://260346"
+      },
+      {
+        "id": "tvdb://254"
+      }
+    ],
+    "labels": [
+      {
+        "tag": null
+      }
+    ],
+    "markers": [
+      {
+        "end": 6906337,
+        "final": true,
+        "first": true,
+        "start": 6643703,
+        "type": "credits"
+      }
+    ],
+    "producers": [
+      {
+        "tag": "Luc Besson"
+      }
+    ],
+    "roles": [
+      {
+        "role": "Bryan Mills",
+        "tag": "Liam Neeson"
+      },
+      {
+        "role": "Inspector Frank Dotzler",
+        "tag": "Forest Whitaker"
+      },
+      {
+        "role": "Kim Mills",
+        "tag": "Maggie Grace"
+      },
+      {
+        "role": "Stuart St. John",
+        "tag": "Dougray Scott"
+      },
+      {
+        "role": "Lenore St. John",
+        "tag": "Famke Janssen"
+      },
+      {
+        "role": "Oleg Malankov",
+        "tag": "Sam Spruell"
+      },
+      {
+        "role": "Garcia",
+        "tag": "Don Harvey"
+      },
+      {
+        "role": "Smith",
+        "tag": "Dylan Bruno"
+      },
+      {
+        "role": "Sam Gilroy",
+        "tag": "Leland Orser"
+      },
+      {
+        "role": "Bernie Harris",
+        "tag": "David Warshofsky"
+      },
+      {
+        "role": "Mark Casey",
+        "tag": "Jon Gries"
+      },
+      {
+        "role": "Maxim",
+        "tag": "Andrew Howard"
+      },
+      {
+        "role": "Jimy",
+        "tag": "Jonny Weston"
+      },
+      {
+        "role": "Clarence",
+        "tag": "Andrew Borba"
+      },
+      {
+        "role": "Claire",
+        "tag": "Judi Beecher"
+      },
+      {
+        "role": "Maxim Partner #1",
+        "tag": "Cedric Cirotteau"
+      },
+      {
+        "role": "NSA Woman",
+        "tag": "Catherine Dyer"
+      },
+      {
+        "role": "Cop Brooks",
+        "tag": "Jimmy Palumbo"
+      },
+      {
+        "role": "Cop Crime Scene #1",
+        "tag": "Robert Pralgo"
+      },
+      {
+        "role": "Cop Crime Scene #2",
+        "tag": "Tony Williams"
+      },
+      {
+        "role": "Cop Crime Scene #3",
+        "tag": "Al Vicente"
+      },
+      {
+        "role": "Cop Utility Room",
+        "tag": "Alexander Wraith"
+      },
+      {
+        "role": "Cop Debriefing Room",
+        "tag": "Shelley Calene-Black"
+      },
+      {
+        "role": "Cop Technician Surveillance Van",
+        "tag": "Adam J. Smith"
+      },
+      {
+        "role": "Cop Lenore House #1",
+        "tag": "Jimmy Gonzáles"
+      },
+      {
+        "role": "Cop Malankov Garage #1",
+        "tag": "David Clark"
+      },
+      {
+        "role": "Clerk Convenience Store",
+        "tag": "Michael Shikany"
+      },
+      {
+        "role": "Clerk Gas Station",
+        "tag": "Robert Bryan Davis"
+      },
+      {
+        "role": "Clerk Toy Store",
+        "tag": "Nazareth Dairian"
+      },
+      {
+        "role": "Impound Technician",
+        "tag": "Tony DeMil"
+      },
+      {
+        "role": "Waitress Rancho Cafe",
+        "tag": "Stefanie Kleine"
+      },
+      {
+        "role": "Customer Rancho Cafe",
+        "tag": "Johnny Harvill"
+      },
+      {
+        "role": "Waitress Restaurant",
+        "tag": "Angie Dillard"
+      },
+      {
+        "role": "Mike",
+        "tag": "Wallace Langham"
+      },
+      {
+        "role": "Stuart Bodyguard #2",
+        "tag": "Franck Neel"
+      },
+      {
+        "role": "Malankov Guard Elevator Garage #1",
+        "tag": "Cédric Chevalme"
+      },
+      {
+        "role": "Malankov Guard Security Station #1",
+        "tag": "Anton Yakovlev"
+      },
+      {
+        "role": "USC Girl #1",
+        "tag": "Ellen Ho"
+      },
+      {
+        "role": "USC Girl #2",
+        "tag": "Haley Craft"
+      },
+      {
+        "role": "USC Girl #3",
+        "tag": "Stephanie Honoré"
+      },
+      {
+        "role": "USC Professor",
+        "tag": "Steve Coulter"
+      },
+      {
+        "role": "Pilot Private Jet",
+        "tag": "Mike Davies"
+      },
+      {
+        "role": "Co-Pilot Private Jet",
+        "tag": "Jonathan Waite"
+      },
+      {
+        "role": "Reporter Crime Scene",
+        "tag": "Lauren Sivan"
+      },
+      {
+        "role": "Pastor Lenore Funeral",
+        "tag": "Cornelius Peter"
+      },
+      {
+        "role": "Bodyguard Many",
+        "tag": "Kevin Fry-Bowers"
+      },
+      {
+        "role": "Bagel Clerk",
+        "tag": "Katie Mary Garland"
+      },
+      {
+        "role": "Johnson",
+        "tag": "Al Sapienza"
+      },
+      {
+        "role": "Phillips",
+        "tag": "Chad Donella"
+      },
+      {
+        "role": "Malankov Guard Elevator Garage #2",
+        "tag": "Pete Thias"
+      },
+      {
+        "role": "Malankov Guard Security Station #2",
+        "tag": "Cedric Camus"
+      },
+      {
+        "role": "Malankov Guard Elevator Penthouse #1",
+        "tag": "Karim Ben Haddou"
+      },
+      {
+        "role": "Malankov Guard Elevator Penthouse #2",
+        "tag": "Vincent Parisi"
+      },
+      {
+        "role": "Malankov Guard Elevator Penthouse #3",
+        "tag": "Scott Thrun"
+      },
+      {
+        "role": "Malankov Building Security",
+        "tag": "Laurent Desponds"
+      },
+      {
+        "role": "Waitress #2",
+        "tag": "Amanda Nima"
+      },
+      {
+        "role": "Steward Gulfstream",
+        "tag": "Alex Disdier"
+      },
+      {
+        "role": "Controller Airport",
+        "tag": "Martin Vaughan Lewis"
+      },
+      {
+        "role": "Kim's Friend (uncredited)",
+        "tag": "Abbey Ferrell"
+      },
+      {
+        "role": "Detective (uncredited)",
+        "tag": "Ashante P.T. Stokes"
+      },
+      {
+        "role": "College Student (uncredited)",
+        "tag": "Preston Baker"
+      }
+    ],
+    "writers": [
+      {
+        "tag": "Luc Besson"
+      },
+      {
+        "tag": "Robert Mark Kamen"
+      }
+    ]
+  },
+  {
+    "addedAt": "2020-05-17T00:46:18",
+    "audienceRating": 8.2,
+    "audienceRatingImage": "imdb://image.rating",
+    "contentRating": "de/12",
+    "duration": 7139488,
+    "durationHuman": "1 hr 59 mins",
+    "editionTitle": null,
+    "guid": "plex://movie/5d77705edd931c001e38bde2",
+    "hasCreditsMarker": true,
+    "originalTitle": null,
+    "originallyAvailableAt": "2019-12-25",
+    "rating": null,
+    "ratingImage": null,
+    "ratingKey": 1,
+    "studio": "DreamWorks Pictures",
+    "summary": "Auf dem Höhepunkt des Ersten Weltkriegs wird Schofield und Blake, zwei jungen britischen Soldaten, eine scheinbar unmögliche Mission gegeben: In einem Wettlauf gegen die Zeit sollen sie das Feindesgebiet durchqueren und eine höchst dringliche Nachricht überbringen, die hunderte Männer retten kann – darunter Blakes eigenen Bruder.",
+    "tagline": "Zeit ist der Feind",
+    "thumbFile": "Movie - 1917 [1].images/1917 [1].thumb.jpg",
+    "title": "1917",
+    "titleSort": "1917",
+    "type": "movie",
+    "userRating": null,
+    "year": 2019,
+    "collections": [
+      {
+        "tag": null
+      }
+    ],
+    "countries": [
+      {
+        "tag": "India"
+      },
+      {
+        "tag": "Spain"
+      },
+      {
+        "tag": "United Kingdom"
+      },
+      {
+        "tag": "United States of America"
+      }
+    ],
+    "directors": [
+      {
+        "tag": "Sam Mendes"
+      }
+    ],
+    "fields": [
+      {
+        "locked": null,
+        "name": null
+      }
+    ],
+    "genres": [
+      {
+        "tag": "Drama"
+      },
+      {
+        "tag": "Kriegsfilm"
+      },
+      {
+        "tag": "Action"
+      },
+      {
+        "tag": "Historie"
+      },
+      {
+        "tag": "Thriller"
+      }
+    ],
+    "guids": [
+      {
+        "id": "imdb://tt8579674"
+      },
+      {
+        "id": "tmdb://530915"
+      },
+      {
+        "id": "tvdb://30526"
+      }
+    ],
+    "labels": [
+      {
+        "tag": null
+      }
+    ],
+    "markers": [
+      {
+        "end": 7139488,
+        "final": true,
+        "first": true,
+        "start": 6573539,
+        "type": "credits"
+      }
+    ],
+    "producers": [
+      {
+        "tag": "Michael Lerman"
+      },
+      {
+        "tag": "Pippa Harris"
+      },
+      {
+        "tag": "Sam Mendes"
+      },
+      {
+        "tag": "Jayne-Ann Tenggren"
+      }
+    ],
+    "roles": [
+      {
+        "role": "Lance Corporal Schofield",
+        "tag": "George MacKay"
+      },
+      {
+        "role": "Lance Corporal Blake",
+        "tag": "Dean-Charles Chapman"
+      },
+      {
+        "role": "Captain Smith",
+        "tag": "Mark Strong"
+      },
+      {
+        "role": "Lieutenant Leslie",
+        "tag": "Andrew Scott"
+      },
+      {
+        "role": "Lieutenant Blake",
+        "tag": "Richard Madden"
+      },
+      {
+        "role": "Lauri",
+        "tag": "Claire Duburcq"
+      },
+      {
+        "role": "General Erinmore",
+        "tag": "Colin Firth"
+      },
+      {
+        "role": "Colonel MacKenzie",
+        "tag": "Benedict Cumberbatch"
+      },
+      {
+        "role": "Sergeant Sanders",
+        "tag": "Daniel Mays"
+      },
+      {
+        "role": "Major Hepburn",
+        "tag": "Adrian Scarborough"
+      },
+      {
+        "role": "Private Bullen",
+        "tag": "Chris Walley"
+      },
+      {
+        "role": "Sepoy Jondalar",
+        "tag": "Nabhaan Rizwan"
+      },
+      {
+        "role": "Lieutenant Richards",
+        "tag": "Jamie Parker"
+      },
+      {
+        "role": "Private Butler",
+        "tag": "Tommy French"
+      },
+      {
+        "role": "NCO Baker",
+        "tag": "Paul Tinto"
+      },
+      {
+        "role": "NCO Harvey",
+        "tag": "Billy Postlethwaite"
+      },
+      {
+        "role": "Colonel Collins",
+        "tag": "Richard McCabe"
+      },
+      {
+        "role": "Captain Ivins",
+        "tag": "Justin Edwards"
+      },
+      {
+        "role": "Lieutenant Gordon",
+        "tag": "Pip Carter"
+      },
+      {
+        "role": "Sergeant Miller",
+        "tag": "Andy Apollo"
+      },
+      {
+        "role": "Private Stokes",
+        "tag": "Josef Davies"
+      },
+      {
+        "role": "Private Buchanan",
+        "tag": "Gabriel Akuwudike"
+      },
+      {
+        "role": "Private Kilgour",
+        "tag": "Spike Leighton"
+      },
+      {
+        "role": "German Pilot",
+        "tag": "Robert Maaser"
+      },
+      {
+        "role": "Private Parry",
+        "tag": "Gerran Howell"
+      },
+      {
+        "role": "Private Atkins",
+        "tag": "Adam Hugill"
+      },
+      {
+        "role": "Sergeant Harrop",
+        "tag": "Benjamin Adams"
+      },
+      {
+        "role": "Private Cooke",
+        "tag": "Anson Boon"
+      },
+      {
+        "role": "Private Rossi",
+        "tag": "Kenny Fullwood"
+      },
+      {
+        "role": "Private Malky",
+        "tag": "Ryan Nolan"
+      },
+      {
+        "role": "Private Sniper",
+        "tag": "Elliot Baxter"
+      },
+      {
+        "role": "German Soldier",
+        "tag": "Kye Mckee"
+      },
+      {
+        "role": "French Baby",
+        "tag": "Ivy-I Macnamara"
+      },
+      {
+        "role": "Soldat Muller",
+        "tag": "Merlin Leonhardt"
+      },
+      {
+        "role": "Soldat Baumer",
+        "tag": "Taddeo Kufus"
+      },
+      {
+        "role": "Wayfaring Stranger Soldier",
+        "tag": "Jos Slovick"
+      },
+      {
+        "role": "Private Pinwood",
+        "tag": "Luke Hornsby"
+      },
+      {
+        "role": "Private Seymour",
+        "tag": "Jack Shalloo"
+      },
+      {
+        "role": "Private Grey",
+        "tag": "Elliot Edusah"
+      },
+      {
+        "role": "Lance Corporal Duff",
+        "tag": "Jacob James Beswick"
+      },
+      {
+        "role": "Lieutenant Hutton",
+        "tag": "Michael Jibson"
+      },
+      {
+        "role": "Sergeant Wright",
+        "tag": "Ian Wilson"
+      },
+      {
+        "role": "Sergeant Gardner",
+        "tag": "Bradley Connor"
+      },
+      {
+        "role": "Sergeant Guthrie",
+        "tag": "John Hollingworth"
+      },
+      {
+        "role": "Orderly Dixon",
+        "tag": "Michael smith"
+      },
+      {
+        "role": "Orderly Byrne",
+        "tag": "Jonny Lavelle"
+      },
+      {
+        "role": "Captain Rylands",
+        "tag": "Michael Rouse"
+      },
+      {
+        "role": "Mackenzie Officer",
+        "tag": "Richard Dempsey"
+      },
+      {
+        "role": "Mackenzie Officer",
+        "tag": "Phil Cheadle"
+      },
+      {
+        "role": "Captain Morahan",
+        "tag": "Jonah Russell"
+      },
+      {
+        "role": "Captain Sandbach",
+        "tag": "Daniel Attwell"
+      },
+      {
+        "role": "Private Willock (as Joe Mendes)",
+        "tag": "Joe Anders"
+      },
+      {
+        "role": "German Sniper",
+        "tag": "Bogdan Kumšackij"
+      },
+      {
+        "role": "Attacking Soldier (uncredited)",
+        "tag": "Oliver Simms"
+      }
+    ],
+    "writers": [
+      {
+        "tag": "Sam Mendes"
+      },
+      {
+        "tag": "Krysty Wilson-Cairns"
+      }
+    ]
+  },
+  {
+    "addedAt": "2024-05-09T01:52:22",
+    "audienceRating": 6.5,
+    "audienceRatingImage": "imdb://image.rating",
+    "contentRating": "de/16",
+    "duration": 6575552,
+    "durationHuman": "1 hr 50 mins",
+    "editionTitle": null,
+    "guid": "plex://movie/64398c498ef450ff3391c02e",
+    "hasCreditsMarker": true,
+    "originalTitle": null,
+    "originallyAvailableAt": "2024-04-17",
+    "rating": null,
+    "ratingImage": null,
+    "ratingKey": 66463,
+    "studio": "Project X Entertainment",
+    "summary": "Ein junges Mädchen wird aus ihrem Haus in Boston entführt, um ein Lösegeld von ihrem reichen, zwielichtigen Vater zu erpressen. Doch was wie eine einfache Entführung aussah, entpuppt sich als deutlich komplizierter, als ihre Entführer sich vorstellen konnten.",
+    "tagline": "Kinder können solche Monster sein",
+    "thumbFile": "Movie - Abigail [66463].images/Abigail [66463].thumb.jpg",
+    "title": "Abigail",
+    "titleSort": "Abigail",
+    "type": "movie",
+    "userRating": null,
+    "year": 2024,
+    "collections": [
+      {
+        "tag": null
+      }
+    ],
+    "countries": [
+      {
+        "tag": "United States of America"
+      }
+    ],
+    "directors": [
+      {
+        "tag": "Tyler Gillett"
+      },
+      {
+        "tag": "Matt Bettinelli-Olpin"
+      }
+    ],
+    "fields": [
+      {
+        "locked": null,
+        "name": null
+      }
+    ],
+    "genres": [
+      {
+        "tag": "Horror"
+      },
+      {
+        "tag": "Thriller"
+      },
+      {
+        "tag": "Action"
+      },
+      {
+        "tag": "Komödie"
+      },
+      {
+        "tag": "Krimi"
+      }
+    ],
+    "guids": [
+      {
+        "id": "imdb://tt27489557"
+      },
+      {
+        "id": "tmdb://1111873"
+      },
+      {
+        "id": "tvdb://353024"
+      }
+    ],
+    "labels": [
+      {
+        "tag": null
+      }
+    ],
+    "markers": [
+      {
+        "end": 6575552,
+        "final": true,
+        "first": true,
+        "start": 6327996,
+        "type": "credits"
+      }
+    ],
+    "producers": [
+      {
+        "tag": "Paul Neinstein"
+      },
+      {
+        "tag": "Chad Villella"
+      },
+      {
+        "tag": "James Vanderbilt"
+      },
+      {
+        "tag": "William Sherak"
+      },
+      {
+        "tag": "Tripp Vinson"
+      }
+    ],
+    "roles": [
+      {
+        "role": "Joey",
+        "tag": "Melissa Barrera"
+      },
+      {
+        "role": "Frank",
+        "tag": "Dan Stevens"
+      },
+      {
+        "role": "Abigail",
+        "tag": "Alisha Weir"
+      },
+      {
+        "role": "Rickles",
+        "tag": "William Catlett"
+      },
+      {
+        "role": "Sammy",
+        "tag": "Kathryn Newton"
+      },
+      {
+        "role": "Peter",
+        "tag": "Kevin Durand"
+      },
+      {
+        "role": "Dean",
+        "tag": "Angus Cloud"
+      },
+      {
+        "role": "Lambert",
+        "tag": "Giancarlo Esposito"
+      },
+      {
+        "role": "Father",
+        "tag": "Matthew Goode"
+      }
+    ],
+    "writers": [
+      {
+        "tag": "Stephen Shields"
+      },
+      {
+        "tag": "Guy Busick"
+      }
+    ]
+  },
+  {
+    "addedAt": "2024-03-02T22:11:58",
+    "audienceRating": 6.5,
+    "audienceRatingImage": "imdb://image.rating",
+    "contentRating": "de/12",
+    "duration": 7382400,
+    "durationHuman": "2 hrs 3 mins",
+    "editionTitle": null,
+    "guid": "plex://movie/5d776c7c23d5a3001f51c069",
+    "hasCreditsMarker": true,
+    "originalTitle": "Ad Astra",
+    "originallyAvailableAt": "2019-09-18",
+    "rating": null,
+    "ratingImage": null,
+    "ratingKey": 59205,
+    "studio": "New Regency Productions",
+    "summary": "Spacecom-Raumfahrt-Ingenieur Roy McBride  ist ein glücklich verheirateter, leicht autistischer Einzelgänger, der es nie verwunden hat, dass sein Vater vor 20 Jahren zu einer mysteriösen Mission zum Neptun aufbrach, von der er nie zurückkehrte. Er wollte dort nach intelligentem, außerirdischen Leben suchen und hat dabei mit höchst gefährlichem Material experimentiert. Warum sein Vater nie zurückkehrte und ob er fand, wonach er suchte, möchte Roy nun endlich herausfinden: Er startet selbst in den Weltraum und stößt dabei auf Geheimnisse, die alles, was wir über die menschliche Existenz und unseren Platz im Universum zu wissen glaubten, in Frage stellen - denn die Experimente seines Vaters bedrohen das ganze Solarsystem. Eine “Welle” ist entstanden, die zu gefährlichen Technikausfällen und Flugzeugabstürzen führt… Roy tritt mutig die Mission an, an deren Ende die Vernichtung der Arbeit seines verehrten Vaters stehen könnte.",
+    "tagline": "Die Antworten, die wir suchen, sind außerhalb unserer Reichweite.",
+    "thumbFile": "Movie - Ad Astra - Zu den Sternen [59205].images/Ad Astra - Zu den Sternen [59205].thumb.jpg",
+    "title": "Ad Astra - Zu den Sternen",
+    "titleSort": "Ad Astra - Zu den Sternen",
+    "type": "movie",
+    "userRating": null,
+    "year": 2019,
+    "collections": [
+      {
+        "tag": null
+      }
+    ],
+    "countries": [
+      {
+        "tag": "Brazil"
+      },
+      {
+        "tag": "China"
+      },
+      {
+        "tag": "United States of America"
+      }
+    ],
+    "directors": [
+      {
+        "tag": "James Gray"
+      }
+    ],
+    "fields": [
+      {
+        "locked": true,
+        "name": "thumb"
+      },
+      {
+        "locked": true,
+        "name": "art"
+      }
+    ],
+    "genres": [
+      {
+        "tag": "Thriller"
+      },
+      {
+        "tag": "Science Fiction"
+      },
+      {
+        "tag": "Drama"
+      },
+      {
+        "tag": "Adventure"
+      },
+      {
+        "tag": "Mystery"
+      }
+    ],
+    "guids": [
+      {
+        "id": "imdb://tt2935510"
+      },
+      {
+        "id": "tmdb://419704"
+      },
+      {
+        "id": "tvdb://9229"
+      }
+    ],
+    "labels": [
+      {
+        "tag": null
+      }
+    ],
+    "markers": [
+      {
+        "end": 7382400,
+        "final": true,
+        "first": true,
+        "start": 6800160,
+        "type": "credits"
+      }
+    ],
+    "producers": [
+      {
+        "tag": "James Gray"
+      },
+      {
+        "tag": "Brad Pitt"
+      },
+      {
+        "tag": "Anthony Katagas"
+      },
+      {
+        "tag": "Rodrigo Teixeira"
+      },
+      {
+        "tag": "Dede Gardner"
+      },
+      {
+        "tag": "Jeremy Kleiner"
+      },
+      {
+        "tag": "Arnon Milchan"
+      }
+    ],
+    "roles": [
+      {
+        "role": "Roy McBride",
+        "tag": "Brad Pitt"
+      },
+      {
+        "role": "H. Clifford McBride",
+        "tag": "Tommy Lee Jones"
+      },
+      {
+        "role": "Helen Lantos",
+        "tag": "Ruth Negga"
+      },
+      {
+        "role": "Lieutenant General Rivas",
+        "tag": "John Ortiz"
+      },
+      {
+        "role": "Eve",
+        "tag": "Liv Tyler"
+      },
+      {
+        "role": "Thomas Pruitt",
+        "tag": "Donald Sutherland"
+      },
+      {
+        "role": "Chip Garnes",
+        "tag": "Greg Bryk"
+      },
+      {
+        "role": "Donald Stanford",
+        "tag": "Loren Dean"
+      },
+      {
+        "role": "Lorraine Deavers",
+        "tag": "Kimberly Elise"
+      },
+      {
+        "role": "Brigadier General Stroud",
+        "tag": "John Finn"
+      },
+      {
+        "role": "Adjutant General Vogel",
+        "tag": "LisaGay Hamilton"
+      },
+      {
+        "role": "Captain Lawrence Tanner",
+        "tag": "Donnie Keshawarz"
+      },
+      {
+        "role": "Franklin Yoshida",
+        "tag": "Bobby Nish"
+      },
+      {
+        "role": "Willie Levant",
+        "tag": "Sean Blakemore"
+      },
+      {
+        "role": "Captain Lu",
+        "tag": "Freda Foh Shen"
+      },
+      {
+        "role": "Female Flight Attendant",
+        "tag": "Kayla Adams"
+      },
+      {
+        "role": "Arjun Dhariwal",
+        "tag": "Ravi Kapoor"
+      },
+      {
+        "role": "Woman in White Pants-Shirt",
+        "tag": "Elisa Perry"
+      },
+      {
+        "role": "Sal",
+        "tag": "Daniel Sauli"
+      },
+      {
+        "role": "Sergeant Romano",
+        "tag": "Kimmy Shields"
+      },
+      {
+        "role": "Technician One",
+        "tag": "Kunal Dudheker"
+      },
+      {
+        "role": "Janice Collins",
+        "tag": "Alyson Reed"
+      },
+      {
+        "role": "Female Team Member",
+        "tag": "Sasha Compère"
+      },
+      {
+        "role": "Male Team Member",
+        "tag": "Justin Dray"
+      },
+      {
+        "role": "Woman on Screen",
+        "tag": "Alexandria Rousset"
+      },
+      {
+        "role": "Tanya Pincus",
+        "tag": "Natasha Lyonne"
+      },
+      {
+        "role": "Spacecom Employee",
+        "tag": "Zoro Saro Manuel Daghlian"
+      },
+      {
+        "role": "Young Roy",
+        "tag": "Jacob Sandler"
+      },
+      {
+        "role": "Cepheus (voice)",
+        "tag": "Elizabeth Willaman"
+      },
+      {
+        "role": "Lunar Base Technician",
+        "tag": "Robert J. Yowell"
+      },
+      {
+        "role": "Lunar Medic",
+        "tag": "Nicholas Walker"
+      },
+      {
+        "role": "Grace",
+        "tag": "Amanda Tudesco"
+      },
+      {
+        "role": "Military Medic",
+        "tag": "Lisa Shows"
+      },
+      {
+        "role": "Shunga Hologram",
+        "tag": "Brynn Route"
+      },
+      {
+        "role": "Moon TV Guest #1",
+        "tag": "Valeri Ross"
+      },
+      {
+        "role": "BBC News Reporter",
+        "tag": "Rochelle Rose"
+      },
+      {
+        "role": "Lt. Nash",
+        "tag": "Eloy Perez"
+      },
+      {
+        "role": "Russian Astronaut",
+        "tag": "Melvin Payne Jr."
+      },
+      {
+        "role": "American Astronaut",
+        "tag": "Jean-Pierre Mouzon"
+      },
+      {
+        "role": "Hologram Dancer",
+        "tag": "Jen Morillo"
+      },
+      {
+        "role": "Capt. Devries",
+        "tag": "Noelle Messier"
+      },
+      {
+        "role": "Shunga Hologram",
+        "tag": "Anne McDaniels"
+      },
+      {
+        "role": "Hip Japanese Traveler",
+        "tag": "Kento Matsunami"
+      },
+      {
+        "role": "Spacecom Employee",
+        "tag": "Mallory Low"
+      },
+      {
+        "role": "Drug Addict",
+        "tag": "Sheila M. Lockhart"
+      },
+      {
+        "role": "Hip Japanese Traveler",
+        "tag": "Donna Lee"
+      },
+      {
+        "role": "Dancer",
+        "tag": "Halszka Kuza"
+      },
+      {
+        "role": "Paramedic",
+        "tag": "Matthew Jones"
+      },
+      {
+        "role": "Asian Male Host",
+        "tag": "Bayani Ison"
+      },
+      {
+        "role": "Rory Flynn",
+        "tag": "Danny Hamouie"
+      },
+      {
+        "role": "Evelyn McBride",
+        "tag": "Georgia James Gray"
+      },
+      {
+        "role": "Ship Med Tech",
+        "tag": "Eleanor Goodall"
+      },
+      {
+        "role": "Jim",
+        "tag": "Luis Richard Gomez"
+      },
+      {
+        "role": "The Singing Face",
+        "tag": "Eliza Gerontakis"
+      },
+      {
+        "role": "Mars Officer Daniels",
+        "tag": "Vivian Fleming-Alvarez"
+      },
+      {
+        "role": "Earth Scientist",
+        "tag": "Lorell Bird Dorfman"
+      },
+      {
+        "role": "Robert",
+        "tag": "Lawrence Dex"
+      },
+      {
+        "role": "Hector Bustamante",
+        "tag": "Bayardo De Murguia"
+      },
+      {
+        "role": "Mechanic",
+        "tag": "Rodney Damon Collins"
+      }
+    ],
+    "writers": [
+      {
+        "tag": "James Gray"
+      },
+      {
+        "tag": "Ethan Gross"
+      }
+    ]
+  },
+  {
+    "addedAt": "2022-02-22T17:42:32",
+    "audienceRating": 8.5,
+    "audienceRatingImage": "imdb://image.rating",
+    "contentRating": "de/16",
+    "duration": 6949955,
+    "durationHuman": "1 hr 56 mins",
+    "editionTitle": "Directors Cut",
+    "guid": "plex://movie/5d7768254de0ee001fcc83a5",
+    "hasCreditsMarker": true,
+    "originalTitle": "Alien",
+    "originallyAvailableAt": "1979-05-25",
+    "rating": null,
+    "ratingImage": null,
+    "ratingKey": 92668,
+    "studio": "20th Century Fox",
+    "summary": "Die Besatzung des Weltraumfrachters Nostromo - darunter der dritte Offizier Ellen Ripley - befindet sich im künstlichen Tiefschlaf. Plötzlich empfängt ihr Schiff ein SOS-Signal. Der Bordcomputer weckt daraufhin die Mannschaft, die der Hilferuf wenig später auf einen unwirtlichen Planten führt. Dabei entdeckt die Crew das Wrack eines außerirdischen Raumschiffs. Ein Crewmitglied wird dabei von einem Alien angegriffen, das sich auf seinem Gesicht festsaugt. Dem Schiffsarzt Ash gelingt zwar die Entfernung des fremden Organismus, doch das außerirdische Wesen ist damit längst nicht besiegt. In der Enge des Raumfrachters beginnt ein Kampf ums Überleben, bei der Feind nahezu unsichtbar, heimtückisch und äußerst tödlich ist...",
+    "tagline": "Im Weltall hört dich niemand schreien.",
+    "thumbFile": "Movie - Alien - Das unheimliche Wesen aus einer fremden Welt [92668].images/Alien - Das unheimliche Wesen aus einer fremden Welt [92668].thumb.jpg",
+    "title": "Alien - Das unheimliche Wesen aus einer fremden Welt",
+    "titleSort": "Alien - Das unheimliche Wesen aus einer fremden Welt",
+    "type": "movie",
+    "userRating": null,
+    "year": 1979,
+    "collections": [
+      {
+        "tag": "Alien Filmreihe"
+      }
+    ],
+    "countries": [
+      {
+        "tag": "United States of America"
+      }
+    ],
+    "directors": [
+      {
+        "tag": "Ridley Scott"
+      }
+    ],
+    "fields": [
+      {
+        "locked": null,
+        "name": null
+      }
+    ],
+    "genres": [
+      {
+        "tag": "Science Fiction"
+      },
+      {
+        "tag": "Horror"
+      }
+    ],
+    "guids": [
+      {
+        "id": "imdb://tt0078748"
+      },
+      {
+        "id": "tmdb://348"
+      },
+      {
+        "id": "tvdb://264"
+      }
+    ],
+    "labels": [
+      {
+        "tag": null
+      }
+    ],
+    "markers": [
+      {
+        "end": 6949956,
+        "final": true,
+        "first": true,
+        "start": 6762960,
+        "type": "credits"
+      }
+    ],
+    "producers": [
+      {
+        "tag": "Walter Hill"
+      },
+      {
+        "tag": "Gordon Carroll"
+      },
+      {
+        "tag": "David Giler"
+      }
+    ],
+    "roles": [
+      {
+        "role": "Dallas",
+        "tag": "Tom Skerritt"
+      },
+      {
+        "role": "Ripley",
+        "tag": "Sigourney Weaver"
+      },
+      {
+        "role": "Lambert",
+        "tag": "Veronica Cartwright"
+      },
+      {
+        "role": "Brett",
+        "tag": "Harry Dean Stanton"
+      },
+      {
+        "role": "Kane",
+        "tag": "John Hurt"
+      },
+      {
+        "role": "Ash",
+        "tag": "Ian Holm"
+      },
+      {
+        "role": "Parker",
+        "tag": "Yaphet Kotto"
+      },
+      {
+        "role": "Alien",
+        "tag": "Bolaji Badejo"
+      },
+      {
+        "role": "Mother (voice)",
+        "tag": "Helen Horton"
+      }
+    ],
+    "writers": [
+      {
+        "tag": "Ronald Shusett"
+      },
+      {
+        "tag": "Dan O'Bannon"
+      }
+    ]
+  },
+  {
+    "addedAt": "2023-03-20T05:29:20",
+    "audienceRating": 6.2,
+    "audienceRatingImage": "imdb://image.rating",
+    "contentRating": "de/16",
+    "duration": 6968712,
+    "durationHuman": "1 hr 56 mins",
+    "editionTitle": null,
+    "guid": "plex://movie/5d77683161141d001fb14b9e",
+    "hasCreditsMarker": true,
+    "originalTitle": "Alien: Resurrection",
+    "originallyAvailableAt": "1997-11-12",
+    "rating": null,
+    "ratingImage": null,
+    "ratingKey": 31,
+    "studio": "20th Century Fox",
+    "summary": "200 Jahre nach ihrem Tod wird Ellen Ripley von skrupellosen Militär-Wissenschaftlern an Bord des terranischen Raumkreuzers U.S.M. Auriga wieder zum Leben erweckt: In einer Testreihe werden die Gene ihrer Überreste so oft geklont, bis es gelingt, sie und die Alien-Königin in ihrem Körper lebensfähig zu halten. Wider Erwarten überlebt sie den Eingriff, bei dem die Königin operativ aus dem Körper entfernt wird. Die Wissenschaftler wollen die xenomorphen Aliens für den militärischen Einsatz weiterzüchten. Zu diesem Zweck benötigen sie Wirtskörper, die ihnen von Weltraumpiraten in Form von entführten Kolonisten geliefert werden. Bald schon schlüpfen die ersten Aliens, die in vermeintlich ausbruchsicheren Käfigen untergebracht werden.",
+    "tagline": "Erleben Sie die Wiedergeburt!",
+    "thumbFile": "Movie - Alien - Die Wiedergeburt [31].images/Alien - Die Wiedergeburt [31].thumb.jpg",
+    "title": "Alien - Die Wiedergeburt",
+    "titleSort": "Alien - Die Wiedergeburt",
+    "type": "movie",
+    "userRating": null,
+    "year": 1997,
+    "collections": [
+      {
+        "tag": "Alien Filmreihe"
+      }
+    ],
+    "countries": [
+      {
+        "tag": "United States of America"
+      }
+    ],
+    "directors": [
+      {
+        "tag": "Jean-Pierre Jeunet"
+      }
+    ],
+    "fields": [
+      {
+        "locked": null,
+        "name": null
+      }
+    ],
+    "genres": [
+      {
+        "tag": "Science Fiction"
+      },
+      {
+        "tag": "Horror"
+      },
+      {
+        "tag": "Action"
+      }
+    ],
+    "guids": [
+      {
+        "id": "imdb://tt0118583"
+      },
+      {
+        "id": "tmdb://8078"
+      },
+      {
+        "id": "tvdb://784"
+      }
+    ],
+    "labels": [
+      {
+        "tag": null
+      }
+    ],
+    "markers": [
+      {
+        "end": 6968712,
+        "final": true,
+        "first": true,
+        "start": 6595840,
+        "type": "credits"
+      }
+    ],
+    "producers": [
+      {
+        "tag": "Walter Hill"
+      },
+      {
+        "tag": "Gordon Carroll"
+      },
+      {
+        "tag": "Bill Badalato"
+      },
+      {
+        "tag": "David Giler"
+      }
+    ],
+    "roles": [
+      {
+        "role": "Ripley",
+        "tag": "Sigourney Weaver"
+      },
+      {
+        "role": "Call",
+        "tag": "Winona Ryder"
+      },
+      {
+        "role": "Vriess",
+        "tag": "Dominique Pinon"
+      },
+      {
+        "role": "Johner",
+        "tag": "Ron Perlman"
+      },
+      {
+        "role": "Christie",
+        "tag": "Gary Dourdan"
+      },
+      {
+        "role": "Elgyn",
+        "tag": "Michael Wincott"
+      },
+      {
+        "role": "Hillard",
+        "tag": "Kim Flowers"
+      },
+      {
+        "role": "General Perez",
+        "tag": "Dan Hedaya"
+      },
+      {
+        "role": "Dr. Wren",
+        "tag": "J.E. Freeman"
+      },
+      {
+        "role": "Gediman",
+        "tag": "Brad Dourif"
+      },
+      {
+        "role": "Distephano",
+        "tag": "Raymond Cruz"
+      },
+      {
+        "role": "Purvis",
+        "tag": "Leland Orser"
+      },
+      {
+        "role": "Anesthesiologist",
+        "tag": "Carolyn Campbell"
+      },
+      {
+        "role": "Scientist",
+        "tag": "Marlene Bush"
+      },
+      {
+        "role": "Surgeon",
+        "tag": "David St. James"
+      },
+      {
+        "role": "Soldier with Glove",
+        "tag": "Rodney Mitchell"
+      },
+      {
+        "role": "Soldier Shot Through Helmet",
+        "tag": "Robert Faltisco"
+      },
+      {
+        "role": "Frozen Soldier",
+        "tag": "David Rowe"
+      },
+      {
+        "role": "Soldier",
+        "tag": "Garrett House"
+      },
+      {
+        "role": "Soldier",
+        "tag": "Rod Damer"
+      },
+      {
+        "role": "Soldier",
+        "tag": "Mark Mansfield"
+      },
+      {
+        "role": "Soldier",
+        "tag": "Daniel Raymont"
+      },
+      {
+        "role": "Soldier",
+        "tag": "Cris D'Annunzio"
+      },
+      {
+        "role": "Father (voice)",
+        "tag": "Steven Gilborn"
+      },
+      {
+        "role": "Sleeper",
+        "tag": "Robert Bastens"
+      },
+      {
+        "role": "Sleeper",
+        "tag": "Rico Bueno"
+      },
+      {
+        "role": "Sleeper",
+        "tag": "Alex Lorre"
+      },
+      {
+        "role": "Sleeper",
+        "tag": "Ronald Ramessar"
+      },
+      {
+        "role": "Young Ripley",
+        "tag": "Nicole Fellows"
+      },
+      {
+        "role": "Lead Alien",
+        "tag": "Tom Woodruff Jr."
+      },
+      {
+        "role": "Newborn Vocal (voice)",
+        "tag": "Joan La Barbara"
+      },
+      {
+        "role": "Newborn Vocal (voice)",
+        "tag": "Archie Hahn"
+      },
+      {
+        "role": "Soldier Who Stuns Ripley (uncredited)",
+        "tag": "Eddie Yansick"
+      },
+      {
+        "role": "Sleeper (uncredited)",
+        "tag": "Nito Larioza"
+      },
+      {
+        "role": "Alien (uncredited)",
+        "tag": "David Prior"
+      },
+      {
+        "role": "Soldier in Cocoon (uncredited)",
+        "tag": "Nicholas Talone"
+      },
+      {
+        "role": "Soldier Shot by Johner (uncredited)",
+        "tag": "Brad Martin"
+      },
+      {
+        "role": "(uncredited)",
+        "tag": "Wanda De Jesus"
+      },
+      {
+        "role": "Hero Alien Warrior (uncredited)",
+        "tag": "Alec Gillis"
+      }
+    ],
+    "writers": [
+      {
+        "tag": "Joss Whedon"
+      }
+    ]
+  },
+  {
+    "addedAt": "2017-07-16T10:31:15",
+    "audienceRating": 6.4,
+    "audienceRatingImage": "imdb://image.rating",
+    "contentRating": "de/16",
+    "duration": 8692651,
+    "durationHuman": "2 hrs 25 mins",
+    "editionTitle": "Special Edition",
+    "guid": "plex://movie/5d77683161141d001fb14ba5",
+    "hasCreditsMarker": true,
+    "originalTitle": "Alien³",
+    "originallyAvailableAt": "1992-05-22",
+    "rating": null,
+    "ratingImage": null,
+    "ratingKey": 92522,
+    "studio": "20th Century Fox",
+    "summary": "Nachdem Ellen Ripley, die kleine Newt, Soldat Hicks und der Android Bishop von LV 426 entkommen sind und sich mit dem Raumschiff USS Sulaco auf dem Rückweg zur Erde befinden, bricht wegen des säurehaltigen Blutes eines Facehuggers (\"Gesichtsumklammerer\") auf einem Zwischendeck ein Feuer aus. Eine Rettungskapsel wird abgesprengt und macht auf dem Planeten Fiorina \"Fury\" 161, auf dem sich nur eine Strafkolonie befindet, eine Bruchlandung. Corporal Hicks und Newt sterben bei dem Aufprall bzw. durch Ertrinken, der Android Bishop ist nicht mehr funktionsfähig. Neben Ripley überlebt die Landung nur ein Facehugger, der sich in einem Rottweiler schnell einen neuen Wirt sucht. Das kurz darauf neugeborene Alien beginnt bald die Strafgefangenen zu dezimieren.",
+    "tagline": "ES ist wieder da.",
+    "thumbFile": "Movie - Alien 3 [92522].images/Alien 3 [92522].thumb.jpg",
+    "title": "Alien 3",
+    "titleSort": "Alien 3",
+    "type": "movie",
+    "userRating": null,
+    "year": 1992,
+    "collections": [
+      {
+        "tag": "Alien Filmreihe"
+      }
+    ],
+    "countries": [
+      {
+        "tag": "United States of America"
+      }
+    ],
+    "directors": [
+      {
+        "tag": "David Fincher"
+      }
+    ],
+    "fields": [
+      {
+        "locked": null,
+        "name": null
+      }
+    ],
+    "genres": [
+      {
+        "tag": "Science Fiction"
+      },
+      {
+        "tag": "Action"
+      },
+      {
+        "tag": "Horror"
+      }
+    ],
+    "guids": [
+      {
+        "id": "imdb://tt0103644"
+      },
+      {
+        "id": "tmdb://8077"
+      },
+      {
+        "id": "tvdb://670"
+      }
+    ],
+    "labels": [
+      {
+        "tag": null
+      }
+    ],
+    "markers": [
+      {
+        "end": 8692651,
+        "final": true,
+        "first": true,
+        "start": 8337385,
+        "type": "credits"
+      }
+    ],
+    "producers": [
+      {
+        "tag": "Walter Hill"
+      },
+      {
+        "tag": "Gordon Carroll"
+      },
+      {
+        "tag": "David Giler"
+      }
+    ],
+    "roles": [
+      {
+        "role": "Ripley",
+        "tag": "Sigourney Weaver"
+      },
+      {
+        "role": "Dillon",
+        "tag": "Charles S. Dutton"
+      },
+      {
+        "role": "Clemens",
+        "tag": "Charles Dance"
+      },
+      {
+        "role": "Golic",
+        "tag": "Paul McGann"
+      },
+      {
+        "role": "Andrews",
+        "tag": "Brian Glover"
+      },
+      {
+        "role": "Aaron",
+        "tag": "Ralph Brown"
+      },
+      {
+        "role": "Morse",
+        "tag": "Danny Webb"
+      },
+      {
+        "role": "Rains",
+        "tag": "Christopher John Fields"
+      },
+      {
+        "role": "Junior",
+        "tag": "Holt McCallany"
+      },
+      {
+        "role": "Bishop II",
+        "tag": "Lance Henriksen"
+      },
+      {
+        "role": "Murphy",
+        "tag": "Christopher Fairbank"
+      },
+      {
+        "role": "Frank",
+        "tag": "Carl Chase"
+      },
+      {
+        "role": "Boggs",
+        "tag": "Leon Herbert"
+      },
+      {
+        "role": "Jude",
+        "tag": "Vincenzo Nicoli"
+      },
+      {
+        "role": "David",
+        "tag": "Pete Postlethwaite"
+      },
+      {
+        "role": "Troy",
+        "tag": "Paul Brennen"
+      },
+      {
+        "role": "William",
+        "tag": "Clive Mantle"
+      },
+      {
+        "role": "Gregor",
+        "tag": "Peter Guinness"
+      },
+      {
+        "role": "Arthur",
+        "tag": "Deobia Oparei"
+      },
+      {
+        "role": "Kevin",
+        "tag": "Phil Davis"
+      },
+      {
+        "role": "Eric",
+        "tag": "Niall Buggy"
+      },
+      {
+        "role": "Company Man",
+        "tag": "Hi Ching"
+      },
+      {
+        "role": "Newt",
+        "tag": "Danielle Edmond"
+      },
+      {
+        "role": "Lead Alien (uncredited)",
+        "tag": "Tom Woodruff Jr."
+      }
+    ],
+    "writers": [
+      {
+        "tag": "Dan O'Bannon"
+      },
+      {
+        "tag": "Ronald Shusett"
+      },
+      {
+        "tag": "Vincent Ward"
+      },
+      {
+        "tag": "David Giler"
+      },
+      {
+        "tag": "Walter Hill"
+      }
+    ]
+  },
+  {
+    "addedAt": "2024-08-23T14:33:54",
+    "audienceRating": 8.1,
+    "audienceRatingImage": "imdb://image.rating",
+    "contentRating": "de/0",
+    "duration": 5679680,
+    "durationHuman": "1 hr 35 mins",
+    "editionTitle": null,
+    "guid": "plex://movie/5d7769c0594b2b001e6a8a17",
+    "hasCreditsMarker": true,
+    "originalTitle": "Inside Out",
+    "originallyAvailableAt": "2015-06-17",
+    "rating": null,
+    "ratingImage": null,
+    "ratingKey": 78101,
+    "studio": "Pixar",
+    "summary": "Die elfjährige Riley wird plötzlich aus ihrem bisherigen Leben im mittleren Westen gerissen, als ihr Vater einen neuen Job annimmt. Diese berufliche Veränderung bringt die Familie nach San Francisco und die Gefühle der Tochter ganz schön durcheinander. Wie alle Menschen wird auch Riley von ihren Emotionen geleitet: Freude, Angst, Wut, Ekel und Traurigkeit leben im Kontrollzentrum von Rileys Verstand, von wo aus sie dem jungen Mädchen Ratschläge erteilen und ihr zur Seite stehen. Doch nach dem Umzug haben Riley und ihre Gefühle Probleme mit dem Leben in der fremden Stadt und es geht turbulent zu in der innerlichen Kommandozentrale ihrer Emotionen. Obwohl Freude versucht, positiv zu bleiben, kriegen sich die Gefühle darüber in die Haare, wie sie Riley am besten durch den veränderten Alltag in der neuen Stadt, dem neuen Haus und der neuen Schule navigieren.",
+    "tagline": "Triff die Stimmen in Deinem Kopf.",
+    "thumbFile": "Movie - Alles steht Kopf [78101].images/Alles steht Kopf [78101].thumb.jpg",
+    "title": "Alles steht Kopf",
+    "titleSort": "Alles steht Kopf",
+    "type": "movie",
+    "userRating": null,
+    "year": 2015,
+    "collections": [
+      {
+        "tag": "Alles steht Kopf Filmreihe"
+      }
+    ],
+    "countries": [
+      {
+        "tag": "United States of America"
+      }
+    ],
+    "directors": [
+      {
+        "tag": "Pete Docter"
+      }
+    ],
+    "fields": [
+      {
+        "locked": null,
+        "name": null
+      }
+    ],
+    "genres": [
+      {
+        "tag": "Animation"
+      },
+      {
+        "tag": "Komödie"
+      },
+      {
+        "tag": "Familie"
+      },
+      {
+        "tag": "Drama"
+      },
+      {
+        "tag": "Fantasy"
+      },
+      {
+        "tag": "Adventure"
+      },
+      {
+        "tag": "Children"
+      }
+    ],
+    "guids": [
+      {
+        "id": "imdb://tt2096673"
+      },
+      {
+        "id": "tmdb://150540"
+      },
+      {
+        "id": "tvdb://159"
+      }
+    ],
+    "labels": [
+      {
+        "tag": null
+      }
+    ],
+    "markers": [
+      {
+        "end": 5679680,
+        "final": true,
+        "first": true,
+        "start": 5183712,
+        "type": "credits"
+      }
+    ],
+    "producers": [
+      {
+        "tag": "Jonas Rivera"
+      }
+    ],
+    "roles": [
+      {
+        "role": "Joy (voice)",
+        "tag": "Amy Poehler"
+      },
+      {
+        "role": "Sadness (voice)",
+        "tag": "Phyllis Smith"
+      },
+      {
+        "role": "Bing Bong (voice)",
+        "tag": "Richard Kind"
+      },
+      {
+        "role": "Fear (voice)",
+        "tag": "Bill Hader"
+      },
+      {
+        "role": "Anger (voice)",
+        "tag": "Lewis Black"
+      },
+      {
+        "role": "Disgust (voice)",
+        "tag": "Mindy Kaling"
+      },
+      {
+        "role": "Riley (voice)",
+        "tag": "Kaitlyn Dias"
+      },
+      {
+        "role": "Mom (voice)",
+        "tag": "Diane Lane"
+      },
+      {
+        "role": "Dad (voice)",
+        "tag": "Kyle MacLachlan"
+      },
+      {
+        "role": "Forgetter Paula (voice)",
+        "tag": "Paula Poundstone"
+      },
+      {
+        "role": "Forgetter Bobby (voice)",
+        "tag": "Bobby Moynihan"
+      },
+      {
+        "role": "Dream Director / Mom's Anger (voice)",
+        "tag": "Paula Pell"
+      },
+      {
+        "role": "Subconscious Guard Frank (voice)",
+        "tag": "Dave Goelz"
+      },
+      {
+        "role": "Subconscious Guard Dave (voice)",
+        "tag": "Frank Oz"
+      },
+      {
+        "role": "Jangles (voice)",
+        "tag": "Josh Cooley"
+      },
+      {
+        "role": "Mind Worker Cop Jake (voice)",
+        "tag": "Flea"
+      },
+      {
+        "role": "Fritz (voice)",
+        "tag": "John Ratzenberger"
+      },
+      {
+        "role": "Helicopter Pilot (voice)",
+        "tag": "Carlos Alazraqui"
+      },
+      {
+        "role": "Clown's Joy (voice)",
+        "tag": "Peter Sagal"
+      },
+      {
+        "role": "Cool Girl's Emotions (voice)",
+        "tag": "Rashida Jones"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Lori Alan"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Gregg Berger"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Veronika Bonell"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "John Cygan"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Andrea Datzman"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Pete Docter"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Tony Fucile"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Randy Hahn"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Jacob Hopkins"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Evan Hudak"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Molly Jackson"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Sophia Lee Karadi"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Erik Langley"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Sherry Lynn"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Mona Marshall"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Bret Parker"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Nick Pitera"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Murray Pearl Schaeffer"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Paris Van Dyke"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Lennon Wynn"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Aurora Blue"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Lola Cooley"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Dani Dare"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Ronnie del Carmen"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Keith Ferguson"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Mary Gibbs"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Carter Hastings"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Emma Hudak"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Dara Iruka"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Daniella Jones"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Elissa Knight"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Dawnn Lewis"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Tony Maki"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Laraine Newman"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Phil Proctor"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Patrick Seitz"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Jim Ward"
+      },
+      {
+        "role": "Additional Voices (voice)",
+        "tag": "Dashell Zamm"
+      }
+    ],
+    "writers": [
+      {
+        "tag": "Pete Docter"
+      },
+      {
+        "tag": "Meg LeFauve"
+      },
+      {
+        "tag": "Josh Cooley"
+      },
+      {
+        "tag": "James S. Baker"
+      },
+      {
+        "tag": "Matt Jones"
+      }
+    ]
+  },
+  {
+    "addedAt": "2024-08-20T01:17:33",
+    "audienceRating": 7.5,
+    "audienceRatingImage": "imdb://image.rating",
+    "contentRating": "de/0",
+    "duration": 5785780,
+    "durationHuman": "1 hr 36 mins",
+    "editionTitle": null,
+    "guid": "plex://movie/631bfefb0667a4eded0d5b66",
+    "hasCreditsMarker": true,
+    "originalTitle": "Inside Out 2",
+    "originallyAvailableAt": "2024-06-12",
+    "rating": null,
+    "ratingImage": null,
+    "ratingKey": 77867,
+    "studio": "Pixar",
+    "summary": "Im Kopf des nun frischgebackenen Teenagers Riley wird plötzlich das Hauptquartier abgerissen, um Platz für etwas völlig Unerwartetes zu schaffen: neue Emotionen! Freude, Trauer, Wut, Angst und Ekel, die seit langem erfolgreich Rileys Kopf managen, sind sich nicht sicher, was sie fühlen sollen, als Zweifel auftaucht. Und es sieht so aus, als ob sie nicht die einzige Neue ist!",
+    "tagline": "Voll emotional!",
+    "thumbFile": "Movie - Alles steht Kopf 2 [77867].images/Alles steht Kopf 2 [77867].thumb.jpg",
+    "title": "Alles steht Kopf 2",
+    "titleSort": "Alles steht Kopf 2",
+    "type": "movie",
+    "userRating": null,
+    "year": 2024,
+    "collections": [
+      {
+        "tag": "Alles steht Kopf Filmreihe"
+      }
+    ],
+    "countries": [
+      {
+        "tag": "United States of America"
+      }
+    ],
+    "directors": [
+      {
+        "tag": "Kelsey Mann"
+      }
+    ],
+    "fields": [
+      {
+        "locked": true,
+        "name": "thumb"
+      }
+    ],
+    "genres": [
+      {
+        "tag": "Animation"
+      },
+      {
+        "tag": "Adventure"
+      },
+      {
+        "tag": "Komödie"
+      },
+      {
+        "tag": "Drama"
+      },
+      {
+        "tag": "Familie"
+      },
+      {
+        "tag": "Fantasy"
+      },
+      {
+        "tag": "Sport"
+      }
+    ],
+    "guids": [
+      {
+        "id": "imdb://tt22022452"
+      },
+      {
+        "id": "tmdb://1022789"
+      },
+      {
+        "id": "tvdb://339957"
+      }
+    ],
+    "labels": [
+      {
+        "tag": null
+      }
+    ],
+    "markers": [
+      {
+        "end": 5687913,
+        "final": null,
+        "first": true,
+        "start": 5175913,
+        "type": "credits"
+      },
+      {
+        "end": 5785780,
+        "final": true,
+        "first": false,
+        "start": 5771913,
+        "type": "credits"
+      }
+    ],
+    "producers": [
+      {
+        "tag": "Mark Nielsen"
+      }
+    ],
+    "roles": [
+      {
+        "role": "Joy (voice)",
+        "tag": "Amy Poehler"
+      },
+      {
+        "role": "Anxiety (voice)",
+        "tag": "Maya Hawke"
+      },
+      {
+        "role": "Riley (voice)",
+        "tag": "Kensington Tallman"
+      },
+      {
+        "role": "Disgust (voice)",
+        "tag": "Liza Lapira"
+      },
+      {
+        "role": "Fear (voice)",
+        "tag": "Tony Hale"
+      },
+      {
+        "role": "Anger (voice)",
+        "tag": "Lewis Black"
+      },
+      {
+        "role": "Sadness (voice)",
+        "tag": "Phyllis Smith"
+      },
+      {
+        "role": "Envy (voice)",
+        "tag": "Ayo Edebiri"
+      },
+      {
+        "role": "Valentina (voice)",
+        "tag": "Lilimar"
+      },
+      {
+        "role": "Grace (voice)",
+        "tag": "Grace Lu"
+      },
+      {
+        "role": "Bree (voice)",
+        "tag": "Sumayyah Nuriddin-Green"
+      },
+      {
+        "role": "Ennui (voice)",
+        "tag": "Adèle Exarchopoulos"
+      },
+      {
+        "role": "Mom (voice)",
+        "tag": "Diane Lane"
+      },
+      {
+        "role": "Dad (voice)",
+        "tag": "Kyle MacLachlan"
+      },
+      {
+        "role": "Embarrassment (voice)",
+        "tag": "Paul Walter Hauser"
+      },
+      {
+        "role": "Coach Roberts (voice)",
+        "tag": "Yvette Nicole Brown"
+      },
+      {
+        "role": "Bloofy (voice)",
+        "tag": "Ron Funches"
+      },
+      {
+        "role": "Pouchy (voice)",
+        "tag": "James Austin Johnson"
+      },
+      {
+        "role": "Lance Slashblade (voice)",
+        "tag": "Yong Yea"
+      },
+      {
+        "role": "Deep Dark Secret (voice)",
+        "tag": "Steve Purcell"
+      },
+      {
+        "role": "Mind Cop Frank (voice)",
+        "tag": "Dave Goelz"
+      },
+      {
+        "role": "Foreman (voice)",
+        "tag": "Kirk R. Thatcher"
+      },
+      {
+        "role": "Mind Cop Dave (voice)",
+        "tag": "Frank Oz"
+      },
+      {
+        "role": "Mom's Anger (voice)",
+        "tag": "Paula Pell"
+      },
+      {
+        "role": "Nostalgia (voice)",
+        "tag": "June Squibb"
+      },
+      {
+        "role": "Dad's Anger (voice)",
+        "tag": "Pete Docter"
+      },
+      {
+        "role": "Forgetter Paula (voice)",
+        "tag": "Paula Poundstone"
+      },
+      {
+        "role": "Fritz (voice)",
+        "tag": "John Ratzenberger"
+      },
+      {
+        "role": "Margie (voice)",
+        "tag": "Sarayu Blue"
+      },
+      {
+        "role": "Jake (voice)",
+        "tag": "Flea"
+      },
+      {
+        "role": "Forgetter Bobby (voice)",
+        "tag": "Bobby Moynihan"
+      },
+      {
+        "role": "Hockey Announcer (voice)",
+        "tag": "Kendall Coyne Schofield"
+      }
+    ],
+    "writers": [
+      {
+        "tag": "John Hoffman"
+      },
+      {
+        "tag": "Meg LeFauve"
+      },
+      {
+        "tag": "Kelsey Mann"
+      },
+      {
+        "tag": "Dave Holstein"
+      },
+      {
+        "tag": "Annie Mueller"
+      }
+    ]
+  },
+  {
+    "addedAt": "2025-02-28T07:42:12",
+    "audienceRating": 6.2,
+    "audienceRatingImage": "imdb://image.rating",
+    "contentRating": "de/6",
+    "duration": 6947126,
+    "durationHuman": "1 hr 56 mins",
+    "editionTitle": null,
+    "guid": "plex://movie/662fb4d574ac5ada8ae1fd26",
+    "hasCreditsMarker": true,
+    "originalTitle": null,
+    "originallyAvailableAt": "2024-10-31",
+    "rating": null,
+    "ratingImage": null,
+    "ratingKey": 87087,
+    "studio": "Wiedemann & Berg Film",
+    "summary": "Die Zeiten sind sensibel. Das muss Familienvater Heinz Hellmich schmerzhaft feststellen, als ihm nach einigen ungeschickten Fehltritten in der Firma der Jobverlust droht. Um zu beweisen, dass er kein „alter weißer Mann” ist, lädt er seinen Chef und weitere Gäste (oder heißt es Gäst*innen?!) zu einem Dinner zu sich nach Hause ein. Mitsamt seiner Familie will er sich von seiner besten und politisch korrektesten Seite präsentieren! Doch schon in der Anbahnung des Abends tappt Heinz von einem Festnäpfchen ins nächste und stellt dabei fest, dass seine Frau Carla, seine Kinder und auch Opa Georg nicht gerade pure Harmonie ausstrahlen. Als nach vielen Turbulenzen endlich alle an einem Tisch sitzen, beginnt die Fassade der Familie schnell zu bröckeln…",
+    "tagline": "Die Zeiten sind sensibel. Heinz auch.",
+    "thumbFile": "Movie - Alter weisser Mann [87087].images/Alter weisser Mann [87087].thumb.jpg",
+    "title": "Alter weisser Mann",
+    "titleSort": "Alter weisser Mann",
+    "type": "movie",
+    "userRating": null,
+    "year": 2024,
+    "collections": [
+      {
+        "tag": null
+      }
+    ],
+    "countries": [
+      {
+        "tag": "Germany"
+      }
+    ],
+    "directors": [
+      {
+        "tag": "Simon Verhoeven"
+      }
+    ],
+    "fields": [
+      {
+        "locked": null,
+        "name": null
+      }
+    ],
+    "genres": [
+      {
+        "tag": "Komödie"
+      }
+    ],
+    "guids": [
+      {
+        "id": "imdb://tt32216008"
+      },
+      {
+        "id": "tmdb://1219560"
+      },
+      {
+        "id": "tvdb://360299"
+      }
+    ],
+    "labels": [
+      {
+        "tag": null
+      }
+    ],
+    "markers": [
+      {
+        "end": 6546413,
+        "final": null,
+        "first": true,
+        "start": 6492413,
+        "type": "credits"
+      },
+      {
+        "end": 6947126,
+        "final": true,
+        "first": false,
+        "start": 6672413,
+        "type": "credits"
+      }
+    ],
+    "producers": [
+      {
+        "tag": "Quirin Berg"
+      },
+      {
+        "tag": "Max Wiedemann"
+      },
+      {
+        "tag": "Kirstin Winkler"
+      }
+    ],
+    "roles": [
+      {
+        "role": "Heinz Hellmich",
+        "tag": "Jan Josef Liefers"
+      },
+      {
+        "role": "Carla Hellmich",
+        "tag": "Nadja Uhl"
+      },
+      {
+        "role": "Älex Sahavi",
+        "tag": "Elyas M'Barek"
+      },
+      {
+        "role": "Opa Georg Hellmich",
+        "tag": "Friedrich von Thun"
+      },
+      {
+        "role": "Dr. Joy Sand",
+        "tag": "Denise M'Baye"
+      },
+      {
+        "role": "Dr. Lorenz Steinhofer",
+        "tag": "Michael Maertens"
+      },
+      {
+        "role": "Linus Hellmich",
+        "tag": "Juri Sam Winkler"
+      },
+      {
+        "role": "Leni Hellmich",
+        "tag": "Momo Beier"
+      },
+      {
+        "role": "Kiraz Tüfek",
+        "tag": "Meltem Kaptan"
+      },
+      {
+        "role": "Mavie Hellmich",
+        "tag": "Sarah Mahita"
+      },
+      {
+        "role": "Lian Bell",
+        "tag": "Yun Huang"
+      },
+      {
+        "role": "Tobi",
+        "tag": "Bruno Alexander"
+      },
+      {
+        "role": "Dr. Peter Golsch",
+        "tag": "Pierre Besson"
+      },
+      {
+        "role": "Mrs. Kaspar",
+        "tag": "Catalina Navarro Kirner"
+      },
+      {
+        "role": "Mira",
+        "tag": "Roxanne Rittmann"
+      },
+      {
+        "role": "Tamara",
+        "tag": "Leona Grundig"
+      },
+      {
+        "role": "Max Juri",
+        "tag": "Thilo Prothmann"
+      },
+      {
+        "role": "Senem",
+        "tag": "Şafak Şengül"
+      },
+      {
+        "role": "Mo",
+        "tag": "Leon Ndiaye"
+      },
+      {
+        "role": "Hilmal",
+        "tag": "Juri Rother"
+      },
+      {
+        "role": "Mika",
+        "tag": "Alex Junge"
+      },
+      {
+        "role": "Kim",
+        "tag": "Patrice Griessmeier"
+      },
+      {
+        "role": "Lenny",
+        "tag": "Lukas von Horbatschewsky"
+      },
+      {
+        "role": "Bauleiter Puschinsky",
+        "tag": "David Baalcke"
+      },
+      {
+        "role": "Hannes Böhner",
+        "tag": "Stefan Merki"
+      },
+      {
+        "role": "Keno",
+        "tag": "Sebastian Kempf"
+      },
+      {
+        "role": "Camillo",
+        "tag": "Kevin Kaebe"
+      },
+      {
+        "role": "Herr Baum",
+        "tag": "Max Rothbart"
+      },
+      {
+        "role": "Ricky",
+        "tag": "Dennis Svensson"
+      },
+      {
+        "role": "Max",
+        "tag": "Maximilian Wanninger"
+      },
+      {
+        "role": "Kira",
+        "tag": "Helena Niederstrasser"
+      },
+      {
+        "role": "Daniel",
+        "tag": "Daniel Rickler"
+      },
+      {
+        "role": "Klaus Buchhaltung",
+        "tag": "Dirk Schepanek"
+      },
+      {
+        "role": "Ältere Dame Gemeindehaus",
+        "tag": "Ursula Schürhoff"
+      },
+      {
+        "role": "Nachbarin",
+        "tag": "Antje Westermann"
+      },
+      {
+        "role": "Frau Kramer",
+        "tag": "Ute Reinicke"
+      },
+      {
+        "role": "Sam (voice)",
+        "tag": "Simon Verhoeven"
+      }
+    ],
+    "writers": [
+      {
+        "tag": "Simon Verhoeven"
+      }
+    ]
+  },
+  {
+    "addedAt": "2023-08-31T00:04:10",
+    "audienceRating": 8.2,
+    "audienceRatingImage": "imdb://image.rating",
+    "contentRating": "de/12",
+    "duration": 8122990,
+    "durationHuman": "2 hrs 15 mins",
+    "editionTitle": null,
+    "guid": "plex://movie/5d776826880197001ec905cf",
+    "hasCreditsMarker": true,
+    "originalTitle": "A Beautiful Mind",
+    "originallyAvailableAt": "2001-12-14",
+    "rating": null,
+    "ratingImage": null,
+    "ratingKey": 18,
+    "studio": "Universal Pictures",
+    "summary": "Princeton Universität, 1947: Der hoch begabte, aber äußerst exzentrische John Nash sucht fieberhaft, fast krankhaft besessen, nach einer revolutionierenden Theorie in der Mathematik. Er schert sich wenig um seine Kommilitonen und die Konventionen der Universität. Und tatsächlich macht er eines Tages die alles entscheidende Entdeckung. Mit seiner Karriere geht es fortan steil bergauf, und Nash bekommt eine Stelle als Forscher und Dozent. Da er zudem die außergewöhnliche Fähigkeit besitzt, innerhalb weniger Sekunden komplexe Codes zu knacken, übernimmt er immer häufiger Decodier-Aufgaben für den amerikanischen Geheimdienst. Doch der Stress, die Gefahr und die Heimlichkeiten seiner Tätigkeit fordern ihren Tribut: John leidet zunehmend unter Verfolgungswahn und wittert ständig Verschwörungen. Die erschütternde Diagnose: paranoide Schizophrenie. John droht alles zu verlieren: seine geliebte Frau, seinen Job und seinen Verstand…",
+    "tagline": "Ich kann nicht glauben dass so etwas möglich ist",
+    "thumbFile": "Movie - A Beautiful Mind - Genie und Wahnsinn [18].images/A Beautiful Mind - Genie und Wahnsinn [18].thumb.jpg",
+    "title": "A Beautiful Mind - Genie und Wahnsinn",
+    "titleSort": "Beautiful Mind - Genie und Wahnsinn",
+    "type": "movie",
+    "userRating": null,
+    "year": 2001,
+    "collections": [
+      {
+        "tag": null
+      }
+    ],
+    "countries": [
+      {
+        "tag": "United States of America"
+      }
+    ],
+    "directors": [
+      {
+        "tag": "Ron Howard"
+      }
+    ],
+    "fields": [
+      {
+        "locked": null,
+        "name": null
+      }
+    ],
+    "genres": [
+      {
+        "tag": "Drama"
+      },
+      {
+        "tag": "Liebesfilm"
+      },
+      {
+        "tag": "Biography"
+      },
+      {
+        "tag": "Mystery"
+      },
+      {
+        "tag": "Action"
+      }
+    ],
+    "guids": [
+      {
+        "id": "imdb://tt0268978"
+      },
+      {
+        "id": "tmdb://453"
+      },
+      {
+        "id": "tvdb://1472"
+      }
+    ],
+    "labels": [
+      {
+        "tag": null
+      }
+    ],
+    "markers": [
+      {
+        "end": 8122990,
+        "final": true,
+        "first": true,
+        "start": 7704691,
+        "type": "credits"
+      }
+    ],
+    "producers": [
+      {
+        "tag": "Brian Grazer"
+      },
+      {
+        "tag": "Ron Howard"
+      }
+    ],
+    "roles": [
+      {
+        "role": "John Nash",
+        "tag": "Russell Crowe"
+      },
+      {
+        "role": "Alicia Nash",
+        "tag": "Jennifer Connelly"
+      },
+      {
+        "role": "William Parcher",
+        "tag": "Ed Harris"
+      },
+      {
+        "role": "Charles Herman",
+        "tag": "Paul Bettany"
+      },
+      {
+        "role": "Dr. Rosen",
+        "tag": "Christopher Plummer"
+      },
+      {
+        "role": "Richard Sol",
+        "tag": "Adam Goldberg"
+      },
+      {
+        "role": "Martin Hansen",
+        "tag": "Josh Lucas"
+      },
+      {
+        "role": "Bender",
+        "tag": "Anthony Rapp"
+      },
+      {
+        "role": "Ainsley Neilson",
+        "tag": "Jason Gray-Stanford"
+      },
+      {
+        "role": "Helinger",
+        "tag": "Judd Hirsch"
+      },
+      {
+        "role": "Thomas King",
+        "tag": "Austin Pendleton"
+      },
+      {
+        "role": "Marcee",
+        "tag": "Vivien Cardone"
+      },
+      {
+        "role": "Bar Co-Ed",
+        "tag": "Jillie Simon"
+      },
+      {
+        "role": "Professor Horner",
+        "tag": "Victor Steinbach"
+      },
+      {
+        "role": "Becky",
+        "tag": "Tanya Clarke"
+      },
+      {
+        "role": "Captain",
+        "tag": "Thomas F. Walsh"
+      },
+      {
+        "role": "General",
+        "tag": "Jesse Doran"
+      },
+      {
+        "role": "Analyst",
+        "tag": "Kent Cassella"
+      },
+      {
+        "role": "MIT Student",
+        "tag": "Patrick Blindauer"
+      },
+      {
+        "role": "Photographer",
+        "tag": "John Blaylock"
+      },
+      {
+        "role": "Governor",
+        "tag": "Roy Thinnes"
+      },
+      {
+        "role": "Young Man",
+        "tag": "Anthony Easton"
+      },
+      {
+        "role": "Harvard Administrator",
+        "tag": "Cheryl Howard"
+      },
+      {
+        "role": "White-Haired Patient",
+        "tag": "Rance Howard"
+      },
+      {
+        "role": "Code-Red Nurse",
+        "tag": "Jane Jenkins"
+      },
+      {
+        "role": "Adjunct",
+        "tag": "Darius Stone"
+      },
+      {
+        "role": "Princeton Professor",
+        "tag": "Josh Pais"
+      },
+      {
+        "role": "Toby",
+        "tag": "Alex Toma"
+      },
+      {
+        "role": "Joyce",
+        "tag": "Valentina Cardinalli"
+      },
+      {
+        "role": "Young Professor",
+        "tag": "Teagle F. Bougere"
+      },
+      {
+        "role": "John Nash Jr. (Teenager)",
+        "tag": "David B. Allen"
+      },
+      {
+        "role": "John Nash Jr. (Young Man)",
+        "tag": "Michael Esper"
+      },
+      {
+        "role": "Girl at Bar",
+        "tag": "Eva Burkley"
+      },
+      {
+        "role": "Blond in Bar",
+        "tag": "Amy Walz"
+      },
+      {
+        "role": "Brunette",
+        "tag": "Tracey Toomey"
+      },
+      {
+        "role": "Brunette",
+        "tag": "Jennifer Weedon"
+      },
+      {
+        "role": "Brunette",
+        "tag": "Yvonne Thomas"
+      },
+      {
+        "role": "Brunette",
+        "tag": "Holly Pitrago"
+      },
+      {
+        "role": "Pen Ceremony Professor",
+        "tag": "Isadore Rosenfeld"
+      },
+      {
+        "role": "Pen Ceremony Professor",
+        "tag": "Tommy Allen"
+      },
+      {
+        "role": "Pen Ceremony Professor",
+        "tag": "Dave Bayer"
+      },
+      {
+        "role": "Pen Ceremony Professor",
+        "tag": "Brian Keith Lewis"
+      },
+      {
+        "role": "Pen Ceremony Professor",
+        "tag": "Tom McNutt"
+      },
+      {
+        "role": "Pen Ceremony Professor",
+        "tag": "Will Dunham"
+      },
+      {
+        "role": "Pen Ceremony Professor",
+        "tag": "Glenn Roberts"
+      },
+      {
+        "role": "Pen Ceremony Professor",
+        "tag": "Ed Jupp Jr."
+      },
+      {
+        "role": "Princeton Student",
+        "tag": "Christopher Stockton"
+      },
+      {
+        "role": "Princeton Student",
+        "tag": "Gregory Dress"
+      },
+      {
+        "role": "Princeton Student",
+        "tag": "Carla Occhiogrosso"
+      },
+      {
+        "role": "Princeton Student",
+        "tag": "Matt Samson"
+      },
+      {
+        "role": "Princeton Student",
+        "tag": "Lyena Nomura"
+      },
+      {
+        "role": "Insulin Treatment Nurse",
+        "tag": "Kathleen Fellegara"
+      },
+      {
+        "role": "Insulin Treatment Nurse",
+        "tag": "Betsy Klompus"
+      },
+      {
+        "role": "Technician",
+        "tag": "Stelio Savante"
+      },
+      {
+        "role": "Technician",
+        "tag": "Logan McCall"
+      },
+      {
+        "role": "Technician",
+        "tag": "Bob Broder"
+      },
+      {
+        "role": "Trent Humphres (uncredited)",
+        "tag": "Scott Fernstrom"
+      },
+      {
+        "role": "Man at Governor's Ball (uncredited)",
+        "tag": "Ron Howard"
+      },
+      {
+        "role": "Harvard Student (uncredited)",
+        "tag": "Bryce Dallas Howard"
+      },
+      {
+        "role": "Army Captain (uncredited)",
+        "tag": "Michael Arthur"
+      },
+      {
+        "role": "Army Soldier (uncredited)",
+        "tag": "Brian Smyj"
+      },
+      {
+        "role": "Radio Operator (uncredited)",
+        "tag": "Michael C. Pierce"
+      },
+      {
+        "role": "Technician (uncredited)",
+        "tag": "Alex Lorre"
+      },
+      {
+        "role": "Shadow Figure (uncredited)",
+        "tag": "John H. Tobin"
+      },
+      {
+        "role": "Construction Chief (uncredited)",
+        "tag": "James Whalen"
+      },
+      {
+        "role": "Noisy Construction Worker (uncredited)",
+        "tag": "Nick Oddo"
+      },
+      {
+        "role": "Doctor (uncredited)",
+        "tag": "Ty Copeman"
+      },
+      {
+        "role": "Mental Patient (uncredited)",
+        "tag": "Jonah Falcon"
+      },
+      {
+        "role": "Pen Ceremony Professor (uncredited)",
+        "tag": "Reggie Austin"
+      },
+      {
+        "role": "Professor (uncredited)",
+        "tag": "Robert Myers"
+      },
+      {
+        "role": "Campus Cop (uncredited)",
+        "tag": "Dave Sweeney"
+      },
+      {
+        "role": "Princeton Tutor '78 (uncredited)",
+        "tag": "Berly Ellis"
+      },
+      {
+        "role": "Princeton Library Tutor (uncredited)",
+        "tag": "Michael Abbott Jr."
+      },
+      {
+        "role": "Princeton Student (uncredited)",
+        "tag": "Liche Ariza"
+      },
+      {
+        "role": "Princeton Student (uncredited)",
+        "tag": "Peter Bonilla"
+      },
+      {
+        "role": "Princeton Student (uncredited)",
+        "tag": "Evan Hart"
+      },
+      {
+        "role": "Princeton Student (uncredited)",
+        "tag": "Jason Horton"
+      },
+      {
+        "role": "Princeton Student (uncredited)",
+        "tag": "Vivian Kalinov"
+      },
+      {
+        "role": "Princeton Student (uncredited)",
+        "tag": "Dory Manzour"
+      },
+      {
+        "role": "Princeton Student (uncredited)",
+        "tag": "Tiffany Marz"
+      },
+      {
+        "role": "Princeton Student (uncredited)",
+        "tag": "Ryan O'Connor"
+      },
+      {
+        "role": "Princeton Student (uncredited)",
+        "tag": "Deborah Rayne"
+      },
+      {
+        "role": "Princeton Student (uncredited)",
+        "tag": "Colby Ryan"
+      },
+      {
+        "role": "Princeton Student (uncredited)",
+        "tag": "Douglas Taurel"
+      },
+      {
+        "role": "Princeton Student (uncredited)",
+        "tag": "Jeffrey Christopher Todd"
+      },
+      {
+        "role": "Princeton Math Grad (uncredited)",
+        "tag": "Ryan Tygh"
+      },
+      {
+        "role": "Princeton Student (uncredited)",
+        "tag": "Erik Van Wyck"
+      },
+      {
+        "role": "Harvard Student (uncredited)",
+        "tag": "Cade Bittner"
+      },
+      {
+        "role": "Harvard Student (uncredited)",
+        "tag": "Fabrizio Fante"
+      },
+      {
+        "role": "Harvard Student (uncredited)",
+        "tag": "Seth Gabel"
+      },
+      {
+        "role": "Harvard Student (uncredited)",
+        "tag": "Monique Marissa Lukens"
+      },
+      {
+        "role": "MIT Student (uncredited)",
+        "tag": "Phil Cirincione"
+      },
+      {
+        "role": "MIT Student (uncredited)",
+        "tag": "Scott Addison Clay"
+      },
+      {
+        "role": "MIT Student (uncredited)",
+        "tag": "Michael Fiore"
+      },
+      {
+        "role": "MIT Student (uncredited)",
+        "tag": "Reed Penney"
+      },
+      {
+        "role": "Student (uncredited)",
+        "tag": "Sean Bennett"
+      },
+      {
+        "role": "Student (uncredited)",
+        "tag": "Rich Bryant"
+      },
+      {
+        "role": "Student (uncredited)",
+        "tag": "Jersey Carell"
+      },
+      {
+        "role": "Student (uncredited)",
+        "tag": "Gregory Gordon"
+      },
+      {
+        "role": "Student (uncredited)",
+        "tag": "Jarred Treiber"
+      }
+    ],
+    "writers": [
+      {
+        "tag": "Akiva Goldsman"
+      }
+    ]
+  },
+  {
+    "addedAt": "2024-06-30T20:07:09",
+    "audienceRating": 6.2,
+    "audienceRatingImage": "imdb://image.rating",
+    "contentRating": "TV-14",
+    "duration": 6947274,
+    "durationHuman": "1 hr 56 mins",
+    "editionTitle": null,
+    "guid": "plex://movie/63713a3a25c220d3b0307345",
+    "hasCreditsMarker": true,
+    "originalTitle": null,
+    "originallyAvailableAt": "2023-05-26",
+    "rating": null,
+    "ratingImage": null,
+    "ratingKey": 72335,
+    "studio": "Choice Films",
+    "summary": "Nach einer kurzen und leidenschaftlichen Beziehung entdecken die Frischvermählten Rafer und Suzie bald, dass der jeweils andere ein tödliches Geheimnis hütet, das sie beide auf einen Weg schickt, der entweder ihre Ehe retten oder ihr Leben beenden wird. Manche Paare lieben dich zu Tode.",
+    "tagline": null,
+    "thumbFile": "Movie - A Killer Romance [72335].images/A Killer Romance [72335].thumb.jpg",
+    "title": "A Killer Romance",
+    "titleSort": "Killer Romance",
+    "type": "movie",
+    "userRating": null,
+    "year": 2023,
+    "collections": [
+      {
+        "tag": null
+      }
+    ],
+    "countries": [
+      {
+        "tag": "United States of America"
+      }
+    ],
+    "directors": [
+      {
+        "tag": "Tony Glazer"
+      }
+    ],
+    "fields": [
+      {
+        "locked": null,
+        "name": null
+      }
+    ],
+    "genres": [
+      {
+        "tag": "Thriller"
+      },
+      {
+        "tag": "Komödie"
+      },
+      {
+        "tag": "Action"
+      },
+      {
+        "tag": "Krimi"
+      }
+    ],
+    "guids": [
+      {
+        "id": "imdb://tt23622054"
+      },
+      {
+        "id": "tmdb://1085544"
+      }
+    ],
+    "labels": [
+      {
+        "tag": null
+      }
+    ],
+    "markers": [
+      {
+        "end": 6947274,
+        "final": true,
+        "first": true,
+        "start": 6544546,
+        "type": "credits"
+      }
+    ],
+    "producers": [
+      {
+        "tag": "Summer Crockett Moore"
+      },
+      {
+        "tag": "Tony Glazer"
+      }
+    ],
+    "roles": [
+      {
+        "role": "Travis",
+        "tag": "Christian Campbell"
+      },
+      {
+        "role": "Suzie",
+        "tag": "Marija Abney"
+      },
+      {
+        "role": "Rafer",
+        "tag": "John Clarence Stewart"
+      },
+      {
+        "role": "Detective Bob Reyes",
+        "tag": "Manny Perez"
+      },
+      {
+        "role": "Jerry",
+        "tag": "Dave Shalansky"
+      },
+      {
+        "role": "Detective Jane Flough",
+        "tag": "Summer Crockett Moore"
+      },
+      {
+        "role": "Tim",
+        "tag": "Jonathan Auguste"
+      },
+      {
+        "role": "Patrol Officer 1",
+        "tag": "John-Peter Cruz"
+      },
+      {
+        "role": "Fred Thomsen",
+        "tag": "Frank C. Williams"
+      },
+      {
+        "role": "Obnoxious Tattooed Man",
+        "tag": "Marco Reese Maldonado"
+      },
+      {
+        "role": "Lisa",
+        "tag": "Janelle McDermoth"
+      },
+      {
+        "role": "Steven",
+        "tag": "Jeremiah Clarke"
+      },
+      {
+        "role": "Poser Woman",
+        "tag": "Jada Wooten"
+      },
+      {
+        "role": "Tanya Thomsen",
+        "tag": "Darlene Dues"
+      },
+      {
+        "role": "Tao",
+        "tag": "Suo Liu"
+      },
+      {
+        "role": "Clerk",
+        "tag": "Roger Potts"
+      },
+      {
+        "role": "Homeless Man",
+        "tag": "James P. Kerr"
+      },
+      {
+        "role": "Lieutenant McClane",
+        "tag": "Joseph Fisher"
+      },
+      {
+        "role": "Bound and Gagged Man",
+        "tag": "Kevin Scott"
+      }
+    ],
+    "writers": [
+      {
+        "tag": "Tony Glazer"
+      }
+    ]
+  },
+  {
+    "addedAt": "2025-01-16T09:53:22",
+    "audienceRating": 7.1,
+    "audienceRatingImage": "imdb://image.rating",
+    "contentRating": "de/12",
+    "duration": 5373459,
+    "durationHuman": "1 hr 30 mins",
+    "editionTitle": null,
+    "guid": "plex://movie/63019ee10a933b34662269e5",
+    "hasCreditsMarker": true,
+    "originalTitle": null,
+    "originallyAvailableAt": "2024-11-01",
+    "rating": null,
+    "ratingImage": null,
+    "ratingKey": 86097,
+    "studio": "Fruit Tree",
+    "summary": "Die ungleichen Cousins David und Benji reisen gemeinsam nach Polen, um mehr über das Leben ihrer kürzlich verstorbenen Großmutter zu erfahren. Der Roadtrip, der als Reise in die Vergangenheit gedacht war, konfrontiert die beiden mit der Gegenwart, in der sie ihre Beziehung zueinander und ihre Familiengeschichte hinterfragen.",
+    "tagline": "Join the family.",
+    "thumbFile": "Movie - A Real Pain [86097].images/A Real Pain [86097].thumb.jpg",
+    "title": "A Real Pain",
+    "titleSort": "Real Pain",
+    "type": "movie",
+    "userRating": null,
+    "year": 2024,
+    "collections": [
+      {
+        "tag": null
+      }
+    ],
+    "countries": [
+      {
+        "tag": "Poland"
+      },
+      {
+        "tag": "United States of America"
+      }
+    ],
+    "directors": [
+      {
+        "tag": "Jesse Eisenberg"
+      }
+    ],
+    "fields": [
+      {
+        "locked": null,
+        "name": null
+      }
+    ],
+    "genres": [
+      {
+        "tag": "Komödie"
+      },
+      {
+        "tag": "Drama"
+      }
+    ],
+    "guids": [
+      {
+        "id": "imdb://tt21823606"
+      },
+      {
+        "id": "tmdb://1013850"
+      },
+      {
+        "id": "tvdb://353259"
+      }
+    ],
+    "labels": [
+      {
+        "tag": null
+      }
+    ],
+    "markers": [
+      {
+        "end": 5373459,
+        "final": true,
+        "first": true,
+        "start": 4938113,
+        "type": "credits"
+      }
+    ],
+    "producers": [
+      {
+        "tag": "Dave McCary"
+      },
+      {
+        "tag": "Ali Herting"
+      },
+      {
+        "tag": "Emma Stone"
+      },
+      {
+        "tag": "Jennifer Semler"
+      },
+      {
+        "tag": "Jesse Eisenberg"
+      },
+      {
+        "tag": "Ewa Puszczyńska"
+      }
+    ],
+    "roles": [
+      {
+        "role": "David Kaplan",
+        "tag": "Jesse Eisenberg"
+      },
+      {
+        "role": "Benji Kaplan",
+        "tag": "Kieran Culkin"
+      },
+      {
+        "role": "James",
+        "tag": "Will Sharpe"
+      },
+      {
+        "role": "Marcia",
+        "tag": "Jennifer Grey"
+      },
+      {
+        "role": "Eloge",
+        "tag": "Kurt Egyiawan"
+      },
+      {
+        "role": "Diane",
+        "tag": "Liza Sadovy"
+      },
+      {
+        "role": "Mark",
+        "tag": "Daniel Oreskes"
+      },
+      {
+        "role": "Priya",
+        "tag": "Ellora Torchia"
+      },
+      {
+        "role": "Abe",
+        "tag": "Banner Eisenberg"
+      },
+      {
+        "role": "Flight Attendant",
+        "tag": "Olha Bosova"
+      },
+      {
+        "role": "Receptionist",
+        "tag": "Jakub Gąsowski"
+      },
+      {
+        "role": "Conductor",
+        "tag": "Piotr Czarniecki"
+      },
+      {
+        "role": "Pianist",
+        "tag": "Krzysztof Jaszczak"
+      },
+      {
+        "role": "Older Man",
+        "tag": "Marek Kasprzyk"
+      },
+      {
+        "role": "Son",
+        "tag": "Jakub Pruski"
+      }
+    ],
+    "writers": [
+      {
+        "tag": "Jesse Eisenberg"
+      }
+    ]
+  }
+]

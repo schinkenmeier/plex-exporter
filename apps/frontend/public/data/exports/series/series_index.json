@@ -1,0 +1,262 @@
+[
+  {
+    "ratingKey": 21634,
+    "type": "tv",
+    "title": "12 Monkeys",
+    "titleSort": "12 Monkeys",
+    "year": 2015,
+    "seasonCount": 4,
+    "thumbFile": "Show - 12 Monkeys [21634].images/12 Monkeys [21634].thumb.jpg",
+    "contentRating": "de/16",
+    "genres": [
+      "Drama",
+      "Adventure",
+      "Mystery",
+      "Science Fiction",
+      "Thriller",
+      "Sci-Fi & Fantasy",
+      "Action",
+      "Suspense"
+    ],
+    "ids": {
+      "imdb": "tt3148266",
+      "tmdb": "60948",
+      "tvdb": "272644"
+    },
+    "href": "details/21634.json"
+  },
+  {
+    "ratingKey": 1342,
+    "type": "tv",
+    "title": "1883",
+    "titleSort": "1883",
+    "year": 2021,
+    "seasonCount": 1,
+    "thumbFile": "Show - 1883 [1342].images/1883 [1342].thumb.jpg",
+    "contentRating": "de/16",
+    "genres": [
+      "Drama",
+      "Western"
+    ],
+    "ids": {
+      "imdb": "tt13991232",
+      "tmdb": "118357",
+      "tvdb": "396390"
+    },
+    "href": "details/1342.json"
+  },
+  {
+    "ratingKey": 1354,
+    "type": "tv",
+    "title": "1923",
+    "titleSort": "1923",
+    "year": 2022,
+    "seasonCount": 2,
+    "thumbFile": "Show - 1923 [1354].images/1923 [1354].thumb.jpg",
+    "contentRating": "de/18",
+    "genres": [
+      "Drama",
+      "Western"
+    ],
+    "ids": {
+      "imdb": "tt18335752",
+      "tmdb": "157744",
+      "tvdb": "416491"
+    },
+    "href": "details/1354.json"
+  },
+  {
+    "ratingKey": 84282,
+    "type": "tv",
+    "title": "2 Broke Girls",
+    "titleSort": "2 Broke Girls",
+    "year": 2011,
+    "seasonCount": 6,
+    "thumbFile": "Show - 2 Broke Girls [84282].images/2 Broke Girls [84282].thumb.jpg",
+    "contentRating": "de/12",
+    "genres": [
+      "Komödie"
+    ],
+    "ids": {
+      "imdb": "tt1845307",
+      "tmdb": "39340",
+      "tvdb": "248741"
+    },
+    "href": "details/84282.json"
+  },
+  {
+    "ratingKey": 60317,
+    "type": "tv",
+    "title": "3 Body Problem",
+    "titleSort": "3 Body Problem",
+    "year": 2024,
+    "seasonCount": 1,
+    "thumbFile": "Show - 3 Body Problem [60317].images/3 Body Problem [60317].thumb.jpg",
+    "contentRating": "de/16",
+    "genres": [
+      "Drama",
+      "Mystery",
+      "Adventure",
+      "Fantasy",
+      "Science Fiction",
+      "Sci-Fi & Fantasy",
+      "Thriller"
+    ],
+    "ids": {
+      "imdb": "tt13016388",
+      "tmdb": "108545",
+      "tvdb": "411959"
+    },
+    "href": "details/60317.json"
+  },
+  {
+    "ratingKey": 86928,
+    "type": "tv",
+    "title": "30 Rock",
+    "titleSort": "30 Rock",
+    "year": 2006,
+    "seasonCount": 7,
+    "thumbFile": "Show - 30 Rock [86928].images/30 Rock [86928].thumb.jpg",
+    "contentRating": "de/12",
+    "genres": [
+      "Komödie"
+    ],
+    "ids": {
+      "imdb": "tt0496424",
+      "tmdb": "4608",
+      "tvdb": "79488"
+    },
+    "href": "details/86928.json"
+  },
+  {
+    "ratingKey": 89033,
+    "type": "tv",
+    "title": "Abbott Elementary",
+    "titleSort": "Abbott Elementary",
+    "year": 2021,
+    "seasonCount": 4,
+    "thumbFile": "Show - Abbott Elementary [89033].images/Abbott Elementary [89033].thumb.jpg",
+    "contentRating": "de/12",
+    "genres": [
+      "Komödie"
+    ],
+    "ids": {
+      "imdb": "tt14218830",
+      "tmdb": "125935",
+      "tvdb": "402910"
+    },
+    "href": "details/89033.json"
+  },
+  {
+    "ratingKey": 64573,
+    "type": "tv",
+    "title": "Absentia",
+    "titleSort": "Absentia",
+    "year": 2017,
+    "seasonCount": 3,
+    "thumbFile": "Show - Absentia [64573].images/Absentia [64573].thumb.jpg",
+    "contentRating": "de/12",
+    "genres": [
+      "Krimi",
+      "Drama",
+      "Mystery",
+      "Thriller",
+      "Suspense"
+    ],
+    "ids": {
+      "imdb": "tt6794990",
+      "tmdb": "72755",
+      "tvdb": "330500"
+    },
+    "href": "details/64573.json"
+  },
+  {
+    "ratingKey": 59559,
+    "type": "tv",
+    "title": "Acapulco",
+    "titleSort": "Acapulco",
+    "year": 2021,
+    "seasonCount": 4,
+    "thumbFile": "Show - Acapulco [59559].images/Acapulco [59559].thumb.jpg",
+    "contentRating": "de/12",
+    "genres": [
+      "Komödie",
+      "Drama"
+    ],
+    "ids": {
+      "imdb": "tt13567344",
+      "tmdb": "133727",
+      "tvdb": "393155"
+    },
+    "href": "details/59559.json"
+  },
+  {
+    "ratingKey": 83949,
+    "type": "tv",
+    "title": "Achtsam Morden",
+    "titleSort": "Achtsam Morden",
+    "year": 2024,
+    "seasonCount": 1,
+    "thumbFile": "Show - Achtsam Morden [83949].images/Achtsam Morden [83949].thumb.jpg",
+    "contentRating": "de/16",
+    "genres": [
+      "Drama",
+      "Krimi",
+      "Komödie",
+      "Mystery",
+      "Thriller"
+    ],
+    "ids": {
+      "imdb": "tt30217222",
+      "tmdb": "252372",
+      "tvdb": "417272"
+    },
+    "href": "details/83949.json"
+  },
+  {
+    "ratingKey": 27531,
+    "type": "tv",
+    "title": "A Murder at the End of the World",
+    "titleSort": "Murder at the End of the World",
+    "year": 2023,
+    "seasonCount": 1,
+    "thumbFile": "Show - A Murder at the End of the World [27531].images/A Murder at the End of the World [27531].thumb.jpg",
+    "contentRating": "de/18",
+    "genres": [
+      "Drama",
+      "Mystery",
+      "Thriller",
+      "Krimi",
+      "Sci-Fi & Fantasy",
+      "Mini-Series"
+    ],
+    "ids": {
+      "imdb": "tt15227418",
+      "tmdb": "134095",
+      "tvdb": "408696"
+    },
+    "href": "details/27531.json"
+  },
+  {
+    "ratingKey": 86808,
+    "type": "tv",
+    "title": "A Thousand Blows",
+    "titleSort": "Thousand Blows",
+    "year": 2024,
+    "seasonCount": 1,
+    "thumbFile": "Show - A Thousand Blows [86808].images/A Thousand Blows [86808].thumb.jpg",
+    "contentRating": "de/12",
+    "genres": [
+      "Drama",
+      "Historie",
+      "Sport",
+      "Krimi"
+    ],
+    "ids": {
+      "imdb": "tt21874900",
+      "tmdb": "208851",
+      "tvdb": "423901"
+    },
+    "href": "details/86808.json"
+  }
+]
