@@ -1,22 +1,19 @@
 import { Router, type NextFunction, type Request, type Response } from 'express';
-import { createSqliteConnection } from '../db/connection.js';
 import MediaRepository from '../repositories/mediaRepository.js';
 import ThumbnailRepository from '../repositories/thumbnailRepository.js';
-import path from 'node:path';
 import { HttpError } from '../middleware/errorHandler.js';
 
-export const createV1Router = (): Router => {
-  const router = Router();
+export interface V1RouterOptions {
+  mediaRepository: MediaRepository;
+  thumbnailRepository: ThumbnailRepository;
+}
 
-  // Database connection
-  const dbPath = process.env.SQLITE_PATH || path.join(process.cwd(), 'data', 'exports', 'plex-exporter.sqlite');
-  const db = createSqliteConnection(dbPath);
-  const mediaRepo = new MediaRepository(db);
-  const thumbRepo = new ThumbnailRepository(db);
+export const createV1Router = ({ mediaRepository, thumbnailRepository }: V1RouterOptions): Router => {
+  const router = Router();
 
   // Helper function to map media record to API response
   const mapMediaToResponse = (item: any, includeExtended = true) => {
-    const thumbnails = thumbRepo.listByMediaId(item.id);
+    const thumbnails = thumbnailRepository.listByMediaId(item.id);
     const base = {
       ratingKey: item.plexId,
       title: item.title,
@@ -51,10 +48,10 @@ export const createV1Router = (): Router => {
   /**
    * GET /api/v1/movies
    * List all movies from database
-   */
+  */
   router.get('/movies', (req: Request, res: Response, next: NextFunction) => {
     try {
-      const allMedia = mediaRepo.listAll();
+      const allMedia = mediaRepository.listAll();
       const movies = allMedia.filter(m => m.mediaType === 'movie');
 
       // Map to frontend-compatible format
@@ -67,7 +64,7 @@ export const createV1Router = (): Router => {
         addedAt: movie.plexAddedAt,
         updatedAt: movie.plexUpdatedAt,
         // Get thumbnail for this movie
-        thumbFile: thumbRepo.listByMediaId(movie.id)[0]?.path || null,
+        thumbFile: thumbnailRepository.listByMediaId(movie.id)[0]?.path || null,
       }));
 
       res.setHeader('Cache-Control', 'public, max-age=300'); // 5 min cache
@@ -84,13 +81,13 @@ export const createV1Router = (): Router => {
   router.get('/movies/:id', (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
-      const movie = mediaRepo.getByPlexId(id);
+      const movie = mediaRepository.getByPlexId(id);
 
       if (!movie || movie.mediaType !== 'movie') {
         return next(new HttpError(404, 'Movie not found'));
       }
 
-      const thumbnails = thumbRepo.listByMediaId(movie.id);
+      const thumbnails = thumbnailRepository.listByMediaId(movie.id);
       const response = {
         ...mapMediaToResponse(movie, true),
         thumbnails: thumbnails.map(t => t.path),
@@ -113,7 +110,7 @@ export const createV1Router = (): Router => {
    */
   router.get('/series', (req: Request, res: Response, next: NextFunction) => {
     try {
-      const allMedia = mediaRepo.listAll();
+      const allMedia = mediaRepository.listAll();
       const series = allMedia.filter(m => m.mediaType === 'tv');
 
       // Map to frontend-compatible format
@@ -126,7 +123,7 @@ export const createV1Router = (): Router => {
         addedAt: show.plexAddedAt,
         updatedAt: show.plexUpdatedAt,
         // Get thumbnail for this series
-        thumbFile: thumbRepo.listByMediaId(show.id)[0]?.path || null,
+        thumbFile: thumbnailRepository.listByMediaId(show.id)[0]?.path || null,
       }));
 
       res.setHeader('Cache-Control', 'public, max-age=300'); // 5 min cache
@@ -143,13 +140,13 @@ export const createV1Router = (): Router => {
   router.get('/series/:id', (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
-      const series = mediaRepo.getByPlexId(id);
+      const series = mediaRepository.getByPlexId(id);
 
       if (!series || series.mediaType !== 'tv') {
         return next(new HttpError(404, 'Series not found'));
       }
 
-      const thumbnails = thumbRepo.listByMediaId(series.id);
+      const thumbnails = thumbnailRepository.listByMediaId(series.id);
       const response = {
         ...mapMediaToResponse(series, true),
         thumbnails: thumbnails.map(t => t.path),
@@ -172,7 +169,7 @@ export const createV1Router = (): Router => {
    */
   router.get('/stats', (req: Request, res: Response, next: NextFunction) => {
     try {
-      const allMedia = mediaRepo.listAll();
+      const allMedia = mediaRepository.listAll();
       const movies = allMedia.filter(m => m.mediaType === 'movie');
       const series = allMedia.filter(m => m.mediaType === 'tv');
 
@@ -237,8 +234,8 @@ export const createV1Router = (): Router => {
       }
 
       // Get filtered results and total count
-      const items = mediaRepo.filter(filterOptions);
-      const total = mediaRepo.count(filterOptions);
+      const items = mediaRepository.filter(filterOptions);
+      const total = mediaRepository.count(filterOptions);
 
       // Map to frontend format with extended metadata
       const results = items.map(item => mapMediaToResponse(item, true));
@@ -285,8 +282,8 @@ export const createV1Router = (): Router => {
         filterOptions.mediaType = type;
       }
 
-      const items = mediaRepo.filter(filterOptions);
-      const total = mediaRepo.count(filterOptions);
+      const items = mediaRepository.filter(filterOptions);
+      const total = mediaRepository.count(filterOptions);
 
       // Map to frontend format with extended metadata
       const results = items.map(item => mapMediaToResponse(item, true));
@@ -310,7 +307,7 @@ export const createV1Router = (): Router => {
       const limitNum = parseInt(limit as string, 10);
       const mediaType = type === 'movie' || type === 'tv' ? type : undefined;
 
-      const items = mediaRepo.getRecent(limitNum, mediaType);
+      const items = mediaRepository.getRecent(limitNum, mediaType);
 
       // Map to frontend format with extended metadata
       const results = items.map(item => mapMediaToResponse(item, true));

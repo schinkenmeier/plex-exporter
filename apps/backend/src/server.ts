@@ -93,7 +93,7 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
   // Public routes (no auth required)
   app.use('/health', createHealthRouter(appConfig));
   app.use('/api/exports', createExportsRouter());
-  app.use('/api/v1', createV1Router());
+  app.use('/api/v1', createV1Router({ mediaRepository, thumbnailRepository }));
 
   // Protected routes (could add auth middleware here later)
   app.use('/notifications', createNotificationsRouter({ smtpService }));
