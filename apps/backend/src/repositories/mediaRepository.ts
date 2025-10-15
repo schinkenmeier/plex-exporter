@@ -216,6 +216,33 @@ export class MediaRepository {
     const result = this.deleteStmt.run(id);
     return result.changes > 0;
   }
+
+  /**
+   * Bulk insert multiple media items in a single transaction
+   * Much faster than inserting one by one
+   */
+  bulkInsert(items: MediaCreateInput[]): number {
+    if (items.length === 0) return 0;
+
+    const insertMany = this.db.transaction((mediaItems: MediaCreateInput[]) => {
+      for (const item of mediaItems) {
+        this.insertStmt.run({
+          plexId: item.plexId,
+          title: item.title,
+          librarySectionId: toNullable(item.librarySectionId),
+          mediaType: toNullable(item.mediaType),
+          year: toNullable(item.year),
+          guid: toNullable(item.guid),
+          summary: toNullable(item.summary),
+          plexAddedAt: toNullable(item.plexAddedAt),
+          plexUpdatedAt: toNullable(item.plexUpdatedAt),
+        });
+      }
+    });
+
+    insertMany(items);
+    return items.length;
+  }
 }
 
 export default MediaRepository;

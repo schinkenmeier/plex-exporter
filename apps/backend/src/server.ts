@@ -7,6 +7,7 @@ import { createLibrariesRouter } from './routes/libraries.js';
 import { createNotificationsRouter } from './routes/notifications.js';
 import { createHealthRouter } from './routes/health.js';
 import { createExportsRouter } from './routes/exports.js';
+import { createV1Router } from './routes/v1.js';
 import { createSmtpService, type MailSender } from './services/smtpService.js';
 import {
   createTautulliService,
@@ -90,6 +91,7 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
   // Public routes (no auth required)
   app.use('/health', createHealthRouter(appConfig));
   app.use('/api/exports', createExportsRouter());
+  app.use('/api/v1', createV1Router());
 
   // Protected routes (could add auth middleware here later)
   app.use('/notifications', createNotificationsRouter({ smtpService }));

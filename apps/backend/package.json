@@ -8,7 +8,12 @@
     "build": "tsc -p tsconfig.json",
     "start:prod": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "import": "tsx src/scripts/import-exports.ts",
+    "import:dry-run": "tsx src/scripts/import-exports.ts --dry-run",
+    "import:movies": "tsx src/scripts/import-exports.ts --movies-only",
+    "import:series": "tsx src/scripts/import-exports.ts --series-only",
+    "import:verbose": "tsx src/scripts/import-exports.ts --verbose"
   },
   "dependencies": {
     "@plex-exporter/shared": "file:../../packages/shared",

@@ -1,8 +1,12 @@
 import type { SqliteDatabase } from '../connection.js';
 import { initialMigration } from './001_initial.js';
+import { performanceIndexesMigration } from './002_performance_indexes.js';
 import type { Migration } from './types.js';
 
-const migrations: Migration[] = [initialMigration];
+const migrations: Migration[] = [
+  initialMigration,
+  performanceIndexesMigration,
+];
 
 export const runMigrations = (db: SqliteDatabase) => {
   db.exec(`
