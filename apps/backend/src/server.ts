@@ -10,10 +10,19 @@ import {
   createTautulliService,
   type TautulliClient,
 } from './services/tautulliService.js';
+import { initializeDatabase, type SqliteDatabase } from './db/index.js';
+import MediaRepository from './repositories/mediaRepository.js';
+import ThumbnailRepository from './repositories/thumbnailRepository.js';
+import TautulliSnapshotRepository from './repositories/tautulliSnapshotRepository.js';
+import { createMediaRouter } from './routes/media.js';
 
 export interface ServerDependencies {
   smtpService?: MailSender | null;
   tautulliService?: TautulliClient | null;
+  database?: SqliteDatabase | null;
+  mediaRepository?: MediaRepository | null;
+  thumbnailRepository?: ThumbnailRepository | null;
+  tautulliSnapshotRepository?: TautulliSnapshotRepository | null;
 }
 
 export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}) => {
@@ -36,10 +45,44 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
           })
         : null;
 
+  const database =
+    'database' in deps
+      ? deps.database ?? null
+      : initializeDatabase({ filePath: appConfig.database.sqlitePath });
+
+  const mediaRepository =
+    'mediaRepository' in deps
+      ? deps.mediaRepository ?? null
+      : database
+        ? new MediaRepository(database)
+        : null;
+
+  const thumbnailRepository =
+    'thumbnailRepository' in deps
+      ? deps.thumbnailRepository ?? null
+      : database
+        ? new ThumbnailRepository(database)
+        : null;
+
+  const tautulliSnapshotRepository =
+    'tautulliSnapshotRepository' in deps
+      ? deps.tautulliSnapshotRepository ?? null
+      : database
+        ? new TautulliSnapshotRepository(database)
+        : null;
+
+  if (!mediaRepository || !thumbnailRepository || !tautulliSnapshotRepository) {
+    throw new Error('Database repositories are not configured.');
+  }
+
   app.use(express.json());
   app.use('/health', createHealthRouter(appConfig));
   app.use('/notifications', createNotificationsRouter({ smtpService }));
-  app.use('/libraries', createLibrariesRouter({ tautulliService }));
+  app.use(
+    '/libraries',
+    createLibrariesRouter({ tautulliService, snapshotRepository: tautulliSnapshotRepository }),
+  );
+  app.use('/media', createMediaRouter({ mediaRepository, thumbnailRepository }));
 
   return app;
 };
