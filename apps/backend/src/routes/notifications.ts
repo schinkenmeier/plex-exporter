@@ -1,6 +1,7 @@
-import { Router } from 'express';
+import { Router, type NextFunction, type Request, type Response } from 'express';
 
 import type { MailSender } from '../services/smtpService.js';
+import { HttpError } from '../middleware/errorHandler.js';
 
 export interface NotificationsRouterOptions {
   smtpService: MailSender | null;
@@ -11,19 +12,20 @@ export const createNotificationsRouter = ({
 }: NotificationsRouterOptions) => {
   const router = Router();
 
-  router.post('/test', async (req, res) => {
+  router.post('/test', async (req: Request, res: Response, next: NextFunction) => {
     if (!smtpService) {
-      res.status(503).json({ error: 'SMTP service is not configured.' });
-      return;
+      return next(new HttpError(503, 'SMTP service is not configured.'));
     }
 
     const { to, subject, message, html } = req.body ?? {};
 
     if (!to || !subject || (!message && !html)) {
-      res
-        .status(400)
-        .json({ error: 'Fields "to", "subject" and at least one of "message" or "html" are required.' });
-      return;
+      return next(
+        new HttpError(
+          400,
+          'Fields "to", "subject" and at least one of "message" or "html" are required.',
+        ),
+      );
     }
 
     try {
@@ -43,7 +45,7 @@ export const createNotificationsRouter = ({
     } catch (error) {
       const messageText =
         error instanceof Error ? error.message : 'Unknown error while sending notification.';
-      res.status(502).json({ error: messageText });
+      next(new HttpError(502, messageText));
     }
   });
 

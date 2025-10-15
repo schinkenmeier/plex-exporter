@@ -6,11 +6,13 @@ import MediaRepository from '../../src/repositories/mediaRepository.js';
 import ThumbnailRepository from '../../src/repositories/thumbnailRepository.js';
 import { createMediaRouter } from '../../src/routes/media.js';
 import { createTestDatabase, type TestDatabaseHandle } from '../helpers/testDatabase.js';
+import { errorHandler } from '../../src/middleware/errorHandler.js';
 
 const createApp = (mediaRepository: MediaRepository, thumbnailRepository: ThumbnailRepository) => {
   const app = express();
   app.use(express.json());
   app.use('/media', createMediaRouter({ mediaRepository, thumbnailRepository }));
+  app.use(errorHandler);
   return app;
 };
 
@@ -79,13 +81,13 @@ describe('media routes', () => {
   it('returns 404 for unknown media ids', async () => {
     const response = await request(app).get('/media/9999');
     expect(response.status).toBe(404);
-    expect(response.body.error).toBe('Media not found.');
+    expect(response.body.error.message).toBe('Media not found.');
   });
 
   it('validates media identifiers', async () => {
     const response = await request(app).get('/media/invalid');
     expect(response.status).toBe(400);
-    expect(response.body.error).toBe('Invalid media identifier.');
+    expect(response.body.error.message).toBe('Invalid media identifier.');
   });
 
   it('prevents duplicate Plex identifiers', async () => {
@@ -96,12 +98,13 @@ describe('media routes', () => {
 
     const secondResponse = await request(app).post('/media').send(payload);
     expect(secondResponse.status).toBe(409);
-    expect(secondResponse.body.error).toBe('Media with this Plex ID already exists.');
+    expect(secondResponse.body.error.message).toBe('Media with this Plex ID already exists.');
   });
 
   it('returns 404 when deleting unknown media items', async () => {
     const response = await request(app).delete('/media/1234');
     expect(response.status).toBe(404);
+    expect(response.body.error.message).toBe('Media not found.');
   });
 
   it('deletes media items and cascades thumbnails', async () => {
@@ -118,6 +121,7 @@ describe('media routes', () => {
 
     const getResponse = await request(app).get(`/media/${mediaId}`);
     expect(getResponse.status).toBe(404);
+    expect(getResponse.body.error.message).toBe('Media not found.');
 
     const thumbnails = thumbnailRepository.listByMediaId(mediaId);
     expect(thumbnails).toHaveLength(0);

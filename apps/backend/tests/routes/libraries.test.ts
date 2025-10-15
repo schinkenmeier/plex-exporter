@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import TautulliSnapshotRepository from '../../src/repositories/tautulliSnapshotRepository.js';
 import { createLibrariesRouter } from '../../src/routes/libraries.js';
 import type { TautulliClient, TautulliLibrarySummary } from '../../src/services/tautulliService.js';
+import { errorHandler } from '../../src/middleware/errorHandler.js';
 import { createTestDatabase, type TestDatabaseHandle } from '../helpers/testDatabase.js';
 
 describe('libraries routes', () => {
@@ -17,6 +18,7 @@ describe('libraries routes', () => {
       '/libraries',
       createLibrariesRouter({ tautulliService, snapshotRepository }),
     );
+    app.use(errorHandler);
     return app;
   };
 
@@ -35,7 +37,7 @@ describe('libraries routes', () => {
     const response = await request(app).get('/libraries');
 
     expect(response.status).toBe(503);
-    expect(response.body.error).toBe('Tautulli service is not configured.');
+    expect(response.body.error.message).toBe('Tautulli service is not configured.');
   });
 
   it('responds with 500 when the snapshot repository is missing', async () => {
@@ -49,11 +51,12 @@ describe('libraries routes', () => {
       '/libraries',
       createLibrariesRouter({ tautulliService: { getLibraries }, snapshotRepository: null }),
     );
+    app.use(errorHandler);
 
     const response = await request(app).get('/libraries');
 
     expect(response.status).toBe(500);
-    expect(response.body.error).toBe('Snapshot repository is not configured.');
+    expect(response.body.error.message).toBe('Snapshot repository is not configured.');
   });
 
   it('returns libraries from the Tautulli service', async () => {
@@ -84,7 +87,7 @@ describe('libraries routes', () => {
     const response = await request(app).get('/libraries');
 
     expect(response.status).toBe(502);
-    expect(response.body.error).toBe('Tautulli unavailable');
+    expect(response.body.error.message).toBe('Tautulli unavailable');
     expect(getLibraries).toHaveBeenCalledTimes(1);
   });
 });

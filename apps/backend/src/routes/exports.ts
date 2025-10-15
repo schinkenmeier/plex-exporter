@@ -2,7 +2,9 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+
+import logger from '../services/logger.js';
+import { HttpError } from '../middleware/errorHandler.js';
 
 export interface ExportsRouterOptions {
   exportsPath?: string;
@@ -22,13 +24,13 @@ const resolveExportsPath = (): string => {
       const hasSeries = existsSync(path.join(candidate, 'series'));
 
       if (hasMovies || hasSeries) {
-        console.log(`[exports] Using exports path: ${candidate}`);
+        logger.info('Using exports path', { namespace: 'exports', path: candidate });
         return candidate;
       }
     }
   }
 
-  console.warn('[exports] No valid exports path found, using default');
+  logger.warn('No valid exports path found, using default', { namespace: 'exports' });
   return candidates[1]; // Default to project root structure
 };
 
@@ -49,27 +51,20 @@ export const createExportsRouter = (options: ExportsRouterOptions = {}) => {
   };
 
   // Error handler helper
-  const handleError = (res: Response, error: Error, status: number = 500) => {
-    console.error('[exports] Error:', error.message);
-    res.status(status).json({
-      error: error.message || 'Internal server error',
-      timestamp: new Date().toISOString(),
-    });
-  };
-
   /**
    * GET /api/exports/movies
    * Returns movies.json from data/exports/movies/
    */
-  router.get('/movies', async (_req: Request, res: Response) => {
+  router.get('/movies', async (_req: Request, res: Response, next: NextFunction) => {
     const filePath = path.join(exportsPath, 'movies', 'movies.json');
 
     try {
       if (!existsSync(filePath)) {
-        return res.status(404).json({
-          error: 'Movies export not found',
-          path: 'data/exports/movies/movies.json',
-        });
+        return next(
+          new HttpError(404, 'Movies export not found', {
+            details: { path: 'data/exports/movies/movies.json' },
+          }),
+        );
       }
 
       const content = await readFile(filePath, 'utf-8');
@@ -78,7 +73,14 @@ export const createExportsRouter = (options: ExportsRouterOptions = {}) => {
       setCacheHeaders(res, 300); // 5 minutes
       res.json(data);
     } catch (error) {
-      handleError(res, error as Error);
+      next(
+        error instanceof HttpError
+          ? error
+          : new HttpError(500, 'Failed to read movies export', {
+              details: { path: filePath },
+              cause: error instanceof Error ? error : undefined,
+            }),
+      );
     }
   });
 
@@ -86,15 +88,16 @@ export const createExportsRouter = (options: ExportsRouterOptions = {}) => {
    * GET /api/exports/series
    * Returns series_index.json from data/exports/series/
    */
-  router.get('/series', async (_req: Request, res: Response) => {
+  router.get('/series', async (_req: Request, res: Response, next: NextFunction) => {
     const filePath = path.join(exportsPath, 'series', 'series_index.json');
 
     try {
       if (!existsSync(filePath)) {
-        return res.status(404).json({
-          error: 'Series index not found',
-          path: 'data/exports/series/series_index.json',
-        });
+        return next(
+          new HttpError(404, 'Series index not found', {
+            details: { path: 'data/exports/series/series_index.json' },
+          }),
+        );
       }
 
       const content = await readFile(filePath, 'utf-8');
@@ -103,7 +106,14 @@ export const createExportsRouter = (options: ExportsRouterOptions = {}) => {
       setCacheHeaders(res, 300); // 5 minutes
       res.json(data);
     } catch (error) {
-      handleError(res, error as Error);
+      next(
+        error instanceof HttpError
+          ? error
+          : new HttpError(500, 'Failed to read series index', {
+              details: { path: filePath },
+              cause: error instanceof Error ? error : undefined,
+            }),
+      );
     }
   });
 
@@ -111,25 +121,28 @@ export const createExportsRouter = (options: ExportsRouterOptions = {}) => {
    * GET /api/exports/series/:id/details
    * Returns detailed series data from data/exports/series/details/:id.json
    */
-  router.get('/series/:id/details', async (req: Request, res: Response) => {
+  router.get('/series/:id/details', async (req: Request, res: Response, next: NextFunction) => {
     const { id } = req.params;
 
     if (!id || !/^[\w-]+$/.test(id)) {
-      return res.status(400).json({
-        error: 'Invalid series ID',
-        details: 'ID must contain only alphanumeric characters, hyphens, and underscores',
-      });
+      return next(
+        new HttpError(400, 'Invalid series ID', {
+          details: {
+            reason: 'ID must contain only alphanumeric characters, hyphens, and underscores',
+          },
+        }),
+      );
     }
 
     const filePath = path.join(exportsPath, 'series', 'details', `${id}.json`);
 
     try {
       if (!existsSync(filePath)) {
-        return res.status(404).json({
-          error: 'Series details not found',
-          id,
-          path: `data/exports/series/details/${id}.json`,
-        });
+        return next(
+          new HttpError(404, 'Series details not found', {
+            details: { id, path: `data/exports/series/details/${id}.json` },
+          }),
+        );
       }
 
       const content = await readFile(filePath, 'utf-8');
@@ -138,7 +151,14 @@ export const createExportsRouter = (options: ExportsRouterOptions = {}) => {
       setCacheHeaders(res, 600); // 10 minutes (details change less frequently)
       res.json(data);
     } catch (error) {
-      handleError(res, error as Error);
+      next(
+        error instanceof HttpError
+          ? error
+          : new HttpError(500, 'Failed to read series details', {
+              details: { id, path: filePath },
+              cause: error instanceof Error ? error : undefined,
+            }),
+      );
     }
   });
 
@@ -146,7 +166,7 @@ export const createExportsRouter = (options: ExportsRouterOptions = {}) => {
    * GET /api/exports/stats
    * Returns statistics about available exports
    */
-  router.get('/stats', async (_req: Request, res: Response) => {
+  router.get('/stats', async (_req: Request, res: Response, next: NextFunction) => {
     try {
       const moviesPath = path.join(exportsPath, 'movies', 'movies.json');
       const seriesPath = path.join(exportsPath, 'series', 'series_index.json');
@@ -187,7 +207,13 @@ export const createExportsRouter = (options: ExportsRouterOptions = {}) => {
       setCacheHeaders(res, 60); // 1 minute
       res.json(stats);
     } catch (error) {
-      handleError(res, error as Error);
+      next(
+        error instanceof HttpError
+          ? error
+          : new HttpError(500, 'Failed to read export statistics', {
+              cause: error instanceof Error ? error : undefined,
+            }),
+      );
     }
   });
 

@@ -4,12 +4,14 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { createNotificationsRouter } from '../../src/routes/notifications.js';
 import type { MailResult, MailSender } from '../../src/services/smtpService.js';
+import { errorHandler } from '../../src/middleware/errorHandler.js';
 
 describe('notifications routes', () => {
   const createApp = (smtpService: MailSender | null) => {
     const app = express();
     app.use(express.json());
     app.use('/notifications', createNotificationsRouter({ smtpService }));
+    app.use(errorHandler);
     return app;
   };
 
@@ -19,7 +21,7 @@ describe('notifications routes', () => {
     const response = await request(app).post('/notifications/test').send({});
 
     expect(response.status).toBe(503);
-    expect(response.body.error).toBe('SMTP service is not configured.');
+    expect(response.body.error.message).toBe('SMTP service is not configured.');
   });
 
   it('sends a notification using the SMTP service', async () => {
@@ -54,7 +56,7 @@ describe('notifications routes', () => {
       .send({ to: 'user@example.com', subject: 'Hello', message: 'Test' });
 
     expect(response.status).toBe(502);
-    expect(response.body.error).toBe('SMTP failure');
+    expect(response.body.error.message).toBe('SMTP failure');
     expect(sendMail).toHaveBeenCalledTimes(1);
   });
 });
