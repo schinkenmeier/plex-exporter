@@ -60,6 +60,17 @@ async function copySampleExports(){
   await cp(exportsDir, targetDir, { recursive: true, force: true });
 }
 
+async function copyFallbackScript(){
+  const source = path.join(frontendDir, 'src', 'js', 'fallback.js');
+  const target = path.join(distDir, 'fallback.js');
+
+  try{
+    await cp(source, target, { force: true });
+  }catch(err){
+    console.warn('[build] Konnte fallback.js nicht kopieren:', err?.message || err);
+  }
+}
+
 async function prepareStaticArtifacts(){
   await Promise.all([
     ensureConfigSample().catch(err => {
@@ -67,7 +78,8 @@ async function prepareStaticArtifacts(){
     }),
     copySampleExports().catch(err => {
       console.warn('[build] Konnte Beispieldaten nicht kopieren:', err?.message || err);
-    })
+    }),
+    copyFallbackScript()
   ]);
 }
 
