@@ -14,6 +14,18 @@ interface MediaRow {
   plex_updated_at: string | null;
   created_at: string;
   updated_at: string;
+  // Extended metadata
+  genres: string | null;
+  directors: string | null;
+  countries: string | null;
+  collections: string | null;
+  rating: number | null;
+  audience_rating: number | null;
+  content_rating: string | null;
+  studio: string | null;
+  tagline: string | null;
+  duration: number | null;
+  originally_available_at: string | null;
 }
 
 export interface MediaRecord {
@@ -29,6 +41,18 @@ export interface MediaRecord {
   plexUpdatedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  // Extended metadata
+  genres: string[] | null;
+  directors: string[] | null;
+  countries: string[] | null;
+  collections: string[] | null;
+  rating: number | null;
+  audienceRating: number | null;
+  contentRating: string | null;
+  studio: string | null;
+  tagline: string | null;
+  duration: number | null;
+  originallyAvailableAt: string | null;
 }
 
 export interface MediaCreateInput {
@@ -41,6 +65,18 @@ export interface MediaCreateInput {
   summary?: string | null;
   plexAddedAt?: string | null;
   plexUpdatedAt?: string | null;
+  // Extended metadata
+  genres?: string[] | null;
+  directors?: string[] | null;
+  countries?: string[] | null;
+  collections?: string[] | null;
+  rating?: number | null;
+  audienceRating?: number | null;
+  contentRating?: string | null;
+  studio?: string | null;
+  tagline?: string | null;
+  duration?: number | null;
+  originallyAvailableAt?: string | null;
 }
 
 export interface MediaUpdateInput {
@@ -53,7 +89,40 @@ export interface MediaUpdateInput {
   summary?: string | null;
   plexAddedAt?: string | null;
   plexUpdatedAt?: string | null;
+  // Extended metadata
+  genres?: string[] | null;
+  directors?: string[] | null;
+  countries?: string[] | null;
+  collections?: string[] | null;
+  rating?: number | null;
+  audienceRating?: number | null;
+  contentRating?: string | null;
+  studio?: string | null;
+  tagline?: string | null;
+  duration?: number | null;
+  originallyAvailableAt?: string | null;
 }
+
+export interface MediaFilterOptions {
+  mediaType?: 'movie' | 'tv' | null;
+  year?: number | null;
+  yearFrom?: number | null;
+  yearTo?: number | null;
+  search?: string | null;
+  limit?: number;
+  offset?: number;
+  sortBy?: 'title' | 'year' | 'added' | 'updated';
+  sortOrder?: 'asc' | 'desc';
+}
+
+const parseJsonArray = (jsonString: string | null): string[] | null => {
+  if (!jsonString) return null;
+  try {
+    return JSON.parse(jsonString);
+  } catch {
+    return null;
+  }
+};
 
 const mapRowToRecord = (row: MediaRow): MediaRecord => ({
   id: row.id,
@@ -68,10 +137,27 @@ const mapRowToRecord = (row: MediaRow): MediaRecord => ({
   plexUpdatedAt: row.plex_updated_at,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
+  // Extended metadata - parse JSON arrays
+  genres: parseJsonArray(row.genres),
+  directors: parseJsonArray(row.directors),
+  countries: parseJsonArray(row.countries),
+  collections: parseJsonArray(row.collections),
+  rating: row.rating,
+  audienceRating: row.audience_rating,
+  contentRating: row.content_rating,
+  studio: row.studio,
+  tagline: row.tagline,
+  duration: row.duration,
+  originallyAvailableAt: row.originally_available_at,
 });
 
 const toNullable = <T>(value: T | null | undefined): T | null =>
   value === undefined ? null : value;
+
+const serializeJsonArray = (arr: string[] | null | undefined): string | null => {
+  if (!arr || arr.length === 0) return null;
+  return JSON.stringify(arr);
+};
 
 type Statement<Params extends unknown[] = unknown[], Result = unknown> = Database.Statement<Params, Result>;
 
@@ -93,8 +179,23 @@ export class MediaRepository {
         guid,
         summary,
         plex_added_at,
-        plex_updated_at
-      ) VALUES (@plexId, @title, @librarySectionId, @mediaType, @year, @guid, @summary, @plexAddedAt, @plexUpdatedAt)
+        plex_updated_at,
+        genres,
+        directors,
+        countries,
+        collections,
+        rating,
+        audience_rating,
+        content_rating,
+        studio,
+        tagline,
+        duration,
+        originally_available_at
+      ) VALUES (
+        @plexId, @title, @librarySectionId, @mediaType, @year, @guid, @summary, @plexAddedAt, @plexUpdatedAt,
+        @genres, @directors, @countries, @collections, @rating, @audienceRating, @contentRating,
+        @studio, @tagline, @duration, @originallyAvailableAt
+      )
     `);
 
     this.getByIdStmt = this.db.prepare<[number], MediaRow>(
@@ -122,6 +223,18 @@ export class MediaRepository {
       summary: toNullable(input.summary),
       plexAddedAt: toNullable(input.plexAddedAt),
       plexUpdatedAt: toNullable(input.plexUpdatedAt),
+      // Extended metadata
+      genres: serializeJsonArray(input.genres),
+      directors: serializeJsonArray(input.directors),
+      countries: serializeJsonArray(input.countries),
+      collections: serializeJsonArray(input.collections),
+      rating: toNullable(input.rating),
+      audienceRating: toNullable(input.audienceRating),
+      contentRating: toNullable(input.contentRating),
+      studio: toNullable(input.studio),
+      tagline: toNullable(input.tagline),
+      duration: toNullable(input.duration),
+      originallyAvailableAt: toNullable(input.originallyAvailableAt),
     });
 
     const record = this.getById(Number(info.lastInsertRowid));
@@ -197,6 +310,62 @@ export class MediaRepository {
       params.plexUpdatedAt = toNullable(input.plexUpdatedAt);
     }
 
+    // Extended metadata fields
+    if (input.genres !== undefined) {
+      assignments.push('genres = @genres');
+      params.genres = serializeJsonArray(input.genres);
+    }
+
+    if (input.directors !== undefined) {
+      assignments.push('directors = @directors');
+      params.directors = serializeJsonArray(input.directors);
+    }
+
+    if (input.countries !== undefined) {
+      assignments.push('countries = @countries');
+      params.countries = serializeJsonArray(input.countries);
+    }
+
+    if (input.collections !== undefined) {
+      assignments.push('collections = @collections');
+      params.collections = serializeJsonArray(input.collections);
+    }
+
+    if (input.rating !== undefined) {
+      assignments.push('rating = @rating');
+      params.rating = toNullable(input.rating);
+    }
+
+    if (input.audienceRating !== undefined) {
+      assignments.push('audience_rating = @audienceRating');
+      params.audienceRating = toNullable(input.audienceRating);
+    }
+
+    if (input.contentRating !== undefined) {
+      assignments.push('content_rating = @contentRating');
+      params.contentRating = toNullable(input.contentRating);
+    }
+
+    if (input.studio !== undefined) {
+      assignments.push('studio = @studio');
+      params.studio = toNullable(input.studio);
+    }
+
+    if (input.tagline !== undefined) {
+      assignments.push('tagline = @tagline');
+      params.tagline = toNullable(input.tagline);
+    }
+
+    if (input.duration !== undefined) {
+      assignments.push('duration = @duration');
+      params.duration = toNullable(input.duration);
+    }
+
+    if (input.originallyAvailableAt !== undefined) {
+      assignments.push('originally_available_at = @originallyAvailableAt');
+      params.originallyAvailableAt = toNullable(input.originallyAvailableAt);
+    }
+
     if (assignments.length === 0) {
       return this.getById(id);
     }
@@ -236,12 +405,158 @@ export class MediaRepository {
           summary: toNullable(item.summary),
           plexAddedAt: toNullable(item.plexAddedAt),
           plexUpdatedAt: toNullable(item.plexUpdatedAt),
+          // Extended metadata
+          genres: serializeJsonArray(item.genres),
+          directors: serializeJsonArray(item.directors),
+          countries: serializeJsonArray(item.countries),
+          collections: serializeJsonArray(item.collections),
+          rating: toNullable(item.rating),
+          audienceRating: toNullable(item.audienceRating),
+          contentRating: toNullable(item.contentRating),
+          studio: toNullable(item.studio),
+          tagline: toNullable(item.tagline),
+          duration: toNullable(item.duration),
+          originallyAvailableAt: toNullable(item.originallyAvailableAt),
         });
       }
     });
 
     insertMany(items);
     return items.length;
+  }
+
+  /**
+   * Filter and search media with pagination and sorting
+   */
+  filter(options: MediaFilterOptions = {}): MediaRecord[] {
+    const whereClauses: string[] = [];
+    const params: Record<string, unknown> = {};
+
+    // Media type filter
+    if (options.mediaType) {
+      whereClauses.push('media_type = @mediaType');
+      params.mediaType = options.mediaType;
+    }
+
+    // Year filters
+    if (options.year !== undefined && options.year !== null) {
+      whereClauses.push('year = @year');
+      params.year = options.year;
+    }
+
+    if (options.yearFrom !== undefined && options.yearFrom !== null) {
+      whereClauses.push('year >= @yearFrom');
+      params.yearFrom = options.yearFrom;
+    }
+
+    if (options.yearTo !== undefined && options.yearTo !== null) {
+      whereClauses.push('year <= @yearTo');
+      params.yearTo = options.yearTo;
+    }
+
+    // Search filter (title or summary)
+    if (options.search) {
+      whereClauses.push('(title LIKE @search OR summary LIKE @search)');
+      params.search = `%${options.search}%`;
+    }
+
+    // Build WHERE clause
+    const whereClause = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+    // Sorting
+    const sortBy = options.sortBy || 'title';
+    const sortOrder = options.sortOrder || 'asc';
+    let orderByClause = '';
+
+    switch (sortBy) {
+      case 'title':
+        orderByClause = `ORDER BY title COLLATE NOCASE ${sortOrder.toUpperCase()}`;
+        break;
+      case 'year':
+        orderByClause = `ORDER BY year ${sortOrder.toUpperCase()}, title COLLATE NOCASE ASC`;
+        break;
+      case 'added':
+        orderByClause = `ORDER BY plex_added_at ${sortOrder.toUpperCase()}, title COLLATE NOCASE ASC`;
+        break;
+      case 'updated':
+        orderByClause = `ORDER BY updated_at ${sortOrder.toUpperCase()}, title COLLATE NOCASE ASC`;
+        break;
+    }
+
+    // Pagination
+    const limit = options.limit || 50;
+    const offset = options.offset || 0;
+    const limitClause = `LIMIT @limit OFFSET @offset`;
+    params.limit = limit;
+    params.offset = offset;
+
+    // Build and execute query
+    const query = `SELECT * FROM media_metadata ${whereClause} ${orderByClause} ${limitClause}`;
+    const stmt = this.db.prepare<MediaRow>(query);
+    const rows = stmt.all(params) as MediaRow[];
+
+    return rows.map((row) => mapRowToRecord(row));
+  }
+
+  /**
+   * Count total items matching filter criteria (for pagination)
+   */
+  count(options: MediaFilterOptions = {}): number {
+    const whereClauses: string[] = [];
+    const params: Record<string, unknown> = {};
+
+    if (options.mediaType) {
+      whereClauses.push('media_type = @mediaType');
+      params.mediaType = options.mediaType;
+    }
+
+    if (options.year !== undefined && options.year !== null) {
+      whereClauses.push('year = @year');
+      params.year = options.year;
+    }
+
+    if (options.yearFrom !== undefined && options.yearFrom !== null) {
+      whereClauses.push('year >= @yearFrom');
+      params.yearFrom = options.yearFrom;
+    }
+
+    if (options.yearTo !== undefined && options.yearTo !== null) {
+      whereClauses.push('year <= @yearTo');
+      params.yearTo = options.yearTo;
+    }
+
+    if (options.search) {
+      whereClauses.push('(title LIKE @search OR summary LIKE @search)');
+      params.search = `%${options.search}%`;
+    }
+
+    const whereClause = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+    const query = `SELECT COUNT(*) as count FROM media_metadata ${whereClause}`;
+    const stmt = this.db.prepare(query);
+    const result = stmt.get(params) as { count: number };
+
+    return result.count;
+  }
+
+  /**
+   * Get recent additions sorted by plex_added_at
+   */
+  getRecent(limit: number = 20, mediaType?: 'movie' | 'tv'): MediaRecord[] {
+    let query = 'SELECT * FROM media_metadata';
+    const params: Record<string, unknown> = {};
+
+    if (mediaType) {
+      query += ' WHERE media_type = @mediaType';
+      params.mediaType = mediaType;
+    }
+
+    query += ' ORDER BY plex_added_at DESC LIMIT @limit';
+    params.limit = limit;
+
+    const stmt = this.db.prepare<MediaRow>(query);
+    const rows = stmt.all(params) as MediaRow[];
+
+    return rows.map((row) => mapRowToRecord(row));
   }
 }
 

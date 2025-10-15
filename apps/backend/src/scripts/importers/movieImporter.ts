@@ -65,7 +65,7 @@ export class MovieImporter {
             // Extract primary GUID
             const guid = this.extractGuid(movie);
 
-            // Prepare media data
+            // Prepare media data with extended metadata
             const mediaData = {
               plexId,
               title: movie.title,
@@ -75,6 +75,18 @@ export class MovieImporter {
               mediaType: 'movie',
               plexAddedAt: movie.addedAt,
               plexUpdatedAt: null,
+              // Extended metadata
+              genres: movie.genres?.map(g => g.tag).filter(Boolean) || null,
+              directors: movie.directors?.map(d => d.tag).filter(Boolean) || null,
+              countries: movie.countries?.map(c => c.tag).filter(Boolean) || null,
+              collections: movie.collections?.map(c => c.tag).filter(Boolean) || null,
+              rating: movie.rating || null,
+              audienceRating: movie.audienceRating || null,
+              contentRating: movie.contentRating || null,
+              studio: movie.studio || null,
+              tagline: movie.tagline || null,
+              duration: movie.duration || null,
+              originallyAvailableAt: movie.originallyAvailableAt || null,
             };
 
             if (existing && options.force) {

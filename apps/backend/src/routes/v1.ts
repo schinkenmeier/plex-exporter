@@ -13,6 +13,40 @@ export const createV1Router = (): Router => {
   const mediaRepo = new MediaRepository(db);
   const thumbRepo = new ThumbnailRepository(db);
 
+  // Helper function to map media record to API response
+  const mapMediaToResponse = (item: any, includeExtended = true) => {
+    const thumbnails = thumbRepo.listByMediaId(item.id);
+    const base = {
+      ratingKey: item.plexId,
+      title: item.title,
+      year: item.year,
+      guid: item.guid,
+      summary: item.summary,
+      mediaType: item.mediaType,
+      addedAt: item.plexAddedAt,
+      updatedAt: item.plexUpdatedAt,
+      thumbFile: thumbnails[0]?.path || null,
+    };
+
+    if (!includeExtended) return base;
+
+    return {
+      ...base,
+      // Extended metadata
+      genres: item.genres,
+      directors: item.directors,
+      countries: item.countries,
+      collections: item.collections,
+      rating: item.rating,
+      audienceRating: item.audienceRating,
+      contentRating: item.contentRating,
+      studio: item.studio,
+      tagline: item.tagline,
+      duration: item.duration,
+      originallyAvailableAt: item.originallyAvailableAt,
+    };
+  };
+
   /**
    * GET /api/v1/movies
    * List all movies from database
@@ -45,7 +79,7 @@ export const createV1Router = (): Router => {
 
   /**
    * GET /api/v1/movies/:id
-   * Get movie details by plexId
+   * Get movie details by plexId (includes extended metadata)
    */
   router.get('/movies/:id', (req: Request, res: Response) => {
     try {
@@ -58,16 +92,8 @@ export const createV1Router = (): Router => {
       }
 
       const thumbnails = thumbRepo.listByMediaId(movie.id);
-
       const response = {
-        ratingKey: movie.plexId,
-        title: movie.title,
-        year: movie.year,
-        guid: movie.guid,
-        summary: movie.summary,
-        addedAt: movie.plexAddedAt,
-        updatedAt: movie.plexUpdatedAt,
-        thumbFile: thumbnails[0]?.path || null,
+        ...mapMediaToResponse(movie, true),
         thumbnails: thumbnails.map(t => t.path),
       };
 
@@ -111,7 +137,7 @@ export const createV1Router = (): Router => {
 
   /**
    * GET /api/v1/series/:id
-   * Get series details by plexId
+   * Get series details by plexId (includes extended metadata)
    */
   router.get('/series/:id', (req: Request, res: Response) => {
     try {
@@ -124,16 +150,8 @@ export const createV1Router = (): Router => {
       }
 
       const thumbnails = thumbRepo.listByMediaId(series.id);
-
       const response = {
-        ratingKey: series.plexId,
-        title: series.title,
-        year: series.year,
-        guid: series.guid,
-        summary: series.summary,
-        addedAt: series.plexAddedAt,
-        updatedAt: series.plexUpdatedAt,
-        thumbFile: thumbnails[0]?.path || null,
+        ...mapMediaToResponse(series, true),
         thumbnails: thumbnails.map(t => t.path),
       };
 
@@ -166,6 +184,143 @@ export const createV1Router = (): Router => {
     } catch (error) {
       console.error('[v1] Error fetching stats:', error);
       res.status(500).json({ error: 'Failed to fetch stats' });
+    }
+  });
+
+  /**
+   * GET /api/v1/filter
+   * Filter media with query parameters
+   * Query params: type, year, yearFrom, yearTo, search, limit, offset, sortBy, sortOrder
+   */
+  router.get('/filter', (req: Request, res: Response) => {
+    try {
+      const {
+        type,
+        year,
+        yearFrom,
+        yearTo,
+        search,
+        limit = '50',
+        offset = '0',
+        sortBy = 'title',
+        sortOrder = 'asc',
+      } = req.query;
+
+      // Build filter options
+      const filterOptions: any = {
+        limit: parseInt(limit as string, 10),
+        offset: parseInt(offset as string, 10),
+        sortBy: sortBy as 'title' | 'year' | 'added' | 'updated',
+        sortOrder: sortOrder as 'asc' | 'desc',
+      };
+
+      if (type === 'movie' || type === 'tv') {
+        filterOptions.mediaType = type;
+      }
+
+      if (year) {
+        filterOptions.year = parseInt(year as string, 10);
+      }
+
+      if (yearFrom) {
+        filterOptions.yearFrom = parseInt(yearFrom as string, 10);
+      }
+
+      if (yearTo) {
+        filterOptions.yearTo = parseInt(yearTo as string, 10);
+      }
+
+      if (search) {
+        filterOptions.search = search as string;
+      }
+
+      // Get filtered results and total count
+      const items = mediaRepo.filter(filterOptions);
+      const total = mediaRepo.count(filterOptions);
+
+      // Map to frontend format with extended metadata
+      const results = items.map(item => mapMediaToResponse(item, true));
+
+      const response = {
+        items: results,
+        pagination: {
+          total,
+          limit: filterOptions.limit,
+          offset: filterOptions.offset,
+          hasMore: filterOptions.offset + filterOptions.limit < total,
+        },
+      };
+
+      res.setHeader('Cache-Control', 'public, max-age=300'); // 5 min cache
+      res.json(response);
+    } catch (error) {
+      console.error('[v1] Error filtering media:', error);
+      res.status(500).json({ error: 'Failed to filter media' });
+    }
+  });
+
+  /**
+   * GET /api/v1/search
+   * Search media by title or summary
+   * Query param: q (search query), type (optional), limit (optional)
+   */
+  router.get('/search', (req: Request, res: Response) => {
+    try {
+      const { q, type, limit = '20' } = req.query;
+
+      if (!q || typeof q !== 'string') {
+        res.status(400).json({ error: 'Search query parameter "q" is required' });
+        return;
+      }
+
+      const filterOptions: any = {
+        search: q,
+        limit: parseInt(limit as string, 10),
+        offset: 0,
+        sortBy: 'title' as const,
+        sortOrder: 'asc' as const,
+      };
+
+      if (type === 'movie' || type === 'tv') {
+        filterOptions.mediaType = type;
+      }
+
+      const items = mediaRepo.filter(filterOptions);
+      const total = mediaRepo.count(filterOptions);
+
+      // Map to frontend format with extended metadata
+      const results = items.map(item => mapMediaToResponse(item, true));
+
+      res.setHeader('Cache-Control', 'public, max-age=180'); // 3 min cache
+      res.json({ query: q, total, results });
+    } catch (error) {
+      console.error('[v1] Error searching media:', error);
+      res.status(500).json({ error: 'Failed to search media' });
+    }
+  });
+
+  /**
+   * GET /api/v1/recent
+   * Get recently added media
+   * Query params: limit (default: 20), type (optional: 'movie' or 'tv')
+   */
+  router.get('/recent', (req: Request, res: Response) => {
+    try {
+      const { limit = '20', type } = req.query;
+
+      const limitNum = parseInt(limit as string, 10);
+      const mediaType = type === 'movie' || type === 'tv' ? type : undefined;
+
+      const items = mediaRepo.getRecent(limitNum, mediaType);
+
+      // Map to frontend format with extended metadata
+      const results = items.map(item => mapMediaToResponse(item, true));
+
+      res.setHeader('Cache-Control', 'public, max-age=60'); // 1 min cache
+      res.json({ items: results, count: results.length });
+    } catch (error) {
+      console.error('[v1] Error fetching recent media:', error);
+      res.status(500).json({ error: 'Failed to fetch recent media' });
     }
   });
 
