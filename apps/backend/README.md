@@ -3,9 +3,15 @@
 Dieses Paket stellt das Fundament für eine künftige API bereit, die Plex-Exports über HTTP verfügbar macht. Ziel ist es, vorbereitete JSON-Dumps aus `data/exports/` strukturiert auszuliefern, sie optional aufzubereiten und zukünftige Verwaltungsaufgaben (z. B. Re-Exports, Validierungen, Authentifizierung) zu übernehmen.
 
 ## Aktueller Stand
-- Ein Express-Server (`src/server.ts`) mit vorbereiteten Routen und gemeinsamer Middleware-Konfiguration.
-- Ein Health-Endpunkt unter `/health`, implementiert in `src/routes/health.ts`, der eine einfache Betriebsprüfung erlaubt.
-- Platzhalter für automatisierte Tests (`tests/`).
+- Ein Express-Server (`src/server.ts`) mit vorbereiteten Routen, CORS-Konfiguration und gemeinsamer Middleware.
+- **Neue Export-API** (`src/routes/exports.ts`) mit folgenden Endpunkten:
+  - `GET /api/exports/movies` - Liefert vollständige Filmdaten aus `data/exports/movies/movies.json`
+  - `GET /api/exports/series` - Liefert Serien-Index aus `data/exports/series/series_index.json`
+  - `GET /api/exports/series/:id/details` - Liefert detaillierte Serieninformationen
+  - `GET /api/exports/stats` - Liefert Statistiken über verfügbare Exporte
+- Health-Endpunkt unter `/health` für Betriebsprüfungen
+- SQLite-Datenbank mit Migrations-System und Repositories für Media, Thumbnails und Tautulli-Snapshots
+- Platzhalter für automatisierte Tests (`tests/`)
 
 ## Konfiguration
 Die Anwendung liest ihre Konfiguration beim Start aus Umgebungsvariablen und validiert sie per [Zod](https://github.com/colinhacks/zod). Erstelle für lokale Entwicklungen eine `.env`-Datei auf Basis der bereitgestellten `.env.sample` und passe die Werte an deine Umgebung an.
@@ -60,3 +66,57 @@ Die Anwendung liest ihre Konfiguration beim Start aus Umgebungsvariablen und val
 - Ergänzung weiterer Routen (z. B. `/movies`, `/shows`).
 - Konfiguration von Logging, Fehlerbehandlung und Authentifizierung.
 - Erweiterung der Test-Suite (Unit-, Integrations- und Contract-Tests).
+
+## Schnellstart (Lokale Entwicklung)
+
+1. **Dependencies installieren**:
+   ```bash
+   npm install --workspace @plex-exporter/backend
+   ```
+
+2. **Umgebungsvariablen konfigurieren**:
+   ```bash
+   cd apps/backend
+   cp .env.example .env
+   # Passe .env nach Bedarf an (PORT=4001 für lokale Entwicklung)
+   ```
+
+3. **TypeScript kompilieren**:
+   ```bash
+   npm run build --workspace @plex-exporter/backend
+   ```
+
+4. **Server starten**:
+   ```bash
+   npm run start --workspace @plex-exporter/backend
+   # Oder für Development mit Auto-Reload:
+   npm run dev --workspace @plex-exporter/backend
+   ```
+
+5. **API testen**:
+   ```bash
+   curl http://localhost:4001/health
+   curl http://localhost:4001/api/exports/stats
+   curl http://localhost:4001/api/exports/movies
+   ```
+
+## API-Endpunkte
+
+### Export-Daten (Public, mit CORS)
+
+- **`GET /api/exports/stats`**
+  Liefert Statistiken über verfügbare Exporte
+
+- **`GET /api/exports/movies`**
+  Liefert vollständige Filmdaten aus `data/exports/movies/movies.json`
+
+- **`GET /api/exports/series`**
+  Liefert Serien-Index aus `data/exports/series/series_index.json`
+
+- **`GET /api/exports/series/:id/details`**
+  Liefert detaillierte Serieninformationen (inklusive Staffeln & Episoden)
+
+### System
+
+- **`GET /health`**
+  Health-Check mit Status, Timestamp und Environment
