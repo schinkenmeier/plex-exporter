@@ -23,14 +23,18 @@ Neu hinzugekommen ist ein Backend-Grundgerüst (`apps/backend/`), das perspektiv
 | `apps/backend/tests/` | Platz für Unit- und Integrations-Tests des Backends. |
 | `apps/backend/README.md` | Einstieg in das neue Backend-Paket (Ziele, nächste Schritte). |
 | `apps/frontend/package.json` | npm-Skripte und Dev-Abhängigkeiten für das Frontend. |
-| `config/frontend.json` | Laufzeitkonfiguration (Startansicht, TMDB-Schalter, Sprache) für Deployments. |
-| `config/frontend.json.sample` | Beispielkonfiguration; das Frontend-Build kopiert sie nach `apps/frontend/public/config/frontend.json`. |
+| `config/frontend.json` | Laufzeitkonfiguration (Startansicht, TMDB-Schalter, Sprache) für Deployments; das Build spiegelt sie nach `apps/frontend/public/config/frontend.json`. |
+| `config/frontend.json.sample` | Beispielkonfiguration; das Frontend-Build legt sie als `apps/frontend/public/config/frontend.json.sample` ab und nutzt sie als Fallback, falls keine reale Konfiguration existiert. |
 | `apps/frontend/src/main.js` | Bootstrapping der Anwendung, Initialisierung von Filtern, Watchlist, Debug und Einstellungen. |
 | `apps/frontend/public/hero.policy.json` | Steuerdatei für die Hero-Rotation (Poolgrößen, Slots, Cache-Laufzeiten). |
+| `apps/frontend/src/core/` | Fundamentale Infrastruktur (State-Management, Loader, DOM-/Error-Helfer, Konfigurations- und Metadatenservice). |
+| `apps/frontend/src/features/` | Feature-spezifische Module für Filter, Grid, Hero, Modals und Watchlist. |
 | `apps/frontend/src/features/hero/…` | Pipeline für Hero-Highlights (Policy, Pooling, Normalisierung, Storage, TMDB-Anbindung). |
+| `apps/frontend/src/services/` | Integrationslayer für externe APIs (aktuell TMDB-Client & Mapper). |
+| `apps/frontend/src/shared/` | Gemeinsame Utilities wie Cache-Layer und Stores. |
+| `apps/frontend/src/ui/` | Präsentationsnahe Komponenten (Loader, Skeletons, Error-Toast). |
 | `apps/frontend/src/js/data.js` | Datenlader mit Unterstützung für lokale Dateien (`data/exports/...`) und Legacy-Fallbacks. |
-| `apps/frontend/src/features/…` | Funktionale Module für Filter, Grid, Hero, Modals und Watchlist. |
-| `apps/frontend/src/js/…` | Geteilte Utilities, Datenzugriff, Debug-Tools und Browser-spezifische Helfer. |
+| `apps/frontend/src/js/…` | Browser-nahe Helfer & Brückenmodule (Debug-Overlay, Settings-Overlay, Fallback-Skripte, Demodaten). |
 | `data/exports/movies/` | Exportierte Filmdaten (`movies.json`) und optionale Posterordner (`Movie - … .images`). |
 | `data/exports/series/` | Serienindex (`series_index.json`), Detaildateien (`details/<ratingKey>.json`) und Posterordner (`Show - … .images`). |
 | `apps/frontend/public/assets/` | Statische Assets wie Favicons und Illustrationen. |
@@ -107,7 +111,7 @@ Das Repository ist als npm-Workspace organisiert. Relevante Befehle:
 - Sobald TMDB aktiviert ist, lädt das Frontend Cover und Backdrops nach (`apps/frontend/src/services/tmdb.js`). Die Nutzung ist optional und kann jederzeit über den UI-Toggle abgeschaltet werden.
 
 ### TMDB-Laufzeitkonfiguration (`config/frontend.json`)
-- Kopiere `config/frontend.json.sample` nach `config/frontend.json`, um Defaults für Sprache, Region, API-Basis und TTL zu setzen. Das Frontend-Build spiegelt die Datei als `apps/frontend/public/config/frontend.json`, damit lokale Demos ohne Backend funktionieren. Halte die produktive Variante aus Repos fern, falls sie persönliche API Keys/Tokens enthält.
+- Kopiere `config/frontend.json.sample` nach `config/frontend.json`, um Defaults für Sprache, Region, API-Basis und TTL zu setzen. Das Frontend-Build spiegelt die reale Datei als `apps/frontend/public/config/frontend.json` und legt zusätzlich die Sample-Variante ab. So greifen lokale Demos automatisch auf deine Konfiguration zurück; halte produktive Werte dennoch aus Repos fern, falls sie persönliche API Keys/Tokens enthalten.
 - Ergänze `tmdbApiKey` (v3) oder trage einen v4 Bearer Token via Einstellungs-Overlay ein. Das UI kombiniert beide Quellen: Tokens landen im `localStorage.tmdbToken`, während API Keys ausschließlich aus `config/frontend.json` gelesen werden.
 - Aktiviere das Feature-Flag für die Modal-Anreicherung über `tmdbEnabled: true` in `config/frontend.json`. Beim Bootstrapping synchronisiert `apps/frontend/src/main.js` dieses Flag mit `window.FEATURES.tmdbEnrichment`, sodass du das Verhalten auch manuell via `window.FEATURES = { tmdbEnrichment: true }` im Browser vorladen kannst.
 
