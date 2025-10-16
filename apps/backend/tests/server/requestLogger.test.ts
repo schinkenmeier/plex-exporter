@@ -1,7 +1,7 @@
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createServer } from '../../src/server.js';
+import { createServer } from '../../src/createServer.js';
 import type { AppConfig } from '../../src/config/index.js';
 import type MediaRepository from '../../src/repositories/mediaRepository.js';
 import type ThumbnailRepository from '../../src/repositories/thumbnailRepository.js';
