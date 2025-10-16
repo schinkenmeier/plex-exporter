@@ -1,4 +1,5 @@
-import type { Migration } from './index.js';
+import type { SqliteDatabase } from '../connection.js';
+import type { Migration } from './types.js';
 
 /**
  * Migration 003: Add extended metadata columns
@@ -7,7 +8,7 @@ import type { Migration } from './index.js';
 export const extendedMetadataMigration: Migration = {
   id: '003_extended_metadata',
   name: 'add extended metadata columns',
-  up: (db) => {
+  up: (db: SqliteDatabase) => {
     // Add JSON columns for complex metadata
     db.exec(`
       ALTER TABLE media_metadata ADD COLUMN genres TEXT DEFAULT NULL;
@@ -58,7 +59,7 @@ export const extendedMetadataMigration: Migration = {
     console.log('[migration] Added extended metadata columns (genres, directors, ratings, etc.)');
   },
 
-  down: (db) => {
+  down: (db: SqliteDatabase) => {
     // SQLite doesn't support DROP COLUMN directly, would need table recreation
     // For now, we'll leave the columns (they can be NULL)
     console.warn('[migration] Rollback not fully supported - columns will remain with NULL values');

@@ -492,8 +492,8 @@ export class MediaRepository {
 
     // Build and execute query
     const query = `SELECT * FROM media_metadata ${whereClause} ${orderByClause} ${limitClause}`;
-    const stmt = this.db.prepare<MediaRow>(query);
-    const rows = stmt.all(params) as MediaRow[];
+    const stmt = this.db.prepare<Record<string, unknown>, MediaRow>(query);
+    const rows = stmt.all(params);
 
     return rows.map((row) => mapRowToRecord(row));
   }
@@ -553,8 +553,8 @@ export class MediaRepository {
     query += ' ORDER BY plex_added_at DESC LIMIT @limit';
     params.limit = limit;
 
-    const stmt = this.db.prepare<MediaRow>(query);
-    const rows = stmt.all(params) as MediaRow[];
+    const stmt = this.db.prepare<Record<string, unknown>, MediaRow>(query);
+    const rows = stmt.all(params);
 
     return rows.map((row) => mapRowToRecord(row));
   }
