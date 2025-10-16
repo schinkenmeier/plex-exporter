@@ -98,6 +98,7 @@ const envSchema = z
     SMTP_PASS: optionalString,
     SMTP_FROM: optionalEmail,
     SMTP_SECURE: optionalBoolean,
+    API_TOKEN: optionalString,
     TAUTULLI_URL: z
       .preprocess(
         (value) => {
@@ -170,6 +171,11 @@ export const config = {
   server: {
     port: rawConfig.PORT,
   },
+  auth: rawConfig.API_TOKEN
+    ? {
+        token: rawConfig.API_TOKEN,
+      }
+    : null,
   database: {
     sqlitePath: rawConfig.SQLITE_PATH,
   },
