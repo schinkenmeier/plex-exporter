@@ -92,6 +92,7 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
   }));
 
   app.use(express.json());
+  app.use(requestLogger);
 
   // Public routes (no auth required)
   app.use('/health', createHealthRouter(appConfig));
@@ -108,7 +109,6 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
   app.use('/media', createMediaRouter({ mediaRepository, thumbnailRepository }));
 
   // Logging & error handling
-  app.use(requestLogger);
   app.use(errorHandler);
 
   return app;
