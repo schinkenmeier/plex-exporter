@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: apps/backend/Dockerfile
+      target: production
     image: plex-exporter-backend:local
     ports:
       - "${BACKEND_PORT:-4000}:${BACKEND_INTERNAL_PORT:-4000}"
@@ -10,6 +11,9 @@ services:
       NODE_ENV: ${BACKEND_NODE_ENV:-production}
       PORT: ${BACKEND_INTERNAL_PORT:-4000}
       SQLITE_PATH: ${BACKEND_SQLITE_PATH:-/app/storage/sqlite/plex-exporter.sqlite}
+      HERO_POLICY_PATH: ${BACKEND_HERO_POLICY_PATH:-}
+      TMDB_ACCESS_TOKEN: ${BACKEND_TMDB_ACCESS_TOKEN:-}
+      API_TOKEN: ${BACKEND_API_TOKEN:-}
       SMTP_HOST: ${BACKEND_SMTP_HOST:-mailhog}
       SMTP_PORT: ${BACKEND_SMTP_PORT:-1025}
       SMTP_USER: ${BACKEND_SMTP_USER:-}
@@ -21,6 +25,12 @@ services:
     volumes:
       - ./data/exports:/app/data/exports
       - ./data/sqlite:/app/storage/sqlite
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
     depends_on:
       mailhog:
         condition: service_started
