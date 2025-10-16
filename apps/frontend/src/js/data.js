@@ -353,6 +353,109 @@ export async function loadShows(){
   }
 }
 
+function resolveApiBase(){
+  try{
+    if(typeof window !== 'undefined' && window.location){
+      return '';
+    }
+  }catch(err){
+    console.warn(`${LOG_PREFIX} Unable to inspect window.location:`, err?.message || err);
+  }
+
+  try{
+    const globalLocation = typeof globalThis !== 'undefined' ? globalThis.location : undefined;
+    if(globalLocation && typeof globalLocation === 'object'){
+      if(typeof globalLocation.origin === 'string' && globalLocation.origin){
+        return globalLocation.origin.replace(/\/$/, '');
+      }
+      const protocol = typeof globalLocation.protocol === 'string' ? globalLocation.protocol : '';
+      const host = typeof globalLocation.host === 'string' ? globalLocation.host : '';
+      if(protocol && host){
+        return `${protocol}//${host}`.replace(/\/$/, '');
+      }
+    }
+  }catch(err){
+    console.warn(`${LOG_PREFIX} Unable to resolve global location:`, err?.message || err);
+  }
+
+  try{
+    if(typeof process !== 'undefined' && process?.env){
+      const envBase =
+        process.env.PLEX_EXPORTER_API_BASE ||
+        process.env.PLEX_EXPORTER_BASE_URL ||
+        process.env.PUBLIC_URL ||
+        process.env.APP_ORIGIN ||
+        '';
+      if(envBase){
+        return String(envBase).replace(/\/$/, '');
+      }
+    }
+  }catch(err){
+    console.warn(`${LOG_PREFIX} Unable to resolve API base from env:`, err?.message || err);
+  }
+
+  return 'http://localhost';
+}
+
+function buildSearchUrl(params){
+  const search = params.toString();
+  const base = resolveApiBase();
+  const path = `/api/exports/search${search ? `?${search}` : ''}`;
+  return base ? `${base}${path}` : path;
+}
+
+export async function fetchCatalogFacets(){
+  const params = new URLSearchParams();
+  params.set('kind', 'all');
+  params.set('includeItems', '0');
+  params.set('includeFacets', '1');
+  const url = buildSearchUrl(params);
+  const data = await fetchJson(url, 1, true);
+  if(data && typeof data === 'object'){
+    if(data.facets && typeof data.facets === 'object'){
+      return data.facets;
+    }
+    if('genres' in data || 'years' in data || 'collections' in data){
+      return {
+        genres: Array.isArray(data.genres) ? data.genres : [],
+        years: Array.isArray(data.years) ? data.years : [],
+        collections: Array.isArray(data.collections) ? data.collections : [],
+      };
+    }
+  }
+  return { genres: [], years: [], collections: [] };
+}
+
+export async function searchLibrary(kind, filters = {}, options = {}){
+  const params = new URLSearchParams();
+  const normalizedKind = (()=>{
+    if(kind === 'all') return 'all';
+    if(kind === 'shows' || kind === 'show' || kind === 'series') return 'show';
+    return 'movie';
+  })();
+  params.set('kind', normalizedKind);
+  params.set('includeItems', '1');
+  params.set('includeFacets', options.includeFacets ? '1' : '0');
+
+  const { query, onlyNew, yearFrom, yearTo, genres, collection, sort, newDays } = filters || {};
+
+  if(typeof query === 'string' && query.trim()) params.set('query', query.trim());
+  if(onlyNew) params.set('onlyNew', '1');
+  if(Number.isFinite(yearFrom)) params.set('yearFrom', String(yearFrom));
+  if(Number.isFinite(yearTo)) params.set('yearTo', String(yearTo));
+  if(Array.isArray(genres) && genres.length) params.set('genres', genres.join(','));
+  if(typeof collection === 'string' && collection.trim()) params.set('collection', collection.trim());
+  if(typeof sort === 'string' && sort.trim()) params.set('sort', sort.trim());
+  if(Number.isFinite(newDays) && newDays > 0) params.set('newDays', String(newDays));
+
+  const url = buildSearchUrl(params);
+  const data = await fetchJson(url, 1, false);
+  if(data && typeof data === 'object'){
+    return data;
+  }
+  return { items: [], total: 0, filters: { ...filters } };
+}
+
 export async function loadShowDetail(item){
   if(!item) return null;
   const keys = cacheKeys(item);

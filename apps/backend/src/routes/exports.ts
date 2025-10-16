@@ -3,12 +3,16 @@ import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
+import { computeFacets, filterMediaItems, type MediaFilterOptions, type SortKey } from '@plex-exporter/shared';
+
 import logger from '../services/logger.js';
 import { HttpError } from '../middleware/errorHandler.js';
 import {
   createExportService,
   ExportNotFoundError,
   ExportValidationError,
+  type MovieExportEntry,
+  type ShowExportEntry,
 } from '../services/exportService.js';
 
 export interface ExportsRouterOptions {
@@ -40,6 +44,107 @@ const resolveExportsPath = (): string => {
 };
 
 const DEFAULT_EXPORTS_PATH = resolveExportsPath();
+
+const truthy = new Set(['1', 'true', 'yes', 'on']);
+
+const parseBoolean = (value: unknown, defaultValue: boolean): boolean => {
+  if (value === undefined) return defaultValue;
+  if (Array.isArray(value)) return parseBoolean(value[value.length - 1], defaultValue);
+  const str = String(value).trim().toLowerCase();
+  if (!str) return defaultValue;
+  if (truthy.has(str)) return true;
+  if (str === '0' || str === 'false' || str === 'no' || str === 'off') return false;
+  return defaultValue;
+};
+
+const parseNumberParam = (value: unknown): number | null => {
+  if (value === undefined) return null;
+  if (Array.isArray(value)) return parseNumberParam(value[value.length - 1]);
+  const str = String(value).trim();
+  if (!str) return null;
+  const num = Number(str);
+  return Number.isFinite(num) ? num : null;
+};
+
+const parseGenresParam = (value: unknown): string[] => {
+  if (value === undefined) return [];
+  const rawValues = Array.isArray(value) ? value : String(value).split(',');
+  return rawValues
+    .map((entry) => String(entry ?? '').trim())
+    .filter((entry): entry is string => entry.length > 0);
+};
+
+const parseCollectionParam = (value: unknown): string | undefined => {
+  if (value === undefined) return undefined;
+  if (Array.isArray(value)) return parseCollectionParam(value[value.length - 1]);
+  const str = String(value).trim();
+  return str || undefined;
+};
+
+const parseSortParam = (value: unknown): SortKey | undefined => {
+  if (value === undefined) return undefined;
+  if (Array.isArray(value)) return parseSortParam(value[value.length - 1]);
+  const str = String(value).trim();
+  const supported: SortKey[] = ['title-asc', 'title-desc', 'year-desc', 'year-asc', 'added-desc'];
+  return supported.includes(str as SortKey) ? (str as SortKey) : undefined;
+};
+
+const parseLibraryKind = (value: unknown): 'movie' | 'show' | 'all' => {
+  if (Array.isArray(value)) return parseLibraryKind(value[value.length - 1]);
+  const str = String(value ?? '').trim().toLowerCase();
+  if (str === 'show' || str === 'shows' || str === 'series') return 'show';
+  if (str === 'all') return 'all';
+  return 'movie';
+};
+
+const mapFiltersFromQuery = (query: Request['query']): MediaFilterOptions => {
+  const yearFrom = parseNumberParam(query.yearFrom ?? query.year_from ?? query['year-from']);
+  const yearTo = parseNumberParam(query.yearTo ?? query.year_to ?? query['year-to']);
+  const newDays = parseNumberParam(query.newDays ?? query.new_days ?? query['new-days']);
+  const genres = parseGenresParam(query.genres ?? query.genre);
+
+  const filters: MediaFilterOptions = {
+    query: typeof query.query === 'string' ? query.query : typeof query.q === 'string' ? query.q : undefined,
+    onlyNew: parseBoolean(query.onlyNew ?? query.only_new ?? query['only-new'], false),
+    yearFrom: yearFrom ?? undefined,
+    yearTo: yearTo ?? undefined,
+    genres: genres.length > 0 ? genres : undefined,
+    collection: parseCollectionParam(query.collection ?? query.collectionTag ?? query['collection-tag']),
+    sort: parseSortParam(query.sort),
+  };
+
+  if (newDays != null) {
+    filters.newDays = newDays;
+  }
+
+  return filters;
+};
+
+type ExportServiceInstance = ReturnType<typeof createExportService>;
+
+const loadMoviesSafe = async (service: ExportServiceInstance): Promise<MovieExportEntry[]> => {
+  try {
+    return await service.loadMovies();
+  } catch (error) {
+    if (error instanceof ExportNotFoundError) {
+      logger.warn('Movies export missing for search request', { namespace: 'exports' });
+      return [];
+    }
+    throw error;
+  }
+};
+
+const loadShowsSafe = async (service: ExportServiceInstance): Promise<ShowExportEntry[]> => {
+  try {
+    return await service.loadSeries();
+  } catch (error) {
+    if (error instanceof ExportNotFoundError) {
+      logger.warn('Series export missing for search request', { namespace: 'exports' });
+      return [];
+    }
+    throw error;
+  }
+};
 
 /**
  * Creates router for serving Plex export data
@@ -165,6 +270,65 @@ export const createExportsRouter = (options: ExportsRouterOptions = {}) => {
       return next(
         new HttpError(500, 'Failed to read series details', {
           details: { id, path: path.join(exportsPath, 'series', 'details', `${id}.json`) },
+          cause: error instanceof Error ? error : undefined,
+        }),
+      );
+    }
+  });
+
+  router.get('/search', async (req: Request, res: Response, next: NextFunction) => {
+    const includeItems = parseBoolean(
+      req.query.includeItems ?? req.query.include_items ?? req.query['include-items'],
+      true,
+    );
+    const includeFacets = parseBoolean(
+      req.query.includeFacets ?? req.query.include_facets ?? req.query['include-facets'],
+      true,
+    );
+    const kind = parseLibraryKind(req.query.kind ?? req.query.library ?? req.query.view);
+    const filters = mapFiltersFromQuery(req.query);
+
+    try {
+      const needsMovies = includeFacets || kind === 'movie' || kind === 'all';
+      const needsShows = includeFacets || kind === 'show' || kind === 'all';
+
+      const [movies, shows] = await Promise.all([
+        needsMovies ? loadMoviesSafe(exportService) : Promise.resolve<MovieExportEntry[]>([]),
+        needsShows ? loadShowsSafe(exportService) : Promise.resolve<ShowExportEntry[]>([]),
+      ]);
+
+      const payload: Record<string, unknown> = {
+        kind,
+        filters: {
+          ...filters,
+          genres: filters.genres ?? [],
+        },
+      };
+
+      if (includeFacets) {
+        payload.facets = computeFacets(movies, shows);
+      }
+
+      if (includeItems) {
+        const pool = kind === 'all' ? [...movies, ...shows] : kind === 'show' ? shows : movies;
+        const items = filterMediaItems(pool, filters);
+        payload.items = items;
+        payload.total = items.length;
+      }
+
+      setCacheHeaders(res, includeItems ? 60 : 300);
+      res.json(payload);
+    } catch (error) {
+      if (error instanceof ExportValidationError) {
+        return next(
+          new HttpError(500, 'Invalid export data for search request', {
+            details: error.details,
+            cause: error,
+          }),
+        );
+      }
+      return next(
+        new HttpError(500, 'Failed to process export search request', {
           cause: error instanceof Error ? error : undefined,
         }),
       );

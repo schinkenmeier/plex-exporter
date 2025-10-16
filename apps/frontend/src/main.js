@@ -247,7 +247,7 @@ export async function boot(){
     setFooterStatus('Filter vorbereiten …', true);
     setLoader('Filter vorbereiten …', 60);
     // build facets (richer set via Filter)
-    const facets = Filter.computeFacets(movies, shows);
+    const facets = await Filter.computeFacets(movies, shows);
     setState({ movies, shows, facets });
     HeroPipeline.setSources({ movies, shows });
     HeroPipeline.setActiveView(getState().view);
@@ -346,7 +346,7 @@ export async function boot(){
 // Debounced hashchange handler to prevent race conditions
 let hashchangeTimeout = null;
 
-function applyHashNavigation(hash){
+async function applyHashNavigation(hash){
   if(/^#\/(movies|shows)$/.test(hash)){
     const view = hash.includes('shows') ? 'shows' : 'movies';
     setState({ view });
@@ -354,8 +354,8 @@ function applyHashNavigation(hash){
     HeroPipeline.ensureKind(view === 'shows' ? 'series' : 'movies').catch(err => {
       console.warn('[main] Failed to ensure hero pool on hash navigation:', err?.message || err);
     });
-    const result = Filter.applyFilters();
     renderSwitch();
+    const result = Filter.applyFilters();
     renderGrid(view);
     refreshHeroWithPipeline(result);
     return true;
@@ -375,7 +375,9 @@ function handleHashChange(force=false){
   const currentHash = window.location.hash || '';
   if(!force && !hashNavigation.shouldHandle(currentHash)) return;
   if(force) hashNavigation.markProcessed(currentHash);
-  applyHashNavigation(currentHash);
+  applyHashNavigation(currentHash).catch(err => {
+    console.warn('[main] Failed to apply hash navigation:', err?.message || err);
+  });
 }
 
 window.addEventListener('hashchange', ()=>{

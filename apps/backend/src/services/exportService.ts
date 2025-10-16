@@ -76,7 +76,7 @@ const SHOW_DEFAULTS: ShowExportEntry = {
   seasons: [],
 };
 
-const MOVIE_ITEM_SCHEMA = Object.freeze({
+const MOVIE_ITEM_SCHEMA: JsonSchema = {
   type: 'object',
   required: ['title', 'ratingKey'],
   properties: {
@@ -89,18 +89,18 @@ const MOVIE_ITEM_SCHEMA = Object.freeze({
     tagline: { type: 'string', nullable: true },
     genres: { type: 'array', items: { type: ['string', 'object'] }, nullable: true },
   },
-} as const);
+};
 
-const SEASON_SCHEMA = Object.freeze({
+const SEASON_SCHEMA: JsonSchema = {
   type: 'object',
   properties: {
     episodes: { type: 'array', items: { type: 'object' }, nullable: true },
     thumb: { type: 'string', nullable: true },
     thumbFile: { type: 'string', nullable: true },
   },
-} as const);
+};
 
-const SHOW_ITEM_SCHEMA = Object.freeze({
+const SHOW_ITEM_SCHEMA: JsonSchema = {
   type: 'object',
   required: ['title', 'ratingKey'],
   properties: {
@@ -114,10 +114,10 @@ const SHOW_ITEM_SCHEMA = Object.freeze({
     genres: { type: 'array', items: { type: ['string', 'object'] }, nullable: true },
     seasons: { type: 'array', items: SEASON_SCHEMA, nullable: true },
   },
-} as const);
+};
 
-const MOVIE_LIST_SCHEMA = Object.freeze({ type: 'array', items: MOVIE_ITEM_SCHEMA } as const);
-const SHOW_LIST_SCHEMA = Object.freeze({ type: 'array', items: SHOW_ITEM_SCHEMA } as const);
+const MOVIE_LIST_SCHEMA: JsonSchema = { type: 'array', items: MOVIE_ITEM_SCHEMA };
+const SHOW_LIST_SCHEMA: JsonSchema = { type: 'array', items: SHOW_ITEM_SCHEMA };
 
 type JsonSchema = {
   type?: string | string[];
