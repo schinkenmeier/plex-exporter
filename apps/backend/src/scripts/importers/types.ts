@@ -6,7 +6,7 @@ export interface PlexMovie {
   ratingKey: number;
   type: 'movie';
   title: string;
-  year: number;
+  year?: number;
   addedAt: string;
   summary?: string;
   guid?: string;
@@ -15,6 +15,14 @@ export interface PlexMovie {
   duration?: number;
   contentRating?: string;
   studio?: string;
+  rating?: number | null;
+  audienceRating?: number | null;
+  originallyAvailableAt?: string | null;
+  tagline?: string | null;
+  genres?: Array<{ tag: string }>;
+  directors?: Array<{ tag: string }>;
+  countries?: Array<{ tag: string }>;
+  collections?: Array<{ tag: string }>;
   [key: string]: unknown;
 }
 

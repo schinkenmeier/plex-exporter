@@ -4,4 +4,5 @@ export interface Migration {
   id: string;
   name: string;
   up: (db: SqliteDatabase) => void;
+  down?: (db: SqliteDatabase) => void;
 }
