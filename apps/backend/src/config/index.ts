@@ -92,6 +92,8 @@ const envSchema = z
       .trim()
       .min(1, 'SQLITE_PATH must not be empty')
       .default(DEFAULT_SQLITE_PATH),
+    HERO_POLICY_PATH: optionalString,
+    TMDB_ACCESS_TOKEN: optionalString,
     SMTP_HOST: optionalString,
     SMTP_PORT: optionalPort,
     SMTP_USER: optionalString,
@@ -179,6 +181,9 @@ export const config = {
   database: {
     sqlitePath: rawConfig.SQLITE_PATH,
   },
+  hero: {
+    policyPath: rawConfig.HERO_POLICY_PATH || null,
+  },
   smtp: rawConfig.SMTP_HOST
     ? {
         host: rawConfig.SMTP_HOST,
@@ -193,6 +198,11 @@ export const config = {
     ? {
         url: rawConfig.TAUTULLI_URL,
         apiKey: rawConfig.TAUTULLI_API_KEY!,
+      }
+    : null,
+  tmdb: rawConfig.TMDB_ACCESS_TOKEN
+    ? {
+        accessToken: rawConfig.TMDB_ACCESS_TOKEN,
       }
     : null,
 } as const;

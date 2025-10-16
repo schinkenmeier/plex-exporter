@@ -1,11 +1,12 @@
 import { ensureHeroPool, forceRegeneratePool } from './pool.js';
-import { getStoredPool } from './storage.js';
+import { getStoredPool, storePool } from './storage.js';
 import { useTmdbForHero } from '../../js/utils.js';
 import { addRateLimitListener, getRateLimitState } from './tmdbClient.js';
 
 const LOG_PREFIX = '[hero:pipeline]';
 const FEATURE_FLAG_KEY = 'feature.heroPipeline';
 const UPDATE_EVENT = 'hero:pipeline-update';
+const HERO_API_BASE = '/api/hero';
 
 const listeners = new Set();
 let detachRateLimitListener = null;
@@ -217,6 +218,68 @@ function loadStored(kind){
   });
 }
 
+async function fetchHeroPoolFromBackend(kind, { force = false } = {}){
+  const normalized = normalizeKind(kind);
+  const params = new URLSearchParams();
+  if(force) params.set('force', '1');
+  const query = params.toString();
+  const url = `${HERO_API_BASE}/${normalized}${query ? `?${query}` : ''}`;
+  const response = await fetch(url, {
+    headers: { Accept: 'application/json' },
+    credentials: 'include'
+  });
+  if(!response.ok){
+    const error = new Error(`Hero API responded with ${response.status}`);
+    error.status = response.status;
+    throw error;
+  }
+  const data = await response.json();
+  if(!data || typeof data !== 'object'){
+    throw new Error('Hero API returned an invalid payload');
+  }
+  return data;
+}
+
+function applyBackendPayload(kind, payload){
+  const normalized = normalizeKind(kind);
+  const poolItems = Array.isArray(payload?.items) ? payload.items.slice() : [];
+  state.pools[normalized] = poolItems;
+  const meta = payload?.meta || {};
+  const tmdbMeta = meta.tmdb || {};
+  if(typeof tmdbMeta.enabled === 'boolean'){
+    state.tmdb.allowed = !!tmdbMeta.enabled;
+    state.tmdb.active = !!tmdbMeta.enabled;
+  }
+  if(tmdbMeta.rateLimit && typeof tmdbMeta.rateLimit === 'object'){
+    state.tmdb.rateLimit = {
+      active: !!tmdbMeta.rateLimit.active,
+      until: Number(tmdbMeta.rateLimit.until) || 0,
+      retryAfterMs: Number(tmdbMeta.rateLimit.retryAfterMs) || 0,
+      lastStatus: tmdbMeta.rateLimit.lastStatus ?? null,
+      strikes: Number(tmdbMeta.rateLimit.strikes) || 0
+    };
+  }
+  updateStatus(normalized, {
+    state: 'ready',
+    regenerating: false,
+    size: poolItems.length,
+    updatedAt: Number(payload?.updatedAt) || now(),
+    expiresAt: Number(payload?.expiresAt) || 0,
+    fromCache: !!payload?.fromCache,
+    source: meta.source || (payload?.fromCache ? 'cache' : 'backend'),
+    policyHash: payload?.policyHash || '',
+    slotSummary: payload?.slotSummary || {},
+    matchesPolicy: payload?.matchesPolicy !== false,
+    isExpired: false,
+    lastError: null,
+    lastRefresh: now()
+  });
+  storePool(normalized, payload);
+  refreshReadyState();
+  notify();
+  return payload;
+}
+
 function ensureSources(){
   if(!state.sources.movies) state.sources.movies = [];
   if(!state.sources.series) state.sources.series = [];
@@ -268,40 +331,48 @@ async function runPoolBuilder(kind, { force = false } = {}){
     tmdb: buildTmdbOptions()
   };
 
-  const promise = builder(normalized, items, options)
-    .then(result => {
-      const payload = result || {};
-      const poolItems = Array.isArray(payload.items) ? payload.items.slice() : [];
-      state.pools[normalized] = poolItems;
-      updateStatus(normalized, {
-        state: payload.items ? 'ready' : 'ready',
-        regenerating: false,
-        size: poolItems.length,
-        updatedAt: Number(payload.updatedAt) || now(),
-        expiresAt: Number(payload.expiresAt) || 0,
-        fromCache: !!payload.fromCache,
-        source: payload.source || (payload.fromCache ? 'cache' : 'fresh'),
-        policyHash: payload.policyHash || '',
-        slotSummary: payload.slotSummary || {},
-        matchesPolicy: payload.matchesPolicy !== false,
-        isExpired: false,
-        lastError: null,
-        lastRefresh: now()
+  const runFallbackBuilder = () =>
+    builder(normalized, items, options)
+      .then(result => {
+        const payload = result || {};
+        const poolItems = Array.isArray(payload.items) ? payload.items.slice() : [];
+        state.pools[normalized] = poolItems;
+        updateStatus(normalized, {
+          state: 'ready',
+          regenerating: false,
+          size: poolItems.length,
+          updatedAt: Number(payload.updatedAt) || now(),
+          expiresAt: Number(payload.expiresAt) || 0,
+          fromCache: !!payload.fromCache,
+          source: payload.source || (payload.fromCache ? 'cache' : 'frontend'),
+          policyHash: payload.policyHash || '',
+          slotSummary: payload.slotSummary || {},
+          matchesPolicy: payload.matchesPolicy !== false,
+          isExpired: false,
+          lastError: null,
+          lastRefresh: now()
+        });
+        refreshReadyState();
+        notify();
+        return payload;
+      })
+      .catch(err => {
+        logWarn('Failed to build hero pool via fallback for', normalized, err?.message || err);
+        updateStatus(normalized, {
+          state: 'error',
+          regenerating: false,
+          lastError: err?.message || String(err)
+        });
+        refreshReadyState();
+        notify();
+        throw err;
       });
-      refreshReadyState();
-      notify();
-      return payload;
-    })
+
+  const promise = fetchHeroPoolFromBackend(normalized, { force })
+    .then(payload => applyBackendPayload(normalized, payload))
     .catch(err => {
-      logWarn('Failed to build hero pool for', normalized, err?.message || err);
-      updateStatus(normalized, {
-        state: 'error',
-        regenerating: false,
-        lastError: err?.message || String(err)
-      });
-      refreshReadyState();
-      notify();
-      throw err;
+      logWarn('Hero API failed for', normalized, err?.message || err);
+      return runFallbackBuilder();
     })
     .finally(() => {
       state.inFlight.delete(normalized);
