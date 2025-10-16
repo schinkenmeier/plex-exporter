@@ -19,6 +19,7 @@ import ThumbnailRepository from './repositories/thumbnailRepository.js';
 import TautulliSnapshotRepository from './repositories/tautulliSnapshotRepository.js';
 import { createMediaRouter } from './routes/media.js';
 import { errorHandler, requestLogger } from './middleware/errorHandler.js';
+import { createAuthMiddleware } from './middleware/auth.js';
 import logger from './services/logger.js';
 
 export interface ServerDependencies {
@@ -80,6 +81,8 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
     throw new Error('Database repositories are not configured.');
   }
 
+  const authMiddleware = createAuthMiddleware({ token: appConfig.auth?.token ?? null });
+
   // Enable CORS for frontend access
   app.use(cors({
     origin: appConfig.runtime.env === 'production'
@@ -95,10 +98,11 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
   app.use('/api/exports', createExportsRouter());
   app.use('/api/v1', createV1Router({ mediaRepository, thumbnailRepository }));
 
-  // Protected routes (could add auth middleware here later)
-  app.use('/notifications', createNotificationsRouter({ smtpService }));
+  // Protected routes
+  app.use('/notifications', authMiddleware, createNotificationsRouter({ smtpService }));
   app.use(
     '/libraries',
+    authMiddleware,
     createLibrariesRouter({ tautulliService, snapshotRepository: tautulliSnapshotRepository }),
   );
   app.use('/media', createMediaRouter({ mediaRepository, thumbnailRepository }));

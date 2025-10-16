@@ -29,6 +29,7 @@ Die Anwendung liest ihre Konfiguration beim Start aus Umgebungsvariablen und val
 | `SMTP_SECURE` | Ob eine TLS-gesicherte Verbindung (`true`/`false`) genutzt werden soll. | Nein | `false` |
 | `TAUTULLI_URL` | Basis-URL der Tautulli-Instanz. | Bedingt² | – |
 | `TAUTULLI_API_KEY` | API-Key für Zugriffe auf Tautulli. | Bedingt² | – |
+| `API_TOKEN` | Geheimer Token für geschützte Routen (`Bearer`- oder `X-API-Key`-Header). | Nein | – |
 
 ¹ `SMTP_HOST`, `SMTP_PORT` und `SMTP_FROM` müssen gemeinsam gesetzt werden, sobald SMTP genutzt werden soll.
 
@@ -120,3 +121,9 @@ Die Anwendung liest ihre Konfiguration beim Start aus Umgebungsvariablen und val
 
 - **`GET /health`**
   Health-Check mit Status, Timestamp und Environment
+
+### Authentifizierung für geschützte Routen
+
+- **`POST /notifications/*`** und **`GET /libraries`** erwarten, dass du entweder einen `Authorization: Bearer <TOKEN>`-Header
+  oder alternativ `X-API-Key: <TOKEN>` mitsendest. Der Token-Wert wird über die Umgebungsvariable `API_TOKEN` konfiguriert.
+- Ist kein `API_TOKEN` gesetzt, bleiben die Routen weiterhin ohne Authentifizierung erreichbar (z. B. für lokale Tests).
