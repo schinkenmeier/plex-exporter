@@ -14,6 +14,11 @@ Neu hinzugekommen ist ein Backend-Grundgerüst (`apps/backend/`), das perspektiv
 - Cinematic-Detailansicht (Modal V3) für Filme & Serien mit Sticky-Poster, Schnellinfos, Tabs und optional reduzierter Bewegung (implementiert in `apps/frontend/src/features/modal/modalV3/`).
 
 ## Projektstruktur
+
+**Detaillierte Struktur-Dokumentation:** [docs/structure.md](docs/structure.md)
+
+### Überblick
+
 | Pfad | Beschreibung |
 | --- | --- |
 | `apps/frontend/public/index.html` | Einstiegspunkt und UI-Markup für den Katalog. |

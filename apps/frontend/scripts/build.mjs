@@ -10,8 +10,8 @@ const publicDir = path.join(frontendDir, 'public');
 const repoRoot = path.resolve(frontendDir, '..', '..');
 
 async function ensureConfigSample(){
-  const sampleSource = path.join(repoRoot, 'config', 'frontend.json.sample');
-  const realSource = path.join(repoRoot, 'config', 'frontend.json');
+  const sampleSource = path.join(repoRoot, 'config', 'frontend', 'frontend.json.sample');
+  const realSource = path.join(repoRoot, 'config', 'frontend', 'frontend.json');
 
   const [sampleAvailable, realAvailable] = await Promise.all([
     pathIsFile(sampleSource),

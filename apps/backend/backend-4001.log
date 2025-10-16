@@ -1,6 +1,0 @@
-
-> @plex-exporter/backend@0.1.0 start
-> tsx src/server.ts
-
-[exports] Using exports path: C:\Users\nilsd\Documents\GitHub\plex-exporter\data\exports
-Plex Exporter backend listening on http://localhost:4001

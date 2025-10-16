@@ -10,7 +10,7 @@ services:
     environment:
       NODE_ENV: ${BACKEND_NODE_ENV:-production}
       PORT: ${BACKEND_INTERNAL_PORT:-4000}
-      SQLITE_PATH: ${BACKEND_SQLITE_PATH:-/app/storage/sqlite/plex-exporter.sqlite}
+      SQLITE_PATH: ${BACKEND_SQLITE_PATH:-/app/data/sqlite/plex-exporter.sqlite}
       HERO_POLICY_PATH: ${BACKEND_HERO_POLICY_PATH:-}
       TMDB_ACCESS_TOKEN: ${BACKEND_TMDB_ACCESS_TOKEN:-}
       API_TOKEN: ${BACKEND_API_TOKEN:-}
@@ -24,7 +24,7 @@ services:
       TAUTULLI_API_KEY: ${BACKEND_TAUTULLI_API_KEY:-}
     volumes:
       - ./data/exports:/app/data/exports
-      - ./data/sqlite:/app/storage/sqlite
+      - ./data/sqlite:/app/data/sqlite
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:4000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
       interval: 30s

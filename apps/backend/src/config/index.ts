@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const DEFAULT_SQLITE_PATH = './data/exports/plex-exporter.sqlite';
+const DEFAULT_SQLITE_PATH = '../../data/sqlite/plex-exporter.sqlite';
 
 const optionalString = z.preprocess(
   (value) => {

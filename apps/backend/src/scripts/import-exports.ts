@@ -61,7 +61,7 @@ async function main() {
     }
 
     // Database setup
-    const dbPath = process.env.SQLITE_PATH || path.join(process.cwd(), 'data', 'exports', 'plex-exporter.sqlite');
+    const dbPath = process.env.SQLITE_PATH || path.join(process.cwd(), '..', '..', 'data', 'sqlite', 'plex-exporter.sqlite');
     logger.info(`Database: ${dbPath}`);
 
     const db = createSqliteConnection(dbPath);
