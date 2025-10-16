@@ -87,12 +87,14 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
     throw new Error('Database repositories are not configured.');
   }
 
-  const heroPipelineService = createHeroPipelineService({
-    database,
-    mediaRepository,
-    tmdbService,
-    policyPath: appConfig.hero?.policyPath ?? null,
-  });
+  const heroPipelineService = database
+    ? createHeroPipelineService({
+        database,
+        mediaRepository,
+        tmdbService,
+        policyPath: appConfig.hero?.policyPath ?? null,
+      })
+    : null;
 
   const authMiddleware = createAuthMiddleware({ token: appConfig.auth?.token ?? null });
 
@@ -110,7 +112,9 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
   // Public routes (no auth required)
   app.use('/health', createHealthRouter(appConfig));
   app.use('/api/exports', createExportsRouter());
-  app.use('/api/hero', createHeroRouter({ heroPipeline: heroPipelineService }));
+  if (heroPipelineService) {
+    app.use('/api/hero', createHeroRouter({ heroPipeline: heroPipelineService }));
+  }
   app.use('/api/v1', createV1Router({ mediaRepository, thumbnailRepository }));
 
   // Protected routes
