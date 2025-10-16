@@ -19,6 +19,9 @@ import TautulliSnapshotRepository from './repositories/tautulliSnapshotRepositor
 import { createMediaRouter } from './routes/media.js';
 import { errorHandler, requestLogger } from './middleware/errorHandler.js';
 import { createAuthMiddleware } from './middleware/auth.js';
+import createTmdbService from './services/tmdbService.js';
+import createHeroPipelineService from './services/heroPipeline.js';
+import { createHeroRouter } from './routes/hero.js';
 
 export interface ServerDependencies {
   smtpService?: MailSender | null;
@@ -38,6 +41,11 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
       : appConfig.smtp
         ? createSmtpService(appConfig.smtp)
         : null;
+
+  const tmdbService =
+    appConfig.tmdb && appConfig.tmdb.accessToken
+      ? createTmdbService({ accessToken: appConfig.tmdb.accessToken })
+      : null;
 
   const tautulliService =
     'tautulliService' in deps
@@ -79,6 +87,13 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
     throw new Error('Database repositories are not configured.');
   }
 
+  const heroPipelineService = createHeroPipelineService({
+    database,
+    mediaRepository,
+    tmdbService,
+    policyPath: appConfig.hero?.policyPath ?? null,
+  });
+
   const authMiddleware = createAuthMiddleware({ token: appConfig.auth?.token ?? null });
 
   // Enable CORS for frontend access
@@ -95,6 +110,7 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
   // Public routes (no auth required)
   app.use('/health', createHealthRouter(appConfig));
   app.use('/api/exports', createExportsRouter());
+  app.use('/api/hero', createHeroRouter({ heroPipeline: heroPipelineService }));
   app.use('/api/v1', createV1Router({ mediaRepository, thumbnailRepository }));
 
   // Protected routes

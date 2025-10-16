@@ -2,12 +2,14 @@ import type { SqliteDatabase } from '../connection.js';
 import { initialMigration } from './001_initial.js';
 import { performanceIndexesMigration } from './002_performance_indexes.js';
 import { extendedMetadataMigration } from './003_extended_metadata.js';
+import { heroPipelineMigration } from './004_hero_pipeline.js';
 import type { Migration } from './types.js';
 
 const migrations: Migration[] = [
   initialMigration,
   performanceIndexesMigration,
   extendedMetadataMigration,
+  heroPipelineMigration,
 ];
 
 export const runMigrations = (db: SqliteDatabase) => {
