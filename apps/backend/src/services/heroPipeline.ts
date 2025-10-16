@@ -709,11 +709,11 @@ export const createHeroPipelineService = ({
   const buildPool = async (kind: HeroKind, options: { force?: boolean } = {}): Promise<HeroPoolPayload> => {
     const { policy, hash: policyHash } = await loadPolicy();
     const normalizedKind: HeroKind = kind === 'series' ? 'series' : 'movies';
-    const reuse = !options.force ? loadStored(normalizedKind) : null;
+    const stored = loadStored(normalizedKind);
     const nowTs = Date.now();
 
-    if (reuse?.payload && reuse.row.expires_at > nowTs && reuse.row.policy_hash === policyHash) {
-      const payload = reuse.payload;
+    if (!options.force && stored?.payload && stored.row.expires_at > nowTs && stored.row.policy_hash === policyHash) {
+      const payload = stored.payload;
       return {
         ...payload,
         fromCache: true,
@@ -772,7 +772,7 @@ export const createHeroPipelineService = ({
     );
 
     const plan = computeSlotPlan(poolSize, policy.slots);
-    const historyEntries = reuse?.history ?? [];
+    const historyEntries = stored?.history ?? [];
     const historySnapshot = buildHistorySnapshot(historyEntries, nowTs, HISTORY_WINDOW_MS, HISTORY_LIMIT);
     const context = classifyCandidates(candidates, plan, policy.diversity, historySnapshot);
     const trimmedSelection = context.selected.slice(0, poolSize);
