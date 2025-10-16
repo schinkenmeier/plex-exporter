@@ -1,24 +1,10 @@
 import { getState } from '../core/state.js';
+import { collectionTags as sharedCollectionTags, getGenreNames as sharedGetGenreNames, humanYear as sharedHumanYear } from '@plex-exporter/shared';
 
 const LOG_PREFIX = '[utils]';
 
 export function getGenreNames(genres){
-  const seen = new Set();
-  const names = [];
-  (genres || []).forEach(entry=>{
-    let name = '';
-    if(typeof entry === 'string'){
-      name = entry;
-    }else if(entry && typeof entry === 'object'){
-      name = entry.tag || entry.title || entry.name || '';
-    }
-    const str = String(name || '').trim();
-    if(str && !seen.has(str)){
-      seen.add(str);
-      names.push(str);
-    }
-  });
-  return names;
+  return sharedGetGenreNames(genres);
 }
 
 export function renderChipsLimited(container, values, limit=3){
@@ -81,29 +67,11 @@ export function enableMoreChipBehavior(root = document){
 }
 
 export function collectionTags(item){
-  return ((item && item.collections) || [])
-    .map(entry=>entry && (entry.tag || entry.title || entry.name || ''))
-    .filter(Boolean);
+  return sharedCollectionTags(item);
 }
 
 export function humanYear(item){
-  if(!item) return '';
-  const candidates = [
-    item.originallyAvailableAt,
-    item.year,
-    item.releaseDate,
-    item.premiereDate,
-  ];
-
-  for(const value of candidates){
-    if(value === undefined || value === null) continue;
-    const str = String(value);
-    if(!str) continue;
-    const match = str.match(/\d{4}/);
-    if(match) return match[0];
-  }
-
-  return '';
+  return sharedHumanYear(item);
 }
 
 export function formatRating(val){

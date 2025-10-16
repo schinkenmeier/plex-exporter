@@ -254,6 +254,7 @@ function ensureNormalizedList(list){
 function isPlayableHeroItem(item){
   if(!item || typeof item !== 'object') return false;
   if(item.isCollectionGroup) return false;
+  if(item.disableHero) return false;
   const type = typeof item.type === 'string' ? item.type.toLowerCase() : '';
   if(type === 'collection') return false;
   return true;

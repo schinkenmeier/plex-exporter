@@ -1,80 +1,32 @@
 import { getState, setState } from '../../core/state.js';
 import { qs } from '../../core/dom.js';
-import { getGenreNames, humanYear, collectionTags, isNew } from '../../js/utils.js';
+import { fetchCatalogFacets, searchLibrary } from '../../js/data.js';
+import { computeFacets as computeSharedFacets, filterMediaItems as filterSharedMediaItems } from '@plex-exporter/shared';
 
-function norm(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
-
-function matches(item, opts){
-  const query = norm(opts.query||'');
-  const onlyNew = !!opts.onlyNew;
-  const yearFrom = Number(opts.yearFrom)||null;
-  const yearTo = Number(opts.yearTo)||null;
-  const genresActive = opts.genres || new Set();
-  const selectedCollection = opts.collection || '';
-
-  if(query){
-    const haystack = norm([
-      item.title,
-      item.originalTitle,
-      item.summary,
-      item.studio,
-      getGenreNames(item.genres).join(' '),
-      (item.roles||[]).map(r=>r && (r.tag||r.role||r.name)).join(' '),
-      collectionTags(item).join(' '),
-    ].filter(Boolean).join(' '));
-    if(!haystack.includes(query)) return false;
+export async function computeFacets(movies = [], shows = []){
+  try{
+    const facets = await fetchCatalogFacets();
+    return normalizeFacets(facets);
+  }catch(err){
+    console.warn('[filter] Failed to fetch facets from API:', err?.message || err);
+    try{
+      return normalizeFacets(computeSharedFacets(movies, shows));
+    }catch(innerErr){
+      console.warn('[filter] Failed to compute fallback facets:', innerErr?.message || innerErr);
+      return { genres: [], years: [], collections: [] };
+    }
   }
-
-  if(onlyNew && !isNew(item)) return false;
-
-  const year = Number(humanYear(item)) || null;
-  if(yearFrom && (!year || year < yearFrom)) return false;
-  if(yearTo && (!year || year > yearTo)) return false;
-
-  if(genresActive.size){
-    const itemGenres = new Set(getGenreNames(item.genres));
-    for(const g of genresActive){ if(!itemGenres.has(g)) return false; }
-  }
-
-  if(selectedCollection){
-    const tags = new Set(collectionTags(item));
-    if(!tags.has(selectedCollection)) return false;
-  }
-
-  return true;
 }
 
-function sortItems(items, key){
-  const arr = items.slice();
-  switch(key){
-    case 'year-desc':
-      arr.sort((a,b)=> (Number(humanYear(b))||0) - (Number(humanYear(a))||0) || String(a.title||'').localeCompare(String(b.title||''),'de')); break;
-    case 'year-asc':
-      arr.sort((a,b)=> (Number(humanYear(a))||0) - (Number(humanYear(b))||0) || String(a.title||'').localeCompare(String(b.title||''),'de')); break;
-    case 'title-desc':
-      arr.sort((a,b)=> String(b.title||'').localeCompare(String(a.title||''),'de')); break;
-    case 'added-desc':
-      arr.sort((a,b)=> new Date(b.addedAt||0)-new Date(a.addedAt||0)); break;
-    case 'title-asc':
-    default:
-      arr.sort((a,b)=> String(a.title||'').localeCompare(String(b.title||''),'de'));
-  }
-  return arr;
-}
-
-export function computeFacets(movies, shows){
-  const genres = new Set();
-  const years = new Set();
-  const collections = new Set();
-  const add = (arr)=> (arr||[]).forEach(x=>{
-    getGenreNames(x.genres).forEach(name=>genres.add(name));
-    const y = x.year || (x.originallyAvailableAt?String(x.originallyAvailableAt).slice(0,4):'');
-    if(y) years.add(Number(y));
-    collectionTags(x).forEach(c=>collections.add(c));
-  });
-  add(movies); add(shows);
-  const ys = [...years].sort((a,b)=>a-b);
-  return { genres:[...genres].sort(), years:ys, collections:[...collections].sort((a,b)=>a.localeCompare(b,'de')) };
+function normalizeFacets(facets){
+  const safe = facets && typeof facets === 'object' ? facets : {};
+  const genres = Array.isArray(safe.genres) ? safe.genres.slice() : [];
+  const years = Array.isArray(safe.years) ? safe.years.slice() : [];
+  const collections = Array.isArray(safe.collections) ? safe.collections.slice() : [];
+  genres.sort((a,b)=> String(a||'').localeCompare(String(b||''),'de'));
+  years.sort((a,b)=> Number(a) - Number(b));
+  collections.sort((a,b)=> String(a||'').localeCompare(String(b||''),'de'));
+  return { genres, years, collections };
 }
 
 export function renderFacets(f){
@@ -109,15 +61,62 @@ function getFilterOpts(){
   return { query, onlyNew, yearFrom, yearTo, collection, genres, sort };
 }
 
+function parseYearValue(value){
+  if(!value) return undefined;
+  const str = String(value).trim();
+  if(!str) return undefined;
+  const num = Number(str);
+  return Number.isFinite(num) ? num : undefined;
+}
+
+function toFilterPayload(opts, cfg){
+  const genres = Array.from(opts.genres || []).filter(Boolean);
+  const payload = {
+    query: opts.query || undefined,
+    onlyNew: !!opts.onlyNew,
+    yearFrom: parseYearValue(opts.yearFrom),
+    yearTo: parseYearValue(opts.yearTo),
+    collection: opts.collection || undefined,
+    sort: opts.sort || 'title-asc',
+    genres,
+  };
+  const days = Number(cfg?.newDays);
+  if(Number.isFinite(days) && days > 0){
+    payload.newDays = days;
+  }
+  return payload;
+}
+
+let activeFilterRequest = 0;
+
 export function applyFilters(){
-  const s = getState();
-  const view = s.view;
-  const pool = view==='shows' ? s.shows : s.movies;
+  const state = getState();
+  const view = state.view;
+  if(view !== 'movies' && view !== 'shows'){
+    return [];
+  }
+
   const opts = getFilterOpts();
-  const filtered = (pool||[]).filter(item=>matches(item, opts));
-  const ordered = sortItems(filtered, opts.sort);
-  setState({ filtered: ordered });
-  return ordered;
+  const payload = toFilterPayload(opts, state.cfg || {});
+  const pool = view === 'shows' ? state.shows : state.movies;
+  const fallback = Array.isArray(pool) ? filterSharedMediaItems(pool, payload, Date.now()) : [];
+
+  setState({ filtered: fallback });
+
+  const requestId = ++activeFilterRequest;
+  searchLibrary(view, payload, { includeFacets: false })
+    .then((response) => {
+      if(requestId !== activeFilterRequest) return;
+      if(!response || !Array.isArray(response.items)) return;
+      setState({ filtered: response.items });
+      renderGridForCurrentView();
+      notifyFiltersUpdated(response.items);
+    })
+    .catch(err => {
+      console.error('[filter] Failed to fetch filtered items:', err?.message || err);
+    });
+
+  return fallback;
 }
 
 let gridModulePromise = null;
@@ -140,14 +139,7 @@ export function setFiltersUpdatedHandler(handler){
 export function updateFiltersAndGrid(){
   const result = applyFilters();
   renderGridForCurrentView();
-  if(filtersUpdatedHandler){
-    try{
-      const payload = Array.isArray(result) ? result.slice() : [];
-      filtersUpdatedHandler(payload, getState().view);
-    }catch(err){
-      console.warn('[filter] Failed to notify filters handler:', err?.message);
-    }
-  }
+  notifyFiltersUpdated(result);
   return result;
 }
 
@@ -167,18 +159,26 @@ export function initFilters(){
       .forEach(([v,l])=> sortSel.add(new Option(l, v)));
   }
 
+  const triggerUpdate = () => {
+    try{
+      updateFiltersAndGrid();
+    }catch(err){
+      console.warn('[filter] Failed to update grid after filter change:', err?.message || err);
+    }
+  };
+
   const bind = (sel, ev='input')=>{
     const n = qs(sel);
     if(!n) return;
-    n.addEventListener(ev, ()=>{ updateFiltersAndGrid(); });
+    n.addEventListener(ev, ()=>{ triggerUpdate(); });
     if(ev === 'input' && n instanceof HTMLInputElement && n.type === 'search'){
-      n.addEventListener('search', ()=>{ updateFiltersAndGrid(); });
+      n.addEventListener('search', ()=>{ triggerUpdate(); });
     }
   };
   bind('#search');
   bind('#q');
   bind('#onlyNew','change'); bind('#yearFrom','change'); bind('#yearTo','change'); bind('#collectionFilter','change'); bind('#sort','change'); bind('#groupCollections','change');
-  const yrReset = qs('#yearReset'); if(yrReset){ yrReset.addEventListener('click',()=>{ const a=qs('#yearFrom'); const b=qs('#yearTo'); if(a) a.value=''; if(b) b.value=''; updateFiltersAndGrid(); }); }
+  const yrReset = qs('#yearReset'); if(yrReset){ yrReset.addEventListener('click',()=>{ const a=qs('#yearFrom'); const b=qs('#yearTo'); if(a) a.value=''; if(b) b.value=''; triggerUpdate(); }); }
   const gRoot = qs('#genreFilters');
   if(gRoot){
     gRoot.addEventListener('click', ev=>{
@@ -187,9 +187,19 @@ export function initFilters(){
       if(!t.classList.contains('chip')) return;
       t.classList.toggle('active');
       updateGenreFilterState();
-      updateFiltersAndGrid();
+      triggerUpdate();
     });
     updateGenreFilterState();
+  }
+}
+
+function notifyFiltersUpdated(items){
+  if(!filtersUpdatedHandler) return;
+  try{
+    const payload = Array.isArray(items) ? items.slice() : [];
+    filtersUpdatedHandler(payload, getState().view);
+  }catch(err){
+    console.warn('[filter] Failed to notify filters handler:', err?.message);
   }
 }
 

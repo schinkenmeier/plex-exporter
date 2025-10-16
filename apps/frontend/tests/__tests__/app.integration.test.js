@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseHTML } from 'linkedom';
+import { computeFacets, filterMediaItems } from '@plex-exporter/shared';
 
 const MOVIES_FIXTURE = [
   {
@@ -33,6 +34,7 @@ const MOVIES_FIXTURE = [
     roles: [{ tag: 'Protagonist' }],
     thumb: 'drama.jpg',
     thumbFile: 'drama.jpg',
+    disableHero: true,
   },
 ];
 
@@ -51,6 +53,87 @@ const SHOWS_FIXTURE = [
     thumbFile: 'space.jpg',
   },
 ];
+
+const REMOTE_MOVIES = MOVIES_FIXTURE.map((item) => ({
+  ...item,
+  thumb: item.thumb ? `data/exports/movies/${item.thumb}` : item.thumb,
+  thumbFile: item.thumbFile ? `data/exports/movies/${item.thumbFile}` : item.thumbFile,
+}));
+
+const REMOTE_SHOWS = SHOWS_FIXTURE.map((item) => ({
+  ...item,
+  thumb: item.thumb ? `data/exports/series/${item.thumb}` : item.thumb,
+  thumbFile: item.thumbFile ? `data/exports/series/${item.thumbFile}` : item.thumbFile,
+}));
+
+const FACETS_FIXTURE = computeFacets(REMOTE_MOVIES, REMOTE_SHOWS);
+
+function parseSearchRequest(url){
+  try{
+    return new URL(url, 'http://localhost');
+  }catch(error){
+    return null;
+  }
+}
+
+function buildSearchPayload(searchUrl){
+  const parsed = parseSearchRequest(searchUrl);
+  const params = parsed ? parsed.searchParams : new URLSearchParams();
+  const kindParam = params.get('kind') || 'movie';
+  const normalizedKind = ['all', 'movie', 'show'].includes(kindParam) ? kindParam : 'movie';
+  const includeItems = params.get('includeItems') !== '0';
+  const includeFacets = params.get('includeFacets') !== '0';
+
+  const filters = {
+    query: params.get('query') || '',
+    onlyNew: params.get('onlyNew') === '1',
+    yearFrom: Number.parseInt(params.get('yearFrom') || '', 10) || null,
+    yearTo: Number.parseInt(params.get('yearTo') || '', 10) || null,
+    genres: (params.get('genres') || '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean),
+    collection: params.get('collection') || '',
+    sort: params.get('sort') || 'title-asc',
+  };
+
+  const newDays = Number.parseInt(params.get('newDays') || '', 10);
+  if(Number.isFinite(newDays)){
+    filters.newDays = newDays;
+  }
+
+  const pool = (() => {
+    switch(normalizedKind){
+      case 'all':
+        return [...REMOTE_MOVIES, ...REMOTE_SHOWS];
+      case 'show':
+        return REMOTE_SHOWS;
+      case 'movie':
+      default:
+        return REMOTE_MOVIES;
+    }
+  })();
+
+  const payload = {
+    kind: normalizedKind,
+    filters: {
+      ...filters,
+      genres: filters.genres ?? [],
+    },
+  };
+
+  if(includeFacets){
+    payload.facets = FACETS_FIXTURE;
+  }
+
+  if(includeItems){
+    const items = filterMediaItems(pool, filters);
+    payload.items = items;
+    payload.total = items.length;
+  }
+
+  return payload;
+}
 
 function createDom(){
   const { window } = parseHTML(`<!DOCTYPE html>
@@ -274,7 +357,10 @@ test('boot flow integrates view switch, filtering and modal opening', async () =
         };
       }
       if(typeof url === 'string' && (url.endsWith('config/frontend.json') || url.endsWith('config.json'))){
-        return { ok: true, json: async () => ({ startView: 'movies', tmdbEnabled: false }) };
+        return { ok: true, json: async () => ({ startView: 'movies', tmdbEnabled: false, heroPipelineEnabled: false }) };
+      }
+      if(typeof url === 'string' && url.includes('/api/exports/search')){
+        return { ok: true, json: async () => buildSearchPayload(url) };
       }
       if(typeof url === 'string' && (url.endsWith('data/exports/movies/movies.json') || url.endsWith('data/movies/movies.json'))){
         return { ok: true, json: async () => MOVIES_FIXTURE };
