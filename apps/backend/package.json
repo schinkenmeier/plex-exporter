@@ -9,6 +9,9 @@
     "start:prod": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
     "import": "tsx src/scripts/import-exports.ts",
     "import:dry-run": "tsx src/scripts/import-exports.ts --dry-run",
     "import:movies": "tsx src/scripts/import-exports.ts --movies-only",
@@ -22,19 +25,29 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^4.19.2",
+    "express-rate-limit": "^8.1.0",
+    "helmet": "^8.1.0",
+    "lru-cache": "^11.2.2",
     "nodemailer": "^6.9.13",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "yaml": "^2.8.1",
     "zod": "^4.1.12"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/cors": "^2.8.19",
     "@types/express": "^4.17.21",
+    "@types/helmet": "^0.0.48",
     "@types/node": "^20.11.30",
     "@types/nodemailer": "^6.4.15",
     "@types/supertest": "^2.0.16",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
+    "@vitest/ui": "^1.6.1",
     "supertest": "^6.3.4",
     "tsx": "^4.7.0",
     "typescript": "^5.4.5",
-    "vitest": "^1.6.0"
+    "vitest": "^1.6.1"
   }
 }

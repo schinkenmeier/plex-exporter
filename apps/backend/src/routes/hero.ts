@@ -2,6 +2,7 @@ import { Router, type Request, type Response, type NextFunction } from 'express'
 
 import { HttpError } from '../middleware/errorHandler.js';
 import type { HeroPipelineService } from '../services/heroPipeline.js';
+import { heroLimiter } from '../middleware/rateLimiter.js';
 
 export interface HeroRouterOptions {
   heroPipeline: HeroPipelineService;
@@ -24,7 +25,7 @@ const parseForceFlag = (value: unknown): boolean => {
 export const createHeroRouter = ({ heroPipeline }: HeroRouterOptions): Router => {
   const router = Router();
 
-  router.get('/:kind', async (req: Request, res: Response, next: NextFunction) => {
+  router.get('/:kind', heroLimiter, async (req: Request, res: Response, next: NextFunction) => {
     const kind = normalizeKind(req.params.kind);
     const force = parseForceFlag(req.query.force ?? req.query.refresh);
 

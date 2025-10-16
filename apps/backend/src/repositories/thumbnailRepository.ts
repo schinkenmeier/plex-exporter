@@ -90,6 +90,35 @@ export class ThumbnailRepository {
 
     return this.listByMediaId(mediaId);
   }
+
+  /**
+   * Bulk load thumbnails for multiple media IDs
+   * Returns a Map of mediaId -> thumbnails[]
+   * Much more efficient than calling listByMediaId() for each item
+   */
+  listByMediaIds(mediaIds: number[]): Map<number, ThumbnailRecord[]> {
+    if (mediaIds.length === 0) {
+      return new Map();
+    }
+
+    // Build IN clause with placeholders
+    const placeholders = mediaIds.map(() => '?').join(', ');
+    const query = `SELECT * FROM thumbnails WHERE media_id IN (${placeholders}) ORDER BY media_id, created_at ASC`;
+
+    const stmt = this.db.prepare(query);
+    const rows = stmt.all(...mediaIds) as ThumbnailRow[];
+
+    // Group by media_id
+    const grouped = new Map<number, ThumbnailRecord[]>();
+    for (const row of rows) {
+      const record = mapRowToRecord(row);
+      const existing = grouped.get(record.mediaId) || [];
+      existing.push(record);
+      grouped.set(record.mediaId, existing);
+    }
+
+    return grouped;
+  }
 }
 
 export default ThumbnailRepository;

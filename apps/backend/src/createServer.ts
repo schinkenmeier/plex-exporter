@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 
 import { type AppConfig } from './config/index.js';
 import { createLibrariesRouter } from './routes/libraries.js';
@@ -22,6 +23,7 @@ import { createAuthMiddleware } from './middleware/auth.js';
 import createTmdbService from './services/tmdbService.js';
 import createHeroPipelineService from './services/heroPipeline.js';
 import { createHeroRouter } from './routes/hero.js';
+import { setupSwagger } from './config/swaggerSetup.js';
 
 export interface ServerDependencies {
   smtpService?: MailSender | null;
@@ -98,16 +100,37 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
 
   const authMiddleware = createAuthMiddleware({ token: appConfig.auth?.token ?? null });
 
+  // Security headers with Helmet
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"], // Needed for Swagger UI
+        scriptSrc: ["'self'", "'unsafe-inline'"], // Needed for Swagger UI
+        imgSrc: ["'self'", 'data:', 'https:'],
+      },
+    },
+    crossOriginEmbedderPolicy: false, // Allow embedding for development
+    crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allow cross-origin resource sharing
+  }));
+
   // Enable CORS for frontend access
   app.use(cors({
     origin: appConfig.runtime.env === 'production'
       ? ['http://localhost:5500', 'http://127.0.0.1:5500'] // Live Server default ports
       : '*', // Allow all origins in development
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['RateLimit-Limit', 'RateLimit-Remaining', 'RateLimit-Reset'],
+    maxAge: 86400, // Cache preflight requests for 24 hours
   }));
 
-  app.use(express.json());
+  app.use(express.json({ limit: '10mb' })); // Add body size limit for security
   app.use(requestLogger);
+
+  // Setup API documentation
+  setupSwagger(app);
 
   // Public routes (no auth required)
   app.use('/health', createHealthRouter(appConfig));

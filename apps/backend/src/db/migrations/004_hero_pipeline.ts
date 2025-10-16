@@ -3,6 +3,7 @@ import type { Migration } from './types.js';
 
 export const heroPipelineMigration: Migration = {
   id: '004_hero_pipeline',
+  name: 'add hero pipeline tables',
   up(db: SqliteDatabase) {
     db.exec(`
       CREATE TABLE IF NOT EXISTS hero_pools (

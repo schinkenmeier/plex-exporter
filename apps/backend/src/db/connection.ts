@@ -10,12 +10,14 @@ export const createSqliteConnection = (
   filePath: string,
   options: CreateConnectionOptions = {},
 ): SqliteDatabase => {
-  const resolvedPath = path.resolve(filePath);
-  const directory = path.dirname(resolvedPath);
+  // For in-memory databases, don't create directories
+  if (filePath !== ':memory:') {
+    const resolvedPath = path.resolve(filePath);
+    const directory = path.dirname(resolvedPath);
+    fs.mkdirSync(directory, { recursive: true });
+  }
 
-  fs.mkdirSync(directory, { recursive: true });
-
-  const database = new Database(resolvedPath, { ...options });
+  const database = new Database(filePath, { ...options });
 
   // Enable foreign key constraints
   database.pragma('foreign_keys = ON');

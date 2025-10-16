@@ -1,7 +1,11 @@
 import { Router, type NextFunction, type Request, type Response } from 'express';
+import { z } from 'zod';
 import MediaRepository from '../repositories/mediaRepository.js';
 import ThumbnailRepository from '../repositories/thumbnailRepository.js';
 import { HttpError } from '../middleware/errorHandler.js';
+import { apiLimiter, searchLimiter } from '../middleware/rateLimiter.js';
+import { createShortCache, createMediumCache, createLongCache } from '../services/cacheService.js';
+import { cacheMiddleware } from '../middleware/cacheMiddleware.js';
 
 export interface V1RouterOptions {
   mediaRepository: MediaRepository;
@@ -11,61 +15,91 @@ export interface V1RouterOptions {
 export const createV1Router = ({ mediaRepository, thumbnailRepository }: V1RouterOptions): Router => {
   const router = Router();
 
-  // Helper function to map media record to API response
+  // Create cache instances for different data types
+  const statsCache = createShortCache(); // 1 minute for stats
+  const listCache = createMediumCache(); // 5 minutes for lists
+  const detailCache = createLongCache(); // 15 minutes for details
+
+  // Zod schemas for query parameter validation
+  const filterQuerySchema = z.object({
+    type: z.enum(['movie', 'tv']).optional(),
+    year: z.coerce.number().int().min(1800).max(2100).optional(),
+    yearFrom: z.coerce.number().int().min(1800).max(2100).optional(),
+    yearTo: z.coerce.number().int().min(1800).max(2100).optional(),
+    search: z.string().min(1).max(200).optional(),
+    limit: z.coerce.number().int().min(1).max(500).default(50),
+    offset: z.coerce.number().int().min(0).default(0),
+    sortBy: z.enum(['title', 'year', 'added', 'updated']).default('title'),
+    sortOrder: z.enum(['asc', 'desc']).default('asc'),
+  });
+
+  const searchQuerySchema = z.object({
+    q: z.string().min(1).max(200),
+    type: z.enum(['movie', 'tv']).optional(),
+    limit: z.coerce.number().int().min(1).max(200).default(20),
+  });
+
+  const recentQuerySchema = z.object({
+    limit: z.coerce.number().int().min(1).max(200).default(20),
+    type: z.enum(['movie', 'tv']).optional(),
+  });
+
+  // Helper function to map media records to API responses (with bulk thumbnail loading)
+  const mapMediaListToResponse = (items: any[], includeExtended = true) => {
+    // Bulk load all thumbnails in one query
+    const mediaIds = items.map(item => item.id);
+    const thumbnailsMap = thumbnailRepository.listByMediaIds(mediaIds);
+
+    return items.map(item => {
+      const thumbnails = thumbnailsMap.get(item.id) || [];
+      const base = {
+        ratingKey: item.plexId,
+        title: item.title,
+        year: item.year,
+        guid: item.guid,
+        summary: item.summary,
+        mediaType: item.mediaType,
+        addedAt: item.plexAddedAt,
+        updatedAt: item.plexUpdatedAt,
+        thumbFile: thumbnails[0]?.path || null,
+      };
+
+      if (!includeExtended) return base;
+
+      return {
+        ...base,
+        // Extended metadata
+        genres: item.genres,
+        directors: item.directors,
+        countries: item.countries,
+        collections: item.collections,
+        rating: item.rating,
+        audienceRating: item.audienceRating,
+        contentRating: item.contentRating,
+        studio: item.studio,
+        tagline: item.tagline,
+        duration: item.duration,
+        originallyAvailableAt: item.originallyAvailableAt,
+      };
+    });
+  };
+
+  // Helper function for single item (backwards compatibility)
   const mapMediaToResponse = (item: any, includeExtended = true) => {
-    const thumbnails = thumbnailRepository.listByMediaId(item.id);
-    const base = {
-      ratingKey: item.plexId,
-      title: item.title,
-      year: item.year,
-      guid: item.guid,
-      summary: item.summary,
-      mediaType: item.mediaType,
-      addedAt: item.plexAddedAt,
-      updatedAt: item.plexUpdatedAt,
-      thumbFile: thumbnails[0]?.path || null,
-    };
-
-    if (!includeExtended) return base;
-
-    return {
-      ...base,
-      // Extended metadata
-      genres: item.genres,
-      directors: item.directors,
-      countries: item.countries,
-      collections: item.collections,
-      rating: item.rating,
-      audienceRating: item.audienceRating,
-      contentRating: item.contentRating,
-      studio: item.studio,
-      tagline: item.tagline,
-      duration: item.duration,
-      originallyAvailableAt: item.originallyAvailableAt,
-    };
+    return mapMediaListToResponse([item], includeExtended)[0];
   };
 
   /**
    * GET /api/v1/movies
-   * List all movies from database
+   * List all movies from database (includes extended metadata)
   */
-  router.get('/movies', (req: Request, res: Response, next: NextFunction) => {
+  router.get('/movies', apiLimiter, cacheMiddleware({ cache: listCache }), (req: Request, res: Response, next: NextFunction) => {
     try {
       const allMedia = mediaRepository.listAll();
       const movies = allMedia.filter(m => m.mediaType === 'movie');
 
-      // Map to frontend-compatible format
-      const response = movies.map(movie => ({
-        ratingKey: movie.plexId,
-        title: movie.title,
-        year: movie.year,
-        guid: movie.guid,
-        summary: movie.summary,
-        addedAt: movie.plexAddedAt,
-        updatedAt: movie.plexUpdatedAt,
-        // Get thumbnail for this movie
-        thumbFile: thumbnailRepository.listByMediaId(movie.id)[0]?.path || null,
-      }));
+      // Map to frontend-compatible format with extended metadata (bulk thumbnail loading)
+      const response = mapMediaListToResponse(movies, true);
 
       res.setHeader('Cache-Control', 'public, max-age=300'); // 5 min cache
       res.json(response);
@@ -78,7 +112,7 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository }: V1Route
    * GET /api/v1/movies/:id
    * Get movie details by plexId (includes extended metadata)
    */
-  router.get('/movies/:id', (req: Request, res: Response, next: NextFunction) => {
+  router.get('/movies/:id', apiLimiter, cacheMiddleware({ cache: detailCache }), (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
       const movie = mediaRepository.getByPlexId(id);
@@ -106,25 +140,15 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository }: V1Route
 
   /**
    * GET /api/v1/series
-   * List all series from database
+   * List all series from database (includes extended metadata)
    */
-  router.get('/series', (req: Request, res: Response, next: NextFunction) => {
+  router.get('/series', apiLimiter, cacheMiddleware({ cache: listCache }), (req: Request, res: Response, next: NextFunction) => {
     try {
       const allMedia = mediaRepository.listAll();
       const series = allMedia.filter(m => m.mediaType === 'tv');
 
-      // Map to frontend-compatible format
-      const response = series.map(show => ({
-        ratingKey: show.plexId,
-        title: show.title,
-        year: show.year,
-        guid: show.guid,
-        summary: show.summary,
-        addedAt: show.plexAddedAt,
-        updatedAt: show.plexUpdatedAt,
-        // Get thumbnail for this series
-        thumbFile: thumbnailRepository.listByMediaId(show.id)[0]?.path || null,
-      }));
+      // Map to frontend-compatible format with extended metadata (bulk thumbnail loading)
+      const response = mapMediaListToResponse(series, true);
 
       res.setHeader('Cache-Control', 'public, max-age=300'); // 5 min cache
       res.json(response);
@@ -137,7 +161,7 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository }: V1Route
    * GET /api/v1/series/:id
    * Get series details by plexId (includes extended metadata)
    */
-  router.get('/series/:id', (req: Request, res: Response, next: NextFunction) => {
+  router.get('/series/:id', apiLimiter, cacheMiddleware({ cache: detailCache }), (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
       const series = mediaRepository.getByPlexId(id);
@@ -167,7 +191,7 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository }: V1Route
    * GET /api/v1/stats
    * Get database statistics
    */
-  router.get('/stats', (req: Request, res: Response, next: NextFunction) => {
+  router.get('/stats', apiLimiter, cacheMiddleware({ cache: statsCache }), (req: Request, res: Response, next: NextFunction) => {
     try {
       const allMedia = mediaRepository.listAll();
       const movies = allMedia.filter(m => m.mediaType === 'movie');
@@ -191,54 +215,45 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository }: V1Route
    * Filter media with query parameters
    * Query params: type, year, yearFrom, yearTo, search, limit, offset, sortBy, sortOrder
    */
-  router.get('/filter', (req: Request, res: Response, next: NextFunction) => {
+  router.get('/filter', apiLimiter, cacheMiddleware({ cache: listCache }), (req: Request, res: Response, next: NextFunction) => {
     try {
-      const {
-        type,
-        year,
-        yearFrom,
-        yearTo,
-        search,
-        limit = '50',
-        offset = '0',
-        sortBy = 'title',
-        sortOrder = 'asc',
-      } = req.query;
+      // Validate query parameters
+      const validatedQuery = filterQuerySchema.parse(req.query);
 
       // Build filter options
       const filterOptions: any = {
-        limit: parseInt(limit as string, 10),
-        offset: parseInt(offset as string, 10),
-        sortBy: sortBy as 'title' | 'year' | 'added' | 'updated',
-        sortOrder: sortOrder as 'asc' | 'desc',
+        limit: validatedQuery.limit,
+        offset: validatedQuery.offset,
+        sortBy: validatedQuery.sortBy,
+        sortOrder: validatedQuery.sortOrder,
       };
 
-      if (type === 'movie' || type === 'tv') {
-        filterOptions.mediaType = type;
+      if (validatedQuery.type) {
+        filterOptions.mediaType = validatedQuery.type;
       }
 
-      if (year) {
-        filterOptions.year = parseInt(year as string, 10);
+      if (validatedQuery.year) {
+        filterOptions.year = validatedQuery.year;
       }
 
-      if (yearFrom) {
-        filterOptions.yearFrom = parseInt(yearFrom as string, 10);
+      if (validatedQuery.yearFrom) {
+        filterOptions.yearFrom = validatedQuery.yearFrom;
       }
 
-      if (yearTo) {
-        filterOptions.yearTo = parseInt(yearTo as string, 10);
+      if (validatedQuery.yearTo) {
+        filterOptions.yearTo = validatedQuery.yearTo;
       }
 
-      if (search) {
-        filterOptions.search = search as string;
+      if (validatedQuery.search) {
+        filterOptions.search = validatedQuery.search;
       }
 
       // Get filtered results and total count
       const items = mediaRepository.filter(filterOptions);
       const total = mediaRepository.count(filterOptions);
 
-      // Map to frontend format with extended metadata
-      const results = items.map(item => mapMediaToResponse(item, true));
+      // Map to frontend format with extended metadata (bulk thumbnail loading)
+      const results = mapMediaListToResponse(items, true);
 
       const response = {
         items: results,
@@ -262,34 +277,31 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository }: V1Route
    * Search media by title or summary
    * Query param: q (search query), type (optional), limit (optional)
    */
-  router.get('/search', (req: Request, res: Response, next: NextFunction) => {
+  router.get('/search', searchLimiter, cacheMiddleware({ cache: listCache }), (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { q, type, limit = '20' } = req.query;
-
-      if (!q || typeof q !== 'string') {
-        return next(new HttpError(400, 'Search query parameter "q" is required'));
-      }
+      // Validate query parameters
+      const validatedQuery = searchQuerySchema.parse(req.query);
 
       const filterOptions: any = {
-        search: q,
-        limit: parseInt(limit as string, 10),
+        search: validatedQuery.q,
+        limit: validatedQuery.limit,
         offset: 0,
         sortBy: 'title' as const,
         sortOrder: 'asc' as const,
       };
 
-      if (type === 'movie' || type === 'tv') {
-        filterOptions.mediaType = type;
+      if (validatedQuery.type) {
+        filterOptions.mediaType = validatedQuery.type;
       }
 
       const items = mediaRepository.filter(filterOptions);
       const total = mediaRepository.count(filterOptions);
 
-      // Map to frontend format with extended metadata
-      const results = items.map(item => mapMediaToResponse(item, true));
+      // Map to frontend format with extended metadata (bulk thumbnail loading)
+      const results = mapMediaListToResponse(items, true);
 
       res.setHeader('Cache-Control', 'public, max-age=180'); // 3 min cache
-      res.json({ query: q, total, results });
+      res.json({ query: validatedQuery.q, total, results });
     } catch (error) {
       next(new HttpError(500, 'Failed to search media', { cause: error instanceof Error ? error : undefined }));
     }
@@ -300,17 +312,15 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository }: V1Route
    * Get recently added media
    * Query params: limit (default: 20), type (optional: 'movie' or 'tv')
    */
-  router.get('/recent', (req: Request, res: Response, next: NextFunction) => {
+  router.get('/recent', apiLimiter, cacheMiddleware({ cache: statsCache }), (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { limit = '20', type } = req.query;
+      // Validate query parameters
+      const validatedQuery = recentQuerySchema.parse(req.query);
 
-      const limitNum = parseInt(limit as string, 10);
-      const mediaType = type === 'movie' || type === 'tv' ? type : undefined;
+      const items = mediaRepository.getRecent(validatedQuery.limit, validatedQuery.type);
 
-      const items = mediaRepository.getRecent(limitNum, mediaType);
-
-      // Map to frontend format with extended metadata
-      const results = items.map(item => mapMediaToResponse(item, true));
+      // Map to frontend format with extended metadata (bulk thumbnail loading)
+      const results = mapMediaListToResponse(items, true);
 
       res.setHeader('Cache-Control', 'public, max-age=60'); // 1 min cache
       res.json({ items: results, count: results.length });
