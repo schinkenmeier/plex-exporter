@@ -403,9 +403,6 @@ export const createExportsRouter = (options: ExportsRouterOptions = {}) => {
           : Promise.resolve(createEmptyIndex<ShowExportEntry>('show')),
       ]);
 
-      const movies = movieIndex.entries.map((item) => item.entry);
-      const shows = showIndex.entries.map((item) => item.entry);
-
       const payload: Record<string, unknown> = {
         kind,
         filters: {
@@ -415,7 +412,13 @@ export const createExportsRouter = (options: ExportsRouterOptions = {}) => {
       };
 
       if (includeFacets) {
-        payload.facets = computeFacets(movies, shows);
+        const moviesForFacets = needsMovies
+          ? movieIndex.entries.map((item) => item.entry)
+          : [];
+        const showsForFacets = needsShows
+          ? showIndex.entries.map((item) => item.entry)
+          : [];
+        payload.facets = computeFacets(moviesForFacets, showsForFacets);
       }
 
       if (includeItems) {
