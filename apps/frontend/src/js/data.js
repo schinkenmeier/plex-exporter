@@ -1,7 +1,9 @@
 import { getCache, setCache } from '../shared/cache.js';
 import { validateLibraryList } from './data/validators.js';
+import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '@plex-exporter/shared';
 
 const LOG_PREFIX = '[data]';
+const MAX_PAGE = 1000;
 
 let lastSources = { movies: null, shows: null };
 const showDetailCache = new Map();
@@ -437,6 +439,29 @@ export async function searchLibrary(kind, filters = {}, options = {}){
   params.set('includeItems', '1');
   params.set('includeFacets', options.includeFacets ? '1' : '0');
 
+  const resolvePositiveInt = (value, { min = 1, max, fallback }) => {
+    const num = Number(value);
+    if(!Number.isFinite(num)) return fallback;
+    const int = Math.floor(num);
+    if(int < min) return fallback;
+    if(Number.isFinite(max) && max != null && int > max) return max;
+    return int;
+  };
+
+  const normalizedPageSize = resolvePositiveInt(options.pageSize, {
+    min: 1,
+    max: MAX_PAGE_SIZE,
+    fallback: DEFAULT_PAGE_SIZE,
+  });
+  const normalizedPage = resolvePositiveInt(options.page, {
+    min: 1,
+    max: MAX_PAGE,
+    fallback: 1,
+  });
+
+  params.set('page', String(normalizedPage));
+  params.set('pageSize', String(normalizedPageSize));
+
   const { query, onlyNew, yearFrom, yearTo, genres, collection, sort, newDays } = filters || {};
 
   if(typeof query === 'string' && query.trim()) params.set('query', query.trim());
@@ -451,9 +476,22 @@ export async function searchLibrary(kind, filters = {}, options = {}){
   const url = buildSearchUrl(params);
   const data = await fetchJson(url, 1, false);
   if(data && typeof data === 'object'){
-    return data;
+    const items = Array.isArray(data.items) ? data.items : [];
+    const totalRaw = Number(data.total);
+    const total = Number.isFinite(totalRaw) && totalRaw >= 0 ? totalRaw : items.length;
+    const pageRaw = Number(data.page);
+    const page = Number.isFinite(pageRaw) && pageRaw > 0 ? Math.floor(pageRaw) : normalizedPage;
+    const pageSizeRaw = Number(data.pageSize);
+    const pageSize = Number.isFinite(pageSizeRaw) && pageSizeRaw > 0 ? Math.floor(pageSizeRaw) : normalizedPageSize;
+    return {
+      ...data,
+      items,
+      total,
+      page,
+      pageSize,
+    };
   }
-  return { items: [], total: 0, filters: { ...filters } };
+  return { items: [], total: 0, page: normalizedPage, pageSize: normalizedPageSize, filters: { ...filters } };
 }
 
 export async function loadShowDetail(item){

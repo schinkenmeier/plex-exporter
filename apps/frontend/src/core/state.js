@@ -1,4 +1,16 @@
-const S = { view: 'movies', movies: [], shows: [], facets: {}, filtered: [], cfg: {}, heroPolicy: null, heroPolicyIssues: [] };
+import { DEFAULT_PAGE_SIZE } from '@plex-exporter/shared';
+
+const S = {
+  view: 'movies',
+  movies: [],
+  shows: [],
+  facets: {},
+  filtered: [],
+  filteredMeta: { page: 1, pageSize: DEFAULT_PAGE_SIZE, total: 0 },
+  cfg: {},
+  heroPolicy: null,
+  heroPolicyIssues: [],
+};
 const listeners = new Set();
 
 export const getState = () => S;

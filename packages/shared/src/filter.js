@@ -1,6 +1,8 @@
 import { collectionTags, getGenreNames, humanYear, isMediaNew, normalizeText } from './media.js';
 
 const SORT_KEYS = ['title-asc', 'title-desc', 'year-desc', 'year-asc', 'added-desc'];
+export const DEFAULT_PAGE_SIZE = 48;
+export const MAX_PAGE_SIZE = 200;
 
 const normalizeSortKey = (value) => {
   const raw = typeof value === 'string' ? value : '';
@@ -103,7 +105,7 @@ const compareBySortKey = (a, b, sortKey) => {
   }
 };
 
-export const filterMediaItems = (items, filters = {}, now = Date.now()) => {
+const filterAndSortMediaItems = (items, filters = {}, now = Date.now()) => {
   if (!Array.isArray(items) || items.length === 0) {
     return [];
   }
@@ -114,6 +116,47 @@ export const filterMediaItems = (items, filters = {}, now = Date.now()) => {
   const filtered = items.filter((item) => matchesFilters(item, normalizedFilters, now));
   const sortKey = normalizedFilters.sort || 'title-asc';
   return filtered.sort((a, b) => compareBySortKey(a, b, sortKey));
+};
+
+export const filterMediaItems = (items, filters = {}, now = Date.now()) => {
+  return filterAndSortMediaItems(items, filters, now);
+};
+
+const toInteger = (value, fallback = 0) => {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return fallback;
+  const int = Math.floor(num);
+  return Number.isFinite(int) ? int : fallback;
+};
+
+const normalizePagination = (pagination = {}) => {
+  const offset = Math.max(0, toInteger(pagination.offset, 0));
+  const requestedLimit = toInteger(pagination.limit, DEFAULT_PAGE_SIZE);
+  const limit = Math.min(Math.max(requestedLimit, 0), MAX_PAGE_SIZE);
+  return {
+    offset,
+    limit,
+  };
+};
+
+export const filterMediaItemsPaged = (items, filters = {}, pagination = {}, now = Date.now()) => {
+  const sorted = filterAndSortMediaItems(items, filters, now);
+  const total = sorted.length;
+  if (total === 0) {
+    return { items: [], total: 0 };
+  }
+
+  const { offset, limit } = normalizePagination(pagination);
+  if (limit <= 0) {
+    return { items: [], total };
+  }
+
+  const start = Math.min(offset, total);
+  const end = Math.min(start + limit, total);
+  return {
+    items: sorted.slice(start, end),
+    total,
+  };
 };
 
 export const computeFacets = (movies, shows) => {
