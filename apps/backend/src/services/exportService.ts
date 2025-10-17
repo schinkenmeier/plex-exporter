@@ -619,7 +619,8 @@ export const createExportService = (options: ExportServiceOptions = {}): ExportS
       if (cached) {
         if (cached.source === 'file') {
           const candidatePath = cached.path;
-          if (candidatePath) {
+          const expectedPath = primaryAbsolute ?? fallbackAbsolute ?? null;
+          if (candidatePath && (!expectedPath || candidatePath === expectedPath)) {
             try {
               const stats = statSync(candidatePath);
               if (stats.mtimeMs === cached.mtimeMs) {
