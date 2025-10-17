@@ -573,16 +573,55 @@ export const createExportService = (options: ExportServiceOptions = {}): ExportS
     options: LoadLibraryOptions = {},
   ): Promise<MovieExportEntry[] | ShowExportEntry[]> => {
     const candidates = kind === 'movie' ? moviePathCandidates() : seriesIndexPathCandidates();
-    const absolute = findExistingPath(roots, candidates);
+    const primaryAbsolute = findExistingPath([root], candidates);
     const force = options.force ?? false;
+
+    const fallbackRoots = roots.filter((candidate) => candidate !== root);
+    const fallbackAbsolute = fallbackRoots.length > 0 ? findExistingPath(fallbackRoots, candidates) : null;
+
+    const resolveFromFile = async (absolutePath: string) => {
+      let stats: { mtimeMs: number } | null = null;
+      try {
+        stats = statSync(absolutePath);
+      } catch {
+        stats = null;
+      }
+
+      let data: unknown;
+      try {
+        data = await readJsonFile(absolutePath);
+      } catch (error) {
+        if (error instanceof ExportValidationError) {
+          throw error;
+        }
+        throw new ExportValidationError('Exportdatei konnte nicht gelesen werden.', {
+          path: absolutePath,
+          cause: error,
+        });
+      }
+
+      const normalized = validateLibraryList(data, kind);
+      const result =
+        kind === 'movie'
+          ? normalizeMovieThumbs(normalized as MovieExportEntry[])
+          : normalizeShowThumbs(normalized as ShowExportEntry[]);
+      libraryCache.set(kind, {
+        source: 'file',
+        path: absolutePath,
+        mtimeMs: stats?.mtimeMs ?? Number.NaN,
+        data: result,
+      });
+      return result;
+    };
 
     if (!force) {
       const cached = libraryCache.get(kind);
       if (cached) {
         if (cached.source === 'file') {
-          if (absolute && cached.path === absolute) {
+          const candidatePath = cached.path;
+          if (candidatePath) {
             try {
-              const stats = statSync(absolute);
+              const stats = statSync(candidatePath);
               if (stats.mtimeMs === cached.mtimeMs) {
                 return cached.data;
               }
@@ -590,7 +629,7 @@ export const createExportService = (options: ExportServiceOptions = {}): ExportS
               // ignore and reload
             }
           }
-        } else if (cached.source === 'bag' && !absolute) {
+        } else if (cached.source === 'bag' && !primaryAbsolute && !fallbackAbsolute) {
           if (cached.path) {
             try {
               const stats = statSync(cached.path);
@@ -607,39 +646,8 @@ export const createExportService = (options: ExportServiceOptions = {}): ExportS
 
     let sourceDetails: Record<string, unknown> | undefined;
 
-    if (absolute) {
-      let stats: { mtimeMs: number } | null = null;
-      try {
-        stats = statSync(absolute);
-      } catch {
-        stats = null;
-      }
-
-      let data: unknown;
-      try {
-        data = await readJsonFile(absolute);
-      } catch (error) {
-        if (error instanceof ExportValidationError) {
-          throw error;
-        }
-        throw new ExportValidationError('Exportdatei konnte nicht gelesen werden.', {
-          path: absolute,
-          cause: error,
-        });
-      }
-
-      const normalized = validateLibraryList(data, kind);
-      const result =
-        kind === 'movie'
-          ? normalizeMovieThumbs(normalized as MovieExportEntry[])
-          : normalizeShowThumbs(normalized as ShowExportEntry[]);
-      libraryCache.set(kind, {
-        source: 'file',
-        path: absolute,
-        mtimeMs: stats?.mtimeMs ?? Number.NaN,
-        data: result,
-      });
-      return result;
+    if (primaryAbsolute) {
+      return resolveFromFile(primaryAbsolute);
     }
 
     const bagEntry = await loadHeroBag({ force });
@@ -661,6 +669,10 @@ export const createExportService = (options: ExportServiceOptions = {}): ExportS
         });
         return result;
       }
+    }
+
+    if (fallbackAbsolute) {
+      return resolveFromFile(fallbackAbsolute);
     }
 
     throw new ExportNotFoundError(

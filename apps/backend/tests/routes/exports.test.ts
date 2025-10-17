@@ -1,10 +1,11 @@
 import express from 'express';
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
-import * as fsPromises from 'node:fs/promises';
+import { mkdtempSync, rmSync, writeFileSync, mkdirSync, promises as fsPromises } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { DEFAULT_PAGE_SIZE } from '@plex-exporter/shared';
 
 import { createExportsRouter } from '../../src/routes/exports.js';
 import { errorHandler } from '../../src/middleware/errorHandler.js';
@@ -147,6 +148,9 @@ describe('exports routes', () => {
     expect(first.status).toBe(200);
     expect(first.body.items).toHaveLength(1);
     expect(first.body.items[0]).toMatchObject({ title: 'Cache Test Movie', ratingKey: '1' });
+    expect(first.body.page).toBe(1);
+    expect(first.body.pageSize).toBe(DEFAULT_PAGE_SIZE);
+    expect(first.body.total).toBe(1);
     expect(readFileSpy.mock.calls.length).toBeGreaterThan(0);
 
     readFileSpy.mockClear();
@@ -157,6 +161,9 @@ describe('exports routes', () => {
     expect(second.status).toBe(200);
     expect(second.body.items).toHaveLength(1);
     expect(second.body.items[0]).toMatchObject({ title: 'Cache Test Movie', ratingKey: '1' });
+    expect(second.body.page).toBe(1);
+    expect(second.body.pageSize).toBe(DEFAULT_PAGE_SIZE);
+    expect(second.body.total).toBe(1);
     expect(readFileSpy).not.toHaveBeenCalled();
 
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -171,6 +178,7 @@ describe('exports routes', () => {
 
     expect(third.status).toBe(200);
     expect(third.body.items[0]).toMatchObject({ title: 'Updated Movie', ratingKey: '2' });
+    expect(third.body.total).toBe(1);
     expect(readFileSpy).toHaveBeenCalledTimes(1);
 
     readFileSpy.mockClear();
@@ -180,8 +188,74 @@ describe('exports routes', () => {
 
     expect(fourth.status).toBe(200);
     expect(fourth.body.items[0]).toMatchObject({ title: 'Updated Movie', ratingKey: '2' });
+    expect(fourth.body.total).toBe(1);
     expect(readFileSpy).toHaveBeenCalledTimes(1);
 
     readFileSpy.mockRestore();
+  });
+
+  it('supports page and pageSize query parameters for search pagination', async () => {
+    writeJson('movies/movies.json', [
+      { title: 'Alpha', ratingKey: 1 },
+      { title: 'Beta', ratingKey: 2 },
+      { title: 'Gamma', ratingKey: 3 },
+      { title: 'Delta', ratingKey: 4 },
+    ]);
+
+    const app = createApp();
+    const response = await request(app)
+      .get('/api/exports/search')
+      .query({
+        kind: 'movie',
+        includeFacets: '0',
+        includeItems: '1',
+        page: '2',
+        pageSize: '2',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.page).toBe(2);
+    expect(response.body.pageSize).toBe(2);
+    expect(response.body.total).toBe(4);
+    expect(response.body.items).toHaveLength(2);
+    expect(response.body.items.map((item: { title: string }) => item.title)).toEqual(['Delta', 'Gamma']);
+  });
+
+  it('allows offset/limit pagination parameters and validates inputs', async () => {
+    writeJson('movies/movies.json', [
+      { title: 'Alpha', ratingKey: 1 },
+      { title: 'Beta', ratingKey: 2 },
+      { title: 'Gamma', ratingKey: 3 },
+    ]);
+
+    const app = createApp();
+    const response = await request(app)
+      .get('/api/exports/search')
+      .query({
+        kind: 'movie',
+        includeFacets: '0',
+        includeItems: '1',
+        offset: '2',
+        limit: '1',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.page).toBe(3);
+    expect(response.body.pageSize).toBe(1);
+    expect(response.body.total).toBe(3);
+    expect(response.body.items).toHaveLength(1);
+    expect(response.body.items[0]).toMatchObject({ title: 'Gamma' });
+
+    const invalid = await request(app)
+      .get('/api/exports/search')
+      .query({
+        kind: 'movie',
+        includeFacets: '0',
+        includeItems: '1',
+        page: '0',
+      });
+
+    expect(invalid.status).toBe(400);
+    expect(invalid.body.error.message).toBe('Invalid pagination parameter');
   });
 });

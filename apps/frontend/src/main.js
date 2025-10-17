@@ -16,6 +16,7 @@ import * as HeroPolicy from './features/hero/policy.js';
 import * as HeroPipeline from './features/hero/pipeline.js';
 import { syncDefaultMetadataService } from './core/metadataService.js';
 import { loadFrontendConfig, DEFAULT_FRONTEND_CONFIG } from './core/configLoader.js';
+import { DEFAULT_PAGE_SIZE } from '@plex-exporter/shared';
 console.log('[main] Imports loaded, Modal V3 functions:', { openMovieDetailV3, openSeriesDetailV3 });
 
 const DEFAULT_FEATURE_FLAGS = { tmdbEnrichment: false };
@@ -202,6 +203,10 @@ function setFooterStatus(message, busy=true){
   if(grid){
     grid.setAttribute('aria-busy', busy ? 'true' : 'false');
   }
+  const results = document.getElementById('footerResults');
+  if(results){
+    results.hidden = busy;
+  }
 }
 
 export async function boot(){
@@ -358,6 +363,7 @@ async function applyHashNavigation(hash){
     const result = Filter.applyFilters();
     renderGrid(view);
     refreshHeroWithPipeline(result);
+    renderFooterMeta();
     return true;
   }
   const match = hash.match(/^#\/(movie|show)\/(.+)/);
@@ -419,6 +425,7 @@ function renderSwitch(){
       const result = Filter.applyFilters();
       renderGrid(view);
       refreshHeroWithPipeline(result);
+      renderFooterMeta();
     });
     btn.dataset.bound = 'true';
   });
@@ -465,14 +472,33 @@ function renderFooterMeta(){
   if(status){
     status.textContent = `Stand: ${date}`;
   }
+  const results = document.getElementById('footerResults');
+  if(results){
+    const fallbackTotal = Array.isArray(s.filtered) ? s.filtered.length : 0;
+    const meta = s.filteredMeta || { page: 1, pageSize: DEFAULT_PAGE_SIZE, total: fallbackTotal };
+    const safePageSize = Math.max(1, Number(meta.pageSize) || DEFAULT_PAGE_SIZE);
+    const totalItems = Math.max(0, Number(meta.total) || 0);
+    const totalPages = Math.max(1, Math.ceil(totalItems / safePageSize));
+    const currentPage = Math.min(Math.max(1, Number(meta.page) || 1), totalPages);
+    const setField = (name, value) => {
+      const field = results.querySelector(`[data-field="${name}"]`);
+      if(field) field.textContent = String(value);
+    };
+    setField('page', currentPage);
+    setField('pages', totalPages);
+    setField('pageSize', safePageSize);
+    setField('total', totalItems);
+    results.hidden = false;
+  }
   el.dataset.state = 'ready';
   const grid = document.getElementById('grid');
   if(grid){ grid.setAttribute('aria-busy', 'false'); }
 }
 
-Filter.setFiltersUpdatedHandler(items => {
+Filter.setFiltersUpdatedHandler((items, _view, _meta) => {
   try{
     refreshHeroWithPipeline(items);
+    renderFooterMeta();
   }catch(err){
     console.warn('[main] Failed to refresh hero from filters handler:', err?.message);
   }
@@ -481,6 +507,7 @@ Filter.setFiltersUpdatedHandler(items => {
 setHeroRefreshHandler(items => {
   try{
     refreshHeroWithPipeline(items);
+    renderFooterMeta();
   }catch(err){
     console.warn('[main] Failed to refresh hero from settings handler:', err?.message);
   }
