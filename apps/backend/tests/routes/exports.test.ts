@@ -6,6 +6,7 @@ import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DEFAULT_PAGE_SIZE } from '@plex-exporter/shared';
+import * as sharedModule from '@plex-exporter/shared';
 
 import { createExportsRouter } from '../../src/routes/exports.js';
 import { errorHandler } from '../../src/middleware/errorHandler.js';
@@ -32,6 +33,41 @@ describe('exports routes', () => {
 
   afterEach(() => {
     rmSync(fixturesDir, { recursive: true, force: true });
+  });
+
+  it('skips facet computation when includeFacets is disabled', async () => {
+    writeJson('movies/movies.json', [
+      { title: 'Facetless Alpha', ratingKey: 1 },
+      { title: 'Facetless Beta', ratingKey: 2 },
+    ]);
+
+    const app = createApp();
+
+    await request(app)
+      .get('/api/exports/search')
+      .query({ kind: 'movie', includeFacets: '0', includeItems: '0' });
+
+    const mapSpy = vi.spyOn(Array.prototype, 'map');
+    const computeFacetsSpy = vi.spyOn(sharedModule, 'computeFacets');
+
+    try {
+      const response = await request(app)
+        .get('/api/exports/search')
+        .query({ kind: 'movie', includeFacets: '0', includeItems: '0' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.facets).toBeUndefined();
+      const entryMapCalls = mapSpy.mock.calls.filter(([callback]) => {
+        if (typeof callback !== 'function') return false;
+        const source = callback.toString();
+        return source.includes('item.entry');
+      });
+      expect(entryMapCalls).toHaveLength(0);
+      expect(computeFacetsSpy).not.toHaveBeenCalled();
+    } finally {
+      mapSpy.mockRestore();
+      computeFacetsSpy.mockRestore();
+    }
   });
 
   it('normalizes movie thumbnails and sets cache headers', async () => {
