@@ -1,4 +1,5 @@
 import util from 'node:util';
+import { logBuffer, type LogEntry } from './logBuffer.js';
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -53,6 +54,15 @@ class Logger {
     const payload = this.format(level, message, context);
     const method = consoleMethod[level];
     method(util.inspect(payload, { depth: null, colors: false, compact: false }));
+
+    // Also add to log buffer for admin panel
+    const logEntry: LogEntry = {
+      timestamp: payload.timestamp,
+      level,
+      message,
+      context: context ? serialize(context) : undefined,
+    };
+    logBuffer.add(logEntry);
   }
 
   debug(message: string, context?: LogContext) {

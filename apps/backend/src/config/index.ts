@@ -115,6 +115,8 @@ const envSchema = z
         z.string().url().optional(),
       ),
     TAUTULLI_API_KEY: optionalString,
+    ADMIN_USERNAME: optionalString,
+    ADMIN_PASSWORD: optionalString,
   })
   .superRefine((env, ctx) => {
     const smtpFields = {
@@ -162,6 +164,16 @@ const envSchema = z
         path: ['TAUTULLI_URL'],
       });
     }
+
+    const hasPartialAdminConfiguration = Boolean(env.ADMIN_USERNAME) !== Boolean(env.ADMIN_PASSWORD);
+
+    if (hasPartialAdminConfiguration) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'ADMIN_USERNAME and ADMIN_PASSWORD need to be provided together.',
+        path: ['ADMIN_USERNAME'],
+      });
+    }
   });
 
 const rawConfig = envSchema.parse(process.env);
@@ -203,6 +215,12 @@ export const config = {
   tmdb: rawConfig.TMDB_ACCESS_TOKEN
     ? {
         accessToken: rawConfig.TMDB_ACCESS_TOKEN,
+      }
+    : null,
+  admin: rawConfig.ADMIN_USERNAME && rawConfig.ADMIN_PASSWORD
+    ? {
+        username: rawConfig.ADMIN_USERNAME,
+        password: rawConfig.ADMIN_PASSWORD,
       }
     : null,
 } as const;

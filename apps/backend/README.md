@@ -30,10 +30,14 @@ Die Anwendung liest ihre Konfiguration beim Start aus Umgebungsvariablen und val
 | `TAUTULLI_URL` | Basis-URL der Tautulli-Instanz. | Bedingt² | – |
 | `TAUTULLI_API_KEY` | API-Key für Zugriffe auf Tautulli. | Bedingt² | – |
 | `API_TOKEN` | Geheimer Token für geschützte Routen (`Bearer`- oder `X-API-Key`-Header). | Nein | – |
+| `ADMIN_USERNAME` | Benutzername für das Admin-Panel (Basic Auth). | Bedingt³ | – |
+| `ADMIN_PASSWORD` | Passwort für das Admin-Panel (Basic Auth). | Bedingt³ | – |
 
 ¹ `SMTP_HOST`, `SMTP_PORT` und `SMTP_FROM` müssen gemeinsam gesetzt werden, sobald SMTP genutzt werden soll.
 
 ² `TAUTULLI_URL` und `TAUTULLI_API_KEY` müssen gemeinsam gesetzt werden, sobald eine Integration aktiv ist.
+
+³ `ADMIN_USERNAME` und `ADMIN_PASSWORD` müssen gemeinsam gesetzt werden, um das Admin-Panel zu aktivieren.
 
 ## Build & Betrieb mit Docker
 
@@ -127,3 +131,61 @@ Die Anwendung liest ihre Konfiguration beim Start aus Umgebungsvariablen und val
 - **`POST /notifications/*`** und **`GET /libraries`** erwarten, dass du entweder einen `Authorization: Bearer <TOKEN>`-Header
   oder alternativ `X-API-Key: <TOKEN>` mitsendest. Der Token-Wert wird über die Umgebungsvariable `API_TOKEN` konfiguriert.
 - Ist kein `API_TOKEN` gesetzt, bleiben die Routen weiterhin ohne Authentifizierung erreichbar (z. B. für lokale Tests).
+
+## Admin-Panel
+
+Das Backend verfügt über ein integriertes Admin-Panel zur Verwaltung und Überwachung.
+
+### Zugriff
+
+- **URL**: `http://localhost:4000/admin` (bzw. der konfigurierte Port)
+- **Authentifizierung**: HTTP Basic Auth mit `ADMIN_USERNAME` und `ADMIN_PASSWORD`
+- **Voraussetzung**: Beide Umgebungsvariablen müssen gesetzt sein, sonst ist das Panel nicht verfügbar
+
+### Features
+
+Das Admin-Panel bietet folgende Funktionen:
+
+#### Dashboard
+- System-Status (Uptime, Memory, Node.js-Version)
+- Datenbank-Statistiken (Anzahl Filme, Serien, Thumbnails)
+- Service-Übersicht (SMTP, Tautulli, TMDB, API Auth)
+
+#### Konfiguration
+- Anzeige aller Umgebungsvariablen (sensible Werte maskiert)
+- Übersicht über aktivierte Services
+- Validierung der Konfiguration
+
+#### Import-Management
+- Import-Prozesse starten und stoppen
+- Live-Status und Progress-Tracking
+- Import-Logs in Echtzeit
+- Optionen: Dry-Run, Force, Verbose, Movies-Only, Series-Only
+
+#### System-Logs
+- Anzeige der letzten 500 Log-Einträge
+- Filterung nach Log-Level (Debug, Info, Warning, Error)
+- Logs leeren
+
+#### Service-Tests
+- **SMTP-Test**: Test-E-Mail versenden
+- **Tautulli-Test**: Verbindung und Libraries abrufen
+- **Datenbank-Test**: Verbindung und Datenzugriff prüfen
+
+### Beispiel-Konfiguration
+
+```bash
+# In .env oder als Umgebungsvariablen
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=secure-password-123
+
+# Für Docker Compose
+BACKEND_ADMIN_USERNAME=admin
+BACKEND_ADMIN_PASSWORD=secure-password-123
+```
+
+### Sicherheitshinweise
+
+- **Verwende ein starkes Passwort**, insbesondere wenn das Backend öffentlich erreichbar ist
+- Das Admin-Panel sollte idealerweise nur über localhost oder ein privates Netzwerk erreichbar sein
+- Für Produktivumgebungen empfiehlt sich zusätzlich ein Reverse-Proxy mit IP-Whitelist oder VPN

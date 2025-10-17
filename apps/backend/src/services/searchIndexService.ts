@@ -86,7 +86,7 @@ const buildSearchText = (entry: MovieExportEntry | ShowExportEntry): string => {
 
   getGenreNames((entry as { genres?: unknown }).genres).forEach((genre) => parts.push(genre));
   extractRoleTokens(entry).forEach((token) => parts.push(token));
-  collectionTags(entry).forEach((token) => parts.push(token));
+  collectionTags(entry as { collections?: unknown }).forEach((token) => parts.push(token));
 
   return parts.filter(Boolean).join(' ');
 };
@@ -245,7 +245,7 @@ const createIndexedEntry = <T extends MovieExportEntry | ShowExportEntry>(
   const normalizedSearch = normalizeText(searchText);
   const searchTokens = normalizedSearch.split(/\s+/).filter(Boolean);
   const genres = getGenreNames((entry as { genres?: unknown }).genres);
-  const collections = collectionTags(entry);
+  const collections = collectionTags(entry as { collections?: unknown });
   const year = parseYear(entry);
   const addedAt = parseAddedAt((entry as { addedAt?: unknown }).addedAt);
 
@@ -477,18 +477,18 @@ export const createSearchIndexService = ({ exportService }: SearchIndexServiceOp
   ): Promise<SearchIndexLibrary<LibraryEntryMap[K]>> => {
     const force = options?.force === true;
     if (kind === 'movie') {
-      return getIndexedLibraryInternal(
+      return (await getIndexedLibraryInternal(
         'movie',
         () => exportService.loadMovies(options),
         force,
-      ) as SearchIndexLibrary<LibraryEntryMap[K]>;
+      )) as SearchIndexLibrary<LibraryEntryMap[K]>;
     }
 
-    return getIndexedLibraryInternal(
+    return (await getIndexedLibraryInternal(
       'show',
       () => exportService.loadSeries(options),
       force,
-    ) as SearchIndexLibrary<LibraryEntryMap[K]>;
+    )) as SearchIndexLibrary<LibraryEntryMap[K]>;
   };
 
   return {

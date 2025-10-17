@@ -33,7 +33,8 @@ RUN npm install --workspace @plex-exporter/backend --omit=dev && \
 
 # Copy built application from builder stage
 COPY --from=builder /app/apps/backend/dist ./apps/backend/dist
-COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
+COPY --from=builder /app/apps/backend/src/views ./apps/backend/src/views
+COPY --from=builder /app/packages/shared/src ./packages/shared/src
 
 # Create directories for data volumes
 RUN mkdir -p /app/data/exports /app/storage/sqlite

@@ -24,6 +24,8 @@ import createTmdbService from './services/tmdbService.js';
 import createHeroPipelineService from './services/heroPipeline.js';
 import { createHeroRouter } from './routes/hero.js';
 import { setupSwagger } from './config/swaggerSetup.js';
+import { createAdminRouter } from './routes/admin.js';
+import { createBasicAuthMiddleware } from './middleware/basicAuth.js';
 
 export interface ServerDependencies {
   smtpService?: MailSender | null;
@@ -99,6 +101,10 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
     : null;
 
   const authMiddleware = createAuthMiddleware({ token: appConfig.auth?.token ?? null });
+  const basicAuthMiddleware = createBasicAuthMiddleware({
+    username: appConfig.admin?.username ?? null,
+    password: appConfig.admin?.password ?? null,
+  });
 
   // Security headers with Helmet
   app.use(helmet({
@@ -148,6 +154,19 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
     createLibrariesRouter({ tautulliService, snapshotRepository: tautulliSnapshotRepository }),
   );
   app.use('/media', createMediaRouter({ mediaRepository, thumbnailRepository }));
+
+  // Admin panel (protected with Basic Auth)
+  app.use(
+    '/admin',
+    basicAuthMiddleware,
+    createAdminRouter({
+      config: appConfig,
+      mediaRepository,
+      thumbnailRepository,
+      smtpService,
+      tautulliService,
+    }),
+  );
 
   // Logging & error handling
   app.use(errorHandler);

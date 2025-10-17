@@ -1,0 +1,397 @@
+import { Router, type Request, type Response, type NextFunction } from 'express';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import fs from 'node:fs';
+import os from 'node:os';
+import { type AppConfig } from '../config/index.js';
+import { importService } from '../services/importService.js';
+import { logBuffer } from '../services/logBuffer.js';
+import logger from '../services/logger.js';
+import { HttpError } from '../middleware/errorHandler.js';
+import type MediaRepository from '../repositories/mediaRepository.js';
+import type ThumbnailRepository from '../repositories/thumbnailRepository.js';
+import type { MailSender } from '../services/smtpService.js';
+import type { TautulliClient } from '../services/tautulliService.js';
+
+export interface AdminRouterOptions {
+  config: AppConfig;
+  mediaRepository: MediaRepository;
+  thumbnailRepository: ThumbnailRepository;
+  smtpService: MailSender | null;
+  tautulliService: TautulliClient | null;
+}
+
+const startTime = Date.now();
+
+export const createAdminRouter = (options: AdminRouterOptions): Router => {
+  const router = Router();
+  const { config, mediaRepository, thumbnailRepository, smtpService, tautulliService } = options;
+
+  /**
+   * GET /admin
+   * Serve admin dashboard HTML
+   */
+  router.get('/', (_req: Request, res: Response) => {
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    // Try production path first (dist/routes -> src/views), then development path
+    const productionPath = path.join(__dirname, '..', '..', 'src', 'views', 'admin.html');
+    const devPath = path.join(__dirname, '..', 'views', 'admin.html');
+
+    const htmlPath = fs.existsSync(productionPath) ? productionPath : devPath;
+
+    if (!fs.existsSync(htmlPath)) {
+      logger.error('Admin dashboard HTML not found', { productionPath, devPath, __dirname });
+      return res.status(500).send('Admin dashboard HTML not found');
+    }
+
+    res.sendFile(htmlPath);
+  });
+
+  /**
+   * GET /admin/api/status
+   * System status and health information
+   */
+  router.get('/api/status', (_req: Request, res: Response) => {
+    const uptime = Math.floor((Date.now() - startTime) / 1000);
+    const memoryUsage = process.memoryUsage();
+
+    res.json({
+      status: 'ok',
+      uptime: {
+        seconds: uptime,
+        formatted: formatUptime(uptime),
+      },
+      memory: {
+        rss: formatBytes(memoryUsage.rss),
+        heapTotal: formatBytes(memoryUsage.heapTotal),
+        heapUsed: formatBytes(memoryUsage.heapUsed),
+        external: formatBytes(memoryUsage.external),
+      },
+      system: {
+        platform: os.platform(),
+        arch: os.arch(),
+        nodeVersion: process.version,
+        cpus: os.cpus().length,
+        totalMemory: formatBytes(os.totalmem()),
+        freeMemory: formatBytes(os.freemem()),
+      },
+      process: {
+        pid: process.pid,
+        cwd: process.cwd(),
+      },
+    });
+  });
+
+  /**
+   * GET /admin/api/config
+   * Current configuration (sensitive values masked)
+   */
+  router.get('/api/config', (_req: Request, res: Response) => {
+    const maskSensitive = (value: string | null | undefined): string => {
+      if (!value) return '[not set]';
+      if (value.length <= 4) return '****';
+      return value.substring(0, 4) + '*'.repeat(Math.min(value.length - 4, 20));
+    };
+
+    res.json({
+      runtime: {
+        env: config.runtime.env,
+      },
+      server: {
+        port: config.server.port,
+      },
+      auth: {
+        enabled: !!config.auth,
+        token: config.auth?.token ? maskSensitive(config.auth.token) : '[not set]',
+      },
+      database: {
+        sqlitePath: config.database.sqlitePath,
+        exists: fs.existsSync(config.database.sqlitePath),
+      },
+      hero: {
+        policyPath: config.hero?.policyPath || '[not set]',
+        policyExists: config.hero?.policyPath ? fs.existsSync(config.hero.policyPath) : false,
+      },
+      smtp: {
+        enabled: !!config.smtp,
+        host: config.smtp?.host || '[not set]',
+        port: config.smtp?.port || '[not set]',
+        user: config.smtp?.user || '[not set]',
+        from: config.smtp?.from || '[not set]',
+        secure: config.smtp?.secure || false,
+      },
+      tautulli: {
+        enabled: !!config.tautulli,
+        url: config.tautulli?.url || '[not set]',
+        apiKey: config.tautulli?.apiKey ? maskSensitive(config.tautulli.apiKey) : '[not set]',
+      },
+      tmdb: {
+        enabled: !!config.tmdb,
+        accessToken: config.tmdb?.accessToken ? maskSensitive(config.tmdb.accessToken) : '[not set]',
+      },
+    });
+  });
+
+  /**
+   * GET /admin/api/stats
+   * Database statistics
+   */
+  router.get('/api/stats', (_req: Request, res: Response) => {
+    try {
+      const allMedia = mediaRepository.listAll();
+      const movies = allMedia.filter(m => m.mediaType === 'movie');
+      const series = allMedia.filter(m => m.mediaType === 'tv');
+
+      // Get thumbnail counts
+      const movieIds = movies.map(m => m.id);
+      const seriesIds = series.map(m => m.id);
+      const movieThumbnails = thumbnailRepository.listByMediaIds(movieIds);
+      const seriesThumbnails = thumbnailRepository.listByMediaIds(seriesIds);
+
+      let totalMovieThumbnails = 0;
+      let totalSeriesThumbnails = 0;
+
+      for (const thumbnails of movieThumbnails.values()) {
+        totalMovieThumbnails += thumbnails.length;
+      }
+
+      for (const thumbnails of seriesThumbnails.values()) {
+        totalSeriesThumbnails += thumbnails.length;
+      }
+
+      res.json({
+        media: {
+          total: allMedia.length,
+          movies: movies.length,
+          series: series.length,
+        },
+        thumbnails: {
+          total: totalMovieThumbnails + totalSeriesThumbnails,
+          movies: totalMovieThumbnails,
+          series: totalSeriesThumbnails,
+        },
+        database: {
+          path: config.database.sqlitePath,
+          size: formatBytes(getFileSize(config.database.sqlitePath)),
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Failed to get database stats', { error: message });
+      return res.status(500).json({ error: 'Failed to get database stats', details: message });
+    }
+  });
+
+  /**
+   * POST /admin/api/import
+   * Start import process
+   */
+  router.post('/api/import', async (req: Request, res: Response) => {
+    const { dryRun, force, verbose, moviesOnly, seriesOnly } = req.body || {};
+
+    const result = await importService.start({
+      dryRun: !!dryRun,
+      force: !!force,
+      verbose: !!verbose,
+      moviesOnly: !!moviesOnly,
+      seriesOnly: !!seriesOnly,
+    });
+
+    if (result.success) {
+      res.json({ success: true, message: result.message, status: importService.getStatus() });
+    } else {
+      res.status(400).json({ success: false, error: result.message });
+    }
+  });
+
+  /**
+   * POST /admin/api/import/stop
+   * Stop running import process
+   */
+  router.post('/api/import/stop', (_req: Request, res: Response) => {
+    const result = importService.stop();
+
+    if (result.success) {
+      res.json({ success: true, message: result.message });
+    } else {
+      res.status(400).json({ success: false, error: result.message });
+    }
+  });
+
+  /**
+   * GET /admin/api/import/status
+   * Get import process status
+   */
+  router.get('/api/import/status', (_req: Request, res: Response) => {
+    res.json(importService.getStatus());
+  });
+
+  /**
+   * DELETE /admin/api/import/logs
+   * Clear import logs
+   */
+  router.delete('/api/import/logs', (_req: Request, res: Response) => {
+    importService.clearLogs();
+    res.json({ success: true, message: 'Import logs cleared' });
+  });
+
+  /**
+   * GET /admin/api/logs
+   * Get system logs
+   */
+  router.get('/api/logs', (req: Request, res: Response) => {
+    const limit = parseInt(req.query.limit as string) || 100;
+    const level = req.query.level as string;
+    const since = req.query.since as string;
+
+    let logs = logBuffer.getAll();
+
+    // Filter by level
+    if (level && ['debug', 'info', 'warn', 'error'].includes(level)) {
+      logs = logs.filter(log => log.level === level);
+    }
+
+    // Filter by timestamp
+    if (since) {
+      logs = logs.filter(log => log.timestamp >= since);
+    }
+
+    // Limit results
+    logs = logs.slice(-limit);
+
+    res.json({
+      logs,
+      stats: logBuffer.getStats(),
+    });
+  });
+
+  /**
+   * DELETE /admin/api/logs
+   * Clear system logs
+   */
+  router.delete('/api/logs', (_req: Request, res: Response) => {
+    logBuffer.clear();
+    res.json({ success: true, message: 'System logs cleared' });
+  });
+
+  /**
+   * POST /admin/api/test/smtp
+   * Test SMTP connection
+   */
+  router.post('/api/test/smtp', async (req: Request, res: Response, next: NextFunction) => {
+    if (!smtpService) {
+      return next(new HttpError(503, 'SMTP service is not configured'));
+    }
+
+    const { to } = req.body || {};
+    if (!to) {
+      return next(new HttpError(400, 'Recipient email address (to) is required'));
+    }
+
+    try {
+      const result = await smtpService.sendMail({
+        to,
+        subject: 'Plex Exporter Admin - SMTP Test',
+        text: 'This is a test email from the Plex Exporter Admin Panel.',
+        html: '<h1>SMTP Test</h1><p>This is a test email from the Plex Exporter Admin Panel.</p>',
+      });
+
+      res.json({
+        success: true,
+        message: 'Test email sent successfully',
+        messageId: result.messageId,
+        accepted: result.accepted,
+        rejected: result.rejected,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('SMTP test failed', { error: message });
+      res.status(502).json({ success: false, error: 'SMTP test failed', details: message });
+    }
+  });
+
+  /**
+   * POST /admin/api/test/tautulli
+   * Test Tautulli connection
+   */
+  router.post('/api/test/tautulli', async (_req: Request, res: Response, next: NextFunction) => {
+    if (!tautulliService) {
+      return next(new HttpError(503, 'Tautulli service is not configured'));
+    }
+
+    try {
+      const libraries = await tautulliService.getLibraries();
+
+      res.json({
+        success: true,
+        message: 'Successfully connected to Tautulli',
+        libraries: libraries.length,
+        data: libraries,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Tautulli test failed', { error: message });
+      res.status(502).json({ success: false, error: 'Tautulli test failed', details: message });
+    }
+  });
+
+  /**
+   * POST /admin/api/test/database
+   * Test database connection
+   */
+  router.post('/api/test/database', (_req: Request, res: Response) => {
+    try {
+      const allMedia = mediaRepository.listAll();
+
+      res.json({
+        success: true,
+        message: 'Database connection successful',
+        recordCount: allMedia.length,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Database test failed', { error: message });
+      res.status(500).json({ success: false, error: 'Database test failed', details: message });
+    }
+  });
+
+  return router;
+};
+
+// Helper functions
+
+function formatUptime(seconds: number): string {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0) parts.push(`${minutes}m`);
+  if (secs > 0 || parts.length === 0) parts.push(`${secs}s`);
+
+  return parts.join(' ');
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B';
+
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
+}
+
+function getFileSize(filePath: string): number {
+  try {
+    const stats = fs.statSync(filePath);
+    return stats.size;
+  } catch {
+    return 0;
+  }
+}
+
+export default createAdminRouter;
