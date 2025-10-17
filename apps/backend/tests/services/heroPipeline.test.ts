@@ -95,4 +95,58 @@ describe('hero pipeline service', () => {
     const selectedIds = pool.items.map((item) => item.poolId || item.id);
     expect(selectedIds).not.toContain('movie-1');
   });
+
+  it('reloads the hero policy when the policy file changes', async () => {
+    const nowIso = new Date().toISOString();
+    mediaRepository.create({
+      plexId: 'movie-1',
+      title: 'Movie One',
+      mediaType: 'movie',
+      plexAddedAt: nowIso,
+      rating: 8.5,
+    });
+    mediaRepository.create({
+      plexId: 'movie-2',
+      title: 'Movie Two',
+      mediaType: 'movie',
+      plexAddedAt: nowIso,
+      rating: 7.3,
+    });
+    mediaRepository.create({
+      plexId: 'movie-3',
+      title: 'Movie Three',
+      mediaType: 'movie',
+      plexAddedAt: nowIso,
+      rating: 9.1,
+    });
+
+    const service = createHeroPipelineService({
+      database: dbHandle.db,
+      mediaRepository,
+      tmdbService: null,
+      policyPath,
+    });
+
+    const initialPool = await service.getPool('movies');
+    expect(initialPool.items).toHaveLength(2);
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const updatedPolicy = {
+      poolSizeMovies: 1,
+      poolSizeSeries: 1,
+      slots: {
+        new: { quota: 0 },
+        topRated: { quota: 0 },
+        oldButGold: { quota: 0 },
+        random: { quota: 1 },
+      },
+    };
+    fs.writeFileSync(policyPath, JSON.stringify(updatedPolicy), 'utf8');
+
+    const updatedPool = await service.getPool('movies');
+
+    expect(updatedPool.items).toHaveLength(1);
+    expect(updatedPool.policyHash).not.toBe(initialPool.policyHash);
+    expect(updatedPool.fromCache).toBe(false);
+  });
 });

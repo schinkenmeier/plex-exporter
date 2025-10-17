@@ -580,14 +580,17 @@ const resolvePolicyPath = async (explicitPath?: string | null): Promise<string |
   return null;
 };
 
-const readPolicy = async (policyPath?: string | null): Promise<{ policy: HeroPolicy; hash: string }> => {
+const readPolicy = async (
+  policyPath?: string | null,
+  resolvedPath?: string | null,
+): Promise<{ policy: HeroPolicy; hash: string }> => {
   try {
-    const resolvedPath = await resolvePolicyPath(policyPath);
-    if (!resolvedPath) {
+    const pathToUse = resolvedPath ?? (await resolvePolicyPath(policyPath));
+    if (!pathToUse) {
       const hash = crypto.createHash('sha1').update(JSON.stringify(DEFAULT_POLICY)).digest('hex');
       return { policy: DEFAULT_POLICY, hash };
     }
-    const raw = await fs.readFile(resolvedPath, 'utf8');
+    const raw = await fs.readFile(pathToUse, 'utf8');
     const parsed = JSON.parse(raw);
     const policy = { ...DEFAULT_POLICY, ...parsed } as HeroPolicy;
     const hash = crypto.createHash('sha1').update(JSON.stringify(policy)).digest('hex');
@@ -650,11 +653,43 @@ export const createHeroPipelineService = ({
   );
 
   let cachedPolicy: { policy: HeroPolicy; hash: string } | null = null;
+  let cachedPolicyMeta: { path: string | null; mtimeMs: number | null } | null = null;
 
-  const loadPolicy = async () => {
-    if (!cachedPolicy) {
-      cachedPolicy = await readPolicy(policyPath);
+  const loadPolicy = async ({ force = false }: { force?: boolean } = {}) => {
+    let resolvedPolicyPath = await resolvePolicyPath(policyPath);
+    let mtimeMs: number | null = null;
+
+    if (resolvedPolicyPath) {
+      try {
+        const stats = await fs.stat(resolvedPolicyPath);
+        mtimeMs = stats.mtimeMs;
+      } catch (error) {
+        const err = error as NodeJS.ErrnoException;
+        if (err?.code === 'ENOENT') {
+          resolvedPolicyPath = null;
+          mtimeMs = null;
+        } else {
+          logger.warn('Failed to read hero policy metadata', {
+            namespace: 'hero',
+            error: err instanceof Error ? err.message : err,
+            path: resolvedPolicyPath,
+          });
+        }
+      }
     }
+
+    const needsReload =
+      force ||
+      !cachedPolicy ||
+      !cachedPolicyMeta ||
+      cachedPolicyMeta.path !== resolvedPolicyPath ||
+      cachedPolicyMeta.mtimeMs !== mtimeMs;
+
+    if (needsReload) {
+      cachedPolicy = await readPolicy(policyPath, resolvedPolicyPath);
+      cachedPolicyMeta = { path: resolvedPolicyPath, mtimeMs };
+    }
+
     return cachedPolicy;
   };
 
@@ -707,7 +742,7 @@ export const createHeroPipelineService = ({
   };
 
   const buildPool = async (kind: HeroKind, options: { force?: boolean } = {}): Promise<HeroPoolPayload> => {
-    const { policy, hash: policyHash } = await loadPolicy();
+    const { policy, hash: policyHash } = await loadPolicy({ force: options.force });
     const normalizedKind: HeroKind = kind === 'series' ? 'series' : 'movies';
     const stored = loadStored(normalizedKind);
     const nowTs = Date.now();
