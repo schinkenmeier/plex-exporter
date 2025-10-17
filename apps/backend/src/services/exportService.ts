@@ -15,6 +15,10 @@ export interface ExportServiceOptions {
   legacyRoots?: string[];
 }
 
+export interface LoadLibraryOptions {
+  force?: boolean;
+}
+
 export interface MovieExportEntry extends Record<string, unknown> {
   title: string;
   ratingKey: string;
@@ -516,22 +520,24 @@ const readJsonFile = async (absolutePath: string): Promise<unknown> => {
   }
 };
 
-const createHeroBagLoader = (roots: string[]) => {
-  let cache: { path: string; mtimeMs: number; data: UnknownRecord } | null = null;
+type HeroBagCacheEntry = { path: string; mtimeMs: number; data: UnknownRecord };
 
-  return async (): Promise<UnknownRecord | null> => {
+const createHeroBagLoader = (roots: string[]) => {
+  let cache: HeroBagCacheEntry | null = null;
+
+  return async (options: LoadLibraryOptions = {}): Promise<HeroBagCacheEntry | null> => {
     for (const relative of HERO_BAG_RELATIVE_PATHS) {
       const absolute = findExistingPath(roots, [relative, `data/${normalizeRelative(relative)}`]);
       if (!absolute) continue;
       try {
         const stats = statSync(absolute);
-        if (cache && cache.path === absolute && cache.mtimeMs === stats.mtimeMs) {
-          return cache.data;
+        if (!options.force && cache && cache.path === absolute && cache.mtimeMs === stats.mtimeMs) {
+          return cache;
         }
         const data = (await readJsonFile(absolute)) as UnknownRecord;
         if (isPlainObject(data)) {
           cache = { path: absolute, mtimeMs: stats.mtimeMs, data };
-          return data;
+          return cache;
         }
       } catch (error) {
         cache = null;
@@ -543,8 +549,8 @@ const createHeroBagLoader = (roots: string[]) => {
 };
 
 export interface ExportService {
-  loadMovies(): Promise<MovieExportEntry[]>;
-  loadSeries(): Promise<ShowExportEntry[]>;
+  loadMovies(options?: LoadLibraryOptions): Promise<MovieExportEntry[]>;
+  loadSeries(options?: LoadLibraryOptions): Promise<ShowExportEntry[]>;
   loadSeriesDetails(id: string): Promise<ShowExportEntry | null>;
 }
 
@@ -553,17 +559,65 @@ export const createExportService = (options: ExportServiceOptions = {}): ExportS
   const roots = resolveRoots(root, options.legacyRoots);
   const loadHeroBag = createHeroBagLoader(roots);
 
-  const loadLibrary = async (kind: LibraryKind): Promise<MovieExportEntry[] | ShowExportEntry[]> => {
+  type LibraryCacheEntry = {
+    source: 'file' | 'bag';
+    path: string | null;
+    mtimeMs: number;
+    data: MovieExportEntry[] | ShowExportEntry[];
+  };
+
+  const libraryCache = new Map<LibraryKind, LibraryCacheEntry>();
+
+  const loadLibrary = async (
+    kind: LibraryKind,
+    options: LoadLibraryOptions = {},
+  ): Promise<MovieExportEntry[] | ShowExportEntry[]> => {
     const candidates = kind === 'movie' ? moviePathCandidates() : seriesIndexPathCandidates();
     const absolute = findExistingPath(roots, candidates);
+    const force = options.force ?? false;
 
-    let data: unknown = null;
+    if (!force) {
+      const cached = libraryCache.get(kind);
+      if (cached) {
+        if (cached.source === 'file') {
+          if (absolute && cached.path === absolute) {
+            try {
+              const stats = statSync(absolute);
+              if (stats.mtimeMs === cached.mtimeMs) {
+                return cached.data;
+              }
+            } catch {
+              // ignore and reload
+            }
+          }
+        } else if (cached.source === 'bag' && !absolute) {
+          if (cached.path) {
+            try {
+              const stats = statSync(cached.path);
+              if (stats.mtimeMs === cached.mtimeMs) {
+                return cached.data;
+              }
+            } catch {
+              // ignore and reload
+            }
+          }
+        }
+      }
+    }
+
     let sourceDetails: Record<string, unknown> | undefined;
 
     if (absolute) {
+      let stats: { mtimeMs: number } | null = null;
+      try {
+        stats = statSync(absolute);
+      } catch {
+        stats = null;
+      }
+
+      let data: unknown;
       try {
         data = await readJsonFile(absolute);
-        sourceDetails = { path: absolute };
       } catch (error) {
         if (error instanceof ExportValidationError) {
           throw error;
@@ -573,26 +627,46 @@ export const createExportService = (options: ExportServiceOptions = {}): ExportS
           cause: error,
         });
       }
-    } else {
-      const bag = await loadHeroBag();
-      if (bag) {
-        const key = kind === 'movie' ? 'movies' : 'shows';
-        if (Array.isArray(bag[key])) {
-          data = bag[key];
-          sourceDetails = { path: '__PLEX_EXPORTER__/bag.json', key };
-        }
+
+      const normalized = validateLibraryList(data, kind);
+      const result =
+        kind === 'movie'
+          ? normalizeMovieThumbs(normalized as MovieExportEntry[])
+          : normalizeShowThumbs(normalized as ShowExportEntry[]);
+      libraryCache.set(kind, {
+        source: 'file',
+        path: absolute,
+        mtimeMs: stats?.mtimeMs ?? Number.NaN,
+        data: result,
+      });
+      return result;
+    }
+
+    const bagEntry = await loadHeroBag({ force });
+    if (bagEntry) {
+      const key = kind === 'movie' ? 'movies' : 'shows';
+      const raw = bagEntry.data[key];
+      if (Array.isArray(raw)) {
+        sourceDetails = { path: bagEntry.path, key };
+        const normalized = validateLibraryList(raw, kind);
+        const result =
+          kind === 'movie'
+            ? normalizeMovieThumbs(normalized as MovieExportEntry[])
+            : normalizeShowThumbs(normalized as ShowExportEntry[]);
+        libraryCache.set(kind, {
+          source: 'bag',
+          path: bagEntry.path,
+          mtimeMs: bagEntry.mtimeMs,
+          data: result,
+        });
+        return result;
       }
     }
 
-    if (!data) {
-      throw new ExportNotFoundError(
-        kind === 'movie' ? 'Movies export not found' : 'Series index not found',
-        sourceDetails,
-      );
-    }
-
-    const normalized = validateLibraryList(data, kind);
-    return kind === 'movie' ? normalizeMovieThumbs(normalized as MovieExportEntry[]) : normalizeShowThumbs(normalized as ShowExportEntry[]);
+    throw new ExportNotFoundError(
+      kind === 'movie' ? 'Movies export not found' : 'Series index not found',
+      sourceDetails,
+    );
   };
 
   const loadSeriesDetailsInternal = async (id: string): Promise<ShowExportEntry | null> => {
@@ -608,8 +682,9 @@ export const createExportService = (options: ExportServiceOptions = {}): ExportS
     }
 
     const bag = await loadHeroBag();
-    if (bag) {
-      const details = bag.seriesDetails;
+    const bagData = bag?.data;
+    if (bagData) {
+      const details = bagData.seriesDetails;
       if (isPlainObject(details)) {
         const direct = details[id];
         if (direct && typeof direct === 'object') {
@@ -617,7 +692,7 @@ export const createExportService = (options: ExportServiceOptions = {}): ExportS
           return prefixShowTree(show) as ShowExportEntry;
         }
       }
-      const shows = Array.isArray(bag.shows) ? bag.shows : [];
+      const shows = Array.isArray(bagData.shows) ? bagData.shows : [];
       const match = shows.find((item: unknown) => {
         if (!item || typeof item !== 'object') return false;
         const ratingKey = String((item as { ratingKey?: unknown }).ratingKey ?? '');
@@ -633,11 +708,11 @@ export const createExportService = (options: ExportServiceOptions = {}): ExportS
   };
 
   return {
-    async loadMovies() {
-      return (await loadLibrary('movie')) as MovieExportEntry[];
+    async loadMovies(options?: LoadLibraryOptions) {
+      return (await loadLibrary('movie', options)) as MovieExportEntry[];
     },
-    async loadSeries() {
-      return (await loadLibrary('show')) as ShowExportEntry[];
+    async loadSeries(options?: LoadLibraryOptions) {
+      return (await loadLibrary('show', options)) as ShowExportEntry[];
     },
     async loadSeriesDetails(id: string) {
       if (!id) return null;

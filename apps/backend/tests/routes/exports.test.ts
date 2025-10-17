@@ -1,9 +1,10 @@
 import express from 'express';
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
+import * as fsPromises from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import request from 'supertest';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createExportsRouter } from '../../src/routes/exports.js';
 import { errorHandler } from '../../src/middleware/errorHandler.js';
@@ -129,5 +130,58 @@ describe('exports routes', () => {
 
     expect(response.status).toBe(404);
     expect(response.body.error.message).toBe('Series details not found');
+  });
+
+  it('serves cached search results unless changed or forced', async () => {
+    writeJson('movies/movies.json', [
+      { title: 'Cache Test Movie', ratingKey: 1 },
+    ]);
+
+    const app = createApp();
+    const readFileSpy = vi.spyOn(fsPromises, 'readFile');
+
+    const first = await request(app)
+      .get('/api/exports/search')
+      .query({ kind: 'movie', includeFacets: '0', includeItems: '1' });
+
+    expect(first.status).toBe(200);
+    expect(first.body.items).toHaveLength(1);
+    expect(first.body.items[0]).toMatchObject({ title: 'Cache Test Movie', ratingKey: '1' });
+    expect(readFileSpy.mock.calls.length).toBeGreaterThan(0);
+
+    readFileSpy.mockClear();
+    const second = await request(app)
+      .get('/api/exports/search')
+      .query({ kind: 'movie', includeFacets: '0', includeItems: '1' });
+
+    expect(second.status).toBe(200);
+    expect(second.body.items).toHaveLength(1);
+    expect(second.body.items[0]).toMatchObject({ title: 'Cache Test Movie', ratingKey: '1' });
+    expect(readFileSpy).not.toHaveBeenCalled();
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    writeJson('movies/movies.json', [
+      { title: 'Updated Movie', ratingKey: 2 },
+    ]);
+
+    readFileSpy.mockClear();
+    const third = await request(app)
+      .get('/api/exports/search')
+      .query({ kind: 'movie', includeFacets: '0', includeItems: '1' });
+
+    expect(third.status).toBe(200);
+    expect(third.body.items[0]).toMatchObject({ title: 'Updated Movie', ratingKey: '2' });
+    expect(readFileSpy).toHaveBeenCalledTimes(1);
+
+    readFileSpy.mockClear();
+    const fourth = await request(app)
+      .get('/api/exports/search')
+      .query({ kind: 'movie', includeFacets: '0', includeItems: '1', force: '1' });
+
+    expect(fourth.status).toBe(200);
+    expect(fourth.body.items[0]).toMatchObject({ title: 'Updated Movie', ratingKey: '2' });
+    expect(readFileSpy).toHaveBeenCalledTimes(1);
+
+    readFileSpy.mockRestore();
   });
 });

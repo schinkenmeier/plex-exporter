@@ -11,6 +11,7 @@ import {
   createExportService,
   ExportNotFoundError,
   ExportValidationError,
+  type LoadLibraryOptions,
   type MovieExportEntry,
   type ShowExportEntry,
 } from '../services/exportService.js';
@@ -122,9 +123,12 @@ const mapFiltersFromQuery = (query: Request['query']): MediaFilterOptions => {
 
 type ExportServiceInstance = ReturnType<typeof createExportService>;
 
-const loadMoviesSafe = async (service: ExportServiceInstance): Promise<MovieExportEntry[]> => {
+const loadMoviesSafe = async (
+  service: ExportServiceInstance,
+  options?: LoadLibraryOptions,
+): Promise<MovieExportEntry[]> => {
   try {
-    return await service.loadMovies();
+    return await service.loadMovies(options);
   } catch (error) {
     if (error instanceof ExportNotFoundError) {
       logger.warn('Movies export missing for search request', { namespace: 'exports' });
@@ -134,9 +138,12 @@ const loadMoviesSafe = async (service: ExportServiceInstance): Promise<MovieExpo
   }
 };
 
-const loadShowsSafe = async (service: ExportServiceInstance): Promise<ShowExportEntry[]> => {
+const loadShowsSafe = async (
+  service: ExportServiceInstance,
+  options?: LoadLibraryOptions,
+): Promise<ShowExportEntry[]> => {
   try {
-    return await service.loadSeries();
+    return await service.loadSeries(options);
   } catch (error) {
     if (error instanceof ExportNotFoundError) {
       logger.warn('Series export missing for search request', { namespace: 'exports' });
@@ -287,14 +294,16 @@ export const createExportsRouter = (options: ExportsRouterOptions = {}) => {
     );
     const kind = parseLibraryKind(req.query.kind ?? req.query.library ?? req.query.view);
     const filters = mapFiltersFromQuery(req.query);
+    const forceReload = parseBoolean(req.query.force, false);
+    const libraryOptions: LoadLibraryOptions | undefined = forceReload ? { force: true } : undefined;
 
     try {
       const needsMovies = includeFacets || kind === 'movie' || kind === 'all';
       const needsShows = includeFacets || kind === 'show' || kind === 'all';
 
       const [movies, shows] = await Promise.all([
-        needsMovies ? loadMoviesSafe(exportService) : Promise.resolve<MovieExportEntry[]>([]),
-        needsShows ? loadShowsSafe(exportService) : Promise.resolve<ShowExportEntry[]>([]),
+        needsMovies ? loadMoviesSafe(exportService, libraryOptions) : Promise.resolve<MovieExportEntry[]>([]),
+        needsShows ? loadShowsSafe(exportService, libraryOptions) : Promise.resolve<ShowExportEntry[]>([]),
       ]);
 
       const payload: Record<string, unknown> = {
