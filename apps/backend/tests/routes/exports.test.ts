@@ -6,10 +6,10 @@ import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DEFAULT_PAGE_SIZE } from '@plex-exporter/shared';
-import * as sharedModule from '@plex-exporter/shared';
 
 import { createExportsRouter } from '../../src/routes/exports.js';
 import { errorHandler } from '../../src/middleware/errorHandler.js';
+import * as searchIndexServiceModule from '../../src/services/searchIndexService.js';
 
 describe('exports routes', () => {
   let fixturesDir: string;
@@ -48,7 +48,7 @@ describe('exports routes', () => {
       .query({ kind: 'movie', includeFacets: '0', includeItems: '0' });
 
     const mapSpy = vi.spyOn(Array.prototype, 'map');
-    const computeFacetsSpy = vi.spyOn(sharedModule, 'computeFacets');
+    const buildFacetsSpy = vi.spyOn(searchIndexServiceModule, 'buildFacets');
 
     try {
       const response = await request(app)
@@ -63,10 +63,10 @@ describe('exports routes', () => {
         return source.includes('item.entry');
       });
       expect(entryMapCalls).toHaveLength(0);
-      expect(computeFacetsSpy).not.toHaveBeenCalled();
+      expect(buildFacetsSpy).not.toHaveBeenCalled();
     } finally {
       mapSpy.mockRestore();
-      computeFacetsSpy.mockRestore();
+      buildFacetsSpy.mockRestore();
     }
   });
 

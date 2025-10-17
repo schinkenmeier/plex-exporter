@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { createExportService } from '../../src/services/exportService.js';
 import {
+  buildFacets,
   createSearchIndexService,
   filterIndexedMediaItems,
   filterIndexedMediaItemsPaged,
@@ -102,5 +103,58 @@ describe('searchIndexService', () => {
     const paged = filterIndexedMediaItemsPaged(updatedIndex.entries, {}, { offset: 0, limit: 1 });
     expect(paged.total).toBe(1);
     expect(paged.items[0].entry.title).toBe('Beta');
+  });
+
+  it('builds and caches facets from indexed entries', async () => {
+    writeJson(moviesPath, [
+      {
+        ratingKey: '1',
+        title: 'Bravo',
+        type: 'movie',
+        genres: ['Drama'],
+        collections: ['Collection B'],
+        originallyAvailableAt: '2021-05-20',
+      },
+      {
+        ratingKey: '2',
+        title: 'Alpha',
+        type: 'movie',
+        genres: ['Action'],
+        collections: ['Collection A'],
+        originallyAvailableAt: '2019-07-10',
+      },
+    ]);
+
+    const movieIndex = await searchIndexService.getIndexedLibrary('movie');
+    const facets = buildFacets(movieIndex);
+    expect(facets).toEqual({
+      genres: ['Action', 'Drama'],
+      years: [2019, 2021],
+      collections: ['Collection A', 'Collection B'],
+    });
+    expect(buildFacets(movieIndex)).toBe(facets);
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    writeJson(moviesPath, [
+      {
+        ratingKey: '3',
+        title: 'Gamma',
+        type: 'movie',
+        genres: ['Comedy'],
+        collections: ['Collection C'],
+        originallyAvailableAt: '2022-08-15',
+      },
+    ]);
+
+    const updatedIndex = await searchIndexService.getIndexedLibrary('movie', { force: true });
+    const updatedFacets = buildFacets(updatedIndex);
+    expect(updatedFacets).toEqual({
+      genres: ['Comedy'],
+      years: [2022],
+      collections: ['Collection C'],
+    });
+    expect(updatedFacets).not.toBe(facets);
+    expect(buildFacets(updatedIndex)).toBe(updatedFacets);
   });
 });
