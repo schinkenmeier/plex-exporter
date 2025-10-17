@@ -117,9 +117,107 @@ export interface SearchIndexLibrary<T extends MovieExportEntry | ShowExportEntry
   updatedAt: number;
 }
 
+type AnySearchIndexLibrary = SearchIndexLibrary<MovieExportEntry> | SearchIndexLibrary<ShowExportEntry>;
+
+export interface SearchFacets {
+  genres: string[];
+  years: number[];
+  collections: string[];
+}
+
 type CacheEntry<T extends MovieExportEntry | ShowExportEntry> = {
   source: T[];
   index: SearchIndexLibrary<T>;
+};
+
+const facetCache = new Map<string, SearchFacets>();
+const facetCacheKeysByKind = new Map<LibraryKind, string>();
+
+const buildFacetCacheKey = (library: AnySearchIndexLibrary): string => {
+  return `${library.kind}:${library.updatedAt}`;
+};
+
+const sortStrings = (values: Iterable<string>): string[] => {
+  return Array.from(values).sort((a, b) => collator.compare(a ?? '', b ?? ''));
+};
+
+const sortNumbers = (values: Iterable<number>): number[] => {
+  return Array.from(values).sort((a, b) => a - b);
+};
+
+const getLibraryFacets = (library: AnySearchIndexLibrary): SearchFacets => {
+  const cacheKey = buildFacetCacheKey(library);
+  const cached = facetCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const genres = new Set<string>();
+  const years = new Set<number>();
+  const collections = new Set<string>();
+
+  for (const entry of library.entries) {
+    for (const genre of entry.meta.genreSet) {
+      genres.add(genre);
+    }
+    if (entry.meta.year != null) {
+      years.add(entry.meta.year);
+    }
+    for (const collection of entry.meta.collectionSet) {
+      collections.add(collection);
+    }
+  }
+
+  const facets: SearchFacets = {
+    genres: sortStrings(genres),
+    years: sortNumbers(years),
+    collections: sortStrings(collections),
+  };
+
+  const previousKey = facetCacheKeysByKind.get(library.kind);
+  if (previousKey && previousKey !== cacheKey) {
+    facetCache.delete(previousKey);
+  }
+
+  facetCache.set(cacheKey, facets);
+  facetCacheKeysByKind.set(library.kind, cacheKey);
+
+  return facets;
+};
+
+export const buildFacets = (...libraries: Array<AnySearchIndexLibrary | null | undefined>): SearchFacets => {
+  const validLibraries = libraries.filter((library): library is AnySearchIndexLibrary => Boolean(library));
+
+  if (validLibraries.length === 0) {
+    return { genres: [], years: [], collections: [] };
+  }
+
+  if (validLibraries.length === 1) {
+    return getLibraryFacets(validLibraries[0]);
+  }
+
+  const genres = new Set<string>();
+  const years = new Set<number>();
+  const collections = new Set<string>();
+
+  for (const library of validLibraries) {
+    const facets = getLibraryFacets(library);
+    for (const genre of facets.genres) {
+      genres.add(genre);
+    }
+    for (const year of facets.years) {
+      years.add(year);
+    }
+    for (const collection of facets.collections) {
+      collections.add(collection);
+    }
+  }
+
+  return {
+    genres: sortStrings(genres),
+    years: sortNumbers(years),
+    collections: sortStrings(collections),
+  };
 };
 
 const toIdentifier = (entry: MovieExportEntry | ShowExportEntry): string => {

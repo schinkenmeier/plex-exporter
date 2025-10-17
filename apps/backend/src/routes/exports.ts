@@ -4,7 +4,6 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
-  computeFacets,
   DEFAULT_PAGE_SIZE,
   MAX_PAGE_SIZE,
   type MediaFilterOptions,
@@ -23,6 +22,7 @@ import {
   type ShowExportEntry,
 } from '../services/exportService.js';
 import {
+  buildFacets,
   createSearchIndexService,
   filterIndexedMediaItemsPaged,
   type IndexedMediaEntry,
@@ -412,13 +412,7 @@ export const createExportsRouter = (options: ExportsRouterOptions = {}) => {
       };
 
       if (includeFacets) {
-        const moviesForFacets = needsMovies
-          ? movieIndex.entries.map((item) => item.entry)
-          : [];
-        const showsForFacets = needsShows
-          ? showIndex.entries.map((item) => item.entry)
-          : [];
-        payload.facets = computeFacets(moviesForFacets, showsForFacets);
+        payload.facets = buildFacets(movieIndex, showIndex);
       }
 
       if (includeItems) {
