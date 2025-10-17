@@ -655,7 +655,10 @@ export const createHeroPipelineService = ({
   let cachedPolicy: { policy: HeroPolicy; hash: string } | null = null;
   let cachedPolicyMeta: { path: string | null; mtimeMs: number | null } | null = null;
 
-  const loadPolicy = async ({ force = false }: { force?: boolean } = {}) => {
+  const loadPolicy = async ({ force = false }: { force?: boolean } = {}): Promise<{
+    policy: HeroPolicy;
+    hash: string;
+  }> => {
     let resolvedPolicyPath = await resolvePolicyPath(policyPath);
     let mtimeMs: number | null = null;
 
@@ -664,16 +667,22 @@ export const createHeroPipelineService = ({
         const stats = await fs.stat(resolvedPolicyPath);
         mtimeMs = stats.mtimeMs;
       } catch (error) {
-        const err = error as NodeJS.ErrnoException;
+        const err = error as { code?: string; message?: string };
         if (err?.code === 'ENOENT') {
           resolvedPolicyPath = null;
           mtimeMs = null;
         } else {
+          const normalizedError =
+            (typeof err?.message === 'string' && err.message.length > 0
+              ? err.message
+              : null) ?? (error instanceof Error ? error.message : error);
           logger.warn('Failed to read hero policy metadata', {
             namespace: 'hero',
-            error: err instanceof Error ? err.message : err,
+            error: normalizedError,
             path: resolvedPolicyPath,
           });
+          resolvedPolicyPath = null;
+          mtimeMs = null;
         }
       }
     }
@@ -685,9 +694,14 @@ export const createHeroPipelineService = ({
       cachedPolicyMeta.path !== resolvedPolicyPath ||
       cachedPolicyMeta.mtimeMs !== mtimeMs;
 
-    if (needsReload) {
-      cachedPolicy = await readPolicy(policyPath, resolvedPolicyPath);
+    if (!cachedPolicy || needsReload) {
+      const nextPolicy = await readPolicy(policyPath, resolvedPolicyPath);
+      cachedPolicy = nextPolicy;
       cachedPolicyMeta = { path: resolvedPolicyPath, mtimeMs };
+    }
+
+    if (!cachedPolicy) {
+      throw new Error('Failed to load hero policy');
     }
 
     return cachedPolicy;
