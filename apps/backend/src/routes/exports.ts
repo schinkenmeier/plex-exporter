@@ -5,7 +5,6 @@ import path from 'node:path';
 
 import {
   computeFacets,
-  filterMediaItemsPaged,
   DEFAULT_PAGE_SIZE,
   MAX_PAGE_SIZE,
   type MediaFilterOptions,
@@ -18,10 +17,17 @@ import {
   createExportService,
   ExportNotFoundError,
   ExportValidationError,
+  type LibraryKind,
   type LoadLibraryOptions,
   type MovieExportEntry,
   type ShowExportEntry,
 } from '../services/exportService.js';
+import {
+  createSearchIndexService,
+  filterIndexedMediaItemsPaged,
+  type IndexedMediaEntry,
+  type SearchIndexLibrary,
+} from '../services/searchIndexService.js';
 
 export interface ExportsRouterOptions {
   exportsPath?: string;
@@ -199,33 +205,41 @@ const mapFiltersFromQuery = (query: Request['query']): MediaFilterOptions => {
   return filters;
 };
 
-type ExportServiceInstance = ReturnType<typeof createExportService>;
+type SearchIndexServiceInstance = ReturnType<typeof createSearchIndexService>;
 
-const loadMoviesSafe = async (
-  service: ExportServiceInstance,
+const createEmptyIndex = <T extends MovieExportEntry | ShowExportEntry>(
+  kind: LibraryKind,
+): SearchIndexLibrary<T> => ({
+  kind,
+  entries: [],
+  updatedAt: Date.now(),
+});
+
+const loadIndexedMoviesSafe = async (
+  service: SearchIndexServiceInstance,
   options?: LoadLibraryOptions,
-): Promise<MovieExportEntry[]> => {
+): Promise<SearchIndexLibrary<MovieExportEntry>> => {
   try {
-    return await service.loadMovies(options);
+    return await service.getIndexedLibrary('movie', options);
   } catch (error) {
     if (error instanceof ExportNotFoundError) {
       logger.warn('Movies export missing for search request', { namespace: 'exports' });
-      return [];
+      return createEmptyIndex<MovieExportEntry>('movie');
     }
     throw error;
   }
 };
 
-const loadShowsSafe = async (
-  service: ExportServiceInstance,
+const loadIndexedShowsSafe = async (
+  service: SearchIndexServiceInstance,
   options?: LoadLibraryOptions,
-): Promise<ShowExportEntry[]> => {
+): Promise<SearchIndexLibrary<ShowExportEntry>> => {
   try {
-    return await service.loadSeries(options);
+    return await service.getIndexedLibrary('show', options);
   } catch (error) {
     if (error instanceof ExportNotFoundError) {
       logger.warn('Series export missing for search request', { namespace: 'exports' });
-      return [];
+      return createEmptyIndex<ShowExportEntry>('show');
     }
     throw error;
   }
@@ -239,6 +253,7 @@ export const createExportsRouter = (options: ExportsRouterOptions = {}) => {
   const router = Router();
   const exportsPath = options.exportsPath || DEFAULT_EXPORTS_PATH;
   const exportService = createExportService({ root: exportsPath });
+  const searchIndexService = createSearchIndexService({ exportService });
 
   // Cache headers helper
   const setCacheHeaders = (res: Response, maxAge: number = 300) => {
@@ -379,10 +394,17 @@ export const createExportsRouter = (options: ExportsRouterOptions = {}) => {
       const needsMovies = includeFacets || kind === 'movie' || kind === 'all';
       const needsShows = includeFacets || kind === 'show' || kind === 'all';
 
-      const [movies, shows] = await Promise.all([
-        needsMovies ? loadMoviesSafe(exportService, libraryOptions) : Promise.resolve<MovieExportEntry[]>([]),
-        needsShows ? loadShowsSafe(exportService, libraryOptions) : Promise.resolve<ShowExportEntry[]>([]),
+      const [movieIndex, showIndex] = await Promise.all([
+        needsMovies
+          ? loadIndexedMoviesSafe(searchIndexService, libraryOptions)
+          : Promise.resolve(createEmptyIndex<MovieExportEntry>('movie')),
+        needsShows
+          ? loadIndexedShowsSafe(searchIndexService, libraryOptions)
+          : Promise.resolve(createEmptyIndex<ShowExportEntry>('show')),
       ]);
+
+      const movies = movieIndex.entries.map((item) => item.entry);
+      const shows = showIndex.entries.map((item) => item.entry);
 
       const payload: Record<string, unknown> = {
         kind,
@@ -404,12 +426,26 @@ export const createExportsRouter = (options: ExportsRouterOptions = {}) => {
           return next(error instanceof HttpError ? error : new HttpError(400, 'Invalid pagination parameter'));
         }
 
-        const pool = kind === 'all' ? [...movies, ...shows] : kind === 'show' ? shows : movies;
-        const { items, total } = filterMediaItemsPaged(pool, filters, {
-          offset: pagination.offset,
-          limit: pagination.limit,
-        });
-        payload.items = items;
+        const moviesForPool =
+          movieIndex.entries as Array<IndexedMediaEntry<MovieExportEntry | ShowExportEntry>>;
+        const showsForPool =
+          showIndex.entries as Array<IndexedMediaEntry<MovieExportEntry | ShowExportEntry>>;
+        const pool: Array<IndexedMediaEntry<MovieExportEntry | ShowExportEntry>> =
+          kind === 'all'
+            ? [...moviesForPool, ...showsForPool]
+            : kind === 'show'
+              ? showsForPool
+              : moviesForPool;
+
+        const { items: indexedItems, total } = filterIndexedMediaItemsPaged(
+          pool,
+          filters,
+          {
+            offset: pagination.offset,
+            limit: pagination.limit,
+          },
+        );
+        payload.items = indexedItems.map((item) => item.entry);
         payload.total = total;
         payload.page = pagination.page;
         payload.pageSize = pagination.pageSize;
