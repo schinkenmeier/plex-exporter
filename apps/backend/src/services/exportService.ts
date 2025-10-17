@@ -619,7 +619,11 @@ export const createExportService = (options: ExportServiceOptions = {}): ExportS
       if (cached) {
         if (cached.source === 'file') {
           const candidatePath = cached.path;
-          if (candidatePath) {
+          const preferredPath = primaryAbsolute ?? fallbackAbsolute ?? null;
+          const pathChanged = Boolean(preferredPath && preferredPath !== candidatePath);
+          if (pathChanged) {
+            // A higher priority export file is now available; reload it instead of using the cache.
+          } else if (candidatePath) {
             try {
               const stats = statSync(candidatePath);
               if (stats.mtimeMs === cached.mtimeMs) {
