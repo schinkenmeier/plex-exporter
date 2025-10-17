@@ -1,7 +1,12 @@
 import { getState, setState } from '../../core/state.js';
 import { qs } from '../../core/dom.js';
 import { fetchCatalogFacets, searchLibrary } from '../../js/data.js';
-import { computeFacets as computeSharedFacets, filterMediaItems as filterSharedMediaItems } from '@plex-exporter/shared';
+import {
+  computeFacets as computeSharedFacets,
+  filterMediaItems as filterSharedMediaItems,
+  DEFAULT_PAGE_SIZE,
+  MAX_PAGE_SIZE,
+} from '@plex-exporter/shared';
 
 export async function computeFacets(movies = [], shows = []){
   try{
@@ -87,12 +92,15 @@ function toFilterPayload(opts, cfg){
   return payload;
 }
 
+const DEFAULT_PAGE = 1;
+const MAX_PAGE = 1000;
 let activeFilterRequest = 0;
 
-export function applyFilters(){
+export function applyFilters(pagination = {}){
   const state = getState();
   const view = state.view;
   if(view !== 'movies' && view !== 'shows'){
+    setState({ filtered: [], filteredMeta: { page: DEFAULT_PAGE, pageSize: DEFAULT_PAGE_SIZE, total: 0 } });
     return [];
   }
 
@@ -101,14 +109,54 @@ export function applyFilters(){
   const pool = view === 'shows' ? state.shows : state.movies;
   const fallback = Array.isArray(pool) ? filterSharedMediaItems(pool, payload, Date.now()) : [];
 
-  setState({ filtered: fallback });
+  const previousMeta = state.filteredMeta || { page: DEFAULT_PAGE, pageSize: DEFAULT_PAGE_SIZE, total: 0 };
+  const clampPageSize = (value) => {
+    const num = Number(value);
+    if(!Number.isFinite(num)) return DEFAULT_PAGE_SIZE;
+    const int = Math.floor(num);
+    if(int < 1) return 1;
+    if(int > MAX_PAGE_SIZE) return MAX_PAGE_SIZE;
+    return int;
+  };
+  const clampPage = (value) => {
+    const num = Number(value);
+    if(!Number.isFinite(num) || num < DEFAULT_PAGE) return DEFAULT_PAGE;
+    const int = Math.floor(num);
+    if(int > MAX_PAGE) return MAX_PAGE;
+    return int;
+  };
+
+  const desiredPageSize = clampPageSize(
+    pagination && Object.prototype.hasOwnProperty.call(pagination, 'pageSize')
+      ? pagination.pageSize
+      : previousMeta.pageSize,
+  );
+  const desiredPage = clampPage(
+    pagination && Object.prototype.hasOwnProperty.call(pagination, 'page')
+      ? pagination.page
+      : DEFAULT_PAGE,
+  );
+
+  const fallbackMeta = {
+    page: desiredPage,
+    pageSize: desiredPageSize,
+    total: fallback.length,
+  };
+
+  setState({ filtered: fallback, filteredMeta: fallbackMeta });
 
   const requestId = ++activeFilterRequest;
-  searchLibrary(view, payload, { includeFacets: false })
+  searchLibrary(view, payload, { includeFacets: false, page: desiredPage, pageSize: desiredPageSize })
     .then((response) => {
       if(requestId !== activeFilterRequest) return;
       if(!response || !Array.isArray(response.items)) return;
-      setState({ filtered: response.items });
+      const total = Number.isFinite(response.total) && response.total >= 0 ? response.total : response.items.length;
+      const resolvedMeta = {
+        page: clampPage(response.page ?? desiredPage),
+        pageSize: clampPageSize(response.pageSize ?? desiredPageSize),
+        total,
+      };
+      setState({ filtered: response.items, filteredMeta: resolvedMeta });
       renderGridForCurrentView();
       notifyFiltersUpdated(response.items);
     })
@@ -136,8 +184,8 @@ export function setFiltersUpdatedHandler(handler){
   filtersUpdatedHandler = typeof handler === 'function' ? handler : null;
 }
 
-export function updateFiltersAndGrid(){
-  const result = applyFilters();
+export function updateFiltersAndGrid(pagination){
+  const result = applyFilters(pagination);
   renderGridForCurrentView();
   notifyFiltersUpdated(result);
   return result;
@@ -197,7 +245,8 @@ function notifyFiltersUpdated(items){
   if(!filtersUpdatedHandler) return;
   try{
     const payload = Array.isArray(items) ? items.slice() : [];
-    filtersUpdatedHandler(payload, getState().view);
+    const meta = { ...(getState().filteredMeta || {}) };
+    filtersUpdatedHandler(payload, getState().view, meta);
   }catch(err){
     console.warn('[filter] Failed to notify filters handler:', err?.message);
   }

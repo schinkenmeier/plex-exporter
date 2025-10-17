@@ -70,6 +70,8 @@ export interface MediaFilterOptions {
 }
 
 export declare const SORT_KEY_VALUES: SortKey[];
+export declare const DEFAULT_PAGE_SIZE: number;
+export declare const MAX_PAGE_SIZE: number;
 
 export declare const normalizeText: (value: unknown) => string;
 export declare const getGenreNames: (genres: unknown) => string[];
@@ -92,7 +94,24 @@ export declare const filterMediaItems: <T extends GenericMediaItem>(
   now?: number,
 ) => T[];
 
+export interface MediaPaginationOptions {
+  offset?: number | null;
+  limit?: number | null;
+}
+
+export interface MediaPage<T extends GenericMediaItem> {
+  items: T[];
+  total: number;
+}
+
 export declare const computeFacets: (
   movies?: GenericMediaItem[] | undefined,
   shows?: GenericMediaItem[] | undefined,
 ) => MediaFacets;
+
+export declare const filterMediaItemsPaged: <T extends GenericMediaItem>(
+  items: T[] | undefined,
+  filters?: MediaFilterOptions,
+  pagination?: MediaPaginationOptions,
+  now?: number,
+) => MediaPage<T>;

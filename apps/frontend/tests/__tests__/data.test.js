@@ -18,8 +18,9 @@ if(typeof global.localStorage === 'undefined'){
   };
 }
 
-const { prefixThumbValue, prefixMovieThumb, prefixShowThumb, fetchJson, loadMovies } = await import('../../src/js/data.js');
+const { prefixThumbValue, prefixMovieThumb, prefixShowThumb, fetchJson, loadMovies, searchLibrary } = await import('../../src/js/data.js');
 const { isMovieEntry, isShowEntry, validateLibraryList } = await import('../../src/js/data/validators.js');
+const { DEFAULT_PAGE_SIZE } = await import('@plex-exporter/shared');
 
 if(originalWindow === undefined) delete global.window; else global.window = originalWindow;
 if(originalDocument === undefined) delete global.document; else global.document = originalDocument;
@@ -133,6 +134,51 @@ describe('data loading resilience', () => {
     assert.strictEqual(result[0].title, 'Fallback Film');
     assert.ok(result[0].thumb?.startsWith('data/exports/movies/'));
     assert.ok(callCount >= 1);
+  });
+});
+
+describe('searchLibrary pagination', () => {
+  it('includes page parameters and normalizes response metadata', async () => {
+    let capturedUrl = '';
+    global.fetch = async (url) => {
+      capturedUrl = String(url);
+      return {
+        ok: true,
+        json: async () => ({
+          items: [{ title: 'Paged', ratingKey: '5' }],
+          total: 42,
+          page: 3,
+          pageSize: 10,
+        }),
+      };
+    };
+
+    const result = await searchLibrary('movies', {}, { page: 3, pageSize: 10 });
+    assert.ok(capturedUrl.includes('page=3'));
+    assert.ok(capturedUrl.includes('pageSize=10'));
+    assert.strictEqual(result.page, 3);
+    assert.strictEqual(result.pageSize, 10);
+    assert.strictEqual(result.total, 42);
+    assert.strictEqual(result.items.length, 1);
+    assert.strictEqual(result.items[0].title, 'Paged');
+  });
+
+  it('falls back to defaults when server omits pagination fields', async () => {
+    let capturedUrl = '';
+    global.fetch = async (url) => {
+      capturedUrl = String(url);
+      return {
+        ok: true,
+        json: async () => ({ items: [{ title: 'Fallback', ratingKey: '7' }] }),
+      };
+    };
+
+    const result = await searchLibrary('shows');
+    assert.ok(capturedUrl.includes('page=1'));
+    assert.ok(capturedUrl.includes(`pageSize=${DEFAULT_PAGE_SIZE}`));
+    assert.strictEqual(result.page, 1);
+    assert.strictEqual(result.pageSize, DEFAULT_PAGE_SIZE);
+    assert.strictEqual(result.total, 1);
   });
 });
 

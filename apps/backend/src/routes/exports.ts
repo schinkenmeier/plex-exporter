@@ -3,7 +3,14 @@ import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { computeFacets, filterMediaItems, type MediaFilterOptions, type SortKey } from '@plex-exporter/shared';
+import {
+  computeFacets,
+  filterMediaItemsPaged,
+  DEFAULT_PAGE_SIZE,
+  MAX_PAGE_SIZE,
+  type MediaFilterOptions,
+  type SortKey,
+} from '@plex-exporter/shared';
 
 import logger from '../services/logger.js';
 import { HttpError } from '../middleware/errorHandler.js';
@@ -47,6 +54,10 @@ const resolveExportsPath = (): string => {
 const DEFAULT_EXPORTS_PATH = resolveExportsPath();
 
 const truthy = new Set(['1', 'true', 'yes', 'on']);
+
+const DEFAULT_PAGE = 1;
+const MAX_PAGE = 1000;
+const MAX_OFFSET = MAX_PAGE_SIZE * MAX_PAGE;
 
 const parseBoolean = (value: unknown, defaultValue: boolean): boolean => {
   if (value === undefined) return defaultValue;
@@ -96,6 +107,73 @@ const parseLibraryKind = (value: unknown): 'movie' | 'show' | 'all' => {
   if (str === 'show' || str === 'shows' || str === 'series') return 'show';
   if (str === 'all') return 'all';
   return 'movie';
+};
+
+interface PaginationParams {
+  page: number;
+  pageSize: number;
+  offset: number;
+  limit: number;
+}
+
+const createPaginationError = (parameter: string, value: unknown, reason: string) =>
+  new HttpError(400, 'Invalid pagination parameter', {
+    details: { parameter, value, reason },
+  });
+
+const ensureIntegerInRange = (value: number, parameter: string, bounds: { min?: number; max?: number }) => {
+  if (!Number.isInteger(value)) {
+    throw createPaginationError(parameter, value, 'Value must be an integer');
+  }
+  const { min, max } = bounds;
+  if (min != null && value < min) {
+    throw createPaginationError(parameter, value, `Value must be ≥ ${min}`);
+  }
+  if (max != null && value > max) {
+    throw createPaginationError(parameter, value, `Value must be ≤ ${max}`);
+  }
+  return value;
+};
+
+const parsePaginationParams = (query: Request['query']): PaginationParams => {
+  const pageRaw = parseNumberParam(query.page);
+  const pageSizeRaw =
+    parseNumberParam(query.pageSize) ??
+    parseNumberParam(query.page_size) ??
+    parseNumberParam(query['page-size']);
+  const offsetRaw = parseNumberParam(query.offset);
+  const limitRaw = parseNumberParam(query.limit);
+
+  const hasPageParams = pageRaw != null || pageSizeRaw != null;
+  const hasOffsetParams = offsetRaw != null || limitRaw != null;
+
+  if (hasPageParams || !hasOffsetParams) {
+    const page = ensureIntegerInRange(pageRaw ?? DEFAULT_PAGE, 'page', { min: DEFAULT_PAGE, max: MAX_PAGE });
+    const pageSize = ensureIntegerInRange(pageSizeRaw ?? DEFAULT_PAGE_SIZE, 'pageSize', {
+      min: 1,
+      max: MAX_PAGE_SIZE,
+    });
+    const offset = (page - 1) * pageSize;
+    if (offset > MAX_OFFSET) {
+      throw createPaginationError('page', page, `Resulting offset exceeds maximum of ${MAX_OFFSET}`);
+    }
+    return {
+      page,
+      pageSize,
+      offset,
+      limit: pageSize,
+    };
+  }
+
+  const offset = ensureIntegerInRange(offsetRaw ?? 0, 'offset', { min: 0, max: MAX_OFFSET });
+  const limit = ensureIntegerInRange(limitRaw ?? DEFAULT_PAGE_SIZE, 'limit', { min: 1, max: MAX_PAGE_SIZE });
+  const page = Math.floor(offset / limit) + 1;
+  return {
+    page,
+    pageSize: limit,
+    offset,
+    limit,
+  };
 };
 
 const mapFiltersFromQuery = (query: Request['query']): MediaFilterOptions => {
@@ -319,10 +397,22 @@ export const createExportsRouter = (options: ExportsRouterOptions = {}) => {
       }
 
       if (includeItems) {
+        let pagination: PaginationParams;
+        try {
+          pagination = parsePaginationParams(req.query);
+        } catch (error) {
+          return next(error instanceof HttpError ? error : new HttpError(400, 'Invalid pagination parameter'));
+        }
+
         const pool = kind === 'all' ? [...movies, ...shows] : kind === 'show' ? shows : movies;
-        const items = filterMediaItems(pool, filters);
+        const { items, total } = filterMediaItemsPaged(pool, filters, {
+          offset: pagination.offset,
+          limit: pagination.limit,
+        });
         payload.items = items;
-        payload.total = items.length;
+        payload.total = total;
+        payload.page = pagination.page;
+        payload.pageSize = pagination.pageSize;
       }
 
       setCacheHeaders(res, includeItems ? 60 : 300);
