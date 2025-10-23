@@ -56,7 +56,8 @@ class ImportService {
 
       // Resolve script path
       const __dirname = path.dirname(fileURLToPath(import.meta.url));
-      const scriptPath = path.join(__dirname, '..', 'scripts', 'import-exports.ts');
+      // Use compiled JavaScript file instead of TypeScript
+      const scriptPath = path.join(__dirname, '..', 'scripts', 'import-exports.js');
 
       logger.info('Starting import process', { scriptPath, args });
 
@@ -67,8 +68,8 @@ class ImportService {
         logs: [],
       };
 
-      // Spawn process using tsx (TypeScript runner)
-      this.currentProcess = spawn('npx', ['tsx', scriptPath, ...args], {
+      // Spawn process using node (not tsx)
+      this.currentProcess = spawn('node', [scriptPath, ...args], {
         cwd: path.join(__dirname, '..', '..'),
         env: process.env,
         stdio: 'pipe',

@@ -280,7 +280,11 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
    */
   router.post('/api/test/smtp', async (req: Request, res: Response, next: NextFunction) => {
     if (!smtpService) {
-      return next(new HttpError(503, 'SMTP service is not configured'));
+      return res.status(503).json({
+        success: false,
+        error: 'SMTP service is not configured',
+        message: 'Please configure SMTP environment variables (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM)',
+      });
     }
 
     const { to } = req.body || {};
@@ -316,7 +320,11 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
    */
   router.post('/api/test/tautulli', async (_req: Request, res: Response, next: NextFunction) => {
     if (!tautulliService) {
-      return next(new HttpError(503, 'Tautulli service is not configured'));
+      return res.status(503).json({
+        success: false,
+        error: 'Tautulli service is not configured',
+        message: 'Please configure Tautulli environment variables (TAUTULLI_URL, TAUTULLI_API_KEY)',
+      });
     }
 
     try {

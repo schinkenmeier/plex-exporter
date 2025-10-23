@@ -310,8 +310,42 @@
       animation: spin 0.8s linear infinite;
     }
 
+    .spinner-large {
+      width: 2rem;
+      height: 2rem;
+      border-width: 3px;
+    }
+
     @keyframes spin {
       to { transform: rotate(360deg); }
+    }
+
+    .pulse {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.5;
+      }
+    }
+
+    .status-running {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid var(--accent);
+      border-radius: 0.375rem;
+      margin-bottom: 1rem;
+    }
+
+    .status-running .spinner {
+      flex-shrink: 0;
     }
 
     .section {
@@ -385,9 +419,66 @@
       overflow-x: auto;
       font-size: 0.75rem;
     }
+
+    /* Toast notifications */
+    .toast-container {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .toast {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 0.375rem;
+      padding: 1rem;
+      min-width: 300px;
+      max-width: 400px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      animation: slideIn 0.3s ease-out;
+    }
+
+    .toast-success {
+      border-left: 4px solid var(--success);
+    }
+
+    .toast-error {
+      border-left: 4px solid var(--danger);
+    }
+
+    .toast-info {
+      border-left: 4px solid var(--accent);
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+    }
   </style>
 </head>
 <body>
+  <div class="toast-container" id="toast-container"></div>
   <div class="container">
     <header>
       <h1>Plex Exporter - Admin Panel</h1>
@@ -404,6 +495,17 @@
 
     <!-- Dashboard Tab -->
     <div class="tab-content active" id="dashboard-tab">
+      <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+        <h2 style="margin: 0;">Übersicht</h2>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <label style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
+            <input type="checkbox" id="auto-refresh-toggle" onchange="toggleAutoRefresh()">
+            Auto-Refresh (30s)
+          </label>
+          <button class="btn btn-secondary btn-sm" onclick="loadDashboard()">🔄 Jetzt aktualisieren</button>
+        </div>
+      </div>
+
       <div class="grid">
         <div class="card">
           <div class="card-header">
@@ -418,7 +520,6 @@
         <div class="card">
           <div class="card-header">
             <h3>Datenbank-Statistiken</h3>
-            <button class="btn btn-secondary btn-sm" onclick="loadStats()">🔄 Aktualisieren</button>
           </div>
           <div id="db-stats">
             <div class="spinner"></div> Lade Statistiken...
@@ -553,17 +654,17 @@
               <label class="form-label">Empfänger-E-Mail</label>
               <input type="email" class="form-input" id="smtp-test-email" placeholder="test@example.com">
             </div>
-            <button class="btn btn-primary" onclick="testSmtp()">📧 SMTP testen</button>
+            <button class="btn btn-primary" id="smtp-test-btn" onclick="testSmtp()">📧 SMTP testen</button>
           </div>
 
           <div class="section">
             <h3>Tautulli-Test</h3>
-            <button class="btn btn-primary" onclick="testTautulli()">🔌 Tautulli testen</button>
+            <button class="btn btn-primary" id="tautulli-test-btn" onclick="testTautulli()">🔌 Tautulli testen</button>
           </div>
 
           <div class="section">
             <h3>Datenbank-Test</h3>
-            <button class="btn btn-primary" onclick="testDatabase()">💾 Datenbank testen</button>
+            <button class="btn btn-primary" id="database-test-btn" onclick="testDatabase()">💾 Datenbank testen</button>
           </div>
 
           <div id="test-results" style="margin-top: 1.5rem;"></div>
@@ -575,6 +676,39 @@
   <script>
     // API Base URL
     const API_BASE = '/admin/api';
+
+    // Debug logging
+    const DEBUG = true;
+    function log(...args) {
+      if (DEBUG) console.log('[Admin UI]', ...args);
+    }
+
+    // Global error handler for better debugging
+    window.addEventListener('error', (e) => {
+      console.error('[Admin UI Error]', e.error);
+    });
+
+    window.addEventListener('unhandledrejection', (e) => {
+      console.error('[Admin UI Unhandled Rejection]', e.reason);
+    });
+
+    // Toast notification system
+    function showToast(message, type = 'info', duration = 3000) {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.textContent = message;
+
+      container.appendChild(toast);
+      log(`Toast: [${type}] ${message}`);
+
+      setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => {
+          container.removeChild(toast);
+        }, 300);
+      }, duration);
+    }
 
     // Tab switching
     document.querySelectorAll('.tab').forEach(tab => {
@@ -611,13 +745,18 @@
 
     // Load dashboard data
     async function loadDashboard() {
+      log('Loading dashboard...');
+      showToast('Dashboard wird aktualisiert...', 'info', 1500);
       await Promise.all([loadStatus(), loadStats(), loadServicesStatus()]);
+      showToast('Dashboard aktualisiert', 'success', 2000);
     }
 
     async function loadStatus() {
+      log('Loading system status...');
       try {
         const response = await fetch(`${API_BASE}/status`);
         const data = await response.json();
+        log('System status loaded:', data);
 
         document.getElementById('system-status').innerHTML = `
           <div class="stat">
@@ -651,9 +790,11 @@
     }
 
     async function loadStats() {
+      log('Loading database stats...');
       try {
         const response = await fetch(`${API_BASE}/stats`);
         const data = await response.json();
+        log('Database stats loaded:', data);
 
         document.getElementById('db-stats').innerHTML = `
           <div class="stat">
@@ -781,6 +922,12 @@
         seriesOnly: document.getElementById('import-series-only').checked,
       };
 
+      // Disable button and show loading state
+      const startBtn = document.getElementById('start-import-btn');
+      const originalText = startBtn.innerHTML;
+      startBtn.disabled = true;
+      startBtn.innerHTML = '⏳ Starte Import...';
+
       try {
         const response = await fetch(`${API_BASE}/import`, {
           method: 'POST',
@@ -790,18 +937,22 @@
 
         const data = await response.json();
 
-        if (data.success) {
-          showImportAlert('success', data.message);
-          document.getElementById('start-import-btn').disabled = true;
+        if (data.success || response.ok) {
+          showImportAlert('success', data.message || 'Import gestartet');
+          showToast('Import wurde gestartet', 'success');
           document.getElementById('stop-import-btn').disabled = false;
 
           // Start polling for status
           startImportPolling();
         } else {
-          showImportAlert('error', data.error);
+          showImportAlert('error', data.error || 'Unbekannter Fehler beim Starten des Imports');
+          startBtn.disabled = false;
+          startBtn.innerHTML = originalText;
         }
       } catch (error) {
-        showImportAlert('error', `Fehler: ${error.message}`);
+        showImportAlert('error', `Netzwerkfehler: ${error.message}`);
+        startBtn.disabled = false;
+        startBtn.innerHTML = originalText;
       }
     }
 
@@ -821,10 +972,12 @@
     }
 
     let importPollingInterval = null;
+    let pollCount = 0;
 
     function startImportPolling() {
       if (importPollingInterval) return;
 
+      pollCount = 0;
       importPollingInterval = setInterval(async () => {
         await loadImportStatus();
 
@@ -832,15 +985,26 @@
         if (!status.running) {
           stopImportPolling();
           document.getElementById('start-import-btn').disabled = false;
+          document.getElementById('start-import-btn').innerHTML = '▶️ Import starten';
           document.getElementById('stop-import-btn').disabled = true;
         }
-      }, 2000);
+
+        pollCount++;
+      }, getAdaptivePollingInterval());
+    }
+
+    function getAdaptivePollingInterval() {
+      // Start with frequent polling (1s), then reduce to 3s after 10 polls
+      // This reduces server load while still providing good UX
+      if (pollCount < 10) return 1000;  // First 10 seconds: poll every 1s
+      return 3000;  // After that: poll every 3s
     }
 
     function stopImportPolling() {
       if (importPollingInterval) {
         clearInterval(importPollingInterval);
         importPollingInterval = null;
+        pollCount = 0;
       }
     }
 
@@ -850,14 +1014,31 @@
         const data = await response.json();
 
         const statusBadge = data.running
-          ? '<span class="badge badge-warning">Läuft</span>'
+          ? '<span class="badge badge-warning pulse">Läuft</span>'
           : data.exitCode === 0
             ? '<span class="badge badge-success">Abgeschlossen</span>'
             : data.exitCode !== undefined
               ? '<span class="badge badge-danger">Fehler</span>'
               : '<span class="badge badge-info">Bereit</span>';
 
-        document.getElementById('import-status-display').innerHTML = `
+        let statusHTML = '';
+
+        // Show running indicator if import is active
+        if (data.running) {
+          statusHTML += `
+            <div class="status-running">
+              <div class="spinner"></div>
+              <div>
+                <strong>Import läuft...</strong>
+                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                  PID: ${data.pid || 'N/A'} • Gestartet: ${data.startedAt ? new Date(data.startedAt).toLocaleTimeString('de-DE') : 'N/A'}
+                </div>
+              </div>
+            </div>
+          `;
+        }
+
+        statusHTML += `
           <div class="stat">
             <span class="stat-label">Status</span>
             <span class="stat-value">${statusBadge}</span>
@@ -890,6 +1071,8 @@
             <div class="alert alert-error" style="margin-top: 1rem;">${data.error}</div>
           ` : ''}
         `;
+
+        document.getElementById('import-status-display').innerHTML = statusHTML;
 
         // Update logs
         if (data.logs && data.logs.length > 0) {
@@ -981,6 +1164,11 @@
         return;
       }
 
+      const btn = document.getElementById('smtp-test-btn');
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Teste...';
+
       try {
         const response = await fetch(`${API_BASE}/test/smtp`, {
           method: 'POST',
@@ -990,43 +1178,72 @@
 
         const data = await response.json();
 
-        if (data.success) {
+        if (response.status === 503) {
+          showTestResult('error', 'SMTP nicht konfiguriert', {
+            message: 'SMTP-Service ist nicht aktiviert. Bitte konfigurieren Sie die SMTP-Umgebungsvariablen.',
+            details: data
+          });
+        } else if (data.success || response.ok) {
           showTestResult('success', 'SMTP-Test erfolgreich', data);
         } else {
           showTestResult('error', 'SMTP-Test fehlgeschlagen', data);
         }
       } catch (error) {
         showTestResult('error', 'SMTP-Test fehlgeschlagen', { error: error.message });
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
       }
     }
 
     async function testTautulli() {
+      const btn = document.getElementById('tautulli-test-btn');
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Teste...';
+
       try {
         const response = await fetch(`${API_BASE}/test/tautulli`, { method: 'POST' });
         const data = await response.json();
 
-        if (data.success) {
+        if (response.status === 503) {
+          showTestResult('error', 'Tautulli nicht konfiguriert', {
+            message: 'Tautulli-Service ist nicht aktiviert. Bitte konfigurieren Sie die Tautulli-Umgebungsvariablen (TAUTULLI_URL und TAUTULLI_API_KEY).',
+            details: data
+          });
+        } else if (data.success || response.ok) {
           showTestResult('success', 'Tautulli-Test erfolgreich', data);
         } else {
           showTestResult('error', 'Tautulli-Test fehlgeschlagen', data);
         }
       } catch (error) {
         showTestResult('error', 'Tautulli-Test fehlgeschlagen', { error: error.message });
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
       }
     }
 
     async function testDatabase() {
+      const btn = document.getElementById('database-test-btn');
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Teste...';
+
       try {
         const response = await fetch(`${API_BASE}/test/database`, { method: 'POST' });
         const data = await response.json();
 
-        if (data.success) {
+        if (data.success || response.ok) {
           showTestResult('success', 'Datenbank-Test erfolgreich', data);
         } else {
           showTestResult('error', 'Datenbank-Test fehlgeschlagen', data);
         }
       } catch (error) {
         showTestResult('error', 'Datenbank-Test fehlgeschlagen', { error: error.message });
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
       }
     }
 
@@ -1057,8 +1274,85 @@
       return div.innerHTML;
     }
 
+    // Auto-refresh functionality
+    let autoRefreshInterval = null;
+
+    function toggleAutoRefresh() {
+      const toggle = document.getElementById('auto-refresh-toggle');
+
+      if (toggle.checked) {
+        startAutoRefresh();
+      } else {
+        stopAutoRefresh();
+      }
+    }
+
+    function startAutoRefresh() {
+      if (autoRefreshInterval) return;
+
+      // Refresh every 30 seconds
+      autoRefreshInterval = setInterval(() => {
+        // Only refresh if dashboard tab is active
+        const dashboardTab = document.getElementById('dashboard-tab');
+        if (dashboardTab && dashboardTab.classList.contains('active')) {
+          loadDashboard();
+        }
+      }, 30000);
+
+      console.log('Auto-refresh enabled (30s interval)');
+    }
+
+    function stopAutoRefresh() {
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+        console.log('Auto-refresh disabled');
+      }
+    }
+
+    // Stop auto-refresh when tab is switched
+    document.querySelectorAll('.tab').forEach(tab => {
+      const originalClickHandler = tab.onclick;
+      tab.addEventListener('click', () => {
+        const tabName = tab.dataset.tab;
+        if (tabName !== 'dashboard') {
+          const toggle = document.getElementById('auto-refresh-toggle');
+          if (toggle && toggle.checked) {
+            // Keep toggle checked but stop refreshing when not on dashboard
+            stopAutoRefresh();
+          }
+        } else if (tabName === 'dashboard') {
+          const toggle = document.getElementById('auto-refresh-toggle');
+          if (toggle && toggle.checked) {
+            // Restart auto-refresh when returning to dashboard
+            startAutoRefresh();
+          }
+        }
+      });
+    });
+
     // Initial load
-    loadDashboard();
+    log('Admin UI initializing...');
+    showToast('Admin Panel wird geladen...', 'info', 2000);
+
+    document.addEventListener('DOMContentLoaded', () => {
+      log('DOM loaded, starting dashboard load');
+      loadDashboard().then(() => {
+        log('Initial dashboard load complete');
+      });
+    });
+
+    // If DOM is already loaded (script runs after HTML)
+    if (document.readyState === 'loading') {
+      // Still loading
+      log('DOM still loading');
+    } else {
+      // DOM already loaded
+      log('DOM already loaded, starting dashboard immediately');
+      loadDashboard().then(() => {
+        log('Initial dashboard load complete');
+      });
+    }
   </script>
 </body>
 </html>

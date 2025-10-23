@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "tsx src/server.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node -e \"const fs=require('fs');const path=require('path');fs.mkdirSync(path.join('dist','config'),{recursive:true});fs.copyFileSync(path.join('src','config','swagger.yaml'),path.join('dist','config','swagger.yaml'))\"",
     "start:prod": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "test": "vitest run",
