@@ -1,1358 +1,1461 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Plex Exporter - Admin Panel</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plex Exporter Admin</title>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
+    :root {
+      --color-bg: #13161b;
+      --color-surface: #1b1f26;
+      --color-panel: #212631;
+      --color-border: #2c323f;
+      --color-text: #f5f6f9;
+      --color-muted: #9aa6b8;
+      --color-accent: #e5a00d;
+      --color-accent-strong: #f5bb39;
+      --color-success: #46d369;
+      --color-danger: #ef5b5b;
+      --color-info: #38bdf8;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --transition: 0.18s ease-in-out;
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
-    :root {
-      --bg-primary: #0f172a;
-      --bg-secondary: #1e293b;
-      --bg-tertiary: #334155;
-      --text-primary: #f1f5f9;
-      --text-secondary: #cbd5e1;
-      --text-muted: #64748b;
-      --border: #475569;
-      --accent: #3b82f6;
-      --accent-hover: #2563eb;
-      --success: #10b981;
-      --warning: #f59e0b;
-      --danger: #ef4444;
-      --info: #06b6d4;
+    * {
+      box-sizing: border-box;
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      background: var(--bg-primary);
-      color: var(--text-primary);
-      line-height: 1.6;
-    }
-
-    .container {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 2rem;
-    }
-
-    header {
-      margin-bottom: 2rem;
-      padding-bottom: 1rem;
-      border-bottom: 2px solid var(--border);
-    }
-
-    h1 {
-      font-size: 2rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-    }
-
-    h2 {
-      font-size: 1.5rem;
-      font-weight: 600;
-      margin-bottom: 1rem;
-      color: var(--accent);
-    }
-
-    h3 {
-      font-size: 1.25rem;
-      font-weight: 600;
-      margin-bottom: 0.75rem;
-    }
-
-    .subtitle {
-      color: var(--text-secondary);
-      font-size: 0.875rem;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 2rem;
-    }
-
-    .card {
-      background: var(--bg-secondary);
-      border: 1px solid var(--border);
-      border-radius: 0.5rem;
-      padding: 1.5rem;
-    }
-
-    .card-header {
+      margin: 0;
+      background: radial-gradient(circle at top left, rgba(229, 160, 13, 0.08), var(--color-bg));
+      color: var(--color-text);
+      min-height: 100vh;
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
     }
 
-    .badge {
-      display: inline-block;
-      padding: 0.25rem 0.75rem;
-      border-radius: 0.25rem;
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
+    a {
+      color: var(--color-accent);
     }
 
-    .badge-success {
-      background: var(--success);
-      color: white;
-    }
-
-    .badge-warning {
-      background: var(--warning);
-      color: white;
-    }
-
-    .badge-danger {
-      background: var(--danger);
-      color: white;
-    }
-
-    .badge-info {
-      background: var(--info);
-      color: white;
-    }
-
-    .stat {
+    .app-shell {
       display: flex;
-      justify-content: space-between;
-      padding: 0.75rem 0;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .stat:last-child {
-      border-bottom: none;
-    }
-
-    .stat-label {
-      color: var(--text-secondary);
-    }
-
-    .stat-value {
-      font-weight: 600;
-    }
-
-    .btn {
-      display: inline-block;
-      padding: 0.5rem 1rem;
-      border: none;
-      border-radius: 0.375rem;
-      font-size: 0.875rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-      text-decoration: none;
-      color: white;
-    }
-
-    .btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .btn-primary {
-      background: var(--accent);
-    }
-
-    .btn-primary:hover:not(:disabled) {
-      background: var(--accent-hover);
-    }
-
-    .btn-danger {
-      background: var(--danger);
-    }
-
-    .btn-danger:hover:not(:disabled) {
-      background: #dc2626;
-    }
-
-    .btn-success {
-      background: var(--success);
-    }
-
-    .btn-success:hover:not(:disabled) {
-      background: #059669;
-    }
-
-    .btn-secondary {
-      background: var(--bg-tertiary);
-    }
-
-    .btn-secondary:hover:not(:disabled) {
-      background: var(--border);
-    }
-
-    .btn-group {
-      display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-    }
-
-    .form-group {
-      margin-bottom: 1rem;
-    }
-
-    .form-label {
-      display: block;
-      margin-bottom: 0.5rem;
-      font-weight: 500;
-      color: var(--text-secondary);
-    }
-
-    .form-input,
-    .form-select {
       width: 100%;
-      padding: 0.5rem;
-      background: var(--bg-tertiary);
-      border: 1px solid var(--border);
-      border-radius: 0.375rem;
-      color: var(--text-primary);
-      font-size: 0.875rem;
+      min-height: 100vh;
     }
 
-    .form-input:focus,
-    .form-select:focus {
-      outline: none;
-      border-color: var(--accent);
-    }
-
-    .form-checkbox {
-      margin-right: 0.5rem;
-    }
-
-    .alert {
-      padding: 1rem;
-      border-radius: 0.375rem;
-      margin-bottom: 1rem;
-    }
-
-    .alert-success {
-      background: rgba(16, 185, 129, 0.1);
-      border: 1px solid var(--success);
-      color: var(--success);
-    }
-
-    .alert-error {
-      background: rgba(239, 68, 68, 0.1);
-      border: 1px solid var(--danger);
-      color: var(--danger);
-    }
-
-    .alert-info {
-      background: rgba(59, 130, 246, 0.1);
-      border: 1px solid var(--accent);
-      color: var(--accent);
-    }
-
-    .log-viewer {
-      background: var(--bg-tertiary);
-      border: 1px solid var(--border);
-      border-radius: 0.375rem;
-      padding: 1rem;
-      max-height: 400px;
-      overflow-y: auto;
-      font-family: 'Courier New', monospace;
-      font-size: 0.75rem;
-    }
-
-    .log-entry {
-      margin-bottom: 0.5rem;
-      padding: 0.25rem;
-      border-left: 3px solid transparent;
-    }
-
-    .log-entry.debug {
-      border-left-color: var(--text-muted);
-    }
-
-    .log-entry.info {
-      border-left-color: var(--info);
-    }
-
-    .log-entry.warn {
-      border-left-color: var(--warning);
-    }
-
-    .log-entry.error {
-      border-left-color: var(--danger);
-    }
-
-    .log-timestamp {
-      color: var(--text-muted);
-      margin-right: 0.5rem;
-    }
-
-    .log-level {
-      display: inline-block;
-      width: 50px;
-      font-weight: 600;
-      margin-right: 0.5rem;
-    }
-
-    .log-message {
-      color: var(--text-secondary);
-    }
-
-    .spinner {
-      display: inline-block;
-      width: 1rem;
-      height: 1rem;
-      border: 2px solid var(--border);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-
-    .spinner-large {
-      width: 2rem;
-      height: 2rem;
-      border-width: 3px;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    .pulse {
-      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% {
-        opacity: 1;
-      }
-      50% {
-        opacity: 0.5;
-      }
-    }
-
-    .status-running {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.75rem;
-      background: rgba(59, 130, 246, 0.1);
-      border: 1px solid var(--accent);
-      border-radius: 0.375rem;
-      margin-bottom: 1rem;
-    }
-
-    .status-running .spinner {
-      flex-shrink: 0;
-    }
-
-    .section {
-      margin-bottom: 3rem;
-    }
-
-    .tabs {
-      display: flex;
-      gap: 0.5rem;
-      margin-bottom: 1.5rem;
-      border-bottom: 2px solid var(--border);
-    }
-
-    .tab {
-      padding: 0.75rem 1.5rem;
-      background: transparent;
-      border: none;
-      color: var(--text-secondary);
-      cursor: pointer;
-      font-size: 0.875rem;
-      font-weight: 500;
-      border-bottom: 2px solid transparent;
-      margin-bottom: -2px;
-      transition: all 0.2s;
-    }
-
-    .tab:hover {
-      color: var(--text-primary);
-    }
-
-    .tab.active {
-      color: var(--accent);
-      border-bottom-color: var(--accent);
-    }
-
-    .tab-content {
-      display: none;
-    }
-
-    .tab-content.active {
-      display: block;
-    }
-
-    .progress-bar {
-      width: 100%;
-      height: 0.5rem;
-      background: var(--bg-tertiary);
-      border-radius: 0.25rem;
-      overflow: hidden;
-      margin-top: 0.5rem;
-    }
-
-    .progress-fill {
-      height: 100%;
-      background: var(--accent);
-      transition: width 0.3s;
-    }
-
-    code {
-      background: var(--bg-tertiary);
-      padding: 0.125rem 0.25rem;
-      border-radius: 0.25rem;
-      font-family: 'Courier New', monospace;
-      font-size: 0.875rem;
-    }
-
-    pre {
-      background: var(--bg-tertiary);
-      padding: 1rem;
-      border-radius: 0.375rem;
-      overflow-x: auto;
-      font-size: 0.75rem;
-    }
-
-    /* Toast notifications */
     .toast-container {
       position: fixed;
-      top: 1rem;
-      right: 1rem;
-      z-index: 9999;
+      top: 20px;
+      right: 20px;
       display: flex;
       flex-direction: column;
-      gap: 0.5rem;
+      gap: 10px;
+      z-index: 50;
+      pointer-events: none;
     }
 
     .toast {
-      background: var(--bg-secondary);
-      border: 1px solid var(--border);
-      border-radius: 0.375rem;
-      padding: 1rem;
-      min-width: 300px;
-      max-width: 400px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-      animation: slideIn 0.3s ease-out;
+      background: rgba(15, 17, 21, 0.92);
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 12px 16px;
+      min-width: 220px;
+      max-width: 320px;
+      color: var(--color-text);
+      box-shadow: 0 18px 32px rgba(0, 0, 0, 0.28);
+      opacity: 0;
+      transform: translateY(-8px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      pointer-events: auto;
     }
 
-    .toast-success {
-      border-left: 4px solid var(--success);
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
     }
 
-    .toast-error {
-      border-left: 4px solid var(--danger);
+    .toast-success { border-left: 3px solid var(--color-success); }
+    .toast-error { border-left: 3px solid var(--color-danger); }
+    .toast-info { border-left: 3px solid var(--color-accent); }
+
+    .sidebar {
+      width: 240px;
+      background: linear-gradient(180deg, rgba(16, 17, 20, 0.95), rgba(16, 17, 20, 0.88));
+      border-right: 1px solid rgba(255, 255, 255, 0.04);
+      padding: 28px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
     }
 
-    .toast-info {
-      border-left: 4px solid var(--accent);
+    .brand {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
     }
 
-    @keyframes slideIn {
-      from {
-        transform: translateX(400px);
-        opacity: 0;
+    .brand-sub {
+      margin: 0;
+      color: var(--color-muted);
+      font-size: 13px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .nav-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .nav-button {
+      border: none;
+      background: transparent;
+      color: var(--color-muted);
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      text-align: left;
+      cursor: pointer;
+      transition: background var(--transition), color var(--transition), transform var(--transition);
+    }
+
+    .nav-button:hover {
+      color: var(--color-text);
+      transform: translateX(4px);
+    }
+
+    .nav-button.active {
+      background: rgba(229, 160, 13, 0.16);
+      color: var(--color-text);
+      box-shadow: 0 8px 24px rgba(229, 160, 13, 0.18);
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--color-muted);
+    }
+
+    .auto-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+
+    .auto-toggle input {
+      width: 42px;
+      height: 24px;
+      border-radius: 12px;
+      appearance: none;
+      background: rgba(255, 255, 255, 0.12);
+      position: relative;
+      transition: background 0.2s ease;
+    }
+
+    .auto-toggle input::after {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 4px;
+      width: 18px;
+      height: 18px;
+      border-radius: 9px;
+      background: #0d0f13;
+      transition: transform 0.2s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+    }
+
+    .auto-toggle input:checked {
+      background: linear-gradient(135deg, var(--color-accent), var(--color-accent-strong));
+    }
+
+    .auto-toggle input:checked::after {
+      transform: translateX(18px);
+    }
+
+    .main {
+      flex: 1;
+      padding: 32px 40px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .page-header h2 {
+      margin: 0;
+      font-size: 26px;
+      letter-spacing: -0.01em;
+    }
+
+    .page-header p {
+      margin: 6px 0 0;
+      color: var(--color-muted);
+      font-size: 14px;
+      max-width: 520px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 10px 16px;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .btn {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--color-text);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      border-color: rgba(229, 160, 13, 0.5);
+      box-shadow: 0 10px 18px rgba(229, 160, 13, 0.14);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--color-accent), var(--color-accent-strong));
+      color: #0d0f13;
+      border: none;
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #ff6b6b, var(--color-danger));
+      color: #0d0f13;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 16px;
+    }
+
+    .metric-card {
+      background: linear-gradient(135deg, rgba(229, 160, 13, 0.1), rgba(27, 31, 38, 0.95));
+      border-radius: var(--radius);
+      border: 1px solid rgba(229, 160, 13, 0.2);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: 0 16px 32px rgba(229, 160, 13, 0.12);
+    }
+
+    .metric-card h3 {
+      margin: 0;
+      font-size: 14px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.75);
+    }
+
+    .metric-value {
+      font-size: 34px;
+      font-weight: 700;
+    }
+
+    .metric-sub {
+      margin-top: auto;
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .panel-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+    }
+
+    .panel {
+      background: var(--color-panel);
+      border-radius: var(--radius);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 16px 30px rgba(0, 0, 0, 0.22);
+    }
+
+    .panel header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    .panel header h3 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .panel header span {
+      color: var(--color-muted);
+      font-size: 13px;
+    }
+
+    .info-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      font-size: 14px;
+    }
+
+    .info-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding-bottom: 8px;
+    }
+
+    .info-item:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .label {
+      color: var(--color-muted);
+      font-weight: 500;
+    }
+
+    .value {
+      color: var(--color-text);
+      font-weight: 600;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .chip-success {
+      background: rgba(70, 211, 105, 0.15);
+      color: var(--color-success);
+    }
+
+    .chip-danger {
+      background: rgba(239, 91, 91, 0.15);
+      color: var(--color-danger);
+    }
+
+    .chip-info {
+      background: rgba(56, 189, 248, 0.18);
+      color: var(--color-info);
+    }
+
+    .view {
+      display: none;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .view.active {
+      display: flex;
+    }
+
+    .card {
+      background: var(--color-panel);
+      border-radius: var(--radius);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      box-shadow: 0 16px 28px rgba(0, 0, 0, 0.2);
+    }
+
+    .card h3 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .card p {
+      margin: 0;
+      color: var(--color-muted);
+      font-size: 14px;
+    }
+
+    .option-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    .checkbox {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      font-size: 13px;
+    }
+
+    .checkbox input {
+      width: 16px;
+      height: 16px;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .log-view {
+      background: #101217;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 14px;
+      font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      max-height: 280px;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+
+    .log-entry {
+      margin: 0;
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .log-entry:last-child {
+      border-bottom: none;
+    }
+
+    .log-meta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      margin-right: 12px;
+      color: var(--color-muted);
+    }
+
+    .muted {
+      color: var(--color-muted);
+      font-size: 13px;
+    }
+
+    label.input-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-muted);
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="number"],
+    select {
+      width: 100%;
+      background: #151820;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      color: var(--color-text);
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    input:focus,
+    select:focus {
+      outline: none;
+      border-color: rgba(229, 160, 13, 0.6);
+      box-shadow: 0 0 0 3px rgba(229, 160, 13, 0.18);
+    }
+
+    details {
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 13px;
+    }
+
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    details pre {
+      margin-top: 12px;
+      background: #0f1116;
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      max-height: 320px;
+      overflow: auto;
+      color: var(--color-text);
+    }
+
+    .alert {
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      font-size: 14px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .alert-info {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      color: var(--color-info);
+    }
+
+    .alert-error {
+      background: rgba(239, 91, 91, 0.16);
+      border: 1px solid rgba(239, 91, 91, 0.35);
+      color: var(--color-danger);
+    }
+
+    @media (max-width: 980px) {
+      body {
+        flex-direction: column;
       }
-      to {
-        transform: translateX(0);
-        opacity: 1;
+
+      .sidebar {
+        width: 100%;
+        height: auto;
+        flex-direction: row;
+        align-items: center;
+        gap: 18px;
+        overflow-x: auto;
+      }
+
+      .nav-list {
+        flex-direction: row;
+      }
+
+      .sidebar-footer {
+        display: none;
+      }
+
+      .main {
+        padding: 24px;
       }
     }
 
-    @keyframes slideOut {
-      from {
-        transform: translateX(0);
-        opacity: 1;
+    @media (max-width: 640px) {
+      .main {
+        padding: 18px;
       }
-      to {
-        transform: translateX(400px);
-        opacity: 0;
+
+      .metrics-grid,
+      .panel-grid,
+      .option-list {
+        grid-template-columns: 1fr;
+      }
+
+      .button-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .page-header {
+        flex-direction: column;
+        align-items: stretch;
       }
     }
   </style>
 </head>
 <body>
   <div class="toast-container" id="toast-container"></div>
-  <div class="container">
-    <header>
-      <h1>Plex Exporter - Admin Panel</h1>
-      <p class="subtitle">Backend-Verwaltung und Monitoring</p>
-    </header>
-
-    <div class="tabs">
-      <button class="tab active" data-tab="dashboard">Dashboard</button>
-      <button class="tab" data-tab="config">Konfiguration</button>
-      <button class="tab" data-tab="import">Import</button>
-      <button class="tab" data-tab="logs">Logs</button>
-      <button class="tab" data-tab="tests">Service-Tests</button>
-    </div>
-
-    <!-- Dashboard Tab -->
-    <div class="tab-content active" id="dashboard-tab">
-      <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
-        <h2 style="margin: 0;">Übersicht</h2>
-        <div style="display: flex; gap: 0.5rem; align-items: center;">
-          <label style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
-            <input type="checkbox" id="auto-refresh-toggle" onchange="toggleAutoRefresh()">
-            Auto-Refresh (30s)
-          </label>
-          <button class="btn btn-secondary btn-sm" onclick="loadDashboard()">🔄 Jetzt aktualisieren</button>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div>
+        <h1 class="brand">Plex Exporter</h1>
+        <p class="brand-sub">Admin control center</p>
+      </div>
+      <nav class="nav-list">
+        <button class="nav-button active" data-view="dashboard">Dashboard</button>
+        <button class="nav-button" data-view="import">Imports</button>
+        <button class="nav-button" data-view="config">Configuration</button>
+        <button class="nav-button" data-view="logs">Logs</button>
+        <button class="nav-button" data-view="diagnostics">Diagnostics</button>
+      </nav>
+      <div class="sidebar-footer">
+        <label class="auto-toggle">
+          <input type="checkbox" id="auto-refresh-toggle">
+          Auto refresh
+        </label>
+        <div>
+          <div>Last update</div>
+          <div id="last-updated">not loaded yet</div>
         </div>
       </div>
+    </aside>
+    <main class="main">
+      <header class="page-header">
+        <div>
+          <h2>Admin dashboard</h2>
+          <p id="header-text">System overview, import control and service status in one place.</p>
+        </div>
+        <div class="header-actions">
+          <span class="muted" id="auto-refresh-label">auto refresh off</span>
+          <button class="btn" id="refresh-button">Refresh view</button>
+        </div>
+      </header>
 
-      <div class="grid">
-        <div class="card">
-          <div class="card-header">
-            <h3>System-Status</h3>
-            <span class="badge badge-success" id="status-badge">OK</span>
-          </div>
-          <div id="system-status">
-            <div class="spinner"></div> Lade Status...
-          </div>
+      <section class="view active" id="view-dashboard">
+        <div class="metrics-grid">
+          <article class="metric-card">
+            <h3>Total media</h3>
+            <div class="metric-value" id="stat-total-media">-</div>
+            <div class="metric-sub">Movies <span id="stat-movie-count">-</span> | Shows <span id="stat-show-count">-</span></div>
+          </article>
+          <article class="metric-card">
+            <h3>Series structure</h3>
+            <div class="metric-value" id="stat-season-count">-</div>
+            <div class="metric-sub">Episodes <span id="stat-episode-count">-</span> | Cast <span id="stat-cast-count">-</span></div>
+          </article>
+          <article class="metric-card">
+            <h3>Thumbnails</h3>
+            <div class="metric-value" id="stat-thumb-total">-</div>
+            <div class="metric-sub">Combined media artwork count</div>
+          </article>
+          <article class="metric-card">
+            <h3>Database size</h3>
+            <div class="metric-value" id="stat-db-size">-</div>
+            <div class="metric-sub" id="stat-db-path">path unknown</div>
+          </article>
+          <article class="metric-card">
+            <h3>Uptime</h3>
+            <div class="metric-value" id="stat-uptime">-</div>
+            <div class="metric-sub">PID <span id="stat-pid">-</span> | Node <span id="stat-node">-</span></div>
+          </article>
         </div>
 
-        <div class="card">
-          <div class="card-header">
-            <h3>Datenbank-Statistiken</h3>
-          </div>
-          <div id="db-stats">
-            <div class="spinner"></div> Lade Statistiken...
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <h3>Services</h3>
-          </div>
-          <div id="services-status">
-            <div class="spinner"></div> Prüfe Services...
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Config Tab -->
-    <div class="tab-content" id="config-tab">
-      <div class="card">
-        <h2>Konfigurationsübersicht</h2>
-        <p class="subtitle" style="margin-bottom: 1rem;">
-          Aktuelle Backend-Konfiguration (Umgebungsvariablen)
-        </p>
-        <div id="config-display">
-          <div class="spinner"></div> Lade Konfiguration...
-        </div>
-      </div>
-    </div>
-
-    <!-- Import Tab -->
-    <div class="tab-content" id="import-tab">
-      <div class="card">
-        <h2>Import-Management</h2>
-        <p class="subtitle" style="margin-bottom: 1rem;">
-          Triggere und überwache Datenimporte aus den Export-JSON-Dateien
-        </p>
-
-        <div id="import-alert"></div>
-
-        <div class="form-group">
-          <label class="form-label">Import-Optionen</label>
-          <div style="margin-top: 0.5rem;">
-            <label style="display: block; margin-bottom: 0.5rem;">
-              <input type="checkbox" id="import-dry-run" class="form-checkbox">
-              Dry Run (keine DB-Änderungen)
-            </label>
-            <label style="display: block; margin-bottom: 0.5rem;">
-              <input type="checkbox" id="import-force" class="form-checkbox">
-              Force (bestehende Einträge überschreiben)
-            </label>
-            <label style="display: block; margin-bottom: 0.5rem;">
-              <input type="checkbox" id="import-verbose" class="form-checkbox">
-              Verbose (detaillierte Logs)
-            </label>
-            <label style="display: block; margin-bottom: 0.5rem;">
-              <input type="checkbox" id="import-movies-only" class="form-checkbox">
-              Nur Filme importieren
-            </label>
-            <label style="display: block; margin-bottom: 0.5rem;">
-              <input type="checkbox" id="import-series-only" class="form-checkbox">
-              Nur Serien importieren
-            </label>
-          </div>
-        </div>
-
-        <div class="btn-group">
-          <button class="btn btn-success" id="start-import-btn" onclick="startImport()">▶️ Import starten</button>
-          <button class="btn btn-danger" id="stop-import-btn" onclick="stopImport()" disabled>⏹️ Import stoppen</button>
-          <button class="btn btn-secondary" onclick="loadImportStatus()">🔄 Status aktualisieren</button>
-          <button class="btn btn-secondary" onclick="clearImportLogs()">🗑️ Logs leeren</button>
-        </div>
-
-        <div id="import-status" style="margin-top: 1.5rem;">
-          <h3>Import-Status</h3>
-          <div id="import-status-display">
-            <div class="spinner"></div> Lade Status...
-          </div>
-        </div>
-
-        <div id="import-logs" style="margin-top: 1.5rem;">
-          <h3>Import-Logs</h3>
-          <div class="log-viewer" id="import-logs-display">
-            Keine Logs vorhanden
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Logs Tab -->
-    <div class="tab-content" id="logs-tab">
-      <div class="card">
-        <div class="card-header">
-          <h2>System-Logs</h2>
-          <div class="btn-group">
-            <button class="btn btn-secondary" onclick="loadLogs()">🔄 Aktualisieren</button>
-            <button class="btn btn-secondary" onclick="clearLogs()">🗑️ Logs leeren</button>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Filter nach Level</label>
-          <select class="form-select" id="log-level-filter" onchange="loadLogs()">
-            <option value="">Alle Levels</option>
-            <option value="debug">Debug</option>
-            <option value="info">Info</option>
-            <option value="warn">Warning</option>
-            <option value="error">Error</option>
-          </select>
-        </div>
-
-        <div class="log-viewer" id="logs-display">
-          <div class="spinner"></div> Lade Logs...
-        </div>
-      </div>
-    </div>
-
-    <!-- Tests Tab -->
-    <div class="tab-content" id="tests-tab">
-      <div class="section">
-        <div class="card">
-          <h2>Service-Tests</h2>
-          <p class="subtitle" style="margin-bottom: 1.5rem;">
-            Teste die Konnektivität zu verschiedenen Services
-          </p>
-
-          <div id="test-alert"></div>
-
-          <div class="section">
-            <h3>SMTP-Test</h3>
-            <div class="form-group">
-              <label class="form-label">Empfänger-E-Mail</label>
-              <input type="email" class="form-input" id="smtp-test-email" placeholder="test@example.com">
+        <div class="panel-grid">
+          <article class="panel">
+            <header>
+              <div>
+                <h3>System status</h3>
+                <span>Runtime, memory and host details</span>
+              </div>
+              <div id="system-status-chip"></div>
+            </header>
+            <div class="info-list" id="system-status">
+              <div class="muted">Loading system status...</div>
             </div>
-            <button class="btn btn-primary" id="smtp-test-btn" onclick="testSmtp()">📧 SMTP testen</button>
-          </div>
-
-          <div class="section">
-            <h3>Tautulli-Test</h3>
-            <button class="btn btn-primary" id="tautulli-test-btn" onclick="testTautulli()">🔌 Tautulli testen</button>
-          </div>
-
-          <div class="section">
-            <h3>Datenbank-Test</h3>
-            <button class="btn btn-primary" id="database-test-btn" onclick="testDatabase()">💾 Datenbank testen</button>
-          </div>
-
-          <div id="test-results" style="margin-top: 1.5rem;"></div>
+          </article>
+          <article class="panel">
+            <header>
+              <div>
+                <h3>Services</h3>
+                <span>SMTP, TMDB, Tautulli, API auth</span>
+              </div>
+            </header>
+            <div class="info-list" id="service-status">
+              <div class="muted">Loading service configuration...</div>
+            </div>
+          </article>
+          <article class="panel">
+            <header>
+              <div>
+                <h3>Series samples</h3>
+                <span>Recently indexed series with seasons and cast preview</span>
+              </div>
+            </header>
+            <div class="info-list" id="series-overview">
+              <div class="muted">Loading series overview...</div>
+            </div>
+          </article>
         </div>
-      </div>
-    </div>
+      </section>
+
+      <section class="view" id="view-import">
+        <article class="card">
+          <div>
+            <h3>Import control</h3>
+            <p>Trigger and monitor library imports based on the export JSON data.</p>
+          </div>
+          <div class="option-list">
+            <label class="checkbox"><input type="checkbox" id="opt-dry-run">Dry run (no database writes)</label>
+            <label class="checkbox"><input type="checkbox" id="opt-force">Force overwrite existing entries</label>
+            <label class="checkbox"><input type="checkbox" id="opt-verbose">Verbose logging</label>
+            <label class="checkbox"><input type="checkbox" id="opt-movies">Import movies only</label>
+            <label class="checkbox"><input type="checkbox" id="opt-shows">Import shows only</label>
+          </div>
+          <div class="button-row">
+            <button class="btn-primary" id="btn-start-import">Start import</button>
+            <button class="btn-danger" id="btn-stop-import" disabled>Stop import</button>
+            <button class="btn" id="btn-refresh-import">Refresh status</button>
+            <button class="btn" id="btn-clear-import-logs">Clear logs</button>
+          </div>
+          <div id="import-message"></div>
+          <div class="panel">
+            <header>
+              <div>
+                <h3>Current status</h3>
+                <span>Running process details</span>
+              </div>
+            </header>
+            <div class="info-list" id="import-status">
+              <div class="muted">No status loaded yet.</div>
+            </div>
+          </div>
+          <div class="panel">
+            <header>
+              <div>
+                <h3>Import log</h3>
+                <span>Latest console output</span>
+              </div>
+            </header>
+            <div class="log-view" id="import-logs">No log output yet.</div>
+          </div>
+        </article>
+      </section>
+
+      <section class="view" id="view-config">
+        <article class="card">
+          <div>
+            <h3>Configuration snapshot</h3>
+            <p>Current backend configuration (sensitive values are masked).</p>
+          </div>
+          <div id="config-view">
+            <div class="muted">Loading configuration...</div>
+          </div>
+        </article>
+      </section>
+
+      <section class="view" id="view-logs">
+        <article class="card">
+          <div>
+            <h3>Runtime logs</h3>
+            <p>Recent entries from the in-memory log buffer.</p>
+          </div>
+          <div class="button-row">
+            <label class="input-label" for="log-level">Level</label>
+            <select id="log-level">
+              <option value="">all levels</option>
+              <option value="debug">debug</option>
+              <option value="info">info</option>
+              <option value="warn">warn</option>
+              <option value="error">error</option>
+            </select>
+            <label class="input-label" for="log-limit">Limit</label>
+            <input type="number" id="log-limit" min="10" max="500" value="150">
+            <button class="btn" id="btn-refresh-logs">Refresh</button>
+            <button class="btn" id="btn-clear-logs">Clear logs</button>
+          </div>
+          <div class="muted" id="log-summary">No logs loaded yet.</div>
+          <div class="log-view" id="log-view">Press refresh to load logs.</div>
+        </article>
+      </section>
+
+      <section class="view" id="view-diagnostics">
+        <div class="panel-grid">
+          <article class="panel">
+            <header>
+              <div>
+                <h3>SMTP test</h3>
+                <span>Send a test message using the configured mail account.</span>
+              </div>
+            </header>
+            <div class="info-list">
+              <label class="input-label" for="smtp-email">Recipient email</label>
+              <input type="email" id="smtp-email" placeholder="admin@example.com">
+              <div class="button-row">
+                <button class="btn" id="btn-test-smtp">Send test mail</button>
+              </div>
+              <div class="muted" id="smtp-output">No test executed yet.</div>
+            </div>
+          </article>
+          <article class="panel">
+            <header>
+              <div>
+                <h3>Tautulli test</h3>
+                <span>Check API connectivity and list libraries.</span>
+              </div>
+            </header>
+            <div class="info-list">
+              <button class="btn" id="btn-test-tautulli">Run test</button>
+              <div class="muted" id="tautulli-output">No test executed yet.</div>
+            </div>
+          </article>
+          <article class="panel">
+            <header>
+              <div>
+                <h3>Database test</h3>
+                <span>Verify SQLite access and record count.</span>
+              </div>
+            </header>
+            <div class="info-list">
+              <button class="btn" id="btn-test-db">Run test</button>
+              <div class="muted" id="db-output">No test executed yet.</div>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
   </div>
-
   <script>
-    // API Base URL
-    const API_BASE = '/admin/api';
+    (() => {
+      const API_BASE = "/admin/api";
+      const DASHBOARD_INTERVAL = 30000;
+      const toastRoot = document.getElementById("toast-container");
 
-    // Debug logging
-    const DEBUG = true;
-    function log(...args) {
-      if (DEBUG) console.log('[Admin UI]', ...args);
-    }
-
-    // Global error handler for better debugging
-    window.addEventListener('error', (e) => {
-      console.error('[Admin UI Error]', e.error);
-    });
-
-    window.addEventListener('unhandledrejection', (e) => {
-      console.error('[Admin UI Unhandled Rejection]', e.reason);
-    });
-
-    // Toast notification system
-    function showToast(message, type = 'info', duration = 3000) {
-      const container = document.getElementById('toast-container');
-      const toast = document.createElement('div');
-      toast.className = `toast toast-${type}`;
-      toast.textContent = message;
-
-      container.appendChild(toast);
-      log(`Toast: [${type}] ${message}`);
-
-      setTimeout(() => {
-        toast.style.animation = 'slideOut 0.3s ease-out';
-        setTimeout(() => {
-          container.removeChild(toast);
-        }, 300);
-      }, duration);
-    }
-
-    // Tab switching
-    document.querySelectorAll('.tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        const tabName = tab.dataset.tab;
-
-        // Update tab buttons
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-
-        // Update tab content
-        document.querySelectorAll('.tab-content').forEach(content => {
-          content.classList.remove('active');
-        });
-        document.getElementById(`${tabName}-tab`).classList.add('active');
-
-        // Load data for active tab
-        switch(tabName) {
-          case 'dashboard':
-            loadDashboard();
-            break;
-          case 'config':
-            loadConfig();
-            break;
-          case 'import':
-            loadImportStatus();
-            break;
-          case 'logs':
-            loadLogs();
-            break;
-        }
-      });
-    });
-
-    // Load dashboard data
-    async function loadDashboard() {
-      log('Loading dashboard...');
-      showToast('Dashboard wird aktualisiert...', 'info', 1500);
-      await Promise.all([loadStatus(), loadStats(), loadServicesStatus()]);
-      showToast('Dashboard aktualisiert', 'success', 2000);
-    }
-
-    async function loadStatus() {
-      log('Loading system status...');
-      try {
-        const response = await fetch(`${API_BASE}/status`);
-        const data = await response.json();
-        log('System status loaded:', data);
-
-        document.getElementById('system-status').innerHTML = `
-          <div class="stat">
-            <span class="stat-label">Uptime</span>
-            <span class="stat-value">${data.uptime.formatted}</span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">Memory (Heap Used)</span>
-            <span class="stat-value">${data.memory.heapUsed}</span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">Node.js</span>
-            <span class="stat-value">${data.system.nodeVersion}</span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">Platform</span>
-            <span class="stat-value">${data.system.platform} (${data.system.arch})</span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">PID</span>
-            <span class="stat-value">${data.process.pid}</span>
-          </div>
-        `;
-      } catch (error) {
-        document.getElementById('system-status').innerHTML = `
-          <div class="alert alert-error">Fehler beim Laden des Status: ${error.message}</div>
-        `;
-        document.getElementById('status-badge').textContent = 'ERROR';
-        document.getElementById('status-badge').className = 'badge badge-danger';
-      }
-    }
-
-    async function loadStats() {
-      log('Loading database stats...');
-      try {
-        const response = await fetch(`${API_BASE}/stats`);
-        const data = await response.json();
-        log('Database stats loaded:', data);
-
-        document.getElementById('db-stats').innerHTML = `
-          <div class="stat">
-            <span class="stat-label">Filme</span>
-            <span class="stat-value">${data.media.movies}</span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">Serien</span>
-            <span class="stat-value">${data.media.series}</span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">Gesamt Media</span>
-            <span class="stat-value">${data.media.total}</span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">Thumbnails</span>
-            <span class="stat-value">${data.thumbnails.total}</span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">DB-Größe</span>
-            <span class="stat-value">${data.database.size}</span>
-          </div>
-        `;
-      } catch (error) {
-        document.getElementById('db-stats').innerHTML = `
-          <div class="alert alert-error">Fehler beim Laden der Statistiken: ${error.message}</div>
-        `;
-      }
-    }
-
-    async function loadServicesStatus() {
-      try {
-        const response = await fetch(`${API_BASE}/config`);
-        const data = await response.json();
-
-        document.getElementById('services-status').innerHTML = `
-          <div class="stat">
-            <span class="stat-label">SMTP</span>
-            <span class="stat-value">
-              <span class="badge ${data.smtp.enabled ? 'badge-success' : 'badge-danger'}">
-                ${data.smtp.enabled ? 'Aktiviert' : 'Deaktiviert'}
-              </span>
-            </span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">Tautulli</span>
-            <span class="stat-value">
-              <span class="badge ${data.tautulli.enabled ? 'badge-success' : 'badge-danger'}">
-                ${data.tautulli.enabled ? 'Aktiviert' : 'Deaktiviert'}
-              </span>
-            </span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">TMDB</span>
-            <span class="stat-value">
-              <span class="badge ${data.tmdb.enabled ? 'badge-success' : 'badge-danger'}">
-                ${data.tmdb.enabled ? 'Aktiviert' : 'Deaktiviert'}
-              </span>
-            </span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">API Auth</span>
-            <span class="stat-value">
-              <span class="badge ${data.auth.enabled ? 'badge-success' : 'badge-danger'}">
-                ${data.auth.enabled ? 'Aktiviert' : 'Deaktiviert'}
-              </span>
-            </span>
-          </div>
-        `;
-      } catch (error) {
-        document.getElementById('services-status').innerHTML = `
-          <div class="alert alert-error">Fehler beim Laden der Services: ${error.message}</div>
-        `;
-      }
-    }
-
-    async function loadConfig() {
-      try {
-        const response = await fetch(`${API_BASE}/config`);
-        const data = await response.json();
-
-        document.getElementById('config-display').innerHTML = `
-          <h3>Runtime</h3>
-          <pre>${JSON.stringify(data.runtime, null, 2)}</pre>
-
-          <h3>Server</h3>
-          <pre>${JSON.stringify(data.server, null, 2)}</pre>
-
-          <h3>Authentifizierung</h3>
-          <pre>${JSON.stringify(data.auth, null, 2)}</pre>
-
-          <h3>Datenbank</h3>
-          <pre>${JSON.stringify(data.database, null, 2)}</pre>
-
-          <h3>Hero</h3>
-          <pre>${JSON.stringify(data.hero, null, 2)}</pre>
-
-          <h3>SMTP</h3>
-          <pre>${JSON.stringify(data.smtp, null, 2)}</pre>
-
-          <h3>Tautulli</h3>
-          <pre>${JSON.stringify(data.tautulli, null, 2)}</pre>
-
-          <h3>TMDB</h3>
-          <pre>${JSON.stringify(data.tmdb, null, 2)}</pre>
-
-          <div class="alert alert-info" style="margin-top: 1.5rem;">
-            💡 <strong>Hinweis:</strong> Sensible Werte werden maskiert angezeigt.
-            Änderungen müssen über Umgebungsvariablen (.env-Datei) vorgenommen werden.
-          </div>
-        `;
-      } catch (error) {
-        document.getElementById('config-display').innerHTML = `
-          <div class="alert alert-error">Fehler beim Laden der Konfiguration: ${error.message}</div>
-        `;
-      }
-    }
-
-    async function startImport() {
-      const options = {
-        dryRun: document.getElementById('import-dry-run').checked,
-        force: document.getElementById('import-force').checked,
-        verbose: document.getElementById('import-verbose').checked,
-        moviesOnly: document.getElementById('import-movies-only').checked,
-        seriesOnly: document.getElementById('import-series-only').checked,
+      const elements = {
+        navButtons: Array.from(document.querySelectorAll(".nav-button")),
+        views: {
+          dashboard: document.getElementById("view-dashboard"),
+          import: document.getElementById("view-import"),
+          config: document.getElementById("view-config"),
+          logs: document.getElementById("view-logs"),
+          diagnostics: document.getElementById("view-diagnostics"),
+        },
+        refreshButton: document.getElementById("refresh-button"),
+        autoToggle: document.getElementById("auto-refresh-toggle"),
+        autoLabel: document.getElementById("auto-refresh-label"),
+        lastUpdated: document.getElementById("last-updated"),
+        headerText: document.getElementById("header-text"),
+        statTotalMedia: document.getElementById("stat-total-media"),
+        statMovieCount: document.getElementById("stat-movie-count"),
+        statShowCount: document.getElementById("stat-show-count"),
+        statSeasonCount: document.getElementById("stat-season-count"),
+        statEpisodeCount: document.getElementById("stat-episode-count"),
+        statCastCount: document.getElementById("stat-cast-count"),
+        statThumbTotal: document.getElementById("stat-thumb-total"),
+        statDbSize: document.getElementById("stat-db-size"),
+        statDbPath: document.getElementById("stat-db-path"),
+        statUptime: document.getElementById("stat-uptime"),
+        statPid: document.getElementById("stat-pid"),
+        statNode: document.getElementById("stat-node"),
+        systemStatusChip: document.getElementById("system-status-chip"),
+        systemStatus: document.getElementById("system-status"),
+        serviceStatus: document.getElementById("service-status"),
+        seriesOverview: document.getElementById("series-overview"),
+        importMessage: document.getElementById("import-message"),
+        importStatus: document.getElementById("import-status"),
+        importLogs: document.getElementById("import-logs"),
+        startImport: document.getElementById("btn-start-import"),
+        stopImport: document.getElementById("btn-stop-import"),
+        refreshImport: document.getElementById("btn-refresh-import"),
+        clearImportLogs: document.getElementById("btn-clear-import-logs"),
+        optDryRun: document.getElementById("opt-dry-run"),
+        optForce: document.getElementById("opt-force"),
+        optVerbose: document.getElementById("opt-verbose"),
+        optMovies: document.getElementById("opt-movies"),
+        optShows: document.getElementById("opt-shows"),
+        configView: document.getElementById("config-view"),
+        logView: document.getElementById("log-view"),
+        logSummary: document.getElementById("log-summary"),
+        logLevel: document.getElementById("log-level"),
+        logLimit: document.getElementById("log-limit"),
+        refreshLogs: document.getElementById("btn-refresh-logs"),
+        clearLogs: document.getElementById("btn-clear-logs"),
+        smtpEmail: document.getElementById("smtp-email"),
+        smtpOutput: document.getElementById("smtp-output"),
+        smtpButton: document.getElementById("btn-test-smtp"),
+        tautulliOutput: document.getElementById("tautulli-output"),
+        tautulliButton: document.getElementById("btn-test-tautulli"),
+        dbOutput: document.getElementById("db-output"),
+        dbButton: document.getElementById("btn-test-db"),
       };
 
-      // Disable button and show loading state
-      const startBtn = document.getElementById('start-import-btn');
-      const originalText = startBtn.innerHTML;
-      startBtn.disabled = true;
-      startBtn.innerHTML = '⏳ Starte Import...';
+      const state = {
+        currentView: "dashboard",
+        autoRefresh: false,
+        autoTimer: null,
+        importTimer: null,
+        importPollCount: 0,
+      };
 
-      try {
-        const response = await fetch(`${API_BASE}/import`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(options),
+      const viewDescriptions = {
+        dashboard: "System overview, import control and service status in one place.",
+        import: "Control the import worker and inspect the latest console output.",
+        config: "Read-only snapshot of the backend configuration with masked secrets.",
+        logs: "Inspect the in-memory log buffer. Useful for quick diagnostics.",
+        diagnostics: "Connectivity checks for SMTP, Tautulli and database services.",
+      };
+
+      const viewLoaders = {
+        dashboard: loadDashboard,
+        import: loadImportView,
+        config: loadConfig,
+        logs: loadLogs,
+        diagnostics: async () => {},
+      };
+
+      function escapeHtml(value) {
+        return String(value)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      async function fetchJson(url, options) {
+        const config = Object.assign({ headers: {} }, options);
+        if (config.body && !config.headers["Content-Type"]) {
+          config.headers["Content-Type"] = "application/json";
+        }
+        const response = await fetch(url, config);
+        const text = await response.text();
+        let data = {};
+        if (text) {
+          try {
+            data = JSON.parse(text);
+          } catch {
+            data = { message: text };
+          }
+        }
+        if (!response.ok) {
+          const message = data.message || data.error || response.statusText || "request failed";
+          throw new Error(message);
+        }
+        return data;
+      }
+
+      function showToast(message, type = "info", timeout = 3200) {
+        const toast = document.createElement("div");
+        toast.className = `toast toast-${type}`;
+        toast.textContent = message;
+        toastRoot.appendChild(toast);
+        requestAnimationFrame(() => toast.classList.add("show"));
+        setTimeout(() => {
+          toast.classList.remove("show");
+          setTimeout(() => toast.remove(), 200);
+        }, timeout);
+      }
+
+      function setLastUpdated(source) {
+        const ts = new Date().toLocaleTimeString("de-DE");
+        elements.lastUpdated.textContent = `${source} | ${ts}`;
+      }
+
+      function updateHeader(view) {
+        elements.headerText.textContent = viewDescriptions[view] || viewDescriptions.dashboard;
+      }
+
+      function switchView(view) {
+        if (!elements.views[view]) {
+          return;
+        }
+        state.currentView = view;
+        elements.navButtons.forEach(btn => {
+          btn.classList.toggle("active", btn.dataset.view === view);
         });
+        Object.entries(elements.views).forEach(([name, node]) => {
+          node.classList.toggle("active", name === view);
+        });
+        updateHeader(view);
+        const loader = viewLoaders[view];
+        if (typeof loader === "function") {
+          loader().catch(err => {
+            console.error(err);
+            showToast(`Failed to load ${view}: ${err.message}`, "error");
+          });
+        }
+      }
 
-        const data = await response.json();
+      function setAutoRefresh(enabled) {
+        if (state.autoTimer) {
+          clearInterval(state.autoTimer);
+          state.autoTimer = null;
+        }
+        state.autoRefresh = enabled;
+        elements.autoToggle.checked = enabled;
+        elements.autoLabel.textContent = enabled ? "auto refresh every 30s" : "auto refresh off";
+        localStorage.setItem("admin:autoRefresh", enabled ? "1" : "0");
+        if (enabled) {
+          state.autoTimer = setInterval(() => {
+            if (state.currentView === "dashboard") {
+              loadDashboard().catch(err => console.error(err));
+            }
+          }, DASHBOARD_INTERVAL);
+        }
+      }
 
-        if (data.success || response.ok) {
-          showImportAlert('success', data.message || 'Import gestartet');
-          showToast('Import wurde gestartet', 'success');
-          document.getElementById('stop-import-btn').disabled = false;
+      async function loadDashboard() {
+        elements.systemStatus.innerHTML = `<div class="muted">Loading system status...</div>`;
+        elements.serviceStatus.innerHTML = `<div class="muted">Loading service configuration...</div>`;
+        elements.seriesOverview.innerHTML = `<div class="muted">Loading series overview...</div>`;
+        try {
+          const [status, stats, config] = await Promise.all([
+            fetchJson(`${API_BASE}/status`),
+            fetchJson(`${API_BASE}/stats`),
+            fetchJson(`${API_BASE}/config`),
+          ]);
+          renderStats(stats);
+          renderSeriesOverview(stats.seriesSamples || []);
+          renderSystemStatus(status);
+          renderServiceStatus(config);
+          setLastUpdated("dashboard");
+        } catch (error) {
+          elements.systemStatus.innerHTML = `<div class="alert alert-error">${escapeHtml(error.message)}</div>`;
+          elements.serviceStatus.innerHTML = `<div class="alert alert-error">${escapeHtml(error.message)}</div>`;
+          renderSeriesOverview([]);
+          throw error;
+        }
+      }
 
-          // Start polling for status
-          startImportPolling();
+      function renderStats(stats) {
+        const media = stats.media || {};
+        const thumbs = stats.thumbnails || {};
+        const db = stats.database || {};
+        const cast = stats.cast || {};
+        elements.statTotalMedia.textContent = media.total ?? "-";
+        elements.statMovieCount.textContent = media.movies ?? "-";
+        elements.statShowCount.textContent = media.series ?? "-";
+        elements.statSeasonCount.textContent = media.seasons ?? "-";
+        elements.statEpisodeCount.textContent = media.episodes ?? "-";
+        elements.statCastCount.textContent = cast.members ?? "-";
+        elements.statThumbTotal.textContent = thumbs.total ?? "-";
+        elements.statDbSize.textContent = db.size ?? "-";
+        elements.statDbPath.textContent = db.path ?? "path unknown";
+      }
+
+      function renderSystemStatus(status) {
+        if (!status || status.status !== "ok") {
+          elements.systemStatusChip.innerHTML = `<span class="chip chip-danger">error</span>`;
         } else {
-          showImportAlert('error', data.error || 'Unbekannter Fehler beim Starten des Imports');
-          startBtn.disabled = false;
-          startBtn.innerHTML = originalText;
+          elements.systemStatusChip.innerHTML = `<span class="chip chip-success">online</span>`;
         }
-      } catch (error) {
-        showImportAlert('error', `Netzwerkfehler: ${error.message}`);
-        startBtn.disabled = false;
-        startBtn.innerHTML = originalText;
-      }
-    }
-
-    async function stopImport() {
-      try {
-        const response = await fetch(`${API_BASE}/import/stop`, { method: 'POST' });
-        const data = await response.json();
-
-        if (data.success) {
-          showImportAlert('info', data.message);
-        } else {
-          showImportAlert('error', data.error);
+        if (status?.uptime?.formatted) {
+          elements.statUptime.textContent = status.uptime.formatted;
         }
-      } catch (error) {
-        showImportAlert('error', `Fehler: ${error.message}`);
-      }
-    }
-
-    let importPollingInterval = null;
-    let pollCount = 0;
-
-    function startImportPolling() {
-      if (importPollingInterval) return;
-
-      pollCount = 0;
-      importPollingInterval = setInterval(async () => {
-        await loadImportStatus();
-
-        const status = await (await fetch(`${API_BASE}/import/status`)).json();
-        if (!status.running) {
-          stopImportPolling();
-          document.getElementById('start-import-btn').disabled = false;
-          document.getElementById('start-import-btn').innerHTML = '▶️ Import starten';
-          document.getElementById('stop-import-btn').disabled = true;
+        if (status?.process?.pid) {
+          elements.statPid.textContent = status.process.pid;
         }
-
-        pollCount++;
-      }, getAdaptivePollingInterval());
-    }
-
-    function getAdaptivePollingInterval() {
-      // Start with frequent polling (1s), then reduce to 3s after 10 polls
-      // This reduces server load while still providing good UX
-      if (pollCount < 10) return 1000;  // First 10 seconds: poll every 1s
-      return 3000;  // After that: poll every 3s
-    }
-
-    function stopImportPolling() {
-      if (importPollingInterval) {
-        clearInterval(importPollingInterval);
-        importPollingInterval = null;
-        pollCount = 0;
-      }
-    }
-
-    async function loadImportStatus() {
-      try {
-        const response = await fetch(`${API_BASE}/import/status`);
-        const data = await response.json();
-
-        const statusBadge = data.running
-          ? '<span class="badge badge-warning pulse">Läuft</span>'
-          : data.exitCode === 0
-            ? '<span class="badge badge-success">Abgeschlossen</span>'
-            : data.exitCode !== undefined
-              ? '<span class="badge badge-danger">Fehler</span>'
-              : '<span class="badge badge-info">Bereit</span>';
-
-        let statusHTML = '';
-
-        // Show running indicator if import is active
-        if (data.running) {
-          statusHTML += `
-            <div class="status-running">
-              <div class="spinner"></div>
-              <div>
-                <strong>Import läuft...</strong>
-                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">
-                  PID: ${data.pid || 'N/A'} • Gestartet: ${data.startedAt ? new Date(data.startedAt).toLocaleTimeString('de-DE') : 'N/A'}
-                </div>
-              </div>
-            </div>
-          `;
+        if (status?.system?.nodeVersion) {
+          elements.statNode.textContent = status.system.nodeVersion;
         }
-
-        statusHTML += `
-          <div class="stat">
-            <span class="stat-label">Status</span>
-            <span class="stat-value">${statusBadge}</span>
+        const rows = [
+          { label: "Uptime (seconds)", value: status?.uptime?.seconds ?? "-" },
+          { label: "RSS", value: status?.memory?.rss ?? "-" },
+          { label: "Heap total", value: status?.memory?.heapTotal ?? "-" },
+          { label: "Heap used", value: status?.memory?.heapUsed ?? "-" },
+          { label: "Platform", value: status?.system?.platform ?? "-" },
+          { label: "Architecture", value: status?.system?.arch ?? "-" },
+          { label: "CPU count", value: status?.system?.cpus ?? "-" },
+          { label: "Free memory", value: status?.system?.freeMemory ?? "-" },
+          { label: "Total memory", value: status?.system?.totalMemory ?? "-" },
+        ];
+        elements.systemStatus.innerHTML = rows.map(row => `
+          <div class="info-item">
+            <span class="label">${escapeHtml(row.label)}</span>
+            <span class="value">${escapeHtml(row.value)}</span>
           </div>
-          ${data.pid ? `
-            <div class="stat">
-              <span class="stat-label">PID</span>
-              <span class="stat-value">${data.pid}</span>
-            </div>
-          ` : ''}
-          ${data.startedAt ? `
-            <div class="stat">
-              <span class="stat-label">Gestartet</span>
-              <span class="stat-value">${new Date(data.startedAt).toLocaleString('de-DE')}</span>
-            </div>
-          ` : ''}
-          ${data.finishedAt ? `
-            <div class="stat">
-              <span class="stat-label">Beendet</span>
-              <span class="stat-value">${new Date(data.finishedAt).toLocaleString('de-DE')}</span>
-            </div>
-          ` : ''}
-          ${data.exitCode !== undefined ? `
-            <div class="stat">
-              <span class="stat-label">Exit Code</span>
-              <span class="stat-value">${data.exitCode}</span>
-            </div>
-          ` : ''}
-          ${data.error ? `
-            <div class="alert alert-error" style="margin-top: 1rem;">${data.error}</div>
-          ` : ''}
-        `;
-
-        document.getElementById('import-status-display').innerHTML = statusHTML;
-
-        // Update logs
-        if (data.logs && data.logs.length > 0) {
-          document.getElementById('import-logs-display').innerHTML = data.logs
-            .slice(-100)
-            .map(log => `<div>${escapeHtml(log)}</div>`)
-            .join('');
-        } else {
-          document.getElementById('import-logs-display').innerHTML = 'Keine Logs vorhanden';
-        }
-
-        // Update buttons
-        document.getElementById('start-import-btn').disabled = data.running;
-        document.getElementById('stop-import-btn').disabled = !data.running;
-      } catch (error) {
-        document.getElementById('import-status-display').innerHTML = `
-          <div class="alert alert-error">Fehler beim Laden des Status: ${error.message}</div>
-        `;
+        `).join("");
       }
-    }
 
-    async function clearImportLogs() {
-      try {
-        await fetch(`${API_BASE}/import/logs`, { method: 'DELETE' });
-        showImportAlert('success', 'Import-Logs geleert');
-        await loadImportStatus();
-      } catch (error) {
-        showImportAlert('error', `Fehler: ${error.message}`);
+      function renderServiceStatus(config) {
+        const items = [
+          { name: "SMTP", enabled: !!config.smtp?.enabled, detail: config.smtp?.host ? `${config.smtp.host}:${config.smtp.port ?? "-"}` : "" },
+          { name: "Tautulli", enabled: !!config.tautulli?.enabled, detail: config.tautulli?.url ?? "" },
+          { name: "TMDB", enabled: !!config.tmdb?.enabled, detail: config.tmdb?.accessToken ? "access token set" : "" },
+          { name: "API auth", enabled: !!config.auth?.enabled, detail: config.auth?.token ? "token set" : "" },
+        ];
+        elements.serviceStatus.innerHTML = items.map(item => `
+          <div class="info-item">
+            <span class="label">${escapeHtml(item.name)}</span>
+            <span class="value">
+              <span class="chip ${item.enabled ? "chip-success" : "chip-danger"}">${item.enabled ? "enabled" : "disabled"}</span>
+            </span>
+          </div>
+          ${item.detail ? `<div class="muted">${escapeHtml(item.detail)}</div>` : ""}
+        `).join("");
       }
-    }
 
-    function showImportAlert(type, message) {
-      const alertClass = type === 'success' ? 'alert-success' : type === 'error' ? 'alert-error' : 'alert-info';
-      document.getElementById('import-alert').innerHTML = `
-        <div class="alert ${alertClass}">${message}</div>
-      `;
-
-      setTimeout(() => {
-        document.getElementById('import-alert').innerHTML = '';
-      }, 5000);
-    }
-
-    async function loadLogs() {
-      const level = document.getElementById('log-level-filter').value;
-
-      try {
-        const params = new URLSearchParams({ limit: '100' });
-        if (level) params.append('level', level);
-
-        const response = await fetch(`${API_BASE}/logs?${params}`);
-        const data = await response.json();
-
-        if (data.logs.length === 0) {
-          document.getElementById('logs-display').innerHTML = 'Keine Logs vorhanden';
+      function renderSeriesOverview(samples) {
+        if (!Array.isArray(samples) || samples.length === 0) {
+          elements.seriesOverview.innerHTML = `<div class="muted">No series sample data available yet.</div>`;
           return;
         }
 
-        document.getElementById('logs-display').innerHTML = data.logs
-          .map(log => `
-            <div class="log-entry ${log.level}">
-              <span class="log-timestamp">${new Date(log.timestamp).toLocaleTimeString('de-DE')}</span>
-              <span class="log-level">${log.level.toUpperCase()}</span>
-              <span class="log-message">${escapeHtml(log.message)}</span>
-              ${log.context ? `<pre style="margin-top: 0.5rem;">${JSON.stringify(log.context, null, 2)}</pre>` : ''}
+        const content = samples.map(sample => {
+          const title = escapeHtml(sample.title ?? 'Untitled');
+          const seasonCount = escapeHtml(String(sample.seasonCount ?? '-'));
+          const episodeCount = escapeHtml(String(sample.episodeCount ?? '-'));
+
+          const seasonsArray = Array.isArray(sample.seasons) ? sample.seasons : [];
+          const seasonsSummary = seasonsArray.length
+            ? seasonsArray
+                .map(season => {
+                  const number = escapeHtml(String(season?.number ?? '?'));
+                  const episodes = escapeHtml(String(season?.episodeCount ?? 0));
+                  return `S${number} (${episodes})`;
+                })
+                .join(', ')
+            : 'n/a';
+
+          const castArray = Array.isArray(sample.cast) ? sample.cast : [];
+          const castSummary = castArray.length
+            ? castArray
+                .map(member => {
+                  const name = member?.name ? escapeHtml(member.name) : '';
+                  if (!name) return null;
+                  const character = member?.character ? ` as ${escapeHtml(member.character)}` : '';
+                  return `${name}${character}`;
+                })
+                .filter(Boolean)
+                .join(', ')
+            : 'n/a';
+
+          return `
+            <div class="info-item">
+              <span class="label">${title}</span>
+              <span class="value">Seasons ${seasonCount} • Episodes ${episodeCount}</span>
             </div>
-          `)
-          .join('');
-      } catch (error) {
-        document.getElementById('logs-display').innerHTML = `
-          <div class="alert alert-error">Fehler beim Laden der Logs: ${error.message}</div>
+            <div class="muted">Seasons: ${seasonsSummary || 'n/a'}</div>
+            <div class="muted">Cast: ${castSummary || 'n/a'}</div>
+          `;
+        }).join('');
+
+        elements.seriesOverview.innerHTML = content;
+      }
+
+      async function loadImportView() {
+        try {
+          await updateImportStatus();
+          setLastUpdated("import");
+        } catch (error) {
+          showToast(error.message, "error");
+          elements.importStatus.innerHTML = `<div class="alert alert-error">${escapeHtml(error.message)}</div>`;
+        }
+      }
+
+      async function updateImportStatus() {
+        const status = await fetchJson(`${API_BASE}/import/status`);
+        renderImportStatus(status);
+        renderImportLogs(status.logs || []);
+        updateImportButtons(status.running);
+        if (status.running) {
+          startImportPolling();
+        } else {
+          stopImportPolling();
+        }
+        return status;
+      }
+
+      function renderImportStatus(status) {
+        if (!status) {
+          elements.importStatus.innerHTML = `<div class="muted">No status returned.</div>`;
+          return;
+        }
+        const badge = status.running ? `<span class="chip chip-info">running</span>` :
+          status.error ? `<span class="chip chip-danger">failed</span>` :
+            `<span class="chip chip-success">idle</span>`;
+        elements.importStatus.innerHTML = `
+          <div class="info-item"><span class="label">Status</span><span class="value">${badge}</span></div>
+          <div class="info-item"><span class="label">PID</span><span class="value">${escapeHtml(status.pid ?? "-")}</span></div>
+          <div class="info-item"><span class="label">Started</span><span class="value">${status.startedAt ? new Date(status.startedAt).toLocaleString("de-DE") : "-"}</span></div>
+          <div class="info-item"><span class="label">Finished</span><span class="value">${status.finishedAt ? new Date(status.finishedAt).toLocaleString("de-DE") : "-"}</span></div>
+          <div class="info-item"><span class="label">Exit code</span><span class="value">${escapeHtml(status.exitCode ?? "-")}</span></div>
+          ${status.error ? `<div class="alert alert-error">${escapeHtml(status.error)}</div>` : ""}
         `;
       }
-    }
 
-    async function clearLogs() {
-      try {
-        await fetch(`${API_BASE}/logs`, { method: 'DELETE' });
-        showTestAlert('success', 'System-Logs geleert');
-        await loadLogs();
-      } catch (error) {
-        showTestAlert('error', `Fehler: ${error.message}`);
-      }
-    }
-
-    async function testSmtp() {
-      const email = document.getElementById('smtp-test-email').value;
-      if (!email) {
-        showTestAlert('error', 'Bitte E-Mail-Adresse eingeben');
-        return;
+      function renderImportLogs(lines) {
+        if (!lines || lines.length === 0) {
+          elements.importLogs.textContent = "No log output yet.";
+          return;
+        }
+        elements.importLogs.innerHTML = lines.map(line => `<div>${escapeHtml(line)}</div>`).join("");
+        elements.importLogs.scrollTop = elements.importLogs.scrollHeight;
       }
 
-      const btn = document.getElementById('smtp-test-btn');
-      const originalText = btn.innerHTML;
-      btn.disabled = true;
-      btn.innerHTML = '⏳ Teste...';
+      function updateImportButtons(running) {
+        elements.startImport.disabled = running;
+        elements.stopImport.disabled = !running;
+      }
 
-      try {
-        const response = await fetch(`${API_BASE}/test/smtp`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ to: email }),
+      function showImportMessage(type, message) {
+        if (!message) {
+          elements.importMessage.innerHTML = "";
+          return;
+        }
+        const cls = type === "error" ? "alert-error" : type === "success" ? "alert-info" : "alert-info";
+        elements.importMessage.innerHTML = `<div class="alert ${cls}">${escapeHtml(message)}</div>`;
+      }
+
+      async function handleStartImport() {
+        const payload = {
+          dryRun: elements.optDryRun.checked,
+          force: elements.optForce.checked,
+          verbose: elements.optVerbose.checked,
+          moviesOnly: elements.optMovies.checked,
+          seriesOnly: elements.optShows.checked,
+        };
+        elements.startImport.disabled = true;
+        showImportMessage(null);
+        try {
+          const result = await fetchJson(`${API_BASE}/import`, {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
+          showToast(result.message || "Import started", "success");
+          showImportMessage("success", result.message || "Import started.");
+          updateImportButtons(true);
+          startImportPolling(true);
+        } catch (error) {
+          elements.startImport.disabled = false;
+          showToast(error.message, "error");
+          showImportMessage("error", error.message);
+        }
+      }
+
+      async function handleStopImport() {
+        try {
+          const result = await fetchJson(`${API_BASE}/import/stop`, { method: "POST" });
+          showToast(result.message || "Stop signal sent", "info");
+          showImportMessage("info", result.message || "Stop signal sent.");
+          stopImportPolling();
+          await updateImportStatus();
+        } catch (error) {
+          showToast(error.message, "error");
+          showImportMessage("error", error.message);
+        }
+      }
+
+      async function handleClearImportLogs() {
+        try {
+          await fetchJson(`${API_BASE}/import/logs`, { method: "DELETE" });
+          elements.importLogs.textContent = "Import log cleared.";
+          showToast("Import log cleared", "info");
+        } catch (error) {
+          showToast(error.message, "error");
+        }
+      }
+
+      function startImportPolling(immediate = false) {
+        if (state.importTimer) {
+          return;
+        }
+        if (immediate) {
+          updateImportStatus().catch(err => console.error(err));
+        }
+        state.importPollCount = 0;
+        state.importTimer = setInterval(async () => {
+          state.importPollCount += 1;
+          try {
+            const status = await updateImportStatus();
+            if (!status.running) {
+              stopImportPolling();
+            }
+          } catch (error) {
+            console.error(error);
+            showToast(`Import polling failed: ${error.message}`, "error");
+          }
+        }, state.importPollCount < 10 ? 1000 : 3000);
+      }
+
+      function stopImportPolling() {
+        if (state.importTimer) {
+          clearInterval(state.importTimer);
+          state.importTimer = null;
+        }
+      }
+
+      async function loadConfig() {
+        elements.configView.innerHTML = `<div class="muted">Loading configuration...</div>`;
+        try {
+          const data = await fetchJson(`${API_BASE}/config`);
+          const sections = Object.entries(data).map(([key, value]) => `
+            <details>
+              <summary>${escapeHtml(key)}</summary>
+              <pre>${escapeHtml(JSON.stringify(value, null, 2))}</pre>
+            </details>
+          `).join("");
+          elements.configView.innerHTML = sections || `<div class="muted">No configuration data.</div>`;
+          setLastUpdated("configuration");
+        } catch (error) {
+          elements.configView.innerHTML = `<div class="alert alert-error">${escapeHtml(error.message)}</div>`;
+          throw error;
+        }
+      }
+
+      async function loadLogs() {
+        elements.logView.innerHTML = `<div class="muted">Loading log buffer...</div>`;
+        try {
+          const params = new URLSearchParams();
+          const limit = parseInt(elements.logLimit.value, 10);
+          if (!Number.isNaN(limit)) {
+            params.set("limit", String(limit));
+          }
+          const level = elements.logLevel.value;
+          if (level) {
+            params.set("level", level);
+          }
+          const data = await fetchJson(`${API_BASE}/logs?${params.toString()}`);
+          const logs = data.logs || [];
+          if (logs.length === 0) {
+            elements.logView.textContent = "No logs available.";
+          } else {
+            elements.logView.innerHTML = logs.map(entry => {
+              const context = entry.context ? `\n${JSON.stringify(entry.context, null, 2)}` : "";
+              return `
+                <div class="log-entry">
+                  <span class="log-meta">${escapeHtml(entry.timestamp)}</span>
+                  <span class="log-meta">${escapeHtml(entry.level)}</span>
+                  ${escapeHtml(entry.message)}
+                  ${context ? `<pre>${escapeHtml(context)}</pre>` : ""}
+                </div>
+              `;
+            }).join("");
+            elements.logView.scrollTop = elements.logView.scrollHeight;
+          }
+          const stats = data.stats || {};
+          elements.logSummary.textContent = `entries ${stats.total ?? logs.length} | error ${stats.byLevel?.error ?? 0} | warn ${stats.byLevel?.warn ?? 0}`;
+          setLastUpdated("logs");
+        } catch (error) {
+          elements.logView.innerHTML = `<div class="alert alert-error">${escapeHtml(error.message)}</div>`;
+          throw error;
+        }
+      }
+
+      async function handleClearLogs() {
+        try {
+          await fetchJson(`${API_BASE}/logs`, { method: "DELETE" });
+          elements.logView.textContent = "Log buffer cleared.";
+          elements.logSummary.textContent = "entries 0";
+          showToast("Log buffer cleared", "info");
+        } catch (error) {
+          showToast(error.message, "error");
+        }
+      }
+
+      async function runSmtpTest() {
+        const email = elements.smtpEmail.value.trim();
+        if (!email) {
+          showToast("Please enter a recipient email.", "error");
+          return;
+        }
+        elements.smtpButton.disabled = true;
+        elements.smtpOutput.textContent = "Sending test mail...";
+        try {
+          const data = await fetchJson(`${API_BASE}/test/smtp`, {
+            method: "POST",
+            body: JSON.stringify({ to: email }),
+          });
+          elements.smtpOutput.textContent = `Success: messageId ${data.messageId ?? "unknown"}`;
+          showToast("SMTP test succeeded", "success");
+        } catch (error) {
+          elements.smtpOutput.textContent = `Error: ${error.message}`;
+          showToast(error.message, "error");
+        } finally {
+          elements.smtpButton.disabled = false;
+        }
+      }
+
+      async function runTautulliTest() {
+        elements.tautulliButton.disabled = true;
+        elements.tautulliOutput.textContent = "Testing Tautulli connection...";
+        try {
+          const data = await fetchJson(`${API_BASE}/test/tautulli`, { method: "POST" });
+          elements.tautulliOutput.textContent = `Success: ${data.libraries ?? 0} libraries reachable.`;
+          showToast("Tautulli test succeeded", "success");
+        } catch (error) {
+          elements.tautulliOutput.textContent = `Error: ${error.message}`;
+          showToast(error.message, "error");
+        } finally {
+          elements.tautulliButton.disabled = false;
+        }
+      }
+
+      async function runDbTest() {
+        elements.dbButton.disabled = true;
+        elements.dbOutput.textContent = "Checking database...";
+        try {
+          const data = await fetchJson(`${API_BASE}/test/database`, { method: "POST" });
+          elements.dbOutput.textContent = `Success: ${data.recordCount ?? 0} records accessible.`;
+          showToast("Database test succeeded", "success");
+        } catch (error) {
+          elements.dbOutput.textContent = `Error: ${error.message}`;
+          showToast(error.message, "error");
+        } finally {
+          elements.dbButton.disabled = false;
+        }
+      }
+
+      function bindEvents() {
+        elements.navButtons.forEach(btn => {
+          btn.addEventListener("click", () => switchView(btn.dataset.view));
         });
-
-        const data = await response.json();
-
-        if (response.status === 503) {
-          showTestResult('error', 'SMTP nicht konfiguriert', {
-            message: 'SMTP-Service ist nicht aktiviert. Bitte konfigurieren Sie die SMTP-Umgebungsvariablen.',
-            details: data
-          });
-        } else if (data.success || response.ok) {
-          showTestResult('success', 'SMTP-Test erfolgreich', data);
-        } else {
-          showTestResult('error', 'SMTP-Test fehlgeschlagen', data);
-        }
-      } catch (error) {
-        showTestResult('error', 'SMTP-Test fehlgeschlagen', { error: error.message });
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-      }
-    }
-
-    async function testTautulli() {
-      const btn = document.getElementById('tautulli-test-btn');
-      const originalText = btn.innerHTML;
-      btn.disabled = true;
-      btn.innerHTML = '⏳ Teste...';
-
-      try {
-        const response = await fetch(`${API_BASE}/test/tautulli`, { method: 'POST' });
-        const data = await response.json();
-
-        if (response.status === 503) {
-          showTestResult('error', 'Tautulli nicht konfiguriert', {
-            message: 'Tautulli-Service ist nicht aktiviert. Bitte konfigurieren Sie die Tautulli-Umgebungsvariablen (TAUTULLI_URL und TAUTULLI_API_KEY).',
-            details: data
-          });
-        } else if (data.success || response.ok) {
-          showTestResult('success', 'Tautulli-Test erfolgreich', data);
-        } else {
-          showTestResult('error', 'Tautulli-Test fehlgeschlagen', data);
-        }
-      } catch (error) {
-        showTestResult('error', 'Tautulli-Test fehlgeschlagen', { error: error.message });
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-      }
-    }
-
-    async function testDatabase() {
-      const btn = document.getElementById('database-test-btn');
-      const originalText = btn.innerHTML;
-      btn.disabled = true;
-      btn.innerHTML = '⏳ Teste...';
-
-      try {
-        const response = await fetch(`${API_BASE}/test/database`, { method: 'POST' });
-        const data = await response.json();
-
-        if (data.success || response.ok) {
-          showTestResult('success', 'Datenbank-Test erfolgreich', data);
-        } else {
-          showTestResult('error', 'Datenbank-Test fehlgeschlagen', data);
-        }
-      } catch (error) {
-        showTestResult('error', 'Datenbank-Test fehlgeschlagen', { error: error.message });
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-      }
-    }
-
-    function showTestResult(type, title, data) {
-      const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
-      document.getElementById('test-results').innerHTML = `
-        <div class="alert ${alertClass}">
-          <strong>${title}</strong>
-          <pre style="margin-top: 0.5rem; margin-bottom: 0;">${JSON.stringify(data, null, 2)}</pre>
-        </div>
-      `;
-    }
-
-    function showTestAlert(type, message) {
-      const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
-      document.getElementById('test-alert').innerHTML = `
-        <div class="alert ${alertClass}">${message}</div>
-      `;
-
-      setTimeout(() => {
-        document.getElementById('test-alert').innerHTML = '';
-      }, 5000);
-    }
-
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-
-    // Auto-refresh functionality
-    let autoRefreshInterval = null;
-
-    function toggleAutoRefresh() {
-      const toggle = document.getElementById('auto-refresh-toggle');
-
-      if (toggle.checked) {
-        startAutoRefresh();
-      } else {
-        stopAutoRefresh();
-      }
-    }
-
-    function startAutoRefresh() {
-      if (autoRefreshInterval) return;
-
-      // Refresh every 30 seconds
-      autoRefreshInterval = setInterval(() => {
-        // Only refresh if dashboard tab is active
-        const dashboardTab = document.getElementById('dashboard-tab');
-        if (dashboardTab && dashboardTab.classList.contains('active')) {
-          loadDashboard();
-        }
-      }, 30000);
-
-      console.log('Auto-refresh enabled (30s interval)');
-    }
-
-    function stopAutoRefresh() {
-      if (autoRefreshInterval) {
-        clearInterval(autoRefreshInterval);
-        autoRefreshInterval = null;
-        console.log('Auto-refresh disabled');
-      }
-    }
-
-    // Stop auto-refresh when tab is switched
-    document.querySelectorAll('.tab').forEach(tab => {
-      const originalClickHandler = tab.onclick;
-      tab.addEventListener('click', () => {
-        const tabName = tab.dataset.tab;
-        if (tabName !== 'dashboard') {
-          const toggle = document.getElementById('auto-refresh-toggle');
-          if (toggle && toggle.checked) {
-            // Keep toggle checked but stop refreshing when not on dashboard
-            stopAutoRefresh();
+        elements.refreshButton.addEventListener("click", () => {
+          const loader = viewLoaders[state.currentView];
+          if (loader) {
+            loader().catch(err => showToast(err.message, "error"));
           }
-        } else if (tabName === 'dashboard') {
-          const toggle = document.getElementById('auto-refresh-toggle');
-          if (toggle && toggle.checked) {
-            // Restart auto-refresh when returning to dashboard
-            startAutoRefresh();
-          }
+        });
+        elements.autoToggle.addEventListener("change", event => setAutoRefresh(event.target.checked));
+        elements.startImport.addEventListener("click", handleStartImport);
+        elements.stopImport.addEventListener("click", handleStopImport);
+        elements.refreshImport.addEventListener("click", () => updateImportStatus().catch(err => showToast(err.message, "error")));
+        elements.clearImportLogs.addEventListener("click", handleClearImportLogs);
+        elements.refreshLogs.addEventListener("click", () => loadLogs().catch(err => showToast(err.message, "error")));
+        elements.clearLogs.addEventListener("click", handleClearLogs);
+        elements.logLevel.addEventListener("change", () => loadLogs().catch(err => showToast(err.message, "error")));
+        elements.logLimit.addEventListener("change", () => loadLogs().catch(err => showToast(err.message, "error")));
+        elements.smtpButton.addEventListener("click", runSmtpTest);
+        elements.tautulliButton.addEventListener("click", runTautulliTest);
+        elements.dbButton.addEventListener("click", runDbTest);
+      }
+
+      function init() {
+        bindEvents();
+        const stored = localStorage.getItem("admin:autoRefresh") === "1";
+        setAutoRefresh(stored);
+        loadDashboard().catch(err => showToast(err.message, "error"));
+      }
+
+      window.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible" && state.autoRefresh && !state.autoTimer) {
+          setAutoRefresh(true);
         }
       });
-    });
 
-    // Initial load
-    log('Admin UI initializing...');
-    showToast('Admin Panel wird geladen...', 'info', 2000);
-
-    document.addEventListener('DOMContentLoaded', () => {
-      log('DOM loaded, starting dashboard load');
-      loadDashboard().then(() => {
-        log('Initial dashboard load complete');
-      });
-    });
-
-    // If DOM is already loaded (script runs after HTML)
-    if (document.readyState === 'loading') {
-      // Still loading
-      log('DOM still loading');
-    } else {
-      // DOM already loaded
-      log('DOM already loaded, starting dashboard immediately');
-      loadDashboard().then(() => {
-        log('Initial dashboard load complete');
-      });
-    }
+      init();
+    })();
   </script>
 </body>
 </html>

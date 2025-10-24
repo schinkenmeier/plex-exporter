@@ -253,7 +253,20 @@ function createDom(){
   globalThis.Node = window.Node;
   globalThis.CustomEvent = window.CustomEvent;
   globalThis.Event = window.Event;
-  globalThis.navigator = { userAgent: 'node-test' };
+  const navigatorStub = { userAgent: 'node-test' };
+  const existingNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  if (!existingNavigator || existingNavigator.configurable) {
+    try {
+      Object.defineProperty(globalThis, 'navigator', {
+        configurable: true,
+        enumerable: true,
+        writable: true,
+        value: navigatorStub,
+      });
+    } catch {
+      // ignore – retaining existing navigator implementation
+    }
+  }
   globalThis.history = window.history;
   globalThis.location = window.location;
   globalThis.requestAnimationFrame = window.requestAnimationFrame;

@@ -32,6 +32,20 @@ const updateMediaSchema = createMediaSchema
     thumbnails: z.array(z.string().trim().min(1)).optional(),
   });
 
+const normalizeMediaType = (value?: string | null): 'movie' | 'tv' | undefined => {
+  if (!value) {
+    return undefined;
+  }
+  const normalized = value.toLowerCase();
+  if (normalized === 'tv' || normalized === 'show') {
+    return 'tv';
+  }
+  if (normalized === 'movie') {
+    return 'movie';
+  }
+  return undefined;
+};
+
 const mapToResponse = (media: MediaRecord, thumbnailPaths: string[]) => ({
   id: media.id,
   plexId: media.plexId,
@@ -64,7 +78,7 @@ const toUpdateInput = (data: z.infer<typeof updateMediaSchema>): MediaUpdateInpu
   plexId: data.plexId,
   title: data.title,
   librarySectionId: data.librarySectionId,
-  mediaType: data.mediaType,
+  mediaType: normalizeMediaType(data.mediaType),
   year: data.year,
   guid: data.guid,
   summary: data.summary,
@@ -76,7 +90,7 @@ const toCreateInput = (data: z.infer<typeof createMediaSchema>): MediaCreateInpu
   plexId: data.plexId,
   title: data.title,
   librarySectionId: data.librarySectionId,
-  mediaType: data.mediaType,
+  mediaType: normalizeMediaType(data.mediaType),
   year: data.year,
   guid: data.guid,
   summary: data.summary,

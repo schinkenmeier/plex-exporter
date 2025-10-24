@@ -2,10 +2,15 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { initializeDatabase, type SqliteDatabase } from '../../src/db/index.js';
+import {
+  initializeDrizzleDatabase,
+  type SqliteDatabase,
+  type DrizzleDatabase,
+} from '../../src/db/index.js';
 
 export interface TestDatabaseHandle {
-  db: SqliteDatabase;
+  sqlite: SqliteDatabase;
+  drizzle: DrizzleDatabase;
   filePath: string;
   cleanup: () => void;
 }
@@ -13,13 +18,14 @@ export interface TestDatabaseHandle {
 export const createTestDatabase = (): TestDatabaseHandle => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plex-exporter-backend-test-'));
   const filePath = path.join(tempDir, 'db.sqlite');
-  const db = initializeDatabase({ filePath });
+  const { sqlite, db } = initializeDrizzleDatabase({ filePath });
 
   return {
-    db,
+    sqlite,
+    drizzle: db,
     filePath,
     cleanup: () => {
-      db.close();
+      sqlite.close();
       fs.rmSync(tempDir, { recursive: true, force: true });
     },
   };

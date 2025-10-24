@@ -22,11 +22,16 @@ function normalizeLocalCast(person){
     person?.profilePath,
   ].find(val => typeof val === 'string' && val.trim());
   const thumb = [person?.thumb, person?.photo, person?.image].find(val => typeof val === 'string' && val.trim()) || '';
+  const character = String(person?.character || person?.role || '').trim();
+  const orderRaw = Number(person?.order);
   return {
     name,
     role,
+    character,
+    order: Number.isFinite(orderRaw) ? orderRaw : null,
     thumb,
     tmdbProfile: tmdbProfile ? String(tmdbProfile).trim() : '',
+    source: 'local',
     raw: person,
   };
 }
@@ -39,8 +44,11 @@ function normalizeTmdbCast(person){
   return {
     name,
     role,
+    character: role,
+    order: Number.isFinite(Number(person.order)) ? Number(person.order) : null,
     thumb: '',
     tmdbProfile: person.profile || person.profile_path || person.profilePath || '',
+    source: 'tmdb',
     raw: { tmdb: person },
   };
 }
@@ -69,6 +77,12 @@ export function buildCastList(item){
       seen.set(lowerName, true);
       combined.push(entry);
     }
+  });
+  combined.sort((a, b) => {
+    const orderA = Number.isFinite(Number(a?.order)) ? Number(a.order) : Number.MAX_SAFE_INTEGER;
+    const orderB = Number.isFinite(Number(b?.order)) ? Number(b.order) : Number.MAX_SAFE_INTEGER;
+    if(orderA !== orderB) return orderA - orderB;
+    return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
   });
 
   return combined;

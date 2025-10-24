@@ -1,9 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { SqliteDatabase } from '../../db/connection.js';
+import type { DrizzleDatabase } from '../../db/index.js';
 import MediaRepository from '../../repositories/mediaRepository.js';
 import ThumbnailRepository from '../../repositories/thumbnailRepository.js';
 import type { PlexMovie, ImportResult, ImportOptions } from './types.js';
+import type { MediaCreateInput } from '../../repositories/mediaRepository.js';
 import type { Logger } from '../utils/logger.js';
 
 export class MovieImporter {
@@ -11,11 +12,11 @@ export class MovieImporter {
   private thumbRepo: ThumbnailRepository;
 
   constructor(
-    private db: SqliteDatabase,
+    drizzle: DrizzleDatabase,
     private logger: Logger,
   ) {
-    this.mediaRepo = new MediaRepository(db);
-    this.thumbRepo = new ThumbnailRepository(db);
+    this.mediaRepo = new MediaRepository(drizzle);
+    this.thumbRepo = new ThumbnailRepository(drizzle);
   }
 
   async import(
@@ -45,15 +46,13 @@ export class MovieImporter {
         this.logger.warn('DRY RUN MODE - No database changes will be made');
       }
 
-      // Use transaction for better performance
-      const importTransaction = this.db.transaction((movieList: PlexMovie[]) => {
-        for (let i = 0; i < movieList.length; i++) {
-          const movie = movieList[i];
+      if (!options.dryRun) {
+        for (let i = 0; i < movies.length; i++) {
+          const movie = movies[i];
 
           try {
             const plexId = String(movie.ratingKey);
 
-            // Check if movie already exists
             const existing = this.mediaRepo.getByPlexId(plexId);
 
             if (existing && !options.force) {
@@ -62,11 +61,9 @@ export class MovieImporter {
               continue;
             }
 
-            // Extract primary GUID
             const guid = this.extractGuid(movie);
 
-            // Prepare media data with extended metadata
-            const mediaData = {
+            const mediaData: MediaCreateInput = {
               plexId,
               title: movie.title,
               year: movie.year || null,
@@ -75,11 +72,10 @@ export class MovieImporter {
               mediaType: 'movie',
               plexAddedAt: movie.addedAt,
               plexUpdatedAt: null,
-              // Extended metadata
-              genres: movie.genres?.map(g => g.tag).filter(Boolean) || null,
-              directors: movie.directors?.map(d => d.tag).filter(Boolean) || null,
-              countries: movie.countries?.map(c => c.tag).filter(Boolean) || null,
-              collections: movie.collections?.map(c => c.tag).filter(Boolean) || null,
+              genres: movie.genres?.map((g) => g.tag).filter(Boolean) || null,
+              directors: movie.directors?.map((d) => d.tag).filter(Boolean) || null,
+              countries: movie.countries?.map((c) => c.tag).filter(Boolean) || null,
+              collections: movie.collections?.map((c) => c.tag).filter(Boolean) || null,
               rating: movie.rating || null,
               audienceRating: movie.audienceRating || null,
               contentRating: movie.contentRating || null,
@@ -90,16 +86,13 @@ export class MovieImporter {
             };
 
             if (existing && options.force) {
-              // Update existing
               this.logger.debug(`Updating movie: ${movie.title} (${plexId})`);
               this.mediaRepo.update(existing.id, mediaData);
               result.imported++;
             } else {
-              // Insert new
               this.logger.debug(`Importing movie: ${movie.title} (${plexId})`);
               const created = this.mediaRepo.create(mediaData);
 
-              // Handle thumbnail
               if (movie.thumbFile) {
                 this.thumbRepo.replaceForMedia(created.id, [movie.thumbFile]);
               }
@@ -107,18 +100,14 @@ export class MovieImporter {
               result.imported++;
             }
 
-            if ((i + 1) % 10 === 0 || i + 1 === movieList.length) {
-              this.logger.progress(i + 1, movieList.length, movie.title);
+            if ((i + 1) % 10 === 0 || i + 1 === movies.length) {
+              this.logger.progress(i + 1, movies.length, movie.title);
             }
           } catch (error) {
             result.errors++;
             this.logger.error(`Failed to import movie: ${movie.title}`, error as Error);
           }
         }
-      });
-
-      if (!options.dryRun) {
-        importTransaction(movies);
       } else {
         result.skipped = movies.length;
       }
@@ -151,6 +140,9 @@ export class MovieImporter {
   }
 }
 
-export const createMovieImporter = (db: SqliteDatabase, logger: Logger): MovieImporter => {
-  return new MovieImporter(db, logger);
+export const createMovieImporter = (
+  drizzle: DrizzleDatabase,
+  logger: Logger,
+): MovieImporter => {
+  return new MovieImporter(drizzle, logger);
 };

@@ -24,6 +24,13 @@ function sanitizeText(value){
   return str.trim();
 }
 
+function normalizeSourceFlag(value){
+  const normalized = sanitizeText(value).toLowerCase();
+  if(normalized === 'tmdb') return 'tmdb';
+  if(normalized === 'local' || normalized === 'plex' || normalized === 'export') return 'local';
+  return '';
+}
+
 function resolveSeasonNumber(season, fallback){
   const candidates = [
     season?.seasonNumber,
@@ -162,8 +169,42 @@ function combineEpisodeData(ep){
   })();
   const airDate = sanitizeText(tmdb?.airDate || ep?.airDate || ep?.originallyAvailableAt || ep?.date);
   const overview = sanitizeText(tmdb?.overview || ep?.overview || ep?.summary || ep?.description || ep?.plot);
-  const stillPath = tmdb?.stillPath || ep?.tmdbStillPath || ep?.stillPath;
-  const stillUrl = tmdb?.still || ep?.tmdbStill || ep?.still || ep?.thumbFile || ep?.thumb;
+  const declaredSource = normalizeSourceFlag(ep?.stillSource || ep?.imageSource || ep?.originSource);
+  let stillSource = '';
+  let stillPath = '';
+  let stillUrl = '';
+  const stillCandidates = [
+    { value: tmdb?.stillPath, type: 'path', source: 'tmdb' },
+    { value: tmdb?.still_path, type: 'path', source: 'tmdb' },
+    { value: ep?.tmdbStillPath, type: 'path', source: 'tmdb' },
+    { value: ep?.tmdb_still_path, type: 'path', source: 'tmdb' },
+    { value: tmdb?.still, type: 'url', source: 'tmdb' },
+    { value: tmdb?.stillUrl, type: 'url', source: 'tmdb' },
+    { value: ep?.tmdbStill, type: 'url', source: 'tmdb' },
+    { value: ep?.stillUrl, type: 'url', source: declaredSource || 'local' },
+    { value: ep?.still_url, type: 'url', source: declaredSource || 'local' },
+    { value: ep?.still, type: 'url', source: declaredSource || 'local' },
+    { value: ep?.image, type: 'url', source: 'local' },
+    { value: ep?.thumbFile, type: 'url', source: 'local' },
+    { value: ep?.thumb, type: 'url', source: 'local' },
+  ];
+  for(const candidate of stillCandidates){
+    const value = sanitizeText(candidate.value);
+    if(!value) continue;
+    if(candidate.type === 'path' && candidate.source === 'tmdb' && !stillPath){
+      stillPath = value;
+      stillSource = 'tmdb';
+      continue;
+    }
+    if(!stillUrl){
+      stillUrl = value;
+      if(!stillSource) stillSource = candidate.source;
+    }
+    if(stillPath && stillUrl) break;
+  }
+  if(stillPath && !stillSource) stillSource = 'tmdb';
+  if(!stillPath && stillUrl && !stillSource) stillSource = declaredSource || 'local';
+  stillSource = stillSource || '';
   const title = sanitizeText(tmdb?.name || ep?.title || ep?.name);
   return {
     title,
@@ -174,13 +215,18 @@ function combineEpisodeData(ep){
     airDate,
     stillPath,
     stillUrl,
+    stillSource,
   };
 }
 
 export function createEpisodeStill(data, context = {}){
   const wrapper = document.createElement('div');
   wrapper.className = 'v3-episode__still';
+  if(data?.stillSource){
+    wrapper.dataset.source = data.stillSource;
+  }
   const alt = data.title || context.showTitle || 'Episode';
+  let hasVisual = false;
   if(data.stillPath){
     const small = urlEpisode(data.stillPath, { size: 'w300', title: alt });
     const medium = urlEpisode(data.stillPath, { size: 'w780', title: alt });
@@ -191,22 +237,37 @@ export function createEpisodeStill(data, context = {}){
     img.srcset = `${small} 300w, ${medium} 780w`;
     img.alt = alt;
     wrapper.append(img);
-    return wrapper;
-  }
-  if(data.stillUrl){
+    hasVisual = true;
+  }else if(data.stillUrl){
     const img = new Image();
     img.decoding = 'async';
     img.loading = 'lazy';
     img.src = data.stillUrl;
     img.alt = alt;
     wrapper.append(img);
-    return wrapper;
+    hasVisual = true;
+  }else{
+    wrapper.dataset.state = 'empty';
+    const placeholder = document.createElement('span');
+    placeholder.className = 'v3-episode__initials';
+    placeholder.textContent = makeInitials(alt, 2) || '∅';
+    wrapper.append(placeholder);
   }
-  wrapper.dataset.state = 'empty';
-  const placeholder = document.createElement('span');
-  placeholder.className = 'v3-episode__initials';
-  placeholder.textContent = makeInitials(alt, 2) || '∅';
-  wrapper.append(placeholder);
+  const sourceLabel = (() => {
+    if(data.stillSource === 'tmdb') return 'TMDB';
+    if(data.stillSource === 'local') return 'Lokal';
+    return '';
+  })();
+  if(sourceLabel){
+    const badge = document.createElement('span');
+    badge.className = 'v3-episode__still-badge';
+    badge.dataset.source = data.stillSource;
+    badge.textContent = sourceLabel;
+    wrapper.append(badge);
+  }
+  if(hasVisual && data.stillSource === 'local'){
+    wrapper.dataset.local = 'true';
+  }
   return wrapper;
 }
 
@@ -253,8 +314,17 @@ function createEpisodeRow(ep, context){
   badges.className = 'v3-episode__badges';
   const runtimeBadge = createBadge(data.runtimeText, 'runtime');
   const ratingBadge = createBadge(formatRating(data.rating), 'rating');
+  const sourceBadge = (() => {
+    if(data.stillSource === 'tmdb') return createBadge('TMDB Still', 'source');
+    if(data.stillSource === 'local') return createBadge('Lokales Still', 'source');
+    return null;
+  })();
   if(runtimeBadge) badges.append(runtimeBadge);
   if(ratingBadge) badges.append(ratingBadge);
+  if(sourceBadge){
+    sourceBadge.dataset.source = data.stillSource;
+    badges.append(sourceBadge);
+  }
   if(badges.childElementCount) header.append(badges);
 
   const meta = document.createElement('p');

@@ -1,10 +1,8 @@
-import type { SqliteDatabase } from '../db/connection.js';
+import { desc, eq } from 'drizzle-orm';
+import type { DrizzleDatabase } from '../db/index.js';
+import { tautulliSnapshots } from '../db/schema.js';
 
-interface SnapshotRow {
-  id: number;
-  captured_at: string;
-  payload: string;
-}
+type SnapshotRow = typeof tautulliSnapshots.$inferSelect;
 
 export interface TautulliSnapshotRecord<TPayload = unknown> {
   id: number;
@@ -13,57 +11,51 @@ export interface TautulliSnapshotRecord<TPayload = unknown> {
 }
 
 export class TautulliSnapshotRepository {
-  private readonly insertStmt: ReturnType<SqliteDatabase['prepare']>;
-  private readonly getByIdStmt: ReturnType<SqliteDatabase['prepare']>;
-  private readonly listStmt: ReturnType<SqliteDatabase['prepare']>;
+  constructor(private readonly db: DrizzleDatabase) {}
 
-  constructor(private readonly db: SqliteDatabase) {
-    this.insertStmt = this.db.prepare(
-      'INSERT INTO tautulli_snapshots (payload) VALUES (@payload)',
-    );
-
-    this.getByIdStmt = this.db.prepare('SELECT * FROM tautulli_snapshots WHERE id = ?');
-    this.listStmt = this.db.prepare(
-      'SELECT * FROM tautulli_snapshots ORDER BY captured_at DESC LIMIT ?',
-    );
-  }
-
-  recordSnapshot<TPayload>(payload: TPayload): TautulliSnapshotRecord<TPayload> {
-    const payloadJson = JSON.stringify(payload);
-    const info = this.insertStmt.run({ payload: payloadJson });
-    const record = this.getById(Number(info.lastInsertRowid)) as
-      | TautulliSnapshotRecord<TPayload>
-      | null;
-
-    if (!record) {
-      throw new Error('Failed to read snapshot after insertion.');
-    }
-
-    return record;
-  }
-
-  getById<TPayload>(id: number): TautulliSnapshotRecord<TPayload> | null {
-    const row = this.getByIdStmt.get(id) as SnapshotRow | undefined;
-
-    if (!row) {
-      return null;
-    }
-
+  private mapRow<TPayload>(row: SnapshotRow): TautulliSnapshotRecord<TPayload> {
     return {
       id: row.id,
-      capturedAt: row.captured_at,
+      capturedAt: row.capturedAt,
       payload: JSON.parse(row.payload) as TPayload,
     };
   }
 
+  recordSnapshot<TPayload>(payload: TPayload): TautulliSnapshotRecord<TPayload> {
+    const payloadJson = JSON.stringify(payload);
+    const [row] = this.db
+      .insert(tautulliSnapshots)
+      .values({ payload: payloadJson })
+      .returning()
+      .all();
+
+    if (!row) {
+      throw new Error('Failed to insert Tautulli snapshot.');
+    }
+
+    return this.mapRow<TPayload>(row);
+  }
+
+  getById<TPayload>(id: number): TautulliSnapshotRecord<TPayload> | null {
+    const rows = this.db
+      .select()
+      .from(tautulliSnapshots)
+      .where(eq(tautulliSnapshots.id, id))
+      .limit(1)
+      .all();
+
+    return rows[0] ? this.mapRow<TPayload>(rows[0]) : null;
+  }
+
   listLatest<TPayload>(limit: number): TautulliSnapshotRecord<TPayload>[] {
     const safeLimit = Number.isInteger(limit) && limit > 0 ? limit : 1;
-    const rows = this.listStmt.all(safeLimit) as SnapshotRow[];
-    return rows.map((row) => ({
-      id: row.id,
-      capturedAt: row.captured_at,
-      payload: JSON.parse(row.payload) as TPayload,
-    }));
+    return this.db
+      .select()
+      .from(tautulliSnapshots)
+      .orderBy(desc(tautulliSnapshots.capturedAt))
+      .limit(safeLimit)
+      .all()
+      .map((row) => this.mapRow<TPayload>(row));
   }
 }
 

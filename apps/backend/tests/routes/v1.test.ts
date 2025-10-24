@@ -4,13 +4,23 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import MediaRepository from '../../src/repositories/mediaRepository.js';
 import ThumbnailRepository from '../../src/repositories/thumbnailRepository.js';
+import SeasonRepository from '../../src/repositories/seasonRepository.js';
+import CastRepository from '../../src/repositories/castRepository.js';
 import { createV1Router } from '../../src/routes/v1.js';
 import { errorHandler } from '../../src/middleware/errorHandler.js';
 import { createTestDatabase, type TestDatabaseHandle } from '../helpers/testDatabase.js';
 
-const createApp = (mediaRepository: MediaRepository, thumbnailRepository: ThumbnailRepository) => {
+const createApp = (
+  mediaRepository: MediaRepository,
+  thumbnailRepository: ThumbnailRepository,
+  seasonRepository: SeasonRepository,
+  castRepository: CastRepository,
+) => {
   const app = express();
-  app.use('/api/v1', createV1Router({ mediaRepository, thumbnailRepository }));
+  app.use(
+    '/api/v1',
+    createV1Router({ mediaRepository, thumbnailRepository, seasonRepository, castRepository }),
+  );
   app.use(errorHandler);
   return app;
 };
@@ -19,13 +29,17 @@ describe('v1 routes', () => {
   let dbHandle: TestDatabaseHandle;
   let mediaRepository: MediaRepository;
   let thumbnailRepository: ThumbnailRepository;
+  let seasonRepository: SeasonRepository;
+  let castRepository: CastRepository;
   let app: express.Express;
 
   beforeEach(() => {
     dbHandle = createTestDatabase();
-    mediaRepository = new MediaRepository(dbHandle.db);
-    thumbnailRepository = new ThumbnailRepository(dbHandle.db);
-    app = createApp(mediaRepository, thumbnailRepository);
+    mediaRepository = new MediaRepository(dbHandle.drizzle);
+    thumbnailRepository = new ThumbnailRepository(dbHandle.drizzle);
+    seasonRepository = new SeasonRepository(dbHandle.drizzle);
+    castRepository = new CastRepository(dbHandle.drizzle);
+    app = createApp(mediaRepository, thumbnailRepository, seasonRepository, castRepository);
   });
 
   afterEach(() => {
@@ -81,6 +95,7 @@ describe('v1 routes', () => {
       genres: ['Drama'],
       directors: ['Director A'],
       thumbnails: ['/thumbs/movie-2-a.jpg', '/thumbs/movie-2-b.jpg'],
+      cast: [],
     });
   });
 

@@ -1,4 +1,9 @@
-import { createSqliteConnection, type SqliteDatabase } from './connection.js';
+import {
+  createSqliteConnection,
+  createDrizzle,
+  type SqliteDatabase,
+  type DrizzleDatabase,
+} from './connection.js';
 import { runMigrations } from './migrations/index.js';
 
 export interface InitializeDatabaseOptions {
@@ -11,4 +16,10 @@ export const initializeDatabase = ({ filePath }: InitializeDatabaseOptions): Sql
   return db;
 };
 
-export type { SqliteDatabase };
+export const initializeDrizzleDatabase = ({ filePath }: InitializeDatabaseOptions) => {
+  const { sqlite, db } = createDrizzle(filePath);
+  runMigrations(sqlite);
+  return { sqlite, db };
+};
+
+export type { SqliteDatabase, DrizzleDatabase };

@@ -16,7 +16,8 @@
     "import:dry-run": "tsx src/scripts/import-exports.ts --dry-run",
     "import:movies": "tsx src/scripts/import-exports.ts --movies-only",
     "import:series": "tsx src/scripts/import-exports.ts --series-only",
-    "import:verbose": "tsx src/scripts/import-exports.ts --verbose"
+    "import:verbose": "tsx src/scripts/import-exports.ts --verbose",
+    "migrate:drizzle": "tsx src/scripts/migrate-to-drizzle.ts"
   },
   "dependencies": {
     "@plex-exporter/shared": "file:../../packages/shared",
@@ -29,6 +30,8 @@
     "helmet": "^8.1.0",
     "lru-cache": "^11.2.2",
     "nodemailer": "^6.9.13",
+    "drizzle-orm": "^0.39.1",
+    "drizzle-zod": "^0.7.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "yaml": "^2.8.1",

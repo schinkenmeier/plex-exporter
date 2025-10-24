@@ -845,11 +845,13 @@ body.modalv3-open {
   width: clamp(72px, 10vw, 90px);
   aspect-ratio: 1;
   border-radius: 50%;
+  position: relative;
   overflow: hidden;
   display: grid;
   place-items: center;
   background: color-mix(in srgb, var(--bg-translucent) 82%, transparent);
   border: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+  transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
 }
 
 .v3-cast-card__avatar img {
@@ -865,6 +867,16 @@ body.modalv3-open {
 
 .v3-cast-card__avatar:not(.has-image) {
   color: var(--muted);
+}
+
+.v3-cast-card__avatar[data-source="tmdb"] {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border) 55%);
+}
+
+.v3-cast-card__avatar[data-source="local"] {
+  box-shadow: 0 0 0 2px color-mix(in srgb, #35c27a 48%, transparent);
+  border-color: color-mix(in srgb, #35c27a 38%, var(--border) 62%);
 }
 
 .v3-cast-card__initials {
@@ -889,6 +901,40 @@ body.modalv3-open {
   margin: 0;
   color: var(--muted);
   font-size: 0.85rem;
+}
+
+.v3-cast-card__badges {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.v3-cast-card__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+  background: color-mix(in srgb, var(--bg-translucent) 88%, transparent);
+  color: color-mix(in srgb, var(--fg) 82%, var(--muted) 18%);
+  font-weight: 600;
+}
+
+.v3-cast-card__badge[data-variant="source"][data-source="tmdb"] {
+  background: color-mix(in srgb, var(--accent) 52%, var(--card) 48%);
+  border-color: color-mix(in srgb, var(--accent) 48%, transparent);
+  color: #051020;
+}
+
+.v3-cast-card__badge[data-variant="source"][data-source="local"] {
+  background: color-mix(in srgb, #35c27a 45%, var(--card) 55%);
+  border-color: color-mix(in srgb, #35c27a 40%, transparent);
+  color: #04140b;
 }
 
 .v3-cast__more {
@@ -1108,11 +1154,47 @@ body.modalv3-open {
   font-weight: 600;
 }
 
+.v3-episode__still[data-source="tmdb"] {
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
+}
+
+.v3-episode__still[data-source="local"] {
+  border: 1px solid color-mix(in srgb, #35c27a 32%, transparent);
+}
+
 .v3-episode__still img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+.v3-episode__still-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 0.18rem 0.6rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  background: color-mix(in srgb, var(--bg-translucent) 86%, transparent);
+  color: var(--fg);
+  box-shadow: 0 8px 18px rgba(8, 12, 20, 0.35);
+}
+
+.v3-episode__still-badge[data-source="tmdb"] {
+  background: color-mix(in srgb, var(--accent) 52%, var(--card) 48%);
+  border-color: color-mix(in srgb, var(--accent) 46%, transparent);
+  color: #04111f;
+}
+
+.v3-episode__still-badge[data-source="local"] {
+  background: color-mix(in srgb, #35c27a 45%, var(--card) 55%);
+  border-color: color-mix(in srgb, #35c27a 38%, transparent);
+  color: #05160d;
 }
 
 .v3-episode__initials {
@@ -1162,6 +1244,18 @@ body.modalv3-open {
 .v3-episode__badge[data-variant="rating"] {
   border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   color: color-mix(in srgb, var(--accent) 70%, var(--fg) 30%);
+}
+
+.v3-episode__badge[data-variant="source"][data-source="tmdb"] {
+  border-color: color-mix(in srgb, var(--accent) 46%, transparent);
+  background: color-mix(in srgb, var(--accent) 34%, var(--bg-translucent) 66%);
+  color: color-mix(in srgb, var(--accent) 80%, #08121f 20%);
+}
+
+.v3-episode__badge[data-variant="source"][data-source="local"] {
+  border-color: color-mix(in srgb, #35c27a 42%, transparent);
+  background: color-mix(in srgb, #35c27a 28%, var(--bg-translucent) 72%);
+  color: color-mix(in srgb, #17472b 40%, var(--fg) 60%);
 }
 
 .v3-episode__meta {

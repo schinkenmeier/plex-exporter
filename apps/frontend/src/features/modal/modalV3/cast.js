@@ -4,6 +4,21 @@ const MAX_INITIAL_CAST = 12;
 const castState = new WeakMap();
 let listIdCounter = 0;
 
+function formatSourceLabel(source){
+  if(source === 'tmdb') return 'TMDB';
+  if(source === 'local') return 'Lokal';
+  return '';
+}
+
+function createBadge(label, variant){
+  if(!label) return null;
+  const badge = document.createElement('span');
+  badge.className = 'v3-cast-card__badge';
+  if(variant) badge.dataset.variant = variant;
+  badge.textContent = label;
+  return badge;
+}
+
 function resolveContainer(target){
   if(!target) return null;
   const elementCtor = typeof HTMLElement !== 'undefined' ? HTMLElement : null;
@@ -144,21 +159,31 @@ function castInitials(name){
 function createCastCard(entry, tmdbEnabled){
   const name = String(entry?.name || '').trim();
   if(!name) return null;
-  const role = String(entry?.role || '').trim();
+  const character = String(entry?.character || entry?.role || '').trim();
+  const subtitle = String(entry?.subtitle || '').trim();
+  const roleText = (() => {
+    if(character && subtitle){
+      return character.toLowerCase() === subtitle.toLowerCase()
+        ? character
+        : `${character} • ${subtitle}`;
+    }
+    return character || subtitle;
+  })();
 
   const card = document.createElement('article');
   card.className = 'v3-cast-card';
   card.setAttribute('role', 'listitem');
   card.tabIndex = 0;
-  if(role){
-    card.setAttribute('aria-label', `${name} – ${role}`);
-  }else{
-    card.setAttribute('aria-label', name);
-    card.classList.add('v3-cast-card--no-role');
-  }
+  const ariaParts = [name];
+  if(roleText) ariaParts.push(roleText);
+  card.setAttribute('aria-label', ariaParts.join(' – '));
+  if(!roleText) card.classList.add('v3-cast-card--no-role');
 
   const avatar = document.createElement('div');
   avatar.className = 'v3-cast-card__avatar';
+  if(entry?.source){
+    avatar.dataset.source = entry.source;
+  }
   const imageUrl = resolveCastImage(entry, tmdbEnabled);
   if(imageUrl){
     avatar.classList.add('has-image');
@@ -182,11 +207,23 @@ function createCastCard(entry, tmdbEnabled){
   nameLine.className = 'v3-cast-card__name';
   nameLine.textContent = name;
   meta.appendChild(nameLine);
-  if(role){
+  if(roleText){
     const roleLine = document.createElement('p');
     roleLine.className = 'v3-cast-card__role';
-    roleLine.textContent = role;
+    roleLine.textContent = roleText;
     meta.appendChild(roleLine);
+  }
+
+  const badges = document.createElement('div');
+  badges.className = 'v3-cast-card__badges';
+  const sourceLabel = formatSourceLabel(entry?.source);
+  const sourceBadge = createBadge(sourceLabel, 'source');
+  if(sourceBadge){
+    sourceBadge.dataset.source = entry.source;
+    badges.appendChild(sourceBadge);
+  }
+  if(badges.childElementCount){
+    meta.appendChild(badges);
   }
 
   card.append(avatar, meta);

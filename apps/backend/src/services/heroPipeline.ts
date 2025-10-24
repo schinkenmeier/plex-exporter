@@ -2,7 +2,9 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 
-import type { SqliteDatabase } from '../db/connection.js';
+import { eq } from 'drizzle-orm';
+import type { DrizzleDatabase } from '../db/index.js';
+import { heroPools } from '../db/schema.js';
 import MediaRepository, { type MediaRecord } from '../repositories/mediaRepository.js';
 import logger from './logger.js';
 import type { TmdbService, TmdbHeroDetails, TmdbRateLimitState } from './tmdbService.js';
@@ -31,17 +33,10 @@ interface HistoryEntry {
   ts: number;
 }
 
-interface HeroPoolRow {
-  kind: string;
-  policy_hash: string;
-  payload: string;
-  history: string;
-  expires_at: number;
-  updated_at: number;
-}
+type HeroPoolRow = typeof heroPools.$inferSelect;
 
 interface HeroPipelineOptions {
-  database: SqliteDatabase;
+  drizzleDatabase: DrizzleDatabase;
   mediaRepository: MediaRepository;
   tmdbService?: TmdbService | null;
   policyPath?: string | null;
@@ -639,19 +634,11 @@ const parsePayload = (payload: string | null | undefined): HeroPoolPayload | nul
 };
 
 export const createHeroPipelineService = ({
-  database,
+  drizzleDatabase,
   mediaRepository,
   tmdbService,
   policyPath,
 }: HeroPipelineOptions): HeroPipelineService => {
-  const selectStmt = database.prepare<[string], HeroPoolRow>(
-    'SELECT kind, policy_hash, payload, history, expires_at, updated_at FROM hero_pools WHERE kind = ?',
-  );
-  const upsertStmt = database.prepare(
-    `REPLACE INTO hero_pools (kind, policy_hash, payload, history, expires_at, updated_at)
-     VALUES (@kind, @policyHash, @payload, @history, @expiresAt, @updatedAt)`,
-  );
-
   let cachedPolicy: { policy: HeroPolicy; hash: string } | null = null;
   let cachedPolicyMeta: { path: string | null; mtimeMs: number | null } | null = null;
 
@@ -708,7 +695,13 @@ export const createHeroPipelineService = ({
   };
 
   const loadStored = (kind: HeroKind): { row: HeroPoolRow; payload: HeroPoolPayload | null; history: HistoryEntry[] } | null => {
-    const row = selectStmt.get(kind);
+    const rows = drizzleDatabase
+      .select()
+      .from(heroPools)
+      .where(eq(heroPools.kind, kind))
+      .limit(1)
+      .all();
+    const row = rows[0];
     if (!row) return null;
     const payload = parsePayload(row.payload);
     const history = parseHistoryJson(row.history);
@@ -761,7 +754,7 @@ export const createHeroPipelineService = ({
     const stored = loadStored(normalizedKind);
     const nowTs = Date.now();
 
-    if (!options.force && stored?.payload && stored.row.expires_at > nowTs && stored.row.policy_hash === policyHash) {
+    if (!options.force && stored?.payload && stored.row.expiresAt > nowTs && stored.row.policyHash === policyHash) {
       const payload = stored.payload;
       return {
         ...payload,
@@ -860,15 +853,30 @@ export const createHeroPipelineService = ({
     };
 
     const nextHistory = updateHistory(historyEntries, items, updatedAt);
+    const serializedPayload = JSON.stringify(payload);
+    const serializedHistory = serializeHistory(nextHistory);
 
-    upsertStmt.run({
-      kind: normalizedKind,
-      policyHash,
-      payload: JSON.stringify(payload),
-      history: serializeHistory(nextHistory),
-      expiresAt,
-      updatedAt,
-    });
+    drizzleDatabase
+      .insert(heroPools)
+      .values({
+        kind: normalizedKind,
+        policyHash,
+        payload: serializedPayload,
+        history: serializedHistory,
+        expiresAt,
+        updatedAt,
+      })
+      .onConflictDoUpdate({
+        target: heroPools.kind,
+        set: {
+          policyHash,
+          payload: serializedPayload,
+          history: serializedHistory,
+          expiresAt,
+          updatedAt,
+        },
+      })
+      .run();
 
     return payload;
   };

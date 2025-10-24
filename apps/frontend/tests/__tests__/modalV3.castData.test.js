@@ -31,8 +31,11 @@ describe('modalV3/castData', () => {
       assert.deepStrictEqual(result, {
         name: 'Agent Smith',
         role: 'Villain',
+        character: 'Villain',
+        order: null,
         thumb: '',
         tmdbProfile: '/agent.jpg',
+        source: 'tmdb',
         raw: { tmdb: { name: 'Agent Smith', character: 'Villain', profile_path: '/agent.jpg' } },
       });
     });
@@ -61,6 +64,7 @@ describe('modalV3/castData', () => {
       assert.ok(tmdbEntry);
       assert.strictEqual(tmdbEntry.role, 'Support');
       assert.strictEqual(tmdbEntry.tmdbProfile, '/tmdb.jpg');
+      assert.strictEqual(tmdbEntry.source, 'tmdb');
     });
 
     it('handles empty payloads gracefully', () => {

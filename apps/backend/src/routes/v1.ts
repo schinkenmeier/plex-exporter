@@ -2,6 +2,10 @@ import { Router, type NextFunction, type Request, type Response } from 'express'
 import { z } from 'zod';
 import MediaRepository from '../repositories/mediaRepository.js';
 import ThumbnailRepository from '../repositories/thumbnailRepository.js';
+import SeasonRepository from '../repositories/seasonRepository.js';
+import CastRepository from '../repositories/castRepository.js';
+import type { EpisodeRecord, SeasonRecordWithEpisodes } from '../repositories/seasonRepository.js';
+import type { CastAppearance } from '../repositories/castRepository.js';
 import { HttpError } from '../middleware/errorHandler.js';
 import { apiLimiter, searchLimiter } from '../middleware/rateLimiter.js';
 import { createShortCache, createMediumCache, createLongCache } from '../services/cacheService.js';
@@ -10,9 +14,11 @@ import { cacheMiddleware } from '../middleware/cacheMiddleware.js';
 export interface V1RouterOptions {
   mediaRepository: MediaRepository;
   thumbnailRepository: ThumbnailRepository;
+  seasonRepository: SeasonRepository;
+  castRepository: CastRepository;
 }
 
-export const createV1Router = ({ mediaRepository, thumbnailRepository }: V1RouterOptions): Router => {
+export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRepository, castRepository }: V1RouterOptions): Router => {
   const router = Router();
 
   // Create cache instances for different data types
@@ -89,6 +95,42 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository }: V1Route
     return mapMediaListToResponse([item], includeExtended)[0];
   };
 
+  const mapEpisodesToResponse = (episodes: EpisodeRecord[]) =>
+    episodes.map((episode) => ({
+      id: episode.id,
+      ratingKey: episode.tautulliId,
+      title: episode.title,
+      episodeNumber: episode.episodeNumber,
+      summary: episode.summary,
+      duration: episode.duration,
+      rating: episode.rating,
+      airDate: episode.airDate,
+      thumb: episode.thumb,
+    }));
+
+  const mapSeasonsToResponse = (seasonsWithEpisodes: SeasonRecordWithEpisodes[]) =>
+    seasonsWithEpisodes.map((season) => ({
+      id: season.id,
+      ratingKey: season.tautulliId,
+      seasonNumber: season.seasonNumber,
+      title: season.title,
+      summary: season.summary,
+      poster: season.poster,
+      episodeCount: season.episodeCount,
+      episodes: mapEpisodesToResponse(season.episodes),
+    }));
+
+  const mapCastToResponse = (cast: CastAppearance[]) =>
+    cast.map((appearance) => ({
+      id: appearance.id,
+      castMemberId: appearance.castMemberId,
+      name: appearance.name,
+      role: appearance.role,
+      character: appearance.character,
+      order: appearance.order,
+      photo: appearance.photo,
+    }));
+
   /**
    * GET /api/v1/movies
    * List all movies from database (includes extended metadata)
@@ -122,9 +164,11 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository }: V1Route
       }
 
       const thumbnails = thumbnailRepository.listByMediaId(movie.id);
+      const cast = castRepository.listByMediaId(movie.id);
       const response = {
         ...mapMediaToResponse(movie, true),
         thumbnails: thumbnails.map(t => t.path),
+        cast: mapCastToResponse(cast),
       };
 
       res.setHeader('Cache-Control', 'public, max-age=600'); // 10 min cache
@@ -171,9 +215,13 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository }: V1Route
       }
 
       const thumbnails = thumbnailRepository.listByMediaId(series.id);
+      const seasons = seasonRepository.listByMediaIdWithEpisodes(series.id);
+      const cast = castRepository.listByMediaId(series.id);
       const response = {
         ...mapMediaToResponse(series, true),
         thumbnails: thumbnails.map(t => t.path),
+        seasons: mapSeasonsToResponse(seasons),
+        cast: mapCastToResponse(cast),
       };
 
       res.setHeader('Cache-Control', 'public, max-age=600'); // 10 min cache

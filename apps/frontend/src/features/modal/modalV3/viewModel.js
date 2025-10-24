@@ -444,18 +444,26 @@ function normalizeCastRole(person){
   return firstString(person?.role, person?.character, person?.job, person?.subtitle);
 }
 
+function resolveCastSource(person, fallback = 'local'){
+  const explicit = trimString(person?.source);
+  if(explicit === 'tmdb' || explicit === 'local') return explicit;
+  const tmdbCandidates = [
+    person?.tmdbProfile,
+    person?.profile,
+    person?.profile_path,
+    person?.profilePath,
+  ];
+  if(tmdbCandidates.some(candidate => Boolean(trimString(candidate)))) return 'tmdb';
+  const localCandidates = [person?.thumb, person?.photo, person?.image];
+  if(localCandidates.some(candidate => Boolean(trimString(candidate)))) return 'local';
+  return fallback;
+}
+
 function buildCastEntries(item, tmdb){
   const entries = [];
   const seen = new Set();
   const localCast = asArray(item?.cast).length ? asArray(item?.cast) : asArray(item?.roles);
   const tmdbCredits = asArray(tmdb?.credits?.cast || item?.tmdbDetail?.credits?.cast);
-  console.log(`${LOG_PREFIX} buildCastEntries:`, {
-    localCastCount: localCast.length,
-    tmdbCreditsCount: tmdbCredits.length,
-    sampleTmdbCredit: tmdbCredits[0],
-    hasTmdbCredits: Boolean(tmdb?.credits?.cast),
-    hasItemTmdbCredits: Boolean(item?.tmdbDetail?.credits?.cast)
-  });
 
   const pushEntry = (entry)=>{
     if(!entry || !entry.name) return;
@@ -480,16 +488,18 @@ function buildCastEntries(item, tmdb){
       { value: person?.image, source: 'local' },
     ]);
     const id = trimString(firstString(person?.id, person?.guid, person?.personId, name));
+    const character = trimString(firstString(person?.character, subtitle));
+    const orderRaw = Number(person?.order);
     pushEntry({
       id: id || name,
       name,
       subtitle: subtitle || '',
-      role: subtitle || '',
-      character: subtitle || '',
+      role: trimString(person?.role) || character || '',
+      character: character || '',
       image,
       initials: makeInitials(name || subtitle || ''),
-      source: 'local',
-      order: Number.isFinite(Number(person?.order)) ? Number(person.order) : index,
+      source: resolveCastSource(person, 'local'),
+      order: Number.isFinite(orderRaw) ? orderRaw : index,
     });
   });
 
@@ -497,24 +507,14 @@ function buildCastEntries(item, tmdb){
     if(!person) return;
     const name = firstString(person?.name, person?.original_name);
     if(!name) return;
-    const character = firstString(person?.character, person?.role);
-    if(index === 0){
-      console.log(`${LOG_PREFIX} First TMDB cast member:`, {
-        name,
-        profile: person?.profile,
-        profile_path: person?.profile_path,
-        profilePath: person?.profilePath
-      });
-    }
+    const character = trimString(firstString(person?.character, person?.role));
     const image = buildProfileImage(name, [
       { value: person?.profile, source: 'tmdb' },
       { value: person?.profile_path, source: 'tmdb' },
       { value: person?.profilePath, source: 'tmdb' },
     ]);
-    if(index === 0){
-      console.log(`${LOG_PREFIX} First cast image result:`, image);
-    }
     const id = trimString(person?.id != null ? String(person.id) : name);
+    const orderRaw = Number(person?.order);
     pushEntry({
       id: id || name,
       name,
@@ -524,12 +524,21 @@ function buildCastEntries(item, tmdb){
       image,
       initials: makeInitials(name || character || ''),
       source: 'tmdb',
-      order: Number.isFinite(Number(person?.order)) ? Number(person.order) : 1000 + index,
+      order: Number.isFinite(orderRaw) ? orderRaw : 1000 + index,
     });
   });
 
   return entries
-    .sort((a, b) => a.order - b.order)
+    .sort((a, b) => {
+      const orderA = Number.isFinite(a.order) ? a.order : Number.MAX_SAFE_INTEGER;
+      const orderB = Number.isFinite(b.order) ? b.order : Number.MAX_SAFE_INTEGER;
+      if(orderA !== orderB) return orderA - orderB;
+      if(a.source !== b.source){
+        if(a.source === 'local') return -1;
+        if(b.source === 'local') return 1;
+      }
+      return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    })
     .slice(0, 20)
     .map(entry => ({
       ...entry,

@@ -13,10 +13,16 @@ import {
   createTautulliService,
   type TautulliClient,
 } from './services/tautulliService.js';
-import { initializeDatabase, type SqliteDatabase } from './db/index.js';
+import {
+  initializeDrizzleDatabase,
+  type SqliteDatabase,
+  type DrizzleDatabase,
+} from './db/index.js';
 import MediaRepository from './repositories/mediaRepository.js';
 import ThumbnailRepository from './repositories/thumbnailRepository.js';
 import TautulliSnapshotRepository from './repositories/tautulliSnapshotRepository.js';
+import SeasonRepository from './repositories/seasonRepository.js';
+import CastRepository from './repositories/castRepository.js';
 import { createMediaRouter } from './routes/media.js';
 import { errorHandler, requestLogger } from './middleware/errorHandler.js';
 import { createAuthMiddleware } from './middleware/auth.js';
@@ -31,9 +37,12 @@ export interface ServerDependencies {
   smtpService?: MailSender | null;
   tautulliService?: TautulliClient | null;
   database?: SqliteDatabase | null;
+  drizzleDatabase?: DrizzleDatabase | null;
   mediaRepository?: MediaRepository | null;
   thumbnailRepository?: ThumbnailRepository | null;
   tautulliSnapshotRepository?: TautulliSnapshotRepository | null;
+  seasonRepository?: SeasonRepository | null;
+  castRepository?: CastRepository | null;
 }
 
 export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}) => {
@@ -61,44 +70,64 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
           })
         : null;
 
-  const database =
-    'database' in deps
-      ? deps.database ?? null
-      : initializeDatabase({ filePath: appConfig.database.sqlitePath });
+  const databaseResult =
+    'database' in deps || 'drizzleDatabase' in deps
+      ? {
+          sqlite: deps.database ?? null,
+          db: deps.drizzleDatabase ?? null,
+        }
+      : initializeDrizzleDatabase({ filePath: appConfig.database.sqlitePath });
+
+  const database = databaseResult.sqlite;
+  const drizzleDb = databaseResult.db ?? null;
+
+  if (!database || !drizzleDb) {
+    throw new Error('Database connection could not be initialised.');
+  }
 
   const mediaRepository =
     'mediaRepository' in deps
       ? deps.mediaRepository ?? null
-      : database
-        ? new MediaRepository(database)
-        : null;
+      : new MediaRepository(drizzleDb);
 
   const thumbnailRepository =
     'thumbnailRepository' in deps
       ? deps.thumbnailRepository ?? null
-      : database
-        ? new ThumbnailRepository(database)
+      : drizzleDb
+        ? new ThumbnailRepository(drizzleDb)
         : null;
 
   const tautulliSnapshotRepository =
     'tautulliSnapshotRepository' in deps
       ? deps.tautulliSnapshotRepository ?? null
-      : database
-        ? new TautulliSnapshotRepository(database)
+      : drizzleDb
+        ? new TautulliSnapshotRepository(drizzleDb)
         : null;
 
-  if (!mediaRepository || !thumbnailRepository || !tautulliSnapshotRepository) {
+  const seasonRepository =
+    'seasonRepository' in deps
+      ? deps.seasonRepository ?? null
+      : drizzleDb
+        ? new SeasonRepository(drizzleDb)
+        : null;
+
+  const castRepository =
+    'castRepository' in deps
+      ? deps.castRepository ?? null
+      : drizzleDb
+        ? new CastRepository(drizzleDb)
+        : null;
+
+  if (!mediaRepository || !thumbnailRepository || !tautulliSnapshotRepository || !seasonRepository || !castRepository) {
     throw new Error('Database repositories are not configured.');
   }
 
-  const heroPipelineService = database
-    ? createHeroPipelineService({
-        database,
-        mediaRepository,
-        tmdbService,
-        policyPath: appConfig.hero?.policyPath ?? null,
-      })
-    : null;
+  const heroPipelineService = createHeroPipelineService({
+    drizzleDatabase: drizzleDb,
+    mediaRepository,
+    tmdbService,
+    policyPath: appConfig.hero?.policyPath ?? null,
+  });
 
   const authMiddleware = createAuthMiddleware({ token: appConfig.auth?.token ?? null });
   const basicAuthMiddleware = createBasicAuthMiddleware({
@@ -144,7 +173,7 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
   if (heroPipelineService) {
     app.use('/api/hero', createHeroRouter({ heroPipeline: heroPipelineService }));
   }
-  app.use('/api/v1', createV1Router({ mediaRepository, thumbnailRepository }));
+  app.use('/api/v1', createV1Router({ mediaRepository, thumbnailRepository, seasonRepository, castRepository }));
 
   // Protected routes
   app.use('/notifications', authMiddleware, createNotificationsRouter({ smtpService }));
@@ -165,6 +194,9 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
       thumbnailRepository,
       smtpService,
       tautulliService,
+      seasonRepository,
+      castRepository,
+      drizzleDatabase: drizzleDb ?? undefined,
     }),
   );
 

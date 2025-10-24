@@ -30,7 +30,7 @@ describe('libraries routes', () => {
 
   beforeEach(() => {
     dbHandle = createTestDatabase();
-    snapshotRepository = new TautulliSnapshotRepository(dbHandle.db);
+    snapshotRepository = new TautulliSnapshotRepository(dbHandle.drizzle);
   });
 
   afterEach(() => {

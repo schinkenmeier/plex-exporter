@@ -4,7 +4,8 @@ import path from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { MediaRepository } from '../../src/repositories/mediaRepository.js';
+import MediaRepository from '../../src/repositories/mediaRepository.js';
+import { heroPools } from '../../src/db/schema.js';
 import { createHeroPipelineService } from '../../src/services/heroPipeline.js';
 import { createTestDatabase, type TestDatabaseHandle } from '../helpers/testDatabase.js';
 
@@ -16,7 +17,7 @@ describe('hero pipeline service', () => {
 
   beforeEach(() => {
     dbHandle = createTestDatabase();
-    mediaRepository = new MediaRepository(dbHandle.db);
+    mediaRepository = new MediaRepository(dbHandle.drizzle);
 
     tempPolicyDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hero-policy-test-'));
     policyPath = path.join(tempPolicyDir, 'policy.json');
@@ -63,25 +64,38 @@ describe('hero pipeline service', () => {
     });
 
     const now = Date.now();
-    dbHandle.db
-      .prepare(
-        `REPLACE INTO hero_pools (kind, policy_hash, payload, history, expires_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        'movies',
-        'legacy-policy',
-        JSON.stringify({}),
-        JSON.stringify([
-          { id: 'movie-1', ts: now - 1_000 },
-          { id: 'movie-9', ts: now - 2_000 },
-        ]),
-        now + 60_000,
-        now - 60_000,
-      );
+    const expiresAt = now + 60_000;
+    const updatedAt = now - 60_000;
+    const legacyPayload = JSON.stringify({});
+    const legacyHistory = JSON.stringify([
+      { id: 'movie-1', ts: now - 1_000 },
+      { id: 'movie-9', ts: now - 2_000 },
+    ]);
+
+    dbHandle.drizzle
+      .insert(heroPools)
+      .values({
+        kind: 'movies',
+        policyHash: 'legacy-policy',
+        payload: legacyPayload,
+        history: legacyHistory,
+        expiresAt,
+        updatedAt,
+      })
+      .onConflictDoUpdate({
+        target: heroPools.kind,
+        set: {
+          policyHash: 'legacy-policy',
+          payload: legacyPayload,
+          history: legacyHistory,
+          expiresAt,
+          updatedAt,
+        },
+      })
+      .run();
 
     const service = createHeroPipelineService({
-      database: dbHandle.db,
+      drizzleDatabase: dbHandle.drizzle,
       mediaRepository,
       tmdbService: null,
       policyPath,
@@ -121,7 +135,7 @@ describe('hero pipeline service', () => {
     });
 
     const service = createHeroPipelineService({
-      database: dbHandle.db,
+      drizzleDatabase: dbHandle.drizzle,
       mediaRepository,
       tmdbService: null,
       policyPath,

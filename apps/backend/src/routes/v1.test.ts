@@ -2,22 +2,32 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import express, { type Express } from 'express';
 import { createV1Router } from './v1.js';
-import { initializeDatabase } from '../db/index.js';
+import { initializeDrizzleDatabase } from '../db/index.js';
 import MediaRepository from '../repositories/mediaRepository.js';
 import ThumbnailRepository from '../repositories/thumbnailRepository.js';
-import type { SqliteDatabase } from '../db/index.js';
+import SeasonRepository from '../repositories/seasonRepository.js';
+import CastRepository from '../repositories/castRepository.js';
+import { seasons, episodes, castMembers, mediaCast } from '../db/schema.js';
+import type { SqliteDatabase, DrizzleDatabase } from '../db/index.js';
 
 describe('V1 API Routes', () => {
   let app: Express;
-  let db: SqliteDatabase;
+  let sqliteDb: SqliteDatabase;
+  let drizzleDb: DrizzleDatabase;
   let mediaRepository: MediaRepository;
   let thumbnailRepository: ThumbnailRepository;
+  let seasonRepository: SeasonRepository;
+  let castRepository: CastRepository;
 
   beforeAll(() => {
     // Create in-memory test database
-    db = initializeDatabase({ filePath: ':memory:' });
-    mediaRepository = new MediaRepository(db);
-    thumbnailRepository = new ThumbnailRepository(db);
+    const dbBundle = initializeDrizzleDatabase({ filePath: ':memory:' });
+    sqliteDb = dbBundle.sqlite;
+    drizzleDb = dbBundle.db;
+    mediaRepository = new MediaRepository(drizzleDb);
+    thumbnailRepository = new ThumbnailRepository(drizzleDb);
+    seasonRepository = new SeasonRepository(drizzleDb);
+    castRepository = new CastRepository(drizzleDb);
 
     // Insert test data
     const movie = mediaRepository.create({
@@ -64,14 +74,102 @@ describe('V1 API Routes', () => {
       originallyAvailableAt: null,
     });
 
+    const [season1] = drizzleDb
+      .insert(seasons)
+      .values([
+        {
+          mediaItemId: series.id,
+          tautulliId: 'season-2-1',
+          seasonNumber: 1,
+          title: 'Season 1',
+          summary: 'Season one summary',
+          poster: null,
+          episodeCount: 2,
+        },
+      ])
+      .returning()
+      .all();
+
+    drizzleDb
+      .insert(episodes)
+      .values([
+        {
+          seasonId: season1.id,
+          tautulliId: 'episode-2-1-1',
+          episodeNumber: 1,
+          title: 'Pilot',
+          summary: 'Episode one summary',
+          duration: 1800000,
+          rating: '8.0',
+          airDate: '2021-01-01',
+          thumb: null,
+        },
+        {
+          seasonId: season1.id,
+          tautulliId: 'episode-2-1-2',
+          episodeNumber: 2,
+          title: 'Second Episode',
+          summary: 'Episode two summary',
+          duration: 1850000,
+          rating: '8.3',
+          airDate: '2021-01-08',
+          thumb: null,
+        },
+      ])
+      .run();
+
+    const [castMember] = drizzleDb
+      .insert(castMembers)
+      .values([
+        {
+          name: 'Lead Actor',
+          role: 'Actor',
+          photo: null,
+        },
+      ])
+      .returning()
+      .all();
+
+    drizzleDb
+      .insert(mediaCast)
+      .values([
+        {
+          mediaItemId: series.id,
+          castMemberId: castMember.id,
+          character: 'Main Character',
+          order: 1,
+        },
+      ])
+      .run();
+
+    drizzleDb
+      .insert(mediaCast)
+      .values([
+        {
+          mediaItemId: movie.id,
+          castMemberId: castMember.id,
+          character: 'Hero',
+          order: 1,
+        },
+      ])
+      .run();
+
     // Create Express app with v1 router
     app = express();
     app.use(express.json());
-    app.use('/api/v1', createV1Router({ mediaRepository, thumbnailRepository }));
+    app.use(
+      '/api/v1',
+      createV1Router({
+        mediaRepository,
+        thumbnailRepository,
+        seasonRepository,
+        castRepository,
+      }),
+    );
   });
 
   afterAll(() => {
-    db.close();
+    sqliteDb.close();
   });
 
   describe('GET /api/v1/stats', () => {
@@ -120,15 +218,21 @@ describe('V1 API Routes', () => {
 
   describe('GET /api/v1/movies/:id', () => {
     it('should return movie by ID', async () => {
-      const response = await request(app).get('/api/v1/movies/1');
+    const response = await request(app).get('/api/v1/movies/1');
 
-      expect(response.status).toBe(200);
-      expect(response.body).toMatchObject({
-        ratingKey: '1',
-        title: 'Test Movie',
-        year: 2020,
-        mediaType: 'movie',
-      });
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ratingKey: '1',
+      title: 'Test Movie',
+      year: 2020,
+      mediaType: 'movie',
+    });
+    expect(Array.isArray(response.body.cast)).toBe(true);
+    expect(response.body.cast.length).toBeGreaterThan(0);
+    expect(response.body.cast[0]).toMatchObject({
+      name: 'Lead Actor',
+      character: 'Hero',
+    });
     });
 
     it('should return 404 for non-existent movie', async () => {
@@ -158,15 +262,34 @@ describe('V1 API Routes', () => {
 
   describe('GET /api/v1/series/:id', () => {
     it('should return series by ID', async () => {
-      const response = await request(app).get('/api/v1/series/2');
+    const response = await request(app).get('/api/v1/series/2');
 
-      expect(response.status).toBe(200);
-      expect(response.body).toMatchObject({
-        ratingKey: '2',
-        title: 'Test Series',
-        year: 2021,
-        mediaType: 'tv',
-      });
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ratingKey: '2',
+      title: 'Test Series',
+      year: 2021,
+      mediaType: 'tv',
+    });
+    expect(Array.isArray(response.body.seasons)).toBe(true);
+    expect(response.body.seasons.length).toBe(1);
+    expect(response.body.seasons[0]).toMatchObject({
+      ratingKey: 'season-2-1',
+      seasonNumber: 1,
+      episodeCount: 2,
+    });
+    expect(Array.isArray(response.body.seasons[0].episodes)).toBe(true);
+    expect(response.body.seasons[0].episodes[0]).toMatchObject({
+      ratingKey: 'episode-2-1-1',
+      episodeNumber: 1,
+      title: 'Pilot',
+    });
+    expect(Array.isArray(response.body.cast)).toBe(true);
+    expect(response.body.cast.length).toBe(1);
+    expect(response.body.cast[0]).toMatchObject({
+      name: 'Lead Actor',
+      character: 'Main Character',
+    });
     });
 
     it('should return 404 for non-existent series', async () => {

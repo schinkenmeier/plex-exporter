@@ -13,8 +13,7 @@
 
 import path from 'node:path';
 import { existsSync } from 'node:fs';
-import { createSqliteConnection } from '../db/connection.js';
-import { runMigrations } from '../db/migrations/index.js';
+import { initializeDrizzleDatabase } from '../db/index.js';
 import { createLogger } from './utils/logger.js';
 import { createMovieImporter } from './importers/movieImporter.js';
 import { createSeriesImporter } from './importers/seriesImporter.js';
@@ -64,14 +63,8 @@ async function main() {
     const dbPath = process.env.SQLITE_PATH || path.join(process.cwd(), '..', '..', 'data', 'sqlite', 'plex-exporter.sqlite');
     logger.info(`Database: ${dbPath}`);
 
-    const db = createSqliteConnection(dbPath);
-    logger.success('Database connection established');
-
-    // Run migrations
-    if (!options.dryRun) {
-      runMigrations(db);
-      logger.success('Database migrations applied');
-    }
+    const { sqlite: sqliteDb, db: drizzle } = initializeDrizzleDatabase({ filePath: dbPath });
+    logger.success('Database connection established & migrations applied');
 
     // Determine export paths
     const exportsPath = resolveExportsPath();
@@ -85,7 +78,7 @@ async function main() {
     // Import movies
     if (!options.seriesOnly && existsSync(moviesPath)) {
       logger.info('--- Importing Movies ---');
-      const movieImporter = createMovieImporter(db, logger);
+      const movieImporter = createMovieImporter(drizzle, logger);
       const movieResult = await movieImporter.import(moviesPath, options);
       results.push({ type: 'Movies', ...movieResult });
     } else if (!options.seriesOnly) {
@@ -95,7 +88,7 @@ async function main() {
     // Import series
     if (!options.moviesOnly && existsSync(seriesIndexPath)) {
       logger.info('--- Importing Series ---');
-      const seriesImporter = createSeriesImporter(db, logger);
+      const seriesImporter = createSeriesImporter(drizzle, logger);
       const seriesResult = await seriesImporter.import(seriesIndexPath, options);
       results.push({ type: 'Series', ...seriesResult });
     } else if (!options.moviesOnly) {
@@ -121,10 +114,8 @@ async function main() {
     logger.success(`Total: ${totalImported} imported, ${totalSkipped} skipped, ${totalErrors} errors`);
 
     // Close database
-    if (!options.dryRun) {
-      db.close();
-      logger.success('Database connection closed');
-    }
+    sqliteDb.close();
+    logger.success('Database connection closed');
 
     if (totalErrors > 0) {
       process.exit(1);

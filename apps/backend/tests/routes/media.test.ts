@@ -24,8 +24,8 @@ describe('media routes', () => {
 
   beforeEach(() => {
     dbHandle = createTestDatabase();
-    mediaRepository = new MediaRepository(dbHandle.db);
-    thumbnailRepository = new ThumbnailRepository(dbHandle.db);
+    mediaRepository = new MediaRepository(dbHandle.drizzle);
+    thumbnailRepository = new ThumbnailRepository(dbHandle.drizzle);
     app = createApp(mediaRepository, thumbnailRepository);
   });
 
@@ -65,13 +65,13 @@ describe('media routes', () => {
       .put(`/media/${mediaId}`)
       .send({
         title: 'Updated Title',
-        mediaType: 'show',
+      mediaType: 'tv',
         thumbnails: ['/tmp/thumb2.png', '/tmp/thumb3.png'],
       });
 
     expect(updateResponse.status).toBe(200);
     expect(updateResponse.body.title).toBe('Updated Title');
-    expect(updateResponse.body.mediaType).toBe('show');
+    expect(updateResponse.body.mediaType).toBe('tv');
     expect(updateResponse.body.thumbnails).toEqual(['/tmp/thumb2.png', '/tmp/thumb3.png']);
 
     const storedThumbnails = thumbnailRepository.listByMediaId(mediaId).map((thumb) => thumb.path);

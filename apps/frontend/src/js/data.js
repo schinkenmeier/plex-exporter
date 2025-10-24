@@ -583,17 +583,29 @@ function storeDetail(keys, value, item){
 }
 
 function detailUrlCandidates(item){
-  const urls = new Set();
+  const urls = [];
+  const addUnique = url => {
+    if(!url) return;
+    if(urls.includes(url)) return;
+    urls.push(url);
+  };
   const addDataUrl = relative => {
     const trimmed = String(relative || '').replace(/^\/+/, '');
     const withoutPrefix = trimmed.replace(/^data\//, '');
-    urls.add(dataPath(withoutPrefix));
-    urls.add(legacyDataPath(withoutPrefix));
+    addUnique(dataPath(withoutPrefix));
+    addUnique(legacyDataPath(withoutPrefix));
   };
+
+  const rk = item?.ratingKey;
+  const apiBase = resolveApiBase();
+  if(rk !== undefined && rk !== null){
+    const apiPath = `/api/v1/series/${String(rk)}`;
+    addUnique(apiBase ? `${apiBase}${apiPath}` : apiPath);
+  }
 
   const hrefKey = normalizeHrefKey(item?.href);
   if(hrefKey){
-    if(/^https?:/i.test(hrefKey)){ urls.add(hrefKey); }
+    if(/^https?:/i.test(hrefKey)){ addUnique(hrefKey); }
     else{
       if(hrefKey.startsWith('data/')) addDataUrl(hrefKey);
       else addDataUrl(`data/${hrefKey}`);
@@ -603,11 +615,10 @@ function detailUrlCandidates(item){
       if(idPart) addDataUrl(`series/details/${idPart}.json`);
     }
   }
-  const rk = item?.ratingKey;
   if(rk !== undefined && rk !== null){
     addDataUrl(`series/details/${String(rk)}.json`);
   }
-  return Array.from(urls);
+  return urls;
 }
 
 function normalizeShowDetail(data){
@@ -616,6 +627,15 @@ function normalizeShowDetail(data){
   prefixShowThumb(show);
   show.genres = normalizeGenres(show.genres);
   const castList = normalizePeople(show.cast || show.roles || []);
+  castList.forEach(person => {
+    if(!person || typeof person !== 'object') return;
+    if(person.photo && !person.thumb && !person.thumbFile){
+      person.thumb = person.photo;
+    }
+    if(person.thumb || person.thumbFile){
+      prefixShowThumb(person);
+    }
+  });
   show.cast = castList;
   show.roles = castList;
   show.seasons = Array.isArray(show.seasons) ? show.seasons.map(normalizeSeason).filter(Boolean) : [];
@@ -665,19 +685,37 @@ function normalizeGenres(list){
 
 function normalizePeople(list){
   if(!Array.isArray(list)) return [];
-  return list.map(entry=>{
-    if(!entry) return null;
-    if(typeof entry === 'string'){
-      const tag = entry.trim();
-      return tag ? { tag } : null;
-    }
-    if(typeof entry === 'object'){
-      const tag = String(entry.tag || entry.name || entry.role || '').trim();
-      if(tag){ return { ...entry, tag }; }
-      return { ...entry };
-    }
-    return null;
-  }).filter(Boolean);
+  return list
+    .map(entry => {
+      if(!entry) return null;
+      if(typeof entry === 'string'){
+        const tag = entry.trim();
+        if(!tag) return null;
+        return { tag, name: tag };
+      }
+      if(typeof entry !== 'object') return null;
+      const clone = { ...entry };
+      const tag = String(clone.tag || clone.name || clone.role || clone.character || '').trim();
+      if(tag){
+        clone.tag = tag;
+        if(!clone.name) clone.name = tag;
+      }
+      if(typeof clone.character === 'string' && !clone.role){
+        const character = clone.character.trim();
+        if(character) clone.role = character;
+      }
+      if(clone.photo && !clone.thumb && !clone.thumbFile){
+        clone.thumb = clone.photo;
+      }
+      if(clone.thumbFile && !clone.thumb){
+        clone.thumb = clone.thumbFile;
+      }
+      if(clone.order != null && !Number.isFinite(Number(clone.order))){
+        delete clone.order;
+      }
+      return clone;
+    })
+    .filter(Boolean);
 }
 
 function cloneDetail(detail){

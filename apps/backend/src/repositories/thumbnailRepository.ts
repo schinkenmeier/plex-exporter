@@ -1,11 +1,8 @@
-import type { SqliteDatabase } from '../db/connection.js';
+import { asc, eq, inArray } from 'drizzle-orm';
+import type { DrizzleDatabase } from '../db/index.js';
+import { mediaThumbnails } from '../db/schema.js';
 
-interface ThumbnailRow {
-  id: number;
-  media_id: number;
-  path: string;
-  created_at: string;
-}
+type ThumbnailRow = typeof mediaThumbnails.$inferSelect;
 
 export interface ThumbnailRecord {
   id: number;
@@ -21,74 +18,76 @@ export interface ThumbnailCreateInput {
 
 const mapRowToRecord = (row: ThumbnailRow): ThumbnailRecord => ({
   id: row.id,
-  mediaId: row.media_id,
+  mediaId: row.mediaItemId,
   path: row.path,
-  createdAt: row.created_at,
+  createdAt: row.createdAt,
 });
 
 export class ThumbnailRepository {
-  private readonly insertStmt: ReturnType<SqliteDatabase['prepare']>;
-  private readonly listByMediaStmt: ReturnType<SqliteDatabase['prepare']>;
-  private readonly deleteByIdStmt: ReturnType<SqliteDatabase['prepare']>;
-  private readonly deleteByMediaStmt: ReturnType<SqliteDatabase['prepare']>;
-  private readonly getByIdStmt: ReturnType<SqliteDatabase['prepare']>;
-
-  constructor(private readonly db: SqliteDatabase) {
-    this.insertStmt = this.db.prepare(`
-      INSERT INTO thumbnails (media_id, path) VALUES (@mediaId, @path)
-    `);
-
-    this.listByMediaStmt = this.db.prepare(
-      'SELECT * FROM thumbnails WHERE media_id = ? ORDER BY created_at ASC',
-    );
-
-    this.deleteByIdStmt = this.db.prepare('DELETE FROM thumbnails WHERE id = ?');
-    this.deleteByMediaStmt = this.db.prepare('DELETE FROM thumbnails WHERE media_id = ?');
-    this.getByIdStmt = this.db.prepare('SELECT * FROM thumbnails WHERE id = ?');
-  }
+  constructor(private readonly db: DrizzleDatabase) {}
 
   create(input: ThumbnailCreateInput): ThumbnailRecord {
-    const info = this.insertStmt.run({
-      mediaId: input.mediaId,
-      path: input.path,
-    });
+    const [row] = this.db
+      .insert(mediaThumbnails)
+      .values({ mediaItemId: input.mediaId, path: input.path })
+      .returning()
+      .all();
 
-    const record = this.getById(Number(info.lastInsertRowid));
-
-    if (!record) {
-      throw new Error('Failed to fetch thumbnail record after insertion.');
+    if (!row) {
+      throw new Error('Failed to insert media thumbnail.');
     }
 
-    return record;
+    return mapRowToRecord(row);
   }
 
   getById(id: number): ThumbnailRecord | null {
-    const row = this.getByIdStmt.get(id) as ThumbnailRow | undefined;
-    return row ? mapRowToRecord(row) : null;
+    const rows = this.db
+      .select()
+      .from(mediaThumbnails)
+      .where(eq(mediaThumbnails.id, id))
+      .limit(1)
+      .all();
+    return rows[0] ? mapRowToRecord(rows[0]) : null;
   }
 
   listByMediaId(mediaId: number): ThumbnailRecord[] {
-    const rows = this.listByMediaStmt.all(mediaId) as ThumbnailRow[];
-    return rows.map((row) => mapRowToRecord(row));
+    return this.db
+      .select()
+      .from(mediaThumbnails)
+      .where(eq(mediaThumbnails.mediaItemId, mediaId))
+      .orderBy(asc(mediaThumbnails.createdAt))
+      .all()
+      .map(mapRowToRecord);
   }
 
   deleteById(id: number): boolean {
-    const result = this.deleteByIdStmt.run(id);
+    const result = this.db.delete(mediaThumbnails).where(eq(mediaThumbnails.id, id)).run();
     return result.changes > 0;
   }
 
   replaceForMedia(mediaId: number, paths: string[]): ThumbnailRecord[] {
-    const run = this.db.transaction((thumbnailPaths: string[]) => {
-      this.deleteByMediaStmt.run(mediaId);
+    return this.db.transaction((tx) => {
+      tx.delete(mediaThumbnails).where(eq(mediaThumbnails.mediaItemId, mediaId)).run();
 
-      for (const thumbnailPath of thumbnailPaths) {
-        this.insertStmt.run({ mediaId, path: thumbnailPath });
+      if (paths.length > 0) {
+        tx.insert(mediaThumbnails)
+          .values(
+            paths.map((thumbnailPath) => ({
+              mediaItemId: mediaId,
+              path: thumbnailPath,
+            })),
+          )
+          .run();
       }
+
+      return tx
+        .select()
+        .from(mediaThumbnails)
+        .where(eq(mediaThumbnails.mediaItemId, mediaId))
+        .orderBy(asc(mediaThumbnails.createdAt))
+        .all()
+        .map(mapRowToRecord);
     });
-
-    run(paths);
-
-    return this.listByMediaId(mediaId);
   }
 
   /**
@@ -101,14 +100,13 @@ export class ThumbnailRepository {
       return new Map();
     }
 
-    // Build IN clause with placeholders
-    const placeholders = mediaIds.map(() => '?').join(', ');
-    const query = `SELECT * FROM thumbnails WHERE media_id IN (${placeholders}) ORDER BY media_id, created_at ASC`;
+    const rows = this.db
+      .select()
+      .from(mediaThumbnails)
+      .where(inArray(mediaThumbnails.mediaItemId, mediaIds))
+      .orderBy(asc(mediaThumbnails.mediaItemId), asc(mediaThumbnails.createdAt))
+      .all();
 
-    const stmt = this.db.prepare(query);
-    const rows = stmt.all(...mediaIds) as ThumbnailRow[];
-
-    // Group by media_id
     const grouped = new Map<number, ThumbnailRecord[]>();
     for (const row of rows) {
       const record = mapRowToRecord(row);
