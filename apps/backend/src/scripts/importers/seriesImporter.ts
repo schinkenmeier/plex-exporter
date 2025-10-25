@@ -232,10 +232,10 @@ export class SeriesImporter {
               ? episode.seasonEpisode.trim()
               : null;
         const thumb =
-          typeof (episode as Record<string, unknown>).thumbFile === 'string'
-            ? (episode as Record<string, unknown>).thumbFile
-            : typeof (episode as Record<string, unknown>).thumb === 'string'
-              ? (episode as Record<string, unknown>).thumb
+          typeof episode.thumbFile === 'string'
+            ? episode.thumbFile
+            : typeof episode.thumb === 'string'
+              ? episode.thumb
               : null;
 
         return {

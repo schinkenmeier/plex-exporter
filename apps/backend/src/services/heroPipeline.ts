@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm';
 import type { DrizzleDatabase } from '../db/index.js';
 import { heroPools } from '../db/schema.js';
 import MediaRepository, { type MediaRecord } from '../repositories/mediaRepository.js';
+import ThumbnailRepository from '../repositories/thumbnailRepository.js';
 import logger from './logger.js';
 import type { TmdbService, TmdbHeroDetails, TmdbRateLimitState } from './tmdbService.js';
 import { TmdbRateLimitError } from './tmdbService.js';
@@ -38,6 +39,7 @@ type HeroPoolRow = typeof heroPools.$inferSelect;
 interface HeroPipelineOptions {
   drizzleDatabase: DrizzleDatabase;
   mediaRepository: MediaRepository;
+  thumbnailRepository?: ThumbnailRepository | null;
   tmdbService?: TmdbService | null;
   policyPath?: string | null;
 }
@@ -93,6 +95,7 @@ export interface HeroPoolPayload {
 
 export interface HeroPipelineService {
   getPool(kind: HeroKind, options?: { force?: boolean }): Promise<HeroPoolPayload>;
+  setTmdbService(next: TmdbService | null): void;
 }
 
 const DEFAULT_POLICY: HeroPolicy = {
@@ -486,6 +489,61 @@ const parseYearFromDetails = (details: TmdbHeroDetails | null, record: MediaReco
   return parseYear(record.year ?? null);
 };
 
+const sanitizeImageCandidate = (value: string | null | undefined): string | null => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const dedupeImages = (values: Array<string | null | undefined>): string[] => {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of values) {
+    const candidate = sanitizeImageCandidate(value);
+    if (!candidate || seen.has(candidate)) continue;
+    seen.add(candidate);
+    result.push(candidate);
+  }
+  return result;
+};
+
+const resolvePoster = (
+  details: TmdbHeroDetails | null,
+  record: MediaRecord,
+  thumbnails: string[],
+): string | null => {
+  const candidates: Array<string | null | undefined> = [
+    details?.poster ?? null,
+    record.poster,
+    thumbnails[0] ?? null,
+    record.backdrop,
+  ];
+  const [poster] = dedupeImages(candidates);
+  return poster ?? null;
+};
+
+const resolveBackdrops = (
+  details: TmdbHeroDetails | null,
+  record: MediaRecord,
+  thumbnails: string[],
+): string[] => {
+  const primaryCandidates: Array<string | null | undefined> = [];
+  if (details && Array.isArray(details.backdrops)) {
+    primaryCandidates.push(...details.backdrops);
+  }
+  const primary = dedupeImages(primaryCandidates);
+  if (primary.length > 0) {
+    return primary;
+  }
+
+  const fallbackCandidates: Array<string | null | undefined> = [
+    record.backdrop,
+    ...thumbnails,
+    record.poster,
+  ];
+  return dedupeImages(fallbackCandidates);
+};
+
 const buildNormalizedItem = (
   candidate: Candidate,
   slot: HeroPoolItem['slot'],
@@ -493,6 +551,7 @@ const buildNormalizedItem = (
   record: MediaRecord,
   ids: Record<string, string>,
   details: TmdbHeroDetails | null,
+  thumbnails: string[],
 ): HeroPoolItem => {
   const title = (details?.title || record.title || '').trim();
   const overview = (details?.overview || record.summary || '').trim();
@@ -524,8 +583,6 @@ const buildNormalizedItem = (
     voteCount,
     genres,
     certification,
-    backdrops: details?.backdrops || [],
-    poster: details?.poster ?? null,
     cta: {
       id: ctaId,
       kind: ctaKind,
@@ -534,6 +591,8 @@ const buildNormalizedItem = (
     },
     ids,
     source: details ? 'tmdb' : 'plex',
+    backdrops: resolveBackdrops(details, record, thumbnails),
+    poster: resolvePoster(details, record, thumbnails),
   };
 };
 
@@ -636,11 +695,25 @@ const parsePayload = (payload: string | null | undefined): HeroPoolPayload | nul
 export const createHeroPipelineService = ({
   drizzleDatabase,
   mediaRepository,
-  tmdbService,
+  thumbnailRepository,
+  tmdbService: initialTmdbService,
   policyPath,
 }: HeroPipelineOptions): HeroPipelineService => {
+  let activeTmdbService = initialTmdbService ?? null;
   let cachedPolicy: { policy: HeroPolicy; hash: string } | null = null;
   let cachedPolicyMeta: { path: string | null; mtimeMs: number | null } | null = null;
+
+  const buildTmdbMeta = (hitLimit: boolean) => ({
+    enabled: !!activeTmdbService?.isEnabled(),
+    rateLimit: activeTmdbService?.getRateLimitState() ?? {
+      active: false,
+      until: 0,
+      retryAfterMs: 0,
+      lastStatus: null,
+      strikes: 0,
+    },
+    hitLimit,
+  });
 
   const loadPolicy = async ({ force = false }: { force?: boolean } = {}): Promise<{
     policy: HeroPolicy;
@@ -712,6 +785,7 @@ export const createHeroPipelineService = ({
     selection: Array<Candidate & { slot: HeroPoolItem['slot'] }>,
     kind: HeroKind,
     policy: HeroPolicy,
+    thumbnailMap: Map<number, string[]>,
   ): Promise<{ items: HeroPoolItem[]; rateLimitHit: boolean }> => {
     const items: HeroPoolItem[] = [];
     let rateLimitHit = false;
@@ -720,6 +794,7 @@ export const createHeroPipelineService = ({
       let details: TmdbHeroDetails | null = null;
       const ids = extractIds(entry.raw);
       const tmdbId = ids.tmdb;
+      const tmdbService = activeTmdbService;
       if (tmdbId && tmdbService?.isEnabled()) {
         try {
           details = await tmdbService.fetchDetails(kind === 'series' ? 'tv' : 'movie', tmdbId, { language });
@@ -742,6 +817,7 @@ export const createHeroPipelineService = ({
         entry.raw,
         ids,
         details,
+        thumbnailMap.get(entry.raw.id) ?? [],
       );
       items.push(normalized);
     }
@@ -762,17 +838,7 @@ export const createHeroPipelineService = ({
         meta: {
           ...payload.meta,
           source: 'cache',
-          tmdb: {
-            enabled: !!tmdbService?.isEnabled(),
-            rateLimit: tmdbService?.getRateLimitState() ?? {
-              active: false,
-              until: 0,
-              retryAfterMs: 0,
-              lastStatus: null,
-              strikes: 0,
-            },
-            hitLimit: payload.meta?.tmdb?.hitLimit ?? false,
-          },
+          tmdb: buildTmdbMeta(payload.meta?.tmdb?.hitLimit ?? false),
         },
       };
     }
@@ -793,17 +859,7 @@ export const createHeroPipelineService = ({
           plan: {},
           totalCandidates: 0,
           selectionCount: 0,
-          tmdb: {
-            enabled: !!tmdbService?.isEnabled(),
-            rateLimit: tmdbService?.getRateLimitState() ?? {
-              active: false,
-              until: 0,
-              retryAfterMs: 0,
-              lastStatus: null,
-              strikes: 0,
-            },
-            hitLimit: false,
-          },
+          tmdb: buildTmdbMeta(false),
         },
       };
     }
@@ -813,13 +869,32 @@ export const createHeroPipelineService = ({
       normalizedKind === 'series' ? record.mediaType === 'tv' : record.mediaType === 'movie',
     );
 
+    const thumbnailMap: Map<number, string[]> = new Map();
+    if (thumbnailRepository) {
+      const mediaIds = candidates.map((record) => record.id).filter((id) => Number.isFinite(id));
+      if (mediaIds.length > 0) {
+        const grouped = thumbnailRepository.listByMediaIds(mediaIds);
+        grouped.forEach((records, mediaId) => {
+          const paths = dedupeImages(records.map((entry) => entry.path));
+          if (paths.length > 0) {
+            thumbnailMap.set(mediaId, paths);
+          }
+        });
+      }
+    }
+
     const plan = computeSlotPlan(poolSize, policy.slots);
     const historyEntries = stored?.history ?? [];
     const historySnapshot = buildHistorySnapshot(historyEntries, nowTs, HISTORY_WINDOW_MS, HISTORY_LIMIT);
     const context = classifyCandidates(candidates, plan, policy.diversity, historySnapshot);
     const trimmedSelection = context.selected.slice(0, poolSize);
 
-    const { items, rateLimitHit } = await normalizeSelection(trimmedSelection, normalizedKind, policy);
+    const { items, rateLimitHit } = await normalizeSelection(
+      trimmedSelection,
+      normalizedKind,
+      policy,
+      thumbnailMap,
+    );
     const ttlMs = Math.max(1, (policy.cache?.ttlHours ?? 24) * 60 * 60 * 1000);
     const updatedAt = nowTs;
     const expiresAt = updatedAt + ttlMs;
@@ -838,17 +913,7 @@ export const createHeroPipelineService = ({
         plan,
         totalCandidates: candidates.length,
         selectionCount: items.length,
-        tmdb: {
-          enabled: !!tmdbService?.isEnabled(),
-          rateLimit: tmdbService?.getRateLimitState() ?? {
-            active: false,
-            until: 0,
-            retryAfterMs: 0,
-            lastStatus: null,
-            strikes: 0,
-          },
-          hitLimit: rateLimitHit,
-        },
+        tmdb: buildTmdbMeta(rateLimitHit),
       },
     };
 
@@ -882,9 +947,13 @@ export const createHeroPipelineService = ({
   };
 
   const getPool = async (kind: HeroKind, options: { force?: boolean } = {}) => buildPool(kind, options);
+  const setTmdbService = (next: TmdbService | null) => {
+    activeTmdbService = next ?? null;
+  };
 
   return {
     getPool,
+    setTmdbService,
   };
 };
 

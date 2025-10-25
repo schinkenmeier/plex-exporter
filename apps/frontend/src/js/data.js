@@ -1,6 +1,6 @@
 import { getCache, setCache } from '../shared/cache.js';
 import { validateLibraryList } from './data/validators.js';
-import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '@plex-exporter/shared';
+import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, computeFacets } from '@plex-exporter/shared';
 
 const LOG_PREFIX = '[data]';
 const MAX_PAGE = 1000;
@@ -54,6 +54,67 @@ const fallbackDataPaths = relative => {
   return Array.from(uniq);
 };
 const SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i;
+
+function buildApiPath(path, params){
+  const rawPath = String(path || '');
+  if(!rawPath) return '';
+  const normalized = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+  const search = params ? params.toString() : '';
+  const base = resolveApiBase();
+  const withParams = search ? `${normalized}?${search}` : normalized;
+  return base ? `${base}${withParams}` : withParams;
+}
+
+function normalizeApiLibraryEntry(entry, kind){
+  if(!entry || typeof entry !== 'object') return null;
+  const title = typeof entry.title === 'string' ? entry.title.trim() : '';
+  const ratingKeyRaw = entry.ratingKey ?? entry.plexId ?? entry.id ?? entry.guid;
+  if(!title || ratingKeyRaw == null) return null;
+  const resolvedKind = (() => {
+    const rawMediaType = typeof entry.mediaType === 'string' ? entry.mediaType.toLowerCase() : '';
+    if(rawMediaType === 'tv' || rawMediaType === 'show') return 'show';
+    if(rawMediaType === 'movie') return 'movie';
+    if(kind === 'show' || kind === 'movie') return kind;
+    return 'movie';
+  })();
+  const thumbFile = typeof entry.thumbFile === 'string' ? entry.thumbFile : '';
+  const thumb = typeof entry.thumb === 'string' ? entry.thumb : thumbFile;
+  const normalized = {
+    ...entry,
+    title,
+    ratingKey: String(ratingKeyRaw),
+    thumbFile,
+    thumb,
+    href: typeof entry.href === 'string' ? entry.href : '',
+    mediaType: resolvedKind === 'show' ? 'tv' : 'movie',
+    genres: Array.isArray(entry.genres) ? entry.genres : [],
+    collections: Array.isArray(entry.collections) ? entry.collections : [],
+  };
+  if(resolvedKind === 'show'){
+    normalized.seasons = Array.isArray(entry.seasons) ? entry.seasons : [];
+  }
+  return normalized;
+}
+
+async function loadViaApi(apiConfig = {}, label){
+  if(!apiConfig.path || !apiConfig.kind) return null;
+  const url = buildApiPath(apiConfig.path);
+  if(!url) return null;
+  try{
+    const payload = await fetchJson(url);
+    if(Array.isArray(payload)){
+      const kind = apiConfig.kind;
+      const normalized = payload
+        .map(entry => normalizeApiLibraryEntry(entry, kind))
+        .filter(Boolean);
+      markSource(label, `api:${apiConfig.path}`);
+      return normalized;
+    }
+  }catch(err){
+    console.warn(`${LOG_PREFIX} API source failed for ${apiConfig.path}:`, err?.message || err);
+  }
+  return null;
+}
 
 export async function fetchJson(url, retries = 2, useCache = true){
   // Try cache first if enabled
@@ -134,6 +195,12 @@ function fromWindow(varName){
 }
 
 async function loadWithCompat(primaryUrl, opts){
+  if(opts?.apiConfig){
+    const apiData = await loadViaApi(opts.apiConfig, opts.label);
+    if(Array.isArray(apiData)){
+      return apiData;
+    }
+  }
   // default: try data/exports first
   let data = null;
   try{
@@ -286,6 +353,7 @@ export async function loadMovies(){
       embedId: 'movies-json',
       exportKey: 'movies',
       globalVar: '__PLEX_MOVIES__',
+      apiConfig: { path: '/api/v1/movies', kind: 'movie' },
       altUrls: [
         ...fallbackDataPaths('movies/movies.json'),
         legacyDataPath('movies/movies.json'),
@@ -322,6 +390,7 @@ export async function loadShows(){
       embedId: 'series-json',
       exportKey: 'shows',
       globalVar: '__PLEX_SHOWS__',
+      apiConfig: { path: '/api/v1/series', kind: 'show' },
       altUrls: [
         ...fallbackDataPaths('series/series_index.json'),
         legacyDataPath('series/series_index.json'),
@@ -356,6 +425,20 @@ export async function loadShows(){
 }
 
 function resolveApiBase(){
+  try{
+    if(typeof window !== 'undefined'){
+      const override =
+        window.PLEX_EXPORTER_API_BASE ||
+        window.__PLEX_EXPORTER_API_BASE ||
+        window?.__PLEX_EXPORTER__?.apiBase ||
+        window?.__PLEX_EXPORTER__?.config?.apiBase;
+      if(typeof override === 'string' && override.trim()){
+        return String(override).trim().replace(/\/$/, '');
+      }
+    }
+  }catch(err){
+    console.warn(`${LOG_PREFIX} Unable to read window API base override:`, err?.message || err);
+  }
   try{
     if(typeof window !== 'undefined' && window.location){
       return '';
@@ -399,7 +482,24 @@ function resolveApiBase(){
   return 'http://localhost';
 }
 
-function buildSearchUrl(params){
+function resolveSortConfig(sort){
+  const value = typeof sort === 'string' ? sort.trim() : '';
+  switch(value){
+    case 'title-desc':
+      return { sortBy: 'title', sortOrder: 'desc' };
+    case 'year-asc':
+      return { sortBy: 'year', sortOrder: 'asc' };
+    case 'year-desc':
+      return { sortBy: 'year', sortOrder: 'desc' };
+    case 'added-desc':
+      return { sortBy: 'added', sortOrder: 'desc' };
+    case 'title-asc':
+    default:
+      return { sortBy: 'title', sortOrder: 'asc' };
+  }
+}
+
+function buildExportSearchUrl(params){
   const search = params.toString();
   const base = resolveApiBase();
   const path = `/api/exports/search${search ? `?${search}` : ''}`;
@@ -407,25 +507,67 @@ function buildSearchUrl(params){
 }
 
 export async function fetchCatalogFacets(){
-  const params = new URLSearchParams();
-  params.set('kind', 'all');
-  params.set('includeItems', '0');
-  params.set('includeFacets', '1');
-  const url = buildSearchUrl(params);
-  const data = await fetchJson(url, 1, true);
-  if(data && typeof data === 'object'){
-    if(data.facets && typeof data.facets === 'object'){
-      return data.facets;
+  const collectItems = async (mediaType) => {
+    const limit = 250;
+    let offset = 0;
+    const collected = [];
+    for(let guard = 0; guard < 20; guard += 1){
+      const params = new URLSearchParams();
+      params.set('limit', String(limit));
+      params.set('offset', String(offset));
+      if(mediaType){
+        params.set('type', mediaType);
+      }
+      const url = buildApiPath('/api/v1/filter', params);
+      const data = await fetchJson(url, 1, true);
+      if(!data || typeof data !== 'object'){
+        break;
+      }
+      const chunk = Array.isArray(data.items) ? data.items : [];
+      chunk.forEach(entry => {
+        const normalized = normalizeApiLibraryEntry(entry, mediaType === 'tv' ? 'show' : 'movie');
+        if(normalized) collected.push(normalized);
+      });
+      const pagination = data.pagination || {};
+      if(!pagination.hasMore){
+        break;
+      }
+      offset += limit;
     }
-    if('genres' in data || 'years' in data || 'collections' in data){
-      return {
-        genres: Array.isArray(data.genres) ? data.genres : [],
-        years: Array.isArray(data.years) ? data.years : [],
-        collections: Array.isArray(data.collections) ? data.collections : [],
-      };
+    return collected;
+  };
+
+  try{
+    const [movies, shows] = await Promise.all([
+      collectItems('movie'),
+      collectItems('tv'),
+    ]);
+    return computeFacets(movies, shows);
+  }catch(err){
+    console.warn(`${LOG_PREFIX} Failed to load facets via API:`, err?.message || err);
+    const params = new URLSearchParams();
+    params.set('kind', 'all');
+    params.set('includeItems', '0');
+    params.set('includeFacets', '1');
+    try{
+      const fallback = await fetchJson(buildExportSearchUrl(params), 1, true);
+      if(fallback && typeof fallback === 'object'){
+        if(fallback.facets && typeof fallback.facets === 'object'){
+          return fallback.facets;
+        }
+        if('genres' in fallback || 'years' in fallback || 'collections' in fallback){
+          return {
+            genres: Array.isArray(fallback.genres) ? fallback.genres : [],
+            years: Array.isArray(fallback.years) ? fallback.years : [],
+            collections: Array.isArray(fallback.collections) ? fallback.collections : [],
+          };
+        }
+      }
+    }catch(fallbackErr){
+      console.warn(`${LOG_PREFIX} Fallback facet lookup failed:`, fallbackErr?.message || fallbackErr);
     }
+    return { genres: [], years: [], collections: [] };
   }
-  return { genres: [], years: [], collections: [] };
 }
 
 export async function searchLibrary(kind, filters = {}, options = {}){
@@ -435,10 +577,6 @@ export async function searchLibrary(kind, filters = {}, options = {}){
     if(kind === 'shows' || kind === 'show' || kind === 'series') return 'show';
     return 'movie';
   })();
-  params.set('kind', normalizedKind);
-  params.set('includeItems', '1');
-  params.set('includeFacets', options.includeFacets ? '1' : '0');
-
   const resolvePositiveInt = (value, { min = 1, max, fallback }) => {
     const num = Number(value);
     if(!Number.isFinite(num)) return fallback;
@@ -459,39 +597,66 @@ export async function searchLibrary(kind, filters = {}, options = {}){
     fallback: 1,
   });
 
-  params.set('page', String(normalizedPage));
-  params.set('pageSize', String(normalizedPageSize));
-
   const { query, onlyNew, yearFrom, yearTo, genres, collection, sort, newDays } = filters || {};
 
-  if(typeof query === 'string' && query.trim()) params.set('query', query.trim());
-  if(onlyNew) params.set('onlyNew', '1');
+  const limit = normalizedPageSize;
+  const offset = (normalizedPage - 1) * normalizedPageSize;
+  params.set('limit', String(limit));
+  params.set('offset', String(offset));
+
+  if(normalizedKind === 'movie'){
+    params.set('type', 'movie');
+  }else if(normalizedKind === 'show'){
+    params.set('type', 'tv');
+  }
+
+  if(typeof query === 'string' && query.trim()) params.set('search', query.trim());
   if(Number.isFinite(yearFrom)) params.set('yearFrom', String(yearFrom));
   if(Number.isFinite(yearTo)) params.set('yearTo', String(yearTo));
   if(Array.isArray(genres) && genres.length) params.set('genres', genres.join(','));
   if(typeof collection === 'string' && collection.trim()) params.set('collection', collection.trim());
-  if(typeof sort === 'string' && sort.trim()) params.set('sort', sort.trim());
-  if(Number.isFinite(newDays) && newDays > 0) params.set('newDays', String(newDays));
-
-  const url = buildSearchUrl(params);
-  const data = await fetchJson(url, 1, false);
-  if(data && typeof data === 'object'){
-    const items = Array.isArray(data.items) ? data.items : [];
-    const totalRaw = Number(data.total);
-    const total = Number.isFinite(totalRaw) && totalRaw >= 0 ? totalRaw : items.length;
-    const pageRaw = Number(data.page);
-    const page = Number.isFinite(pageRaw) && pageRaw > 0 ? Math.floor(pageRaw) : normalizedPage;
-    const pageSizeRaw = Number(data.pageSize);
-    const pageSize = Number.isFinite(pageSizeRaw) && pageSizeRaw > 0 ? Math.floor(pageSizeRaw) : normalizedPageSize;
-    return {
-      ...data,
-      items,
-      total,
-      page,
-      pageSize,
-    };
+  if(onlyNew){
+    params.set('onlyNew', '1');
+    if(Number.isFinite(newDays) && newDays > 0){
+      params.set('newDays', String(Math.floor(newDays)));
+    }
+  }else if(Number.isFinite(newDays) && newDays > 0){
+    params.set('newDays', String(Math.floor(newDays)));
   }
-  return { items: [], total: 0, page: normalizedPage, pageSize: normalizedPageSize, filters: { ...filters } };
+
+  const sortConfig = resolveSortConfig(sort);
+  params.set('sortBy', sortConfig.sortBy);
+  params.set('sortOrder', sortConfig.sortOrder);
+
+  const url = buildApiPath('/api/v1/filter', params);
+  const data = await fetchJson(url, 1, false);
+  const rawItems = data && typeof data === 'object' && Array.isArray(data.items) ? data.items : [];
+  const normalizedItems = rawItems
+    .map(entry => normalizeApiLibraryEntry(entry))
+    .filter(Boolean);
+  const pagination = data && typeof data === 'object' && data.pagination ? data.pagination : {};
+  const totalRaw = Number(pagination.total);
+  const total = Number.isFinite(totalRaw) && totalRaw >= 0 ? totalRaw : normalizedItems.length;
+  const limitRaw = Number(pagination.limit);
+  const resolvedLimit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.floor(limitRaw) : limit;
+  const offsetRaw = Number(pagination.offset);
+  const resolvedOffset = Number.isFinite(offsetRaw) && offsetRaw >= 0 ? Math.floor(offsetRaw) : offset;
+  const page = resolvedLimit > 0 ? Math.floor(resolvedOffset / resolvedLimit) + 1 : normalizedPage;
+  const hasMore = Boolean(pagination.hasMore);
+
+  return {
+    items: normalizedItems,
+    total,
+    page,
+    pageSize: resolvedLimit,
+    hasMore,
+    pagination: {
+      total,
+      limit: resolvedLimit,
+      offset: resolvedOffset,
+      hasMore,
+    },
+  };
 }
 
 export async function loadShowDetail(item){

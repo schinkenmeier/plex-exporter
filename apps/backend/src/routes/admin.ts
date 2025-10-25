@@ -11,12 +11,15 @@ import logger from '../services/logger.js';
 import { HttpError } from '../middleware/errorHandler.js';
 import type MediaRepository from '../repositories/mediaRepository.js';
 import type ThumbnailRepository from '../repositories/thumbnailRepository.js';
+import SettingsRepository from '../repositories/settingsRepository.js';
 import SeasonRepository from '../repositories/seasonRepository.js';
 import CastRepository from '../repositories/castRepository.js';
 import type { MailSender } from '../services/smtpService.js';
 import type { TautulliClient } from '../services/tautulliService.js';
 import type { DrizzleDatabase } from '../db/index.js';
 import { seasons, episodes, castMembers } from '../db/schema.js';
+import type { TmdbManager } from '../services/tmdbManager.js';
+import type { HeroPipelineService } from '../services/heroPipeline.js';
 
 export interface AdminRouterOptions {
   config: AppConfig;
@@ -27,6 +30,9 @@ export interface AdminRouterOptions {
   seasonRepository?: SeasonRepository | null;
   castRepository?: CastRepository | null;
   drizzleDatabase?: DrizzleDatabase;
+  settingsRepository: SettingsRepository;
+  tmdbManager: TmdbManager;
+  heroPipeline: HeroPipelineService;
 }
 
 const startTime = Date.now();
@@ -42,6 +48,9 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
     drizzleDatabase,
     seasonRepository: suppliedSeasonRepository,
     castRepository: suppliedCastRepository,
+    settingsRepository,
+    tmdbManager,
+    heroPipeline,
   } = options;
   const seasonRepository =
     suppliedSeasonRepository ??
@@ -115,6 +124,8 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
       return value.substring(0, 4) + '*'.repeat(Math.min(value.length - 4, 20));
     };
 
+    const tmdbStatus = tmdbManager.getStatus();
+
     res.json({
       runtime: {
         env: config.runtime.env,
@@ -148,10 +159,69 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
         apiKey: config.tautulli?.apiKey ? maskSensitive(config.tautulli.apiKey) : '[not set]',
       },
       tmdb: {
-        enabled: !!config.tmdb,
-        accessToken: config.tmdb?.accessToken ? maskSensitive(config.tmdb.accessToken) : '[not set]',
+        enabled: tmdbStatus.hasToken,
+        accessToken: tmdbStatus.hasToken ? tmdbStatus.tokenPreview ?? 'set' : null,
+        source: tmdbStatus.source,
+        updatedAt: tmdbStatus.updatedAt,
+        fromEnv: tmdbStatus.fromEnv,
+        fromDatabase: tmdbStatus.fromDatabase,
       },
     });
+  });
+
+  router.get('/api/tmdb', (_req: Request, res: Response) => {
+    const status = tmdbManager.getStatus();
+    res.json({
+      enabled: status.hasToken,
+      source: status.source,
+      tokenPreview: status.tokenPreview,
+      updatedAt: status.updatedAt,
+      fromEnv: status.fromEnv,
+      fromDatabase: status.fromDatabase,
+    });
+  });
+
+  router.post('/api/tmdb', (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rawToken = typeof req.body?.token === 'string' ? req.body.token.trim() : '';
+      if (!rawToken) {
+        throw new HttpError(400, 'TMDb access token must not be empty.');
+      }
+      const record = settingsRepository.set('tmdb.accessToken', rawToken);
+      const service = tmdbManager.setDatabaseToken(record.value, { updatedAt: record.updatedAt });
+      heroPipeline.setTmdbService(service);
+      res.json({
+        success: true,
+        status: tmdbManager.getStatus(),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.delete('/api/tmdb', (_req: Request, res: Response) => {
+    settingsRepository.delete('tmdb.accessToken');
+    const service = tmdbManager.setDatabaseToken(null);
+    heroPipeline.setTmdbService(service);
+    res.json({
+      success: true,
+      status: tmdbManager.getStatus(),
+    });
+  });
+
+  router.post('/api/test/tmdb', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const token = typeof req.body?.token === 'string' ? req.body.token : undefined;
+      const result = await tmdbManager.testToken(token);
+      res.json(result);
+    } catch (error) {
+      const status = (error as { status?: number } | undefined)?.status ?? 500;
+      next(
+        new HttpError(status, error instanceof Error ? error.message : 'TMDb token test failed', {
+          cause: error instanceof Error ? error : undefined,
+        }),
+      );
+    }
   });
 
   /**

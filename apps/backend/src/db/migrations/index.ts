@@ -5,6 +5,7 @@ import { extendedMetadataMigration } from './003_extended_metadata.js';
 import { heroPipelineMigration } from './004_hero_pipeline.js';
 import { schemaExpansionMigration } from './005_schema_expansion.js';
 import { convertLegacyMediaMigration } from './006_convert_legacy_media.js';
+import { integrationSettingsMigration } from './007_integration_settings.js';
 import type { Migration } from './types.js';
 
 const migrations: Migration[] = [
@@ -14,6 +15,7 @@ const migrations: Migration[] = [
   heroPipelineMigration,
   schemaExpansionMigration,
   convertLegacyMediaMigration,
+  integrationSettingsMigration,
 ];
 
 export const runMigrations = (db: SqliteDatabase) => {

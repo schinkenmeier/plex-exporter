@@ -446,6 +446,26 @@
       gap: 10px;
     }
 
+    .input-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .input-stack input {
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--color-text);
+      font-size: 14px;
+    }
+
+    .input-stack input::placeholder {
+      color: var(--color-muted);
+    }
+
     .log-view {
       background: #101217;
       border-radius: var(--radius-sm);
@@ -756,6 +776,23 @@
       <section class="view" id="view-config">
         <article class="card">
           <div>
+            <h3>TMDb integration</h3>
+            <p>Manage the TMDb API token used for hero enrichment and artwork fetching.</p>
+          </div>
+          <div class="input-stack">
+            <label class="input-label" for="tmdb-token-input">TMDb access token</label>
+            <input id="tmdb-token-input" type="password" autocomplete="off" placeholder="TMDb v4 API Read Access Token">
+            <div class="muted" id="tmdb-token-status">Loading TMDb status…</div>
+            <div class="button-row">
+              <button class="btn btn-primary" id="btn-save-tmdb">Save token</button>
+              <button class="btn" id="btn-test-tmdb">Test token</button>
+              <button class="btn btn-danger" id="btn-clear-tmdb">Remove token</button>
+            </div>
+            <div class="muted" id="tmdb-test-output">No test executed yet.</div>
+          </div>
+        </article>
+        <article class="card">
+          <div>
             <h3>Configuration snapshot</h3>
             <p>Current backend configuration (sensitive values are masked).</p>
           </div>
@@ -885,6 +922,12 @@
         optMovies: document.getElementById("opt-movies"),
         optShows: document.getElementById("opt-shows"),
         configView: document.getElementById("config-view"),
+        tmdbTokenInput: document.getElementById("tmdb-token-input"),
+        tmdbTokenStatus: document.getElementById("tmdb-token-status"),
+        tmdbSaveButton: document.getElementById("btn-save-tmdb"),
+        tmdbTestButton: document.getElementById("btn-test-tmdb"),
+        tmdbClearButton: document.getElementById("btn-clear-tmdb"),
+        tmdbTestOutput: document.getElementById("tmdb-test-output"),
         logView: document.getElementById("log-view"),
         logSummary: document.getElementById("log-summary"),
         logLevel: document.getElementById("log-level"),
@@ -906,12 +949,13 @@
         autoTimer: null,
         importTimer: null,
         importPollCount: 0,
+        tmdbStatus: null,
       };
 
       const viewDescriptions = {
         dashboard: "System overview, import control and service status in one place.",
         import: "Control the import worker and inspect the latest console output.",
-        config: "Read-only snapshot of the backend configuration with masked secrets.",
+        config: "Manage TMDb credentials and inspect the backend configuration snapshot.",
         logs: "Inspect the in-memory log buffer. Useful for quick diagnostics.",
         diagnostics: "Connectivity checks for SMTP, Tautulli and database services.",
       };
@@ -1296,7 +1340,7 @@
         }
       }
 
-      async function loadConfig() {
+      async function loadConfigSnapshot() {
         elements.configView.innerHTML = `<div class="muted">Loading configuration...</div>`;
         try {
           const data = await fetchJson(`${API_BASE}/config`);
@@ -1307,10 +1351,147 @@
             </details>
           `).join("");
           elements.configView.innerHTML = sections || `<div class="muted">No configuration data.</div>`;
-          setLastUpdated("configuration");
         } catch (error) {
           elements.configView.innerHTML = `<div class="alert alert-error">${escapeHtml(error.message)}</div>`;
           throw error;
+        }
+      }
+
+      function renderTmdbStatus(status) {
+        state.tmdbStatus = status || null;
+        if (!elements.tmdbTokenStatus) return;
+        if (!status || !status.enabled) {
+          elements.tmdbTokenStatus.textContent = status?.fromEnv
+            ? "Active token provided via environment configuration."
+            : "No TMDb token stored yet.";
+        } else {
+          const preview = status.tokenPreview ? ` (${status.tokenPreview})` : "";
+          const updated = status.updatedAt
+            ? ` — updated ${new Date(status.updatedAt).toLocaleString("de-DE")}`
+            : "";
+          const sourceLabel = status.source === "database" ? "stored in database" : "provided via environment";
+          elements.tmdbTokenStatus.textContent = `Token ${sourceLabel}${preview}${updated}`;
+        }
+        if (elements.tmdbClearButton) {
+          elements.tmdbClearButton.disabled = !status || !status.fromDatabase;
+        }
+        if (elements.tmdbTestButton) {
+          elements.tmdbTestButton.disabled = false;
+        }
+      }
+
+      async function loadTmdbStatus() {
+        if (!elements.tmdbTokenStatus) return;
+        elements.tmdbTokenStatus.textContent = "Loading TMDb status...";
+        try {
+          const data = await fetchJson(`${API_BASE}/tmdb`);
+          renderTmdbStatus(data);
+          if (elements.tmdbTestOutput) {
+            elements.tmdbTestOutput.textContent = "No test executed yet.";
+          }
+        } catch (error) {
+          elements.tmdbTokenStatus.textContent = `Failed to load TMDb status: ${error.message}`;
+          throw error;
+        }
+      }
+
+      async function loadConfig() {
+        await Promise.all([loadTmdbStatus(), loadConfigSnapshot()]);
+        setLastUpdated("configuration");
+      }
+
+      async function handleSaveTmdbToken(event) {
+        event?.preventDefault();
+        if (!elements.tmdbSaveButton || !elements.tmdbTokenInput) return;
+        const token = elements.tmdbTokenInput.value.trim();
+        if (!token) {
+          showToast("Please enter a TMDb access token before saving.", "error");
+          return;
+        }
+        elements.tmdbSaveButton.disabled = true;
+        if (elements.tmdbTestButton) elements.tmdbTestButton.disabled = true;
+        if (elements.tmdbClearButton) elements.tmdbClearButton.disabled = true;
+        try {
+          const data = await fetchJson(`${API_BASE}/tmdb`, {
+            method: "POST",
+            body: JSON.stringify({ token }),
+          });
+          elements.tmdbTokenInput.value = "";
+          renderTmdbStatus(data.status);
+          if (elements.tmdbTestOutput) {
+            elements.tmdbTestOutput.textContent = "Token saved. Run a test to verify.";
+          }
+          showToast("TMDb token stored successfully.", "success");
+        } catch (error) {
+          showToast(error.message, "error");
+        } finally {
+          elements.tmdbSaveButton.disabled = false;
+          if (elements.tmdbTestButton) elements.tmdbTestButton.disabled = false;
+          if (elements.tmdbClearButton) {
+            elements.tmdbClearButton.disabled = !state.tmdbStatus || !state.tmdbStatus.fromDatabase;
+          }
+        }
+      }
+
+      async function handleTestTmdbToken(event) {
+        event?.preventDefault();
+        if (!elements.tmdbTestButton) return;
+        const token = elements.tmdbTokenInput ? elements.tmdbTokenInput.value.trim() : "";
+        if (!token && !state.tmdbStatus?.enabled) {
+          if (elements.tmdbTestOutput) {
+            elements.tmdbTestOutput.textContent = "Enter a token or save one before running a test.";
+          }
+          showToast("Provide a token to run the TMDb test.", "error");
+          return;
+        }
+        elements.tmdbTestButton.disabled = true;
+        if (elements.tmdbTestOutput) {
+          elements.tmdbTestOutput.textContent = "Testing token...";
+        }
+        try {
+          const data = await fetchJson(`${API_BASE}/test/tmdb`, {
+            method: "POST",
+            body: JSON.stringify(token ? { token } : {}),
+          });
+          let message = `Success: ${data.message}`;
+          if (typeof data.tokenPreview === "string" && data.tokenPreview) {
+            message += ` (${data.tokenPreview})`;
+          }
+          if (typeof data.rateLimitRemaining === "number" && Number.isFinite(data.rateLimitRemaining)) {
+            message += ` | Remaining budget: ${data.rateLimitRemaining}`;
+          }
+          if (elements.tmdbTestOutput) {
+            elements.tmdbTestOutput.textContent = message;
+          }
+          showToast("TMDb token test succeeded.", "success");
+        } catch (error) {
+          if (elements.tmdbTestOutput) {
+            elements.tmdbTestOutput.textContent = `Error: ${error.message}`;
+          }
+          showToast(error.message, "error");
+        } finally {
+          elements.tmdbTestButton.disabled = false;
+        }
+      }
+
+      async function handleClearTmdbToken(event) {
+        event?.preventDefault();
+        if (!elements.tmdbClearButton) return;
+        if (!state.tmdbStatus?.fromDatabase) {
+          showToast("There is no stored TMDb token to remove.", "info");
+          return;
+        }
+        elements.tmdbClearButton.disabled = true;
+        try {
+          const data = await fetchJson(`${API_BASE}/tmdb`, { method: "DELETE" });
+          renderTmdbStatus(data.status);
+          if (elements.tmdbTestOutput) {
+            elements.tmdbTestOutput.textContent = "Stored token removed. Provide a token to test.";
+          }
+          showToast("Stored TMDb token removed.", "success");
+        } catch (error) {
+          showToast(error.message, "error");
+          elements.tmdbClearButton.disabled = false;
         }
       }
 
@@ -1421,6 +1602,8 @@
         elements.navButtons.forEach(btn => {
           btn.addEventListener("click", () => switchView(btn.dataset.view));
         });
+        if (elements.tmdbTestButton) elements.tmdbTestButton.disabled = true;
+        if (elements.tmdbClearButton) elements.tmdbClearButton.disabled = true;
         elements.refreshButton.addEventListener("click", () => {
           const loader = viewLoaders[state.currentView];
           if (loader) {
@@ -1439,6 +1622,15 @@
         elements.smtpButton.addEventListener("click", runSmtpTest);
         elements.tautulliButton.addEventListener("click", runTautulliTest);
         elements.dbButton.addEventListener("click", runDbTest);
+        if (elements.tmdbSaveButton) {
+          elements.tmdbSaveButton.addEventListener("click", handleSaveTmdbToken);
+        }
+        if (elements.tmdbTestButton) {
+          elements.tmdbTestButton.addEventListener("click", handleTestTmdbToken);
+        }
+        if (elements.tmdbClearButton) {
+          elements.tmdbClearButton.addEventListener("click", handleClearTmdbToken);
+        }
       }
 
       function init() {

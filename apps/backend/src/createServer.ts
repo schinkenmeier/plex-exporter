@@ -26,7 +26,8 @@ import CastRepository from './repositories/castRepository.js';
 import { createMediaRouter } from './routes/media.js';
 import { errorHandler, requestLogger } from './middleware/errorHandler.js';
 import { createAuthMiddleware } from './middleware/auth.js';
-import createTmdbService from './services/tmdbService.js';
+import SettingsRepository from './repositories/settingsRepository.js';
+import { createTmdbManager, type TmdbManager } from './services/tmdbManager.js';
 import createHeroPipelineService from './services/heroPipeline.js';
 import { createHeroRouter } from './routes/hero.js';
 import { setupSwagger } from './config/swaggerSetup.js';
@@ -43,6 +44,8 @@ export interface ServerDependencies {
   tautulliSnapshotRepository?: TautulliSnapshotRepository | null;
   seasonRepository?: SeasonRepository | null;
   castRepository?: CastRepository | null;
+  settingsRepository?: SettingsRepository | null;
+  tmdbManager?: TmdbManager | null;
 }
 
 export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}) => {
@@ -54,11 +57,6 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
       : appConfig.smtp
         ? createSmtpService(appConfig.smtp)
         : null;
-
-  const tmdbService =
-    appConfig.tmdb && appConfig.tmdb.accessToken
-      ? createTmdbService({ accessToken: appConfig.tmdb.accessToken })
-      : null;
 
   const tautulliService =
     'tautulliService' in deps
@@ -84,6 +82,36 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
   if (!database || !drizzleDb) {
     throw new Error('Database connection could not be initialised.');
   }
+
+  const settingsRepository =
+    'settingsRepository' in deps
+      ? deps.settingsRepository ?? null
+      : new SettingsRepository(drizzleDb);
+
+  if (!settingsRepository) {
+    throw new Error('Settings repository could not be initialised.');
+  }
+
+  const storedTmdbSetting = settingsRepository.get('tmdb.accessToken');
+  const defaultTmdbOptions = {
+    envToken: appConfig.tmdb?.accessToken ?? null,
+    dbToken: storedTmdbSetting?.value ?? null,
+    updatedAt: storedTmdbSetting?.updatedAt ?? null,
+  };
+
+  const tmdbManager: TmdbManager =
+    'tmdbManager' in deps && deps.tmdbManager
+      ? deps.tmdbManager
+      : createTmdbManager(defaultTmdbOptions);
+
+  if ('tmdbManager' in deps && deps.tmdbManager) {
+    const options = storedTmdbSetting?.updatedAt
+      ? { updatedAt: storedTmdbSetting.updatedAt }
+      : undefined;
+    tmdbManager.setDatabaseToken(storedTmdbSetting?.value ?? null, options);
+  }
+
+  const tmdbService = tmdbManager.getService();
 
   const mediaRepository =
     'mediaRepository' in deps
@@ -125,6 +153,7 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
   const heroPipelineService = createHeroPipelineService({
     drizzleDatabase: drizzleDb,
     mediaRepository,
+    thumbnailRepository,
     tmdbService,
     policyPath: appConfig.hero?.policyPath ?? null,
   });
@@ -197,6 +226,9 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
       seasonRepository,
       castRepository,
       drizzleDatabase: drizzleDb ?? undefined,
+      settingsRepository,
+      tmdbManager,
+      heroPipeline: heroPipelineService,
     }),
   );
 

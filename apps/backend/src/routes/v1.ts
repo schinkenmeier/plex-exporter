@@ -33,6 +33,10 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
     yearFrom: z.coerce.number().int().min(1800).max(2100).optional(),
     yearTo: z.coerce.number().int().min(1800).max(2100).optional(),
     search: z.string().min(1).max(200).optional(),
+    genres: z.string().optional(),
+    collection: z.string().optional(),
+    onlyNew: z.string().optional(),
+    newDays: z.coerce.number().int().min(1).max(365).optional(),
     limit: z.coerce.number().int().min(1).max(500).default(50),
     offset: z.coerce.number().int().min(0).default(0),
     sortBy: z.enum(['title', 'year', 'added', 'updated']).default('title'),
@@ -49,6 +53,12 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
     limit: z.coerce.number().int().min(1).max(200).default(20),
     type: z.enum(['movie', 'tv']).optional(),
   });
+
+  const parseBooleanFlag = (value?: string) => {
+    if (value == null) return false;
+    const normalized = String(value).trim().toLowerCase();
+    return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
+  };
 
   // Helper function to map media records to API responses (with bulk thumbnail loading)
   const mapMediaListToResponse = (items: any[], includeExtended = true) => {
@@ -294,6 +304,30 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
 
       if (validatedQuery.search) {
         filterOptions.search = validatedQuery.search;
+      }
+
+      const genres =
+        validatedQuery.genres && typeof validatedQuery.genres === 'string'
+          ? validatedQuery.genres
+              .split(',')
+              .map((entry) => entry.trim())
+              .filter((entry) => entry.length > 0)
+          : [];
+      if (genres.length) {
+        filterOptions.genres = genres;
+      }
+
+      if (validatedQuery.collection && validatedQuery.collection.trim()) {
+        filterOptions.collection = validatedQuery.collection.trim();
+      }
+
+      if (parseBooleanFlag(validatedQuery.onlyNew)) {
+        filterOptions.onlyNew = true;
+        if (validatedQuery.newDays != null) {
+          filterOptions.newDays = validatedQuery.newDays;
+        }
+      } else if (validatedQuery.newDays != null) {
+        filterOptions.newDays = validatedQuery.newDays;
       }
 
       // Get filtered results and total count

@@ -178,6 +178,12 @@ export const heroPools = sqliteTable('hero_pools', {
   updatedAt: integer('updated_at').notNull(),
 });
 
+export const integrationSettings = sqliteTable('integration_settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+});
+
 export const importJobs = sqliteTable('import_jobs', {
   id: text('id')
     .primaryKey()

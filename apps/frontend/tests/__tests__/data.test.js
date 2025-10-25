@@ -145,17 +145,15 @@ describe('searchLibrary pagination', () => {
       return {
         ok: true,
         json: async () => ({
-          items: [{ title: 'Paged', ratingKey: '5' }],
-          total: 42,
-          page: 3,
-          pageSize: 10,
+          items: [{ title: 'Paged', ratingKey: '5', mediaType: 'movie' }],
+          pagination: { total: 42, limit: 10, offset: 20, hasMore: false },
         }),
       };
     };
 
     const result = await searchLibrary('movies', {}, { page: 3, pageSize: 10 });
-    assert.ok(capturedUrl.includes('page=3'));
-    assert.ok(capturedUrl.includes('pageSize=10'));
+    assert.ok(capturedUrl.includes('limit=10'));
+    assert.ok(capturedUrl.includes('offset=20'));
     assert.strictEqual(result.page, 3);
     assert.strictEqual(result.pageSize, 10);
     assert.strictEqual(result.total, 42);
@@ -169,13 +167,13 @@ describe('searchLibrary pagination', () => {
       capturedUrl = String(url);
       return {
         ok: true,
-        json: async () => ({ items: [{ title: 'Fallback', ratingKey: '7' }] }),
+        json: async () => ({ items: [{ title: 'Fallback', ratingKey: '7', mediaType: 'tv' }] }),
       };
     };
 
     const result = await searchLibrary('shows');
-    assert.ok(capturedUrl.includes('page=1'));
-    assert.ok(capturedUrl.includes(`pageSize=${DEFAULT_PAGE_SIZE}`));
+    assert.ok(capturedUrl.includes(`limit=${DEFAULT_PAGE_SIZE}`));
+    assert.ok(capturedUrl.includes('offset=0'));
     assert.strictEqual(result.page, 1);
     assert.strictEqual(result.pageSize, DEFAULT_PAGE_SIZE);
     assert.strictEqual(result.total, 1);

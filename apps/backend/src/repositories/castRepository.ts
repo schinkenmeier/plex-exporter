@@ -132,7 +132,7 @@ export class CastRepository {
         return inserted;
       };
 
-      const insertedAppearances = [];
+      const insertedAppearances: CastAppearance[] = [];
 
       castInputs.forEach((entry, index) => {
         const member = resolveMember(entry);
@@ -164,7 +164,7 @@ export class CastRepository {
             name: member.name,
             role: member.role ?? null,
             photo: member.photo ?? null,
-          } satisfies CastAppearance);
+          });
         }
       });
 

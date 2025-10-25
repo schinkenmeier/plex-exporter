@@ -135,6 +135,65 @@ function buildSearchPayload(searchUrl){
   return payload;
 }
 
+function sortKeyFromParams(sortBy, sortOrder){
+  if(sortBy === 'year'){
+    return sortOrder === 'asc' ? 'year-asc' : 'year-desc';
+  }
+  if(sortBy === 'added'){
+    return 'added-desc';
+  }
+  if(sortBy === 'title' && sortOrder === 'desc'){
+    return 'title-desc';
+  }
+  return 'title-asc';
+}
+
+function buildFilterResponse(filterUrl){
+  const parsed = parseSearchRequest(filterUrl);
+  if(!parsed) return null;
+  const params = parsed.searchParams;
+  const type = params.get('type');
+  const pool = (() => {
+    if(type === 'tv') return REMOTE_SHOWS;
+    if(type === 'movie') return REMOTE_MOVIES;
+    return [...REMOTE_MOVIES, ...REMOTE_SHOWS];
+  })();
+
+  const filters = {
+    query: params.get('search') || '',
+    onlyNew: params.get('onlyNew') === '1',
+    yearFrom: Number.parseInt(params.get('yearFrom') || '', 10) || null,
+    yearTo: Number.parseInt(params.get('yearTo') || '', 10) || null,
+    collection: params.get('collection') || '',
+    genres: (params.get('genres') || '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean),
+    sort: sortKeyFromParams(params.get('sortBy') || 'title', params.get('sortOrder') || 'asc'),
+  };
+  const newDays = Number.parseInt(params.get('newDays') || '', 10);
+  if(Number.isFinite(newDays)){
+    filters.newDays = newDays;
+  }
+
+  const filtered = filterMediaItems(pool, filters, Date.now());
+  const limit = Math.max(1, Math.min(500, Number.parseInt(params.get('limit') || '50', 10) || 50));
+  const offset = Math.max(0, Number.parseInt(params.get('offset') || '0', 10) || 0);
+  const pagedItems = filtered.slice(offset, offset + limit).map(item => ({
+    ...item,
+    mediaType: item.type === 'show' ? 'tv' : 'movie',
+  }));
+  return {
+    items: pagedItems,
+    pagination: {
+      total: filtered.length,
+      limit,
+      offset,
+      hasMore: offset + limit < filtered.length,
+    },
+  };
+}
+
 function createDom(){
   const { window } = parseHTML(`<!DOCTYPE html>
     <html lang="de">
@@ -348,6 +407,40 @@ test('boot flow integrates view switch, filtering and modal opening', async () =
     Math.random = () => 0;
 
     globalThis.fetch = async (url) => {
+      if(typeof url === 'string'){
+        const parsed = parseSearchRequest(url);
+        if(parsed){
+          if(parsed.pathname === '/api/v1/movies'){
+            return {
+              ok: true,
+              json: async () => REMOTE_MOVIES.map(item => ({ ...item, mediaType: 'movie' })),
+            };
+          }
+          if(parsed.pathname === '/api/v1/series'){
+            return {
+              ok: true,
+              json: async () => REMOTE_SHOWS.map(item => ({ ...item, mediaType: 'tv' })),
+            };
+          }
+          if(parsed.pathname === '/api/v1/filter'){
+            const payload = buildFilterResponse(url) || {
+              items: [],
+              pagination: { total: 0, limit: 0, offset: 0, hasMore: false },
+            };
+            return { ok: true, json: async () => payload };
+          }
+          if(parsed.pathname === '/api/v1/stats'){
+            return {
+              ok: true,
+              json: async () => ({
+                totalMovies: REMOTE_MOVIES.length,
+                totalSeries: REMOTE_SHOWS.length,
+                totalItems: REMOTE_MOVIES.length + REMOTE_SHOWS.length,
+              }),
+            };
+          }
+        }
+      }
       if(typeof url === 'string' && url.endsWith('hero.policy.json')){
         return {
           ok: true,
@@ -368,7 +461,7 @@ test('boot flow integrates view switch, filtering and modal opening', async () =
             cache: { ttlHours: 12, graceMinutes: 20 }
           })
         };
-      }
+     }
       if(typeof url === 'string' && (url.endsWith('config/frontend.json') || url.endsWith('config.json'))){
         return { ok: true, json: async () => ({ startView: 'movies', tmdbEnabled: false, heroPipelineEnabled: false }) };
       }

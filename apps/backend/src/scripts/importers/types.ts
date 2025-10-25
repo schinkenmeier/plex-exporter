@@ -66,10 +66,15 @@ export interface PlexEpisode {
   episodeNumber: number;
   seasonEpisode: string; // e.g., "S01E01"
   title: string;
+  duration?: number;
+  runtime?: number;
   durationMin?: number;
   durationHuman?: string;
   originallyAvailableAt?: string;
   audienceRating?: number;
+  summary?: string | null;
+  thumbFile?: string;
+  thumb?: string;
 }
 
 export interface ImportResult {

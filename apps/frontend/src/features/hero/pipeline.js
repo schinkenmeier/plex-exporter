@@ -8,6 +8,26 @@ const FEATURE_FLAG_KEY = 'feature.heroPipeline';
 const UPDATE_EVENT = 'hero:pipeline-update';
 const HERO_API_BASE = '/api/hero';
 
+function resolveHeroApiBase(){
+  try{
+    if(typeof window !== 'undefined'){
+      const override =
+        window.PLEX_EXPORTER_API_BASE ||
+        window.__PLEX_EXPORTER_API_BASE ||
+        window?.__PLEX_EXPORTER__?.apiBase;
+      if(override){
+        const base = String(override).trim();
+        if(base){
+          return `${base.replace(/\/$/, '')}${HERO_API_BASE}`;
+        }
+      }
+    }
+  }catch(err){
+    logWarn('Failed to resolve hero API base override:', err?.message || err);
+  }
+  return HERO_API_BASE;
+}
+
 const listeners = new Set();
 let detachRateLimitListener = null;
 
@@ -223,7 +243,8 @@ async function fetchHeroPoolFromBackend(kind, { force = false } = {}){
   const params = new URLSearchParams();
   if(force) params.set('force', '1');
   const query = params.toString();
-  const url = `${HERO_API_BASE}/${normalized}${query ? `?${query}` : ''}`;
+  const base = resolveHeroApiBase();
+  const url = `${base}/${normalized}${query ? `?${query}` : ''}`;
   const response = await fetch(url, {
     headers: { Accept: 'application/json' },
     credentials: 'include'

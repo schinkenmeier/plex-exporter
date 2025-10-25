@@ -5,6 +5,8 @@ import { mediaItems } from '../db/schema.js';
 type MediaRow = typeof mediaItems.$inferSelect;
 type MediaInsert = typeof mediaItems.$inferInsert;
 
+const escapeJsonLike = (value: string) => value.replace(/"/g, '""');
+
 const normalizeMediaType = (value?: string | null): 'movie' | 'tv' => {
   if (value === 'tv' || value === 'show') {
     return 'tv';
@@ -164,6 +166,10 @@ export interface MediaFilterOptions {
   yearFrom?: number | null;
   yearTo?: number | null;
   search?: string | null;
+  genres?: string[] | null;
+  collection?: string | null;
+  onlyNew?: boolean | null;
+  newDays?: number | null;
   limit?: number;
   offset?: number;
   sortBy?: 'title' | 'year' | 'added' | 'updated';
@@ -297,6 +303,28 @@ export class MediaRepository {
         or(like(mediaItems.title, searchValue), like(mediaItems.summary, searchValue)),
       );
     }
+    if (options.genres && options.genres.length) {
+      for (const genreRaw of options.genres) {
+        const trimmed = typeof genreRaw === 'string' ? genreRaw.trim() : '';
+        if (!trimmed) continue;
+        const pattern = `%\"${escapeJsonLike(trimmed)}\"%`;
+        conditions.push(sql`coalesce(${mediaItems.genres}, '') LIKE ${pattern}`);
+      }
+    }
+    if (options.collection) {
+      const trimmed = options.collection.trim();
+      if (trimmed) {
+        const pattern = `%\"${escapeJsonLike(trimmed)}\"%`;
+        conditions.push(sql`coalesce(${mediaItems.collections}, '') LIKE ${pattern}`);
+      }
+    }
+    if (options.onlyNew) {
+      const windowDays =
+        options.newDays != null && Number.isFinite(options.newDays) && options.newDays > 0
+          ? Math.floor(options.newDays)
+          : 30;
+      conditions.push(sql`julianday(${mediaItems.addedAt}) >= julianday('now') - ${windowDays}`);
+    }
 
     const condition =
       conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0] : and(...conditions);
@@ -339,6 +367,28 @@ export class MediaRepository {
       conditions.push(
         or(like(mediaItems.title, searchValue), like(mediaItems.summary, searchValue)),
       );
+    }
+    if (options.genres && options.genres.length) {
+      for (const genreRaw of options.genres) {
+        const trimmed = typeof genreRaw === 'string' ? genreRaw.trim() : '';
+        if (!trimmed) continue;
+        const pattern = `%\"${escapeJsonLike(trimmed)}\"%`;
+        conditions.push(sql`coalesce(${mediaItems.genres}, '') LIKE ${pattern}`);
+      }
+    }
+    if (options.collection) {
+      const trimmed = options.collection.trim();
+      if (trimmed) {
+        const pattern = `%\"${escapeJsonLike(trimmed)}\"%`;
+        conditions.push(sql`coalesce(${mediaItems.collections}, '') LIKE ${pattern}`);
+      }
+    }
+    if (options.onlyNew) {
+      const windowDays =
+        options.newDays != null && Number.isFinite(options.newDays) && options.newDays > 0
+          ? Math.floor(options.newDays)
+          : 30;
+      conditions.push(sql`julianday(${mediaItems.addedAt}) >= julianday('now') - ${windowDays}`);
     }
 
     const condition =
