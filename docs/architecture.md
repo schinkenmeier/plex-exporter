@@ -26,9 +26,9 @@ Dieser Leitfaden skizziert den Aufbau der Plex-Exporter-Weboberfläche, das neue
 
 ## Datenpfade und Normalisierung (`apps/frontend/src/js/data.js`)
 
-* `loadMovies()` und `loadShows()` laden JSON-Daten bevorzugt aus `data/exports/...` und fallen bei Bedarf auf eingebettete `<script>`-Tags, globale Variablen oder alternative Legacy-Pfade zurück. Jede erfolgreiche Quelle wird in `lastSources` protokolliert (`getSources()`).
-* `loadShowDetail(item)` lädt Detailseiten für Serien lazy nach und cached Ergebnisse per `cacheKeys()` in `showDetailCache`, damit Modals nicht erneut angefragt werden müssen.
-* `prefixMovieThumb()`, `prefixShowThumb()` und `prefixShowTree()` normalisieren Poster-Pfade (inkl. URL-Encoding), sodass das Grid konsistent auf `thumbFile` zugreifen kann.
+* `loadMovies()` und `loadShows()` greifen ausschließlich auf die Backend-Endpoints `/api/v1/movies` bzw. `/api/v1/series` zu. Erfolgreiche Antworten werden via `fetchJson()` zwischengespeichert und in `lastSources` mit dem Präfix `api:` protokolliert (`getSources()`).
+* `loadShowDetail(item)` lädt Detailseiten für Serien über `/api/v1/series/:id`, cached Ergebnisse per `cacheKeys()` in `showDetailCache` und verhindert dadurch wiederholte Requests beim Öffnen des Modals.
+* `prefixMovieThumb()`, `prefixShowThumb()` und `prefixShowTree()` normalisieren Poster-Pfade auf die Thumbnail-API (`/api/thumbnails/...`) und sorgen für konsistente `thumbFile`-Attribute im Grid.
 
 ## Filter- und Rendering-Layer (`apps/frontend/src/features/filter/index.js`, `apps/frontend/src/features/grid/index.js`)
 

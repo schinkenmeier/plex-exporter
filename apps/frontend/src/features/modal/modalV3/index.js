@@ -111,7 +111,14 @@ async function resolveSeriesPayload(input){
   }
   if(input && typeof input === 'object'){
     const base = input.item || input.show || input.media || input;
-    const detail = input.detail || input.showDetail || input.tmdbDetail || null;
+    let detail = input.detail || input.showDetail || input.tmdbDetail || null;
+    if(base && !detail){
+      try{
+        detail = await loadShowDetail(base);
+      }catch(err){
+        console.warn(LOG_PREFIX, 'Failed to load series payload detail:', err?.message || err);
+      }
+    }
     return { item: base, detail: detail || null };
   }
   const id = input == null ? '' : String(input).trim();

@@ -8,7 +8,7 @@ Neu hinzugekommen ist ein Backend-Grundgerüst (`apps/backend/`), das perspektiv
 ## Funktionsumfang
 - Umschaltbare Film- und Serienansichten inklusive Deep-Linking über die URL-Fragmentnavigation (`#/movies`, `#/shows`).
 - Umfangreiche Filter mit Genres, Jahrspannenauswahl, Sortierung und optionalen TMDB-Postern (gesteuert in `apps/frontend/src/main.js` und `apps/frontend/src/features/filter/index.js`).
-- Schnelle Datenladewege mit Fallbacks für eingebettete JSON-Blöcke oder ältere Exporte (`apps/frontend/src/js/data.js`).
+- Schnelle Datenladewege über die Backend-Endpoints (`/api/v1/movies`, `/api/v1/series`, `/api/v1/filter`) mit integrierter Cache-Strategie (`apps/frontend/src/js/data.js`).
 - Watchlist mit Export- und Importmöglichkeiten (lokal im Browser gespeichert, Logik in `apps/frontend/src/features/watchlist/index.js`).
 - Debug-Overlay zur Fehlersuche mit Quellinformationen, TMDB-Status und Filterzusammenfassung (`apps/frontend/src/js/debug.js`).
 - Cinematic-Detailansicht (Modal V3) für Filme & Serien mit Sticky-Poster, Schnellinfos, Tabs und optional reduzierter Bewegung (implementiert in `apps/frontend/src/features/modal/modalV3/`).
@@ -38,7 +38,7 @@ Neu hinzugekommen ist ein Backend-Grundgerüst (`apps/backend/`), das perspektiv
 | `apps/frontend/src/services/` | Integrationslayer für externe APIs (aktuell TMDB-Client & Mapper). |
 | `apps/frontend/src/shared/` | Gemeinsame Utilities wie Cache-Layer und Stores. |
 | `apps/frontend/src/ui/` | Präsentationsnahe Komponenten (Loader, Skeletons, Error-Toast). |
-| `apps/frontend/src/js/data.js` | Datenlader mit Unterstützung für lokale Dateien (`data/exports/...`) und Legacy-Fallbacks. |
+| `apps/frontend/src/js/data.js` | Datenlader für die `/api/v1/*`-Endpoints inklusive Cache-, Fehler- und Thumbnail-Normalisierung. |
 | `apps/frontend/src/js/…` | Browser-nahe Helfer & Brückenmodule (Debug-Overlay, Settings-Overlay, Fallback-Skripte, Demodaten). |
 | `data/exports/movies/` | Exportierte Filmdaten (`movies.json`) und optionale Posterordner (`Movie - … .images`). |
 | `data/exports/series/` | Serienindex (`series_index.json`), Detaildateien (`details/<ratingKey>.json`) und Posterordner (`Show - … .images`). |
@@ -83,7 +83,7 @@ Das Repository ist als npm-Workspace organisiert. Relevante Befehle:
 4. Starte den Katalog neu in `apps/frontend/public/index.html`, um die aktualisierten Serien zu überprüfen.
 
 ### Datenspeicherung und Fallbacks
-- `apps/frontend/src/js/data.js` bevorzugt die Dateien unter `data/exports/...`. Falls diese fehlen, werden vorhandene `<script>`-Blöcke im HTML oder globale Variablen genutzt. So bleibt der Katalog kompatibel mit früheren Exportformaten.
+- `apps/frontend/src/js/data.js` ruft ausschließlich die `/api/v1/*`-Endpoints auf und nutzt den gemeinsamen Cache-Layer (`fetchJson()`). Fehlerfälle blenden UI-Hinweise ein und liefern leere Listen, damit das Grid weiterhin reagiert.
 - Detailansichten laden zusätzliche JSON-Dateien erst beim Öffnen eines Elements, um die Initialladezeit niedrig zu halten.
 
 ### Produktive Bereitstellung von Exporten

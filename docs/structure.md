@@ -231,8 +231,7 @@ import type { MediaItem } from '@plex-exporter/shared';
 
 Scripts für Wartung und Entwicklung.
 
-**Beispiel:**
-- `cleanup-test-data.js` - Bereinigt Test-Daten
+Derzeit keine aktiven Hilfsskripte.
 
 **Hinweis:** Diese Scripts sind für Entwickler gedacht, nicht für Endanwender (siehe `tools/`).
 

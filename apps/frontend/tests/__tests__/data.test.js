@@ -50,30 +50,31 @@ afterEach(() => {
 });
 
 describe('prefixThumbValue', () => {
-  it('normalizes leading parent directory segments', () => {
-    const result = prefixThumbValue('../poster.jpg', 'data/exports/movies/');
-    assert.strictEqual(result, 'data/exports/movies/poster.jpg');
+  it('converts relative paths into thumbnail API URLs', () => {
+    const result = prefixThumbValue('../poster.jpg', 'movies');
+    assert.strictEqual(result, 'http://localhost/api/thumbnails/movies/poster.jpg');
     assert.ok(!result.includes('../..'));
   });
 
   it('normalizes backslash parent directory segments', () => {
-    const result = prefixThumbValue('..\\poster.jpg', 'data/exports/movies/');
-    assert.strictEqual(result, 'data/exports/movies/poster.jpg');
+    const result = prefixThumbValue('..\\poster.jpg', 'movies');
+    assert.strictEqual(result, 'http://localhost/api/thumbnails/movies/poster.jpg');
   });
 
-  it('handles mixed slashes and dot segments', () => {
-    const result = prefixThumbValue('./covers/../thumbs/.//poster.jpg', 'data/exports/movies');
-    assert.strictEqual(result, 'data/exports/movies/thumbs/poster.jpg');
+  it('encodes nested segments after sanitizing traversal tokens', () => {
+    const result = prefixThumbValue('./covers/../thumbs/.//poster.jpg', 'movies');
+    assert.strictEqual(result, 'http://localhost/api/thumbnails/movies/thumbs/poster.jpg');
   });
 
-  it('returns base directory when only parent segments remain', () => {
-    const result = prefixThumbValue('../', 'data/exports/movies/');
-    assert.strictEqual(result, 'data/exports/movies/');
+  it('returns the thumbnail collection root when no segments remain', () => {
+    const result = prefixThumbValue('../', 'movies');
+    assert.strictEqual(result, 'http://localhost/api/thumbnails/movies');
   });
 
-  it('preserves absolute data paths without duplicating base', () => {
-    const result = prefixThumbValue('data/movies/poster.jpg', 'data/exports/movies/');
-    assert.strictEqual(result, 'data/exports/movies/poster.jpg');
+  it('keeps absolute URLs untouched', () => {
+    const absolute = 'https://cdn.example.com/poster.jpg';
+    const result = prefixThumbValue(absolute, 'movies');
+    assert.strictEqual(result, absolute);
   });
 });
 
@@ -81,16 +82,16 @@ describe('prefixThumb helpers', () => {
   it('prefixMovieThumb removes relative segments for thumbFile', () => {
     const movie = { thumb: '../poster.jpg' };
     const result = prefixMovieThumb(movie);
-    assert.strictEqual(result.thumb, 'data/exports/movies/poster.jpg');
-    assert.strictEqual(result.thumbFile, 'data/exports/movies/poster.jpg');
+    assert.strictEqual(result.thumb, 'http://localhost/api/thumbnails/movies/poster.jpg');
+    assert.strictEqual(result.thumbFile, 'http://localhost/api/thumbnails/movies/poster.jpg');
     assert.ok(!result.thumb.includes('../..'));
   });
 
   it('prefixShowThumb removes relative segments for thumbFile', () => {
     const show = { thumb: '..\\season/poster.jpg' };
     const result = prefixShowThumb(show);
-    assert.strictEqual(result.thumb, 'data/exports/series/season/poster.jpg');
-    assert.strictEqual(result.thumbFile, 'data/exports/series/season/poster.jpg');
+    assert.strictEqual(result.thumb, 'http://localhost/api/thumbnails/series/season/poster.jpg');
+    assert.strictEqual(result.thumbFile, 'http://localhost/api/thumbnails/series/season/poster.jpg');
     assert.ok(!result.thumb.includes('../..'));
   });
 });
@@ -114,25 +115,16 @@ describe('data loading resilience', () => {
     assert.strictEqual(callCount, 2);
   });
 
-  it('falls back to embedded JSON when fetching movies fails', async () => {
-    const fallbackMovies = [{ title: 'Fallback Film', ratingKey: '1', thumb: 'poster.jpg' }];
+  it('returns an empty list when the movies endpoint is unavailable', async () => {
     let callCount = 0;
     global.fetch = async () => {
       callCount++;
       throw new Error('offline');
     };
-    document.getElementById = (id) => {
-      if(id === 'movies-json'){
-        return { textContent: JSON.stringify(fallbackMovies) };
-      }
-      return null;
-    };
 
     const result = await loadMovies();
     assert.ok(Array.isArray(result));
-    assert.strictEqual(result.length, 1);
-    assert.strictEqual(result[0].title, 'Fallback Film');
-    assert.ok(result[0].thumb?.startsWith('data/exports/movies/'));
+    assert.strictEqual(result.length, 0);
     assert.ok(callCount >= 1);
   });
 });
