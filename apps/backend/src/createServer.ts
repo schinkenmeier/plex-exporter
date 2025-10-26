@@ -33,6 +33,7 @@ import { createHeroRouter } from './routes/hero.js';
 import { setupSwagger } from './config/swaggerSetup.js';
 import { createAdminRouter } from './routes/admin.js';
 import { createBasicAuthMiddleware } from './middleware/basicAuth.js';
+import { createThumbnailRouter } from './routes/thumbnails.js';
 
 export interface ServerDependencies {
   smtpService?: MailSender | null;
@@ -199,6 +200,7 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
   // Public routes (no auth required)
   app.use('/health', createHealthRouter(appConfig));
   app.use('/api/exports', createExportsRouter());
+  app.use('/api/thumbnails', createThumbnailRouter());
   if (heroPipelineService) {
     app.use('/api/hero', createHeroRouter({ heroPipeline: heroPipelineService }));
   }

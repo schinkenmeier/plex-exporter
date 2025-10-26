@@ -60,14 +60,31 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
     return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
   };
 
+  // Helper function to build thumbnail URL with full backend URL
+  const buildThumbnailUrl = (thumbnailPath: string | null, mediaType: string, req?: Request): string | null => {
+    if (!thumbnailPath) return null;
+    const type = mediaType === 'tv' ? 'series' : 'movies';
+    const relativePath = `/api/thumbnails/${type}/${encodeURIComponent(thumbnailPath)}`;
+
+    // Build full URL if request is available
+    if (req) {
+      const protocol = req.protocol;
+      const host = req.get('host');
+      return `${protocol}://${host}${relativePath}`;
+    }
+
+    return relativePath;
+  };
+
   // Helper function to map media records to API responses (with bulk thumbnail loading)
-  const mapMediaListToResponse = (items: any[], includeExtended = true) => {
+  const mapMediaListToResponse = (items: any[], includeExtended = true, req?: Request) => {
     // Bulk load all thumbnails in one query
     const mediaIds = items.map(item => item.id);
     const thumbnailsMap = thumbnailRepository.listByMediaIds(mediaIds);
 
     return items.map(item => {
       const thumbnails = thumbnailsMap.get(item.id) || [];
+      const thumbnailPath = thumbnails[0]?.path || null;
       const base = {
         ratingKey: item.plexId,
         title: item.title,
@@ -77,7 +94,7 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
         mediaType: item.mediaType,
         addedAt: item.plexAddedAt,
         updatedAt: item.plexUpdatedAt,
-        thumbFile: thumbnails[0]?.path || null,
+        thumbFile: buildThumbnailUrl(thumbnailPath, item.mediaType, req),
       };
 
       if (!includeExtended) return base;
@@ -101,8 +118,8 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
   };
 
   // Helper function for single item (backwards compatibility)
-  const mapMediaToResponse = (item: any, includeExtended = true) => {
-    return mapMediaListToResponse([item], includeExtended)[0];
+  const mapMediaToResponse = (item: any, includeExtended = true, req?: Request) => {
+    return mapMediaListToResponse([item], includeExtended, req)[0];
   };
 
   const mapEpisodesToResponse = (episodes: EpisodeRecord[]) =>
@@ -151,7 +168,7 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
       const movies = allMedia.filter(m => m.mediaType === 'movie');
 
       // Map to frontend-compatible format with extended metadata (bulk thumbnail loading)
-      const response = mapMediaListToResponse(movies, true);
+      const response = mapMediaListToResponse(movies, true, req);
 
       res.setHeader('Cache-Control', 'public, max-age=300'); // 5 min cache
       res.json(response);
@@ -176,7 +193,7 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
       const thumbnails = thumbnailRepository.listByMediaId(movie.id);
       const cast = castRepository.listByMediaId(movie.id);
       const response = {
-        ...mapMediaToResponse(movie, true),
+        ...mapMediaToResponse(movie, true, req),
         thumbnails: thumbnails.map(t => t.path),
         cast: mapCastToResponse(cast),
       };
@@ -202,7 +219,7 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
       const series = allMedia.filter(m => m.mediaType === 'tv');
 
       // Map to frontend-compatible format with extended metadata (bulk thumbnail loading)
-      const response = mapMediaListToResponse(series, true);
+      const response = mapMediaListToResponse(series, true, req);
 
       res.setHeader('Cache-Control', 'public, max-age=300'); // 5 min cache
       res.json(response);
@@ -228,7 +245,7 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
       const seasons = seasonRepository.listByMediaIdWithEpisodes(series.id);
       const cast = castRepository.listByMediaId(series.id);
       const response = {
-        ...mapMediaToResponse(series, true),
+        ...mapMediaToResponse(series, true, req),
         thumbnails: thumbnails.map(t => t.path),
         seasons: mapSeasonsToResponse(seasons),
         cast: mapCastToResponse(cast),
@@ -335,7 +352,7 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
       const total = mediaRepository.count(filterOptions);
 
       // Map to frontend format with extended metadata (bulk thumbnail loading)
-      const results = mapMediaListToResponse(items, true);
+      const results = mapMediaListToResponse(items, true, req);
 
       const response = {
         items: results,
@@ -380,7 +397,7 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
       const total = mediaRepository.count(filterOptions);
 
       // Map to frontend format with extended metadata (bulk thumbnail loading)
-      const results = mapMediaListToResponse(items, true);
+      const results = mapMediaListToResponse(items, true, req);
 
       res.setHeader('Cache-Control', 'public, max-age=180'); // 3 min cache
       res.json({ query: validatedQuery.q, total, results });
@@ -402,7 +419,7 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
       const items = mediaRepository.getRecent(validatedQuery.limit, validatedQuery.type);
 
       // Map to frontend format with extended metadata (bulk thumbnail loading)
-      const results = mapMediaListToResponse(items, true);
+      const results = mapMediaListToResponse(items, true, req);
 
       res.setHeader('Cache-Control', 'public, max-age=60'); // 1 min cache
       res.json({ items: results, count: results.length });

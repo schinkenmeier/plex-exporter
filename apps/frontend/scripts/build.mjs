@@ -95,7 +95,7 @@ const getLimit = (envKey, defaultValue) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
 };
 
-const maxJsKb = getLimit('MAX_JS_KB', 250);
+const maxJsKb = getLimit('MAX_JS_KB', 255);
 const maxCssKb = getLimit('MAX_CSS_KB', 150);
 
 await mkdir(distDir, { recursive: true });

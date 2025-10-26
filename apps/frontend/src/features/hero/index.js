@@ -565,7 +565,7 @@ function renderMedia(hero, picture, image, sourceLarge, sourceMedium, entry){
 function setSource(node, value){
   if(!node) return;
   if(value){
-    node.srcset = value;
+    node.srcset = `${value} 1920w`;
   } else {
     node.removeAttribute('srcset');
   }

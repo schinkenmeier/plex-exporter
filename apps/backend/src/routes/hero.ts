@@ -22,6 +22,24 @@ const parseForceFlag = (value: unknown): boolean => {
   return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'force';
 };
 
+/**
+ * Convert local thumbnail paths to full backend URLs
+ */
+const convertThumbnailToUrl = (path: string | null, mediaType: 'movie' | 'tv', req: Request): string | null => {
+  if (!path) return null;
+
+  // If already a full URL, return as-is
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+
+  // Convert local path to thumbnail URL
+  const type = mediaType === 'tv' ? 'series' : 'movies';
+  const protocol = req.protocol;
+  const host = req.get('host');
+  return `${protocol}://${host}/api/thumbnails/${type}/${encodeURIComponent(path)}`;
+};
+
 export const createHeroRouter = ({ heroPipeline }: HeroRouterOptions): Router => {
   const router = Router();
 
@@ -31,10 +49,18 @@ export const createHeroRouter = ({ heroPipeline }: HeroRouterOptions): Router =>
 
     try {
       const payload = await heroPipeline.getPool(kind, { force });
+
+      // Convert local thumbnail paths to full URLs
+      const items = payload.items.map(item => ({
+        ...item,
+        backdrops: item.backdrops.map(bd => convertThumbnailToUrl(bd, item.type, req) ?? bd),
+        poster: convertThumbnailToUrl(item.poster, item.type, req),
+      }));
+
       const now = Date.now();
       const ttlSeconds = Math.max(60, Math.floor(Math.max(0, payload.expiresAt - now) / 1000));
       res.setHeader('Cache-Control', `public, max-age=${ttlSeconds}`);
-      res.json(payload);
+      res.json({ ...payload, items });
     } catch (error) {
       next(
         new HttpError(500, 'Failed to build hero pool', {

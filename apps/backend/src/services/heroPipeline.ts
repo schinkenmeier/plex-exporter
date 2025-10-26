@@ -795,20 +795,44 @@ export const createHeroPipelineService = ({
       const ids = extractIds(entry.raw);
       const tmdbId = ids.tmdb;
       const tmdbService = activeTmdbService;
-      if (tmdbId && tmdbService?.isEnabled()) {
-        try {
-          details = await tmdbService.fetchDetails(kind === 'series' ? 'tv' : 'movie', tmdbId, { language });
-        } catch (error) {
-          if ((error as TmdbRateLimitError)?.code === 'RATE_LIMIT') {
-            rateLimitHit = true;
-          } else {
-            logger.warn('Failed to enrich hero entry via TMDB', {
-              namespace: 'hero',
-              error: error instanceof Error ? error.message : error,
-              id: entry.id,
-            });
+      if (tmdbService?.isEnabled()) {
+        if (tmdbId) {
+          try {
+            details = await tmdbService.fetchDetails(kind === 'series' ? 'tv' : 'movie', tmdbId, { language });
+          } catch (error) {
+            if ((error as TmdbRateLimitError)?.code === 'RATE_LIMIT') {
+              rateLimitHit = true;
+            } else {
+              logger.warn('Failed to enrich hero entry via TMDB', {
+                namespace: 'hero',
+                error: error instanceof Error ? error.message : error,
+                id: entry.id,
+              });
+            }
+          }
+        } else if (ids.imdb) {
+          try {
+            details = await tmdbService.fetchDetailsByImdb(
+              kind === 'series' ? 'tv' : 'movie',
+              ids.imdb,
+              { language },
+            );
+          } catch (error) {
+            if ((error as TmdbRateLimitError)?.code === 'RATE_LIMIT') {
+              rateLimitHit = true;
+            } else {
+              logger.warn('Failed to enrich hero entry via TMDB (imdb fallback)', {
+                namespace: 'hero',
+                error: error instanceof Error ? error.message : error,
+                id: entry.id,
+                imdb: ids.imdb,
+              });
+            }
           }
         }
+      }
+      if (details?.id && !ids.tmdb) {
+        ids.tmdb = String(details.id);
       }
       const normalized = buildNormalizedItem(
         entry,

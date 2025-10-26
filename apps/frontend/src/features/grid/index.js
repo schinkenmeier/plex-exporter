@@ -5,6 +5,7 @@ import * as Watch from '../watchlist/index.js';
 import { openMovieDetailV3, openSeriesDetailV3 } from '../modal/modalV3/index.js';
 import { navigateToHash } from '../../main.js';
 import { VirtualList } from './virtualList.js';
+import { buildFallbackPoster } from '../../js/imageHelper.js';
 
 const CARD_SIGNATURE_PROP = '__gridVirtualSignature';
 
@@ -24,7 +25,17 @@ function cardEl(item){
   img.alt = item?.title || '';
   img.style.aspectRatio = '2 / 3';
   const src = resolvePoster(item);
-  if(src) img.src = src;
+  if(src){
+    img.src = src;
+  } else {
+    img.src = buildFallbackPoster(item?.title || '');
+  }
+  // Add error handler to use fallback if image fails to load
+  img.onerror = () => {
+    if(!img.src.startsWith('data:image/svg')){
+      img.src = buildFallbackPoster(item?.title || '');
+    }
+  };
 
   const gradient = el('div','card__media-gradient');
   gradient.setAttribute('aria-hidden','true');
@@ -146,7 +157,17 @@ function collectionCardEl(entry){
   img.alt = entry?.title || '';
   img.style.aspectRatio = '2 / 3';
   const src = resolvePoster(baseItem);
-  if(src) img.src = src;
+  if(src){
+    img.src = src;
+  } else {
+    img.src = buildFallbackPoster(entry?.title || '');
+  }
+  // Add error handler to use fallback if image fails to load
+  img.onerror = () => {
+    if(!img.src.startsWith('data:image/svg')){
+      img.src = buildFallbackPoster(entry?.title || '');
+    }
+  };
 
   const gradient = el('div','card__media-gradient');
   gradient.setAttribute('aria-hidden','true');
@@ -295,9 +316,29 @@ function finishGridTransition(grid){
 
 function resolvePoster(item){
   if(!item) return '';
+
+  // Try TMDb poster URLs first
   const tmdbPoster = useTmdbForCards() && (item?.tmdb?.poster || item?.tmdbPoster);
-  const fallback = item?.thumbFile || item?.poster || item?.art || item?.thumb || '';
-  return tmdbPoster || fallback || '';
+  if(tmdbPoster && (tmdbPoster.startsWith('http') || tmdbPoster.startsWith('/'))){
+    return tmdbPoster;
+  }
+
+  // Try local/export paths
+  const localPath = item?.thumbFile || item?.poster || item?.art || item?.thumb || '';
+  if(localPath){
+    // If it's already a full URL or starts with /, use it
+    if(localPath.startsWith('http') || localPath.startsWith('/data/') || localPath.startsWith('/library/')){
+      return localPath;
+    }
+    // If it looks like a filename, skip it (it will 404, and img.onerror will handle fallback)
+    // Return empty string to trigger fallback immediately
+    if(!localPath.includes('/') && localPath.includes('.thumb.')){
+      return '';
+    }
+    return localPath;
+  }
+
+  return '';
 }
 
 function itemBadgeTexts(item){

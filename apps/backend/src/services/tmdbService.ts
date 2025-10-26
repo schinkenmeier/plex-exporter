@@ -232,6 +232,7 @@ export interface TmdbService {
   isEnabled(): boolean;
   fetchDetails(type: 'movie' | 'tv', id: string | number, options?: FetchDetailsOptions): Promise<TmdbHeroDetails | null>;
   getRateLimitState(): TmdbRateLimitState;
+  fetchDetailsByImdb(type: 'movie' | 'tv', imdbId: string | number, options?: FetchDetailsOptions): Promise<TmdbHeroDetails | null>;
   getPosterUrl(path: string | null | undefined, size?: string): string | null;
 }
 
@@ -367,6 +368,88 @@ export const createTmdbService = ({ accessToken, cacheTtlMs, maxCacheEntries }: 
     }
   };
 
+  const fetchDetailsByImdb = async (
+    type: 'movie' | 'tv',
+    imdbId: string | number,
+    options: FetchDetailsOptions = {},
+  ): Promise<TmdbHeroDetails | null> => {
+    if (!enabled) return null;
+    const normalized = String(imdbId ?? '').trim();
+    if (!normalized) return null;
+    const language = normalizeLanguage(options.language);
+
+    relaxRateLimit();
+    if (rateLimit.active && rateLimit.until > Date.now()) {
+      throw new TmdbRateLimitError('TMDB rate limit active', {
+        retryAfterMs: rateLimit.retryAfterMs,
+        until: rateLimit.until,
+      });
+    }
+
+    try {
+      const response = await axios.get(`${API_BASE_URL}/find/${normalized}`, {
+        params: {
+          external_source: 'imdb_id',
+          language,
+        },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json;charset=utf-8',
+        },
+        signal: options.signal,
+      });
+
+      const results = Array.isArray(
+        type === 'tv' ? response.data?.tv_results : response.data?.movie_results,
+      )
+        ? (type === 'tv' ? response.data.tv_results : response.data.movie_results)
+        : [];
+      const first = results.find((entry: any) => entry && entry.id != null);
+      const resolvedId = first?.id;
+      if (!resolvedId) {
+        return null;
+      }
+
+      const details = await fetchDetails(type, resolvedId, options);
+      if (details) {
+        rateLimit = { ...rateLimit, active: false, retryAfterMs: 0, until: 0, lastStatus: null };
+      }
+      return details;
+    } catch (error) {
+      if (isAxiosError(error)) {
+        const status = error.response?.status ?? null;
+        if (status === 401 || status === 403) {
+          enabled = false;
+          logger.error('TMDB token rejected', {
+            namespace: 'tmdb',
+            status,
+          });
+          return null;
+        }
+        if (status === 429) {
+          const retryAfterHeader = error.response?.headers?.['retry-after'];
+          const retryAfterMs = parseRetryAfter(retryAfterHeader);
+          registerRateLimit(status, retryAfterMs);
+          throw new TmdbRateLimitError('TMDB rate limit exceeded', {
+            retryAfterMs: rateLimit.retryAfterMs,
+            until: rateLimit.until,
+          });
+        }
+        logger.warn('TMDB external ID lookup failed', {
+          namespace: 'tmdb',
+          status,
+          message: error.message,
+        });
+      } else {
+        logger.warn('TMDB external ID lookup failed', {
+          namespace: 'tmdb',
+          error: error instanceof Error ? error.message : error,
+        });
+      }
+      throw error;
+    }
+  };
+
   const getPosterUrl = (path: string | null | undefined, size = 'w780'): string | null => {
     if (!path) return null;
     return buildImageUrl(path, size);
@@ -376,6 +459,7 @@ export const createTmdbService = ({ accessToken, cacheTtlMs, maxCacheEntries }: 
     isEnabled: () => enabled,
     fetchDetails,
     getRateLimitState,
+    fetchDetailsByImdb,
     getPosterUrl,
   };
 };
