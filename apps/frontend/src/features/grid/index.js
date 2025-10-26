@@ -497,7 +497,13 @@ function updateHash(kind, id){
 
 function openDetail(item){
   if(!item) return;
-  const kind = item?.type === 'tv' ? 'show' : 'movie';
+  const type = typeof item?.mediaType === 'string' && item.mediaType
+    ? item.mediaType
+    : typeof item?.type === 'string'
+      ? item.type
+      : '';
+  const normalizedType = type.toLowerCase();
+  const kind = normalizedType === 'tv' || normalizedType === 'show' ? 'show' : 'movie';
   const id = resolveItemId(item);
   if(id) updateHash(kind, id);
   if(kind === 'show') openSeriesDetailV3(item);

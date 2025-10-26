@@ -9,50 +9,6 @@ let lastSources = { movies: null, shows: null };
 const showDetailCache = new Map();
 const DATA_CACHE_TTL = 1000 * 60 * 30; // 30 minutes for data files
 
-const EXPORTER_BAG_KEY = '__PLEX_EXPORTER__';
-
-const globalExporterBag = (()=>{
-  try{
-    if(typeof globalThis !== 'undefined'){
-      if(globalThis[EXPORTER_BAG_KEY]) return globalThis[EXPORTER_BAG_KEY];
-      if(globalThis.window && globalThis.window[EXPORTER_BAG_KEY]){
-        return globalThis.window[EXPORTER_BAG_KEY];
-      }
-    }
-  }catch(err){
-    console.warn(`${LOG_PREFIX} Failed to resolve global exporter bag:`, err?.message || err);
-  }
-  return null;
-})();
-
-const DATA_ROOT = 'data/exports';
-const DATA_FALLBACK_ROOTS = ['../../data/exports', '../data/exports', './data/exports', '/data/exports'];
-const MOVIE_THUMB_BASE = `${DATA_ROOT}/movies/`;
-const SHOW_THUMB_BASE = `${DATA_ROOT}/series/`;
-
-function normalizeRelative(relative){
-  return String(relative || '').replace(/^\/+/, '').replace(/^data\//, '').replace(/^exports\//, '');
-}
-
-const dataPath = relative => {
-  const trimmed = normalizeRelative(relative);
-  return `${DATA_ROOT}/${trimmed}`;
-};
-const legacyDataPath = relative => {
-  const trimmed = normalizeRelative(relative);
-  return `data/${trimmed}`;
-};
-const fallbackDataPaths = relative => {
-  const trimmed = normalizeRelative(relative);
-  const uniq = new Set();
-  for(const root of DATA_FALLBACK_ROOTS){
-    const normalizedRoot = String(root || '').replace(/\/+$/, '');
-    uniq.add(`${normalizedRoot}/${trimmed}`);
-  }
-  uniq.add(`data/${trimmed}`);
-  uniq.add(trimmed);
-  return Array.from(uniq);
-};
 const SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i;
 
 function buildApiPath(path, params){
@@ -77,16 +33,18 @@ function normalizeApiLibraryEntry(entry, kind){
     if(kind === 'show' || kind === 'movie') return kind;
     return 'movie';
   })();
+  const normalizedType = resolvedKind === 'show' ? 'tv' : 'movie';
   const thumbFile = typeof entry.thumbFile === 'string' ? entry.thumbFile : '';
   const thumb = typeof entry.thumb === 'string' ? entry.thumb : thumbFile;
   const normalized = {
     ...entry,
+    type: normalizedType,
     title,
     ratingKey: String(ratingKeyRaw),
     thumbFile,
     thumb,
     href: typeof entry.href === 'string' ? entry.href : '',
-    mediaType: resolvedKind === 'show' ? 'tv' : 'movie',
+    mediaType: normalizedType,
     genres: Array.isArray(entry.genres) ? entry.genres : [],
     collections: Array.isArray(entry.collections) ? entry.collections : [],
   };
@@ -94,26 +52,6 @@ function normalizeApiLibraryEntry(entry, kind){
     normalized.seasons = Array.isArray(entry.seasons) ? entry.seasons : [];
   }
   return normalized;
-}
-
-async function loadViaApi(apiConfig = {}, label){
-  if(!apiConfig.path || !apiConfig.kind) return null;
-  const url = buildApiPath(apiConfig.path);
-  if(!url) return null;
-  try{
-    const payload = await fetchJson(url);
-    if(Array.isArray(payload)){
-      const kind = apiConfig.kind;
-      const normalized = payload
-        .map(entry => normalizeApiLibraryEntry(entry, kind))
-        .filter(Boolean);
-      markSource(label, `api:${apiConfig.path}`);
-      return normalized;
-    }
-  }catch(err){
-    console.warn(`${LOG_PREFIX} API source failed for ${apiConfig.path}:`, err?.message || err);
-  }
-  return null;
 }
 
 export async function fetchJson(url, retries = 2, useCache = true){
@@ -160,78 +98,6 @@ export async function fetchJson(url, retries = 2, useCache = true){
   throw error;
 }
 
-function embeddedJsonById(id){
-  try{
-    const n = document.getElementById(id);
-    if(n && n.textContent) return JSON.parse(n.textContent);
-  }
-  catch(err){
-    console.warn(`${LOG_PREFIX} Failed to parse embedded JSON #${id}:`, err.message);
-  }
-  return null;
-}
-
-function fromGlobalBag(key){
-  try{
-    const bag = globalExporterBag;
-    const arr = bag && Array.isArray(bag[key]) ? bag[key] : null;
-    return arr || null;
-  }
-  catch(err){
-    console.warn(`${LOG_PREFIX} Failed to access global bag[${key}]:`, err.message);
-    return null;
-  }
-}
-
-function fromWindow(varName){
-  try{
-    const arr = Array.isArray(window[varName]) ? window[varName] : null;
-    return arr || null;
-  }
-  catch(err){
-    console.warn(`${LOG_PREFIX} Failed to access window.${varName}:`, err.message);
-    return null;
-  }
-}
-
-async function loadWithCompat(primaryUrl, opts){
-  if(opts?.apiConfig){
-    const apiData = await loadViaApi(opts.apiConfig, opts.label);
-    if(Array.isArray(apiData)){
-      return apiData;
-    }
-  }
-  // default: try data/exports first
-  let data = null;
-  try{
-    data = await fetchJson(primaryUrl);
-  }catch(err){
-    console.warn(`${LOG_PREFIX} Primary source failed for ${primaryUrl}:`, err.message);
-    data = null;
-  }
-  if(Array.isArray(data) && data.length){ markSource(opts?.label, `primary:${primaryUrl}`); return data; }
-  // fallback: embedded <script id="..."> JSON
-  if(opts?.embedId){ const emb = embeddedJsonById(opts.embedId); if(Array.isArray(emb) && emb.length){ markSource(opts?.label, `embedded:${opts.embedId}`); return emb; } }
-  // fallback: global exporter bag
-  if(opts?.exportKey){ const bag = fromGlobalBag(opts.exportKey); if(Array.isArray(bag) && bag.length){ markSource(opts?.label, `globalBag:${opts.exportKey}`); return bag; } }
-  // fallback: window variable
-  if(opts?.globalVar){ const win = fromWindow(opts.globalVar); if(Array.isArray(win) && win.length){ markSource(opts?.label, `window:${opts.globalVar}`); return win; } }
-  // alt paths (legacy)
-  for(const alt of (opts?.altUrls||[])){
-    let altData = null;
-    try{
-      altData = await fetchJson(alt);
-    }catch(err){
-      console.warn(`${LOG_PREFIX} Alternate source failed for ${alt}:`, err.message);
-      altData = null;
-    }
-    if(Array.isArray(altData) && altData.length){ markSource(opts?.label, `alt:${alt}`); return altData; }
-  }
-  // last resort: empty array
-  markSource(opts?.label, 'empty');
-  return Array.isArray(data) ? data : [];
-}
-
 function notifyUiError(title, message){
   if(typeof window === 'undefined' || typeof document === 'undefined' || typeof document.createElement !== 'function'){
     console.warn(`${LOG_PREFIX} Skipping UI error feedback (environment missing DOM APIs): ${title} - ${message}`);
@@ -248,27 +114,37 @@ function notifyUiError(title, message){
   });
 }
 
-export function prefixThumbValue(value, base){
-  const raw = value == null ? '' : String(value).trim();
-  if(!raw) return '';
-  if(raw.startsWith('//') || raw.startsWith('/') || SCHEME_RE.test(raw)) return raw;
-  const normalizedRaw = raw.replace(/\\/g, '/');
-  const normalizedBase = base ? (base.endsWith('/') ? base : `${base}/`) : '';
+const THUMBNAIL_API_ROOT = '/api/thumbnails';
+
+function buildThumbnailUrl(type, segments){
   let decodeWarned = false;
-  const encodePath = path => path.split('/').map(segment => {
-    if(!segment) return '';
+  const encodedSegments = segments.map(segment => {
     try{
       return encodeURIComponent(decodeURIComponent(segment));
     }catch(err){
       if(!decodeWarned){
         decodeWarned = true;
-        console.warn(`${LOG_PREFIX} Failed to normalize thumb segment "${segment}":`, err);
+        console.warn(`${LOG_PREFIX} Failed to normalize thumbnail segment "${segment}":`, err?.message || err);
       }
       return encodeURIComponent(segment);
     }
-  }).join('/');
-  const trimmed = normalizedRaw.replace(/^\/+/, '');
-  const segments = trimmed.split('/');
+  });
+  const suffix = encodedSegments.join('/');
+  const path = `${THUMBNAIL_API_ROOT}/${type}${suffix ? `/${suffix}` : ''}`;
+  return buildApiPath(path);
+}
+
+export function prefixThumbValue(value, type){
+  const raw = value == null ? '' : String(value).trim();
+  if(!raw) return '';
+  if(raw.startsWith('//') || SCHEME_RE.test(raw)) return raw;
+  if(raw.startsWith('/api/')) return raw;
+  if(raw.startsWith('/')){
+    return buildThumbnailUrl(type, [raw]);
+  }
+
+  const normalizedRaw = raw.replace(/\\/g, '/');
+  const segments = normalizedRaw.split('/');
   const normalizedSegments = [];
   for(const segment of segments){
     if(!segment || segment === '.') continue;
@@ -278,29 +154,22 @@ export function prefixThumbValue(value, base){
     }
     normalizedSegments.push(segment);
   }
-  const normalizedPath = normalizedSegments.join('/');
-  if(/^(?:\.\.\/)?data\//.test(normalizedPath)){
-    const withoutRoot = normalizedPath.replace(/^(?:\.\.\/)?data(?:\/exports)?\//, '');
-    const encoded = encodePath(withoutRoot);
-    return `${DATA_ROOT}/${encoded}`;
+  if(normalizedSegments.length > 1 && normalizedSegments[0] === type){
+    normalizedSegments.shift();
   }
-  let relativeSegments = normalizedSegments;
-  if(normalizedBase && relativeSegments.length){
-    const baseDir = normalizedBase.replace(/\/+$/, '').split('/').pop();
-    if(baseDir && relativeSegments[0] === baseDir){
-      relativeSegments = relativeSegments.slice(1);
-    }
+
+  if(!normalizedSegments.length){
+    return buildThumbnailUrl(type, []);
   }
-  const cleaned = relativeSegments.join('/');
-  const encoded = encodePath(cleaned);
-  return `${normalizedBase}${encoded}`;
+
+  return buildThumbnailUrl(type, normalizedSegments);
 }
 
 
-export function prefixThumb(obj, base){
+export function prefixThumb(obj, type){
   if(!obj || typeof obj !== 'object') return obj;
   const current = obj.thumbFile ?? obj.thumb ?? '';
-  const prefixed = prefixThumbValue(current, base);
+  const prefixed = prefixThumbValue(current, type);
   if(prefixed){
     obj.thumbFile = prefixed;
     obj.thumb = prefixed;
@@ -313,11 +182,11 @@ export function prefixThumb(obj, base){
 }
 
 export function prefixMovieThumb(obj){
-  return prefixThumb(obj, MOVIE_THUMB_BASE);
+  return prefixThumb(obj, 'movies');
 }
 
 export function prefixShowThumb(obj){
-  return prefixThumb(obj, SHOW_THUMB_BASE);
+  return prefixThumb(obj, 'series');
 }
 
 export function prefixShowTree(show){
@@ -347,23 +216,10 @@ function normalizeShowThumbs(list){
 }
 
 export async function loadMovies(){
+  const url = buildApiPath('/api/v1/movies');
   try {
-    const rawMovies = await loadWithCompat(dataPath('movies/movies.json'), {
-      label: 'movies',
-      embedId: 'movies-json',
-      exportKey: 'movies',
-      globalVar: '__PLEX_MOVIES__',
-      apiConfig: { path: '/api/v1/movies', kind: 'movie' },
-      altUrls: [
-        ...fallbackDataPaths('movies/movies.json'),
-        legacyDataPath('movies/movies.json'),
-        dataPath('movies.json'),
-        'movies/movies.json',
-        legacyDataPath('movies.json'),
-        'Filme/movies.json',
-        'movies.json',
-      ],
-    });
+    const payload = await fetchJson(url);
+    const rawMovies = Array.isArray(payload) ? payload : [];
     let movies;
     try{
       movies = validateLibraryList(rawMovies, 'movie');
@@ -376,34 +232,21 @@ export async function loadMovies(){
       }
       throw error;
     }
+    markSource('movies', `api:${url}`);
     return normalizeMovieThumbs(movies);
   } catch (error) {
     console.error(`${LOG_PREFIX} loadMovies failed:`, error);
     notifyUiError('Filme konnten nicht geladen werden', error?.message || 'Unbekannter Fehler');
+    markSource('movies', 'error');
     return [];
   }
 }
+
 export async function loadShows(){
+  const url = buildApiPath('/api/v1/series');
   try {
-    const rawShows = await loadWithCompat(dataPath('series/series_index.json'), {
-      label: 'shows',
-      embedId: 'series-json',
-      exportKey: 'shows',
-      globalVar: '__PLEX_SHOWS__',
-      apiConfig: { path: '/api/v1/series', kind: 'show' },
-      altUrls: [
-        ...fallbackDataPaths('series/series_index.json'),
-        legacyDataPath('series/series_index.json'),
-        dataPath('shows.json'),
-        'series/series_index.json',
-        legacyDataPath('shows.json'),
-        legacyDataPath('series.json'),
-        'Serien/series.json',
-        'series/series.json',
-        'series.json',
-        'shows.json',
-      ],
-    });
+    const payload = await fetchJson(url);
+    const rawShows = Array.isArray(payload) ? payload : [];
     let shows;
     try{
       shows = validateLibraryList(rawShows, 'show');
@@ -416,10 +259,12 @@ export async function loadShows(){
       }
       throw error;
     }
+    markSource('shows', `api:${url}`);
     return normalizeShowThumbs(shows);
   } catch (error) {
     console.error(`${LOG_PREFIX} loadShows failed:`, error);
     notifyUiError('Serien konnten nicht geladen werden', error?.message || 'Unbekannter Fehler');
+    markSource('shows', 'error');
     return [];
   }
 }
@@ -499,13 +344,6 @@ function resolveSortConfig(sort){
   }
 }
 
-function buildExportSearchUrl(params){
-  const search = params.toString();
-  const base = resolveApiBase();
-  const path = `/api/exports/search${search ? `?${search}` : ''}`;
-  return base ? `${base}${path}` : path;
-}
-
 export async function fetchCatalogFacets(){
   const collectItems = async (mediaType) => {
     const limit = 250;
@@ -537,37 +375,11 @@ export async function fetchCatalogFacets(){
     return collected;
   };
 
-  try{
-    const [movies, shows] = await Promise.all([
-      collectItems('movie'),
-      collectItems('tv'),
-    ]);
-    return computeFacets(movies, shows);
-  }catch(err){
-    console.warn(`${LOG_PREFIX} Failed to load facets via API:`, err?.message || err);
-    const params = new URLSearchParams();
-    params.set('kind', 'all');
-    params.set('includeItems', '0');
-    params.set('includeFacets', '1');
-    try{
-      const fallback = await fetchJson(buildExportSearchUrl(params), 1, true);
-      if(fallback && typeof fallback === 'object'){
-        if(fallback.facets && typeof fallback.facets === 'object'){
-          return fallback.facets;
-        }
-        if('genres' in fallback || 'years' in fallback || 'collections' in fallback){
-          return {
-            genres: Array.isArray(fallback.genres) ? fallback.genres : [],
-            years: Array.isArray(fallback.years) ? fallback.years : [],
-            collections: Array.isArray(fallback.collections) ? fallback.collections : [],
-          };
-        }
-      }
-    }catch(fallbackErr){
-      console.warn(`${LOG_PREFIX} Fallback facet lookup failed:`, fallbackErr?.message || fallbackErr);
-    }
-    return { genres: [], years: [], collections: [] };
-  }
+  const [movies, shows] = await Promise.all([
+    collectItems('movie'),
+    collectItems('tv'),
+  ]);
+  return computeFacets(movies, shows);
 }
 
 export async function searchLibrary(kind, filters = {}, options = {}){
@@ -659,35 +471,56 @@ export async function searchLibrary(kind, filters = {}, options = {}){
   };
 }
 
+function resolveShowDetailId(item){
+  if(!item || typeof item !== 'object') return '';
+  if(item.ratingKey != null) return String(item.ratingKey);
+  if(item.plexId != null) return String(item.plexId);
+  if(item.id != null) return String(item.id);
+  const href = typeof item.href === 'string' ? item.href : '';
+  if(href){
+    const apiMatch = href.match(/\/api\/v1\/series\/([^/?#]+)/i);
+    if(apiMatch && apiMatch[1]) return decodeURIComponent(apiMatch[1]);
+    const legacyMatch = href.match(/series\/(?:details\/)?([^/?#]+)/i);
+    if(legacyMatch && legacyMatch[1]) return decodeURIComponent(legacyMatch[1].replace(/\.json$/, ''));
+  }
+  return '';
+}
+
 export async function loadShowDetail(item){
   if(!item) return null;
   const keys = cacheKeys(item);
   const cached = getCachedDetail(keys);
   if(cached !== undefined) return cached;
 
-  const urls = detailUrlCandidates(item);
-  let lastError = null;
-
-  for(const url of urls){
-    try {
-      const data = await fetchJson(url);
-      if(data && typeof data === 'object'){
-        const normalized = normalizeShowDetail(data);
-        storeDetail(keys, normalized, item);
-        return cloneDetail(normalized);
-      }
-    } catch (error) {
-      lastError = error;
-      console.warn(`${LOG_PREFIX} Failed to load show detail from ${url}:`, error.message);
-    }
+  const id = resolveShowDetailId(item);
+  if(!id){
+    console.warn(`${LOG_PREFIX} Cannot resolve show detail id for item`, item);
+    storeDetail(keys, null, item);
+    return null;
   }
 
-  if(lastError) {
-    console.error(`${LOG_PREFIX} Could not load show detail for ${item.title || 'unknown'}`, lastError);
-    notifyUiError('Details konnten nicht geladen werden', lastError?.message || 'Bitte später erneut versuchen.');
+  const encodedId = encodeURIComponent(id);
+  const path = `/api/v1/series/${encodedId}`;
+  const url = buildApiPath(path);
+
+  try {
+    const data = await fetchJson(url);
+    if(data && typeof data === 'object'){
+      const normalized = normalizeShowDetail(data);
+      storeDetail(keys, normalized, item);
+      markSource(`show-detail:${id}`, `api:${path}`);
+      return cloneDetail(normalized);
+    }
+  } catch (error) {
+    console.error(`${LOG_PREFIX} Could not load show detail for ${item.title || id}`, error);
+    notifyUiError('Details konnten nicht geladen werden', error?.message || 'Bitte später erneut versuchen.');
+    markSource(`show-detail:${id}`, 'error');
+    storeDetail(keys, null, item);
+    return null;
   }
 
   storeDetail(keys, null, item);
+  markSource(`show-detail:${id}`, 'empty');
   return null;
 }
 
@@ -701,6 +534,11 @@ function markSource(label, src){
 }
 
 export function getSources(){ return { ...lastSources }; }
+
+export function resetDataCachesForTest(){
+  showDetailCache.clear();
+  lastSources = { movies: null, shows: null };
+}
 function cacheKeys(item){
   const keys = [];
   if(item?.ratingKey !== undefined && item?.ratingKey !== null && item?.ratingKey !== ''){
@@ -745,45 +583,6 @@ function storeDetail(keys, value, item){
   if(detailHref){
     showDetailCache.set(`href:${detailHref}`, val);
   }
-}
-
-function detailUrlCandidates(item){
-  const urls = [];
-  const addUnique = url => {
-    if(!url) return;
-    if(urls.includes(url)) return;
-    urls.push(url);
-  };
-  const addDataUrl = relative => {
-    const trimmed = String(relative || '').replace(/^\/+/, '');
-    const withoutPrefix = trimmed.replace(/^data\//, '');
-    addUnique(dataPath(withoutPrefix));
-    addUnique(legacyDataPath(withoutPrefix));
-  };
-
-  const rk = item?.ratingKey;
-  const apiBase = resolveApiBase();
-  if(rk !== undefined && rk !== null){
-    const apiPath = `/api/v1/series/${String(rk)}`;
-    addUnique(apiBase ? `${apiBase}${apiPath}` : apiPath);
-  }
-
-  const hrefKey = normalizeHrefKey(item?.href);
-  if(hrefKey){
-    if(/^https?:/i.test(hrefKey)){ addUnique(hrefKey); }
-    else{
-      if(hrefKey.startsWith('data/')) addDataUrl(hrefKey);
-      else addDataUrl(`data/${hrefKey}`);
-      const withoutData = hrefKey.replace(/^data\//,'');
-      if(!withoutData.startsWith('series/')) addDataUrl(`series/${withoutData}`);
-      const idPart = withoutData.replace(/^series\//,'').replace(/^details\//,'').replace(/\.json$/,'');
-      if(idPart) addDataUrl(`series/details/${idPart}.json`);
-    }
-  }
-  if(rk !== undefined && rk !== null){
-    addDataUrl(`series/details/${String(rk)}.json`);
-  }
-  return urls;
 }
 
 function normalizeShowDetail(data){

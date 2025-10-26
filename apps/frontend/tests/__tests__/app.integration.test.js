@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { parseHTML } from 'linkedom';
 import { computeFacets, filterMediaItems } from '@plex-exporter/shared';
 
+const BACKEND_ORIGIN = 'http://backend.test';
+
 const MOVIES_FIXTURE = [
   {
     ratingKey: '1',
@@ -56,15 +58,49 @@ const SHOWS_FIXTURE = [
 
 const REMOTE_MOVIES = MOVIES_FIXTURE.map((item) => ({
   ...item,
-  thumb: item.thumb ? `data/exports/movies/${item.thumb}` : item.thumb,
-  thumbFile: item.thumbFile ? `data/exports/movies/${item.thumbFile}` : item.thumbFile,
+  mediaType: 'movie',
+  thumb: item.thumb ? `${BACKEND_ORIGIN}/api/thumbnails/movies/${encodeURIComponent(item.thumb)}` : null,
+  thumbFile: item.thumbFile ? `${BACKEND_ORIGIN}/api/thumbnails/movies/${encodeURIComponent(item.thumbFile)}` : null,
 }));
 
 const REMOTE_SHOWS = SHOWS_FIXTURE.map((item) => ({
   ...item,
-  thumb: item.thumb ? `data/exports/series/${item.thumb}` : item.thumb,
-  thumbFile: item.thumbFile ? `data/exports/series/${item.thumbFile}` : item.thumbFile,
+  mediaType: 'tv',
+  thumb: item.thumb ? `${BACKEND_ORIGIN}/api/thumbnails/series/${encodeURIComponent(item.thumb)}` : null,
+  thumbFile: item.thumbFile ? `${BACKEND_ORIGIN}/api/thumbnails/series/${encodeURIComponent(item.thumbFile)}` : null,
 }));
+
+const REMOTE_SHOW_DETAILS = {
+  s1: {
+    ...REMOTE_SHOWS[0],
+    summary: 'Exploring the universe with crewed missions.',
+    seasons: [
+      {
+        ratingKey: 's1-season1',
+        seasonNumber: 1,
+        title: 'Season 1',
+        thumb: `${BACKEND_ORIGIN}/api/thumbnails/series/${encodeURIComponent('space-season1.jpg')}`,
+        episodes: [
+          {
+            ratingKey: 's1-ep1',
+            title: 'Lift Off',
+            thumb: `${BACKEND_ORIGIN}/api/thumbnails/series/${encodeURIComponent('space-ep1.jpg')}`,
+          },
+        ],
+      },
+    ],
+    cast: [
+      {
+        id: 'cast-1',
+        name: 'Captain Nova',
+        role: 'Commander',
+        thumb: `${BACKEND_ORIGIN}/api/thumbnails/series/${encodeURIComponent('cast-nova.jpg')}`,
+      },
+    ],
+  },
+};
+
+const seriesDetailRequests = [];
 
 const FACETS_FIXTURE = computeFacets(REMOTE_MOVIES, REMOTE_SHOWS);
 
@@ -74,65 +110,6 @@ function parseSearchRequest(url){
   }catch(error){
     return null;
   }
-}
-
-function buildSearchPayload(searchUrl){
-  const parsed = parseSearchRequest(searchUrl);
-  const params = parsed ? parsed.searchParams : new URLSearchParams();
-  const kindParam = params.get('kind') || 'movie';
-  const normalizedKind = ['all', 'movie', 'show'].includes(kindParam) ? kindParam : 'movie';
-  const includeItems = params.get('includeItems') !== '0';
-  const includeFacets = params.get('includeFacets') !== '0';
-
-  const filters = {
-    query: params.get('query') || '',
-    onlyNew: params.get('onlyNew') === '1',
-    yearFrom: Number.parseInt(params.get('yearFrom') || '', 10) || null,
-    yearTo: Number.parseInt(params.get('yearTo') || '', 10) || null,
-    genres: (params.get('genres') || '')
-      .split(',')
-      .map((value) => value.trim())
-      .filter(Boolean),
-    collection: params.get('collection') || '',
-    sort: params.get('sort') || 'title-asc',
-  };
-
-  const newDays = Number.parseInt(params.get('newDays') || '', 10);
-  if(Number.isFinite(newDays)){
-    filters.newDays = newDays;
-  }
-
-  const pool = (() => {
-    switch(normalizedKind){
-      case 'all':
-        return [...REMOTE_MOVIES, ...REMOTE_SHOWS];
-      case 'show':
-        return REMOTE_SHOWS;
-      case 'movie':
-      default:
-        return REMOTE_MOVIES;
-    }
-  })();
-
-  const payload = {
-    kind: normalizedKind,
-    filters: {
-      ...filters,
-      genres: filters.genres ?? [],
-    },
-  };
-
-  if(includeFacets){
-    payload.facets = FACETS_FIXTURE;
-  }
-
-  if(includeItems){
-    const items = filterMediaItems(pool, filters);
-    payload.items = items;
-    payload.total = items.length;
-  }
-
-  return payload;
 }
 
 function sortKeyFromParams(sortBy, sortOrder){
@@ -405,6 +382,7 @@ test('boot flow integrates view switch, filtering and modal opening', async () =
     globalThis.__PLEX_TEST_MODE__ = true;
     createDom();
     Math.random = () => 0;
+    seriesDetailRequests.length = 0;
 
     globalThis.fetch = async (url) => {
       if(typeof url === 'string'){
@@ -421,6 +399,15 @@ test('boot flow integrates view switch, filtering and modal opening', async () =
               ok: true,
               json: async () => REMOTE_SHOWS.map(item => ({ ...item, mediaType: 'tv' })),
             };
+          }
+          if(parsed.pathname.startsWith('/api/v1/series/')){
+            const id = decodeURIComponent(parsed.pathname.replace('/api/v1/series/', ''));
+            const detail = REMOTE_SHOW_DETAILS[id];
+            if(detail){
+              seriesDetailRequests.push(id);
+              return { ok: true, json: async () => detail };
+            }
+            return { ok: false, status: 404, json: async () => ({ message: 'Not found' }) };
           }
           if(parsed.pathname === '/api/v1/filter'){
             const payload = buildFilterResponse(url) || {
@@ -465,17 +452,8 @@ test('boot flow integrates view switch, filtering and modal opening', async () =
       if(typeof url === 'string' && (url.endsWith('config/frontend.json') || url.endsWith('config.json'))){
         return { ok: true, json: async () => ({ startView: 'movies', tmdbEnabled: false, heroPipelineEnabled: false }) };
       }
-      if(typeof url === 'string' && url.includes('/api/exports/search')){
-        return { ok: true, json: async () => buildSearchPayload(url) };
-      }
-      if(typeof url === 'string' && (url.endsWith('data/exports/movies/movies.json') || url.endsWith('data/movies/movies.json'))){
-        return { ok: true, json: async () => MOVIES_FIXTURE };
-      }
-    if(typeof url === 'string' && (url.endsWith('data/exports/series/series_index.json') || url.endsWith('data/series/series_index.json'))){
-      return { ok: true, json: async () => SHOWS_FIXTURE };
-    }
-    throw new Error(`Unexpected fetch call for ${url}`);
-  };
+      throw new Error(`Unexpected fetch call for ${url}`);
+    };
 
     const heroTitle = document.getElementById('heroTitle');
     const heroTagline = document.getElementById('heroTagline');
@@ -487,6 +465,10 @@ test('boot flow integrates view switch, filtering and modal opening', async () =
     const stateModule = await import('../../src/core/state.js');
     const main = await import('../../src/main.js');
     const Filter = await import('../../src/features/filter/index.js');
+    const dataModule = await import('../../src/js/data.js');
+    if(typeof dataModule.resetDataCachesForTest === 'function'){
+      dataModule.resetDataCachesForTest();
+    }
     const { getState } = stateModule;
 
     await main.boot();
@@ -564,6 +546,26 @@ test('boot flow integrates view switch, filtering and modal opening', async () =
     await settle();
     assert.equal(getState().view, 'shows');
     assert.equal(cardNodes().length, SHOWS_FIXTURE.length);
+
+    const showCards = cardNodes();
+    const firstShowCard = showCards[0];
+    firstShowCard.click();
+    await settle();
+
+    const showModalTitle = document.querySelector('[data-v3-head-title]');
+    assert.equal(modalRoot?.hidden, false);
+    assert.equal(showModalTitle?.textContent?.trim(), 'Space Journey');
+    const showOverview = document.getElementById('v3-pane-overview')?.querySelector('.v3-overview__text');
+    assert.equal(showOverview?.textContent?.trim(), 'Exploring the universe with crewed missions.');
+
+    const castTab = document.getElementById('v3-tab-cast');
+    castTab?.click();
+    await settle(6);
+    assert.ok(seriesDetailRequests.includes('s1'));
+    const castName = document.querySelector('.v3-cast-card__name');
+    if(castName){
+      assert.equal(castName.textContent, 'Captain Nova');
+    }
 
     const moviesBtn = document.querySelector('#libraryTabs [data-lib="movies"]');
     moviesBtn.click();
