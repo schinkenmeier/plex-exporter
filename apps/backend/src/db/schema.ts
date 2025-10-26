@@ -268,6 +268,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   importJobs: many(importJobs),
   emailCampaigns: many(emailCampaigns),
   importSchedules: many(importSchedules),
+  bookmarks: many(userBookmarks),
 }));
 
 export const mediaItemsRelations = relations(mediaItems, ({ many }) => ({
@@ -331,5 +332,109 @@ export const importSchedulesRelations = relations(importSchedules, ({ one }) => 
   user: one(users, {
     fields: [importSchedules.userId],
     references: [users.id],
+  }),
+}));
+
+export const userBookmarks = sqliteTable('user_bookmarks', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  mediaItemId: integer('media_item_id')
+    .notNull()
+    .references(() => mediaItems.id, { onDelete: 'cascade' }),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const insertUserBookmarkSchema = createInsertSchema(userBookmarks).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertUserBookmark = z.infer<typeof insertUserBookmarkSchema>;
+export type UserBookmark = typeof userBookmarks.$inferSelect;
+
+export const newsletterSubscriptions = sqliteTable('newsletter_subscriptions', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  email: text('email').notNull().unique(),
+  mediaType: text('media_type', { enum: mediaTypes }),
+  active: integer('active', { mode: 'boolean' }).notNull().default(true),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const insertNewsletterSubscriptionSchema = createInsertSchema(newsletterSubscriptions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertNewsletterSubscription = z.infer<typeof insertNewsletterSubscriptionSchema>;
+export type NewsletterSubscription = typeof newsletterSubscriptions.$inferSelect;
+
+export const newsletterDigests = sqliteTable('newsletter_digests', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  mediaType: text('media_type', { enum: mediaTypes }).notNull(),
+  mediaItemIds: text('media_item_ids', { mode: 'json' })
+    .$type<number[]>()
+    .notNull(),
+  recipientCount: integer('recipient_count').notNull().default(0),
+  sentAt: text('sent_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const insertNewsletterDigestSchema = createInsertSchema(newsletterDigests).omit({
+  id: true,
+  createdAt: true,
+  sentAt: true,
+});
+export type InsertNewsletterDigest = z.infer<typeof insertNewsletterDigestSchema>;
+export type NewsletterDigest = typeof newsletterDigests.$inferSelect;
+
+export const welcomeEmails = sqliteTable('welcome_emails', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  email: text('email').notNull(),
+  status: text('status', { enum: emailStatuses }).notNull().default('sent'),
+  emailId: text('email_id'),
+  sentAt: text('sent_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const insertWelcomeEmailSchema = createInsertSchema(welcomeEmails).omit({
+  id: true,
+  createdAt: true,
+  sentAt: true,
+});
+export type InsertWelcomeEmail = z.infer<typeof insertWelcomeEmailSchema>;
+export type WelcomeEmail = typeof welcomeEmails.$inferSelect;
+
+export const userBookmarksRelations = relations(userBookmarks, ({ one }) => ({
+  user: one(users, {
+    fields: [userBookmarks.userId],
+    references: [users.id],
+  }),
+  mediaItem: one(mediaItems, {
+    fields: [userBookmarks.mediaItemId],
+    references: [mediaItems.id],
   }),
 }));

@@ -7,6 +7,8 @@ import { renderGrid } from './features/grid/index.js';
 import { openMovieDetailV3, openSeriesDetailV3 } from './features/modal/modalV3/index.js';
 import { hydrateOptional } from './services/tmdb.js';
 import * as Watch from './features/watchlist/index.js';
+import * as Bookmarks from './features/bookmarks/index.js';
+import * as Newsletter from './features/newsletter/index.js';
 import * as Debug from './js/debug.js';
 import { initErrorHandler, showError, showRetryableError } from './core/errorHandler.js';
 import { initSettingsOverlay, setHeroRefreshHandler, setReduceMotionHandler } from './js/settingsOverlay.js';
@@ -298,6 +300,8 @@ export async function boot(){
 
     if(!isTestEnv){
       Watch.initUi();
+      Bookmarks.initUi();
+      Newsletter.initUi();
       initSettingsOverlay(cfg);
       initAdvancedToggle();
       initHeaderInteractions();

@@ -793,6 +793,25 @@
         </article>
         <article class="card">
           <div>
+            <h3>Resend email configuration</h3>
+            <p>Manage email delivery settings using Resend for notifications, bookmarks and newsletters.</p>
+          </div>
+          <div class="input-stack">
+            <label class="input-label" for="resend-api-key-input">Resend API key</label>
+            <input id="resend-api-key-input" type="password" autocomplete="off" placeholder="re_xxxxxxxxxxxxx">
+            <label class="input-label" for="resend-from-email-input">From email address</label>
+            <input id="resend-from-email-input" type="email" autocomplete="off" placeholder="no-reply@example.com">
+            <div class="muted" id="resend-status">Loading Resend status…</div>
+            <div class="button-row">
+              <button class="btn btn-primary" id="btn-save-resend">Save configuration</button>
+              <button class="btn" id="btn-test-resend">Send test email</button>
+              <button class="btn btn-danger" id="btn-clear-resend">Remove configuration</button>
+            </div>
+            <div class="muted" id="resend-test-output">No test executed yet.</div>
+          </div>
+        </article>
+        <article class="card">
+          <div>
             <h3>Configuration snapshot</h3>
             <p>Current backend configuration (sensitive values are masked).</p>
           </div>
@@ -851,6 +870,20 @@
             <div class="info-list">
               <button class="btn" id="btn-test-db">Run test</button>
               <div class="muted" id="db-output">No test executed yet.</div>
+            </div>
+          </article>
+          <article class="panel">
+            <header>
+              <div>
+                <h3>Resend email test</h3>
+                <span>Send a test email to verify Resend configuration.</span>
+              </div>
+            </header>
+            <div class="info-list">
+              <label class="input-label" for="resend-test-email">Test recipient email</label>
+              <input type="email" id="resend-test-email" placeholder="test@example.com">
+              <button class="btn" id="btn-test-resend-diag">Send test email</button>
+              <div class="muted" id="resend-diag-output">No test executed yet.</div>
             </div>
           </article>
         </div>
@@ -912,6 +945,16 @@
         tmdbTestButton: document.getElementById("btn-test-tmdb"),
         tmdbClearButton: document.getElementById("btn-clear-tmdb"),
         tmdbTestOutput: document.getElementById("tmdb-test-output"),
+        resendApiKeyInput: document.getElementById("resend-api-key-input"),
+        resendFromEmailInput: document.getElementById("resend-from-email-input"),
+        resendStatus: document.getElementById("resend-status"),
+        resendSaveButton: document.getElementById("btn-save-resend"),
+        resendTestButton: document.getElementById("btn-test-resend"),
+        resendClearButton: document.getElementById("btn-clear-resend"),
+        resendTestOutput: document.getElementById("resend-test-output"),
+        resendTestEmail: document.getElementById("resend-test-email"),
+        resendTestButtonDiag: document.getElementById("btn-test-resend-diag"),
+        resendDiagOutput: document.getElementById("resend-diag-output"),
         logView: document.getElementById("log-view"),
         logSummary: document.getElementById("log-summary"),
         logLevel: document.getElementById("log-level"),
@@ -931,6 +974,7 @@
         importTimer: null,
         importPollCount: 0,
         tmdbStatus: null,
+        resendStatus: null,
       };
 
       const viewDescriptions = {
@@ -1375,8 +1419,181 @@
         }
       }
 
+      function renderResendStatus(status) {
+        state.resendStatus = status || null;
+        if (!elements.resendStatus) return;
+        if (!status || !status.enabled) {
+          elements.resendStatus.textContent = status?.fromEnv
+            ? "Active configuration provided via environment variables."
+            : "No Resend configuration stored yet.";
+        } else {
+          const apiKeyPreview = status.apiKeyPreview ? ` (${status.apiKeyPreview})` : "";
+          const fromEmail = status.fromEmail ? ` | From: ${status.fromEmail}` : "";
+          const updated = status.updatedAt
+            ? ` — updated ${new Date(status.updatedAt).toLocaleString("de-DE")}`
+            : "";
+          const sourceLabel = status.source === "database" ? "stored in database" : "provided via environment";
+          elements.resendStatus.textContent = `Configuration ${sourceLabel}${apiKeyPreview}${fromEmail}${updated}`;
+        }
+        if (elements.resendClearButton) {
+          elements.resendClearButton.disabled = !status || !status.fromDatabase;
+        }
+        if (elements.resendTestButton) {
+          elements.resendTestButton.disabled = false;
+        }
+      }
+
+      async function loadResendStatus() {
+        if (!elements.resendStatus) return;
+        elements.resendStatus.textContent = "Loading Resend status...";
+        try {
+          const data = await fetchJson(`${API_BASE}/resend/settings`);
+          renderResendStatus(data);
+          if (elements.resendTestOutput) {
+            elements.resendTestOutput.textContent = "No test executed yet.";
+          }
+        } catch (error) {
+          elements.resendStatus.textContent = `Failed to load Resend status: ${error.message}`;
+          throw error;
+        }
+      }
+
+      async function handleSaveResend(event) {
+        event?.preventDefault();
+        if (!elements.resendSaveButton || !elements.resendApiKeyInput || !elements.resendFromEmailInput) return;
+        const apiKey = elements.resendApiKeyInput.value.trim();
+        const fromEmail = elements.resendFromEmailInput.value.trim();
+        if (!apiKey || !fromEmail) {
+          showToast("Please enter both API key and from email address.", "error");
+          return;
+        }
+        elements.resendSaveButton.disabled = true;
+        if (elements.resendTestButton) elements.resendTestButton.disabled = true;
+        if (elements.resendClearButton) elements.resendClearButton.disabled = true;
+        try {
+          const data = await fetchJson(`${API_BASE}/resend/settings`, {
+            method: "PUT",
+            body: JSON.stringify({ apiKey, fromEmail }),
+          });
+          elements.resendApiKeyInput.value = "";
+          elements.resendFromEmailInput.value = "";
+          renderResendStatus(data.status);
+          if (elements.resendTestOutput) {
+            elements.resendTestOutput.textContent = "Configuration saved. Run a test to verify.";
+          }
+          showToast("Resend configuration stored successfully.", "success");
+        } catch (error) {
+          showToast(error.message, "error");
+        } finally {
+          elements.resendSaveButton.disabled = false;
+          if (elements.resendTestButton) elements.resendTestButton.disabled = false;
+          if (elements.resendClearButton) {
+            elements.resendClearButton.disabled = !state.resendStatus || !state.resendStatus.fromDatabase;
+          }
+        }
+      }
+
+      async function handleTestResend(event) {
+        event?.preventDefault();
+        if (!elements.resendTestButton) return;
+        const apiKey = elements.resendApiKeyInput ? elements.resendApiKeyInput.value.trim() : "";
+        const fromEmail = elements.resendFromEmailInput ? elements.resendFromEmailInput.value.trim() : "";
+        if ((!apiKey || !fromEmail) && !state.resendStatus?.enabled) {
+          if (elements.resendTestOutput) {
+            elements.resendTestOutput.textContent = "Enter configuration or save one before running a test.";
+          }
+          showToast("Provide Resend configuration to run the test.", "error");
+          return;
+        }
+        elements.resendTestButton.disabled = true;
+        if (elements.resendTestOutput) {
+          elements.resendTestOutput.textContent = "Sending test email...";
+        }
+        try {
+          const payload = (apiKey && fromEmail) ? { apiKey, fromEmail } : {};
+          const data = await fetchJson(`${API_BASE}/test/resend`, {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
+          let message = `Success: ${data.message}`;
+          if (data.emailId) {
+            message += ` | Email ID: ${data.emailId}`;
+          }
+          if (elements.resendTestOutput) {
+            elements.resendTestOutput.textContent = message;
+          }
+          showToast("Resend test email sent successfully.", "success");
+        } catch (error) {
+          if (elements.resendTestOutput) {
+            elements.resendTestOutput.textContent = `Error: ${error.message}`;
+          }
+          showToast(error.message, "error");
+        } finally {
+          elements.resendTestButton.disabled = false;
+        }
+      }
+
+      async function handleClearResend(event) {
+        event?.preventDefault();
+        if (!elements.resendClearButton) return;
+        if (!state.resendStatus?.fromDatabase) {
+          showToast("There is no stored Resend configuration to remove.", "info");
+          return;
+        }
+        elements.resendClearButton.disabled = true;
+        try {
+          const data = await fetchJson(`${API_BASE}/resend/settings`, { method: "DELETE" });
+          renderResendStatus(data.status);
+          if (elements.resendTestOutput) {
+            elements.resendTestOutput.textContent = "Stored configuration removed. Provide configuration to test.";
+          }
+          showToast("Stored Resend configuration removed.", "success");
+        } catch (error) {
+          showToast(error.message, "error");
+          elements.resendClearButton.disabled = false;
+        }
+      }
+
+      async function handleTestResendDiag(event) {
+        event?.preventDefault();
+        if (!elements.resendTestButtonDiag || !elements.resendTestEmail) return;
+        const recipientEmail = elements.resendTestEmail.value.trim();
+        if (!recipientEmail) {
+          showToast("Please enter a recipient email address.", "error");
+          if (elements.resendDiagOutput) {
+            elements.resendDiagOutput.textContent = "Please enter a recipient email address.";
+          }
+          return;
+        }
+        elements.resendTestButtonDiag.disabled = true;
+        if (elements.resendDiagOutput) {
+          elements.resendDiagOutput.textContent = "Sending test email...";
+        }
+        try {
+          const data = await fetchJson(`${API_BASE}/test/resend`, {
+            method: "POST",
+            body: JSON.stringify({ to: recipientEmail }),
+          });
+          let message = `Success: Test email sent to ${recipientEmail}`;
+          if (data.emailId) {
+            message += ` | Email ID: ${data.emailId}`;
+          }
+          if (elements.resendDiagOutput) {
+            elements.resendDiagOutput.textContent = message;
+          }
+          showToast("Test email sent successfully.", "success");
+        } catch (error) {
+          if (elements.resendDiagOutput) {
+            elements.resendDiagOutput.textContent = `Error: ${error.message}`;
+          }
+          showToast(error.message, "error");
+        } finally {
+          elements.resendTestButtonDiag.disabled = false;
+        }
+      }
+
       async function loadConfig() {
-        await Promise.all([loadTmdbStatus(), loadConfigSnapshot()]);
+        await Promise.all([loadTmdbStatus(), loadResendStatus(), loadConfigSnapshot()]);
         setLastUpdated("configuration");
       }
 
@@ -1561,6 +1778,8 @@
         });
         if (elements.tmdbTestButton) elements.tmdbTestButton.disabled = true;
         if (elements.tmdbClearButton) elements.tmdbClearButton.disabled = true;
+        if (elements.resendTestButton) elements.resendTestButton.disabled = true;
+        if (elements.resendClearButton) elements.resendClearButton.disabled = true;
         elements.refreshButton.addEventListener("click", () => {
           const loader = viewLoaders[state.currentView];
           if (loader) {
@@ -1586,6 +1805,18 @@
         }
         if (elements.tmdbClearButton) {
           elements.tmdbClearButton.addEventListener("click", handleClearTmdbToken);
+        }
+        if (elements.resendSaveButton) {
+          elements.resendSaveButton.addEventListener("click", handleSaveResend);
+        }
+        if (elements.resendTestButton) {
+          elements.resendTestButton.addEventListener("click", handleTestResend);
+        }
+        if (elements.resendClearButton) {
+          elements.resendClearButton.addEventListener("click", handleClearResend);
+        }
+        if (elements.resendTestButtonDiag) {
+          elements.resendTestButtonDiag.addEventListener("click", handleTestResendDiag);
         }
       }
 

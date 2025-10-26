@@ -7,6 +7,9 @@ import { createLibrariesRouter } from './routes/libraries.js';
 import { createHealthRouter } from './routes/health.js';
 import { createExportsRouter } from './routes/exports.js';
 import { createV1Router } from './routes/v1.js';
+import bookmarksRouter from './routes/bookmarks.js';
+import welcomeEmailRouter from './routes/welcomeEmail.js';
+import newsletterRouter from './routes/newsletter.js';
 import {
   createTautulliService,
   type TautulliClient,
@@ -17,6 +20,10 @@ import {
   type SqliteDatabase,
   type DrizzleDatabase,
 } from './db/index.js';
+import { setGlobalDb } from './db/globalDb.js';
+import { bookmarkService } from './services/bookmarkService.js';
+import { welcomeEmailService } from './services/welcomeEmailService.js';
+import { newsletterService } from './services/newsletterService.js';
 import MediaRepository from './repositories/mediaRepository.js';
 import ThumbnailRepository from './repositories/thumbnailRepository.js';
 import TautulliSnapshotRepository from './repositories/tautulliSnapshotRepository.js';
@@ -81,6 +88,16 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
 
   if (!database || !drizzleDb) {
     throw new Error('Database connection could not be initialised.');
+  }
+
+  // Set global database for email services
+  setGlobalDb(drizzleDb);
+
+  // Initialize email services with mail sender if available
+  if (resendService) {
+    bookmarkService.setMailSender(resendService);
+    welcomeEmailService.setMailSender(resendService);
+    newsletterService.setMailSender(resendService);
   }
 
   const settingsRepository =
@@ -204,6 +221,9 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
     app.use('/api/hero', createHeroRouter({ heroPipeline: heroPipelineService }));
   }
   app.use('/api/v1', createV1Router({ mediaRepository, thumbnailRepository, seasonRepository, castRepository }));
+  app.use('/api/bookmarks', bookmarksRouter);
+  app.use('/api/welcome-email', welcomeEmailRouter);
+  app.use('/api/newsletter', newsletterRouter);
 
   // Protected routes
   app.use(
