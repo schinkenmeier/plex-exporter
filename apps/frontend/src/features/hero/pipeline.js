@@ -1,5 +1,3 @@
-import { ensureHeroPool, forceRegeneratePool } from './pool.js';
-import { getStoredPool, storePool } from './storage.js';
 import { useTmdbForHero } from '../../js/utils.js';
 import { addRateLimitListener, getRateLimitState } from './tmdbClient.js';
 
@@ -30,6 +28,13 @@ function resolveHeroApiBase(){
 
 const listeners = new Set();
 let detachRateLimitListener = null;
+const DEFAULT_RATE_LIMIT = {
+  active: false,
+  until: 0,
+  retryAfterMs: 0,
+  lastStatus: null,
+  strikes: 0
+};
 
 const state = {
   cfg: {},
@@ -46,13 +51,9 @@ const state = {
   tmdb: {
     allowed: false,
     active: false,
-    rateLimit: {
-      active: false,
-      until: 0,
-      retryAfterMs: 0,
-      lastStatus: null,
-      strikes: 0
-    }
+    backendRateLimit: { ...DEFAULT_RATE_LIMIT },
+    clientRateLimit: { ...DEFAULT_RATE_LIMIT },
+    rateLimit: { ...DEFAULT_RATE_LIMIT }
   },
   activeKind: 'movies',
   inFlight: new Map()
@@ -85,17 +86,53 @@ function rateLimitEquals(a, b){
     && a.strikes === b.strikes;
 }
 
+function mergeRateLimitStates(backend, client){
+  const sources = [backend, client].filter(Boolean);
+  if(!sources.length) return { ...DEFAULT_RATE_LIMIT };
+  const merged = { ...DEFAULT_RATE_LIMIT };
+  for(const info of sources){
+    if(info.active){
+      merged.active = true;
+    }
+    const until = Number(info.until);
+    if(Number.isFinite(until)){
+      merged.until = Math.max(merged.until, until);
+    }
+    const retryAfter = Number(info.retryAfterMs);
+    if(Number.isFinite(retryAfter)){
+      merged.retryAfterMs = Math.max(merged.retryAfterMs, retryAfter);
+    }
+    if(info.lastStatus != null){
+      if(info.active || merged.lastStatus == null){
+        merged.lastStatus = info.lastStatus;
+      }
+    }
+    const strikes = Number(info.strikes);
+    if(Number.isFinite(strikes)){
+      merged.strikes = Math.max(merged.strikes, strikes);
+    }
+  }
+  return merged;
+}
+
+function updateCombinedRateLimit(){
+  const next = mergeRateLimitStates(state.tmdb.backendRateLimit, state.tmdb.clientRateLimit);
+  if(rateLimitEquals(state.tmdb.rateLimit, next)) return false;
+  state.tmdb.rateLimit = next;
+  return true;
+}
+
 function attachRateLimitListener(){
   if(detachRateLimitListener) return;
   try {
-    state.tmdb.rateLimit = { ...getRateLimitState() };
+    state.tmdb.clientRateLimit = { ...getRateLimitState() };
   } catch (_err) {
-    state.tmdb.rateLimit = { active: false, until: 0, retryAfterMs: 0, lastStatus: null, strikes: 0 };
+    state.tmdb.clientRateLimit = { ...DEFAULT_RATE_LIMIT };
   }
+  updateCombinedRateLimit();
   const handler = info => {
-    const next = info ? { ...info } : { active: false, until: 0, retryAfterMs: 0, lastStatus: null, strikes: 0 };
-    if(rateLimitEquals(state.tmdb.rateLimit, next)) return;
-    state.tmdb.rateLimit = next;
+    state.tmdb.clientRateLimit = info ? { ...info } : { ...DEFAULT_RATE_LIMIT };
+    if(!updateCombinedRateLimit()) return;
     notify();
   };
   detachRateLimitListener = addRateLimitListener(handler);
@@ -161,7 +198,7 @@ function buildSnapshot(){
     tmdb: {
       allowed: state.tmdb.allowed,
       active: state.tmdb.active,
-      rateLimit: state.tmdb.rateLimit ? { ...state.tmdb.rateLimit } : { active: false, until: 0, retryAfterMs: 0, lastStatus: null, strikes: 0 }
+      rateLimit: state.tmdb.rateLimit ? { ...state.tmdb.rateLimit } : { ...DEFAULT_RATE_LIMIT }
     },
     status: {
       movies: cloneStatus(state.status.movies),
@@ -218,26 +255,6 @@ function refreshReadyState(){
   state.ready = ready;
 }
 
-function loadStored(kind){
-  const normalized = normalizeKind(kind);
-  const stored = getStoredPool(normalized, { allowExpired: true });
-  if(!stored) return;
-  state.pools[normalized] = Array.isArray(stored.items) ? stored.items.slice() : [];
-  updateStatus(normalized, {
-    state: stored.isExpired ? 'stale' : 'ready',
-    regenerating: false,
-    size: state.pools[normalized].length,
-    updatedAt: Number(stored.updatedAt) || 0,
-    expiresAt: Number(stored.expiresAt) || 0,
-    fromCache: true,
-    source: stored.source || 'cache',
-    policyHash: stored.policyHash || '',
-    slotSummary: stored.slotSummary || {},
-    matchesPolicy: stored.matchesPolicy !== false,
-    isExpired: !!stored.isExpired
-  });
-}
-
 async function fetchHeroPoolFromBackend(kind, { force = false } = {}){
   const normalized = normalizeKind(kind);
   const params = new URLSearchParams();
@@ -272,7 +289,7 @@ function applyBackendPayload(kind, payload){
     state.tmdb.active = !!tmdbMeta.enabled;
   }
   if(tmdbMeta.rateLimit && typeof tmdbMeta.rateLimit === 'object'){
-    state.tmdb.rateLimit = {
+    state.tmdb.backendRateLimit = {
       active: !!tmdbMeta.rateLimit.active,
       until: Number(tmdbMeta.rateLimit.until) || 0,
       retryAfterMs: Number(tmdbMeta.rateLimit.retryAfterMs) || 0,
@@ -280,6 +297,7 @@ function applyBackendPayload(kind, payload){
       strikes: Number(tmdbMeta.rateLimit.strikes) || 0
     };
   }
+  updateCombinedRateLimit();
   updateStatus(normalized, {
     state: 'ready',
     regenerating: false,
@@ -295,34 +313,9 @@ function applyBackendPayload(kind, payload){
     lastError: null,
     lastRefresh: now()
   });
-  storePool(normalized, payload);
   refreshReadyState();
   notify();
   return payload;
-}
-
-function ensureSources(){
-  if(!state.sources.movies) state.sources.movies = [];
-  if(!state.sources.series) state.sources.series = [];
-}
-
-function buildTmdbOptions(){
-  // Hero always uses TMDB when credentials are available
-  // Re-check in case token was added after initial configure
-  const hasCredentials = useTmdbForHero();
-  const shouldUseTmdb = state.tmdb.allowed && hasCredentials;
-  const disableTmdb = !shouldUseTmdb;
-
-  const authOptions = {};
-  if(state.cfg && typeof state.cfg === 'object'){
-    const fallback = state.cfg.tmdbToken || state.cfg.tmdbApiKey;
-    if(fallback) authOptions.fallbackCredential = fallback;
-  }
-  return {
-    disableTmdb,
-    settings: state.cfg,
-    authOptions: Object.keys(authOptions).length ? authOptions : undefined
-  };
 }
 
 async function runPoolBuilder(kind, { force = false } = {}){
@@ -333,12 +326,10 @@ async function runPoolBuilder(kind, { force = false } = {}){
     return null;
   }
 
-  ensureSources();
   if(state.inFlight.has(normalized)){
     return state.inFlight.get(normalized);
   }
 
-  const items = normalized === 'series' ? state.sources.series : state.sources.movies;
   updateStatus(normalized, {
     state: 'loading',
     regenerating: true,
@@ -346,54 +337,18 @@ async function runPoolBuilder(kind, { force = false } = {}){
   });
   notify();
 
-  const builder = force ? forceRegeneratePool : ensureHeroPool;
-  const options = {
-    policy: state.policy || undefined,
-    tmdb: buildTmdbOptions()
-  };
-
-  const runFallbackBuilder = () =>
-    builder(normalized, items, options)
-      .then(result => {
-        const payload = result || {};
-        const poolItems = Array.isArray(payload.items) ? payload.items.slice() : [];
-        state.pools[normalized] = poolItems;
-        updateStatus(normalized, {
-          state: 'ready',
-          regenerating: false,
-          size: poolItems.length,
-          updatedAt: Number(payload.updatedAt) || now(),
-          expiresAt: Number(payload.expiresAt) || 0,
-          fromCache: !!payload.fromCache,
-          source: payload.source || (payload.fromCache ? 'cache' : 'frontend'),
-          policyHash: payload.policyHash || '',
-          slotSummary: payload.slotSummary || {},
-          matchesPolicy: payload.matchesPolicy !== false,
-          isExpired: false,
-          lastError: null,
-          lastRefresh: now()
-        });
-        refreshReadyState();
-        notify();
-        return payload;
-      })
-      .catch(err => {
-        logWarn('Failed to build hero pool via fallback for', normalized, err?.message || err);
-        updateStatus(normalized, {
-          state: 'error',
-          regenerating: false,
-          lastError: err?.message || String(err)
-        });
-        refreshReadyState();
-        notify();
-        throw err;
-      });
-
   const promise = fetchHeroPoolFromBackend(normalized, { force })
     .then(payload => applyBackendPayload(normalized, payload))
     .catch(err => {
       logWarn('Hero API failed for', normalized, err?.message || err);
-      return runFallbackBuilder();
+      updateStatus(normalized, {
+        state: 'error',
+        regenerating: false,
+        lastError: err?.message || String(err)
+      });
+      refreshReadyState();
+      notify();
+      throw err;
     })
     .finally(() => {
       state.inFlight.delete(normalized);
@@ -444,8 +399,6 @@ export function configure({ cfg, policy } = {}){
   state.tmdb.allowed = !!cfg?.tmdbEnabled;
   state.tmdb.active = state.tmdb.allowed && useTmdbForHero();
   attachRateLimitListener();
-  loadStored('movies');
-  loadStored('series');
   refreshReadyState();
   notify();
   return { enabled: state.enabled, source: state.featureSource };

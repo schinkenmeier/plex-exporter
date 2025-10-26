@@ -1,7 +1,7 @@
 import { getState } from '../../core/state.js';
 import { openMovieDetailV3, openSeriesDetailV3 } from '../modal/modalV3/index.js';
 import { humanYear, formatRating, useTmdbOn } from '../../js/utils.js';
-import { recordHeroHistory, getStoredPool } from './storage.js';
+import * as HeroPipeline from './pipeline.js';
 
 const NUMBER_FORMAT = typeof Intl !== 'undefined' ? new Intl.NumberFormat('en-US') : { format: (value)=>String(value) };
 
@@ -188,12 +188,6 @@ export function refreshHero(listOverride){
   const kind = normalized.type === 'tv' ? 'show' : 'movie';
   const targetId = normalized.cta?.id || normalized.id || '';
 
-  try {
-    recordHeroHistory(kind === 'show' ? 'series' : 'movies', normalized);
-  } catch (err) {
-    console.warn('[hero] Failed to record hero history:', err?.message || err);
-  }
-
   hero.dataset.heroKind = kind;
   hero.dataset.heroId = targetId;
   hero.dataset.state = 'ready';
@@ -274,9 +268,9 @@ function chooseHeroCandidate(list){
 function heroCandidatesFromState(){
   const state = getState();
   const view = state.view === 'shows' ? 'series' : 'movies';
-  const stored = getStoredPool(view, { allowExpired: true }) || null;
-  const fromPool = Array.isArray(stored?.items) ? ensureNormalizedList(stored.items) : [];
-  if(fromPool.length) return fromPool;
+  const fromPipeline = HeroPipeline.getPool(view);
+  const normalizedPipeline = ensureNormalizedList(fromPipeline);
+  if(normalizedPipeline.length) return normalizedPipeline;
 
   const filtered = Array.isArray(state.filtered) && state.filtered.length ? state.filtered : null;
   const pool = filtered || (view === 'series' ? state.shows : state.movies) || [];
