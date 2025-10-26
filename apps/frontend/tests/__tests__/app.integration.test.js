@@ -193,7 +193,7 @@ function createDom(){
               <p class="hero__eyebrow">Featured highlight</p>
               <h2 class="hero__title" id="heroTitle">Discover Plex like it’s premiere night</h2>
               <p class="hero__tagline" id="heroTagline">Curated spotlights and smart filters for every mood.</p>
-              <p class="hero__overview" id="heroOverview">Browse your Plex library offline, keep personal watchlists, and open cinematic detail views without leaving the couch.</p>
+              <p class="hero__overview" id="heroOverview">Browse your Plex library with live data, keep personal watchlists, and open cinematic detail views without leaving the couch.</p>
               <div class="hero__meta" id="heroMeta" hidden>
                 <div class="hero__meta-row" data-row="primary" id="heroMetaPrimary"></div>
                 <div class="hero__meta-row" data-row="secondary" id="heroMetaSecondary"></div>
@@ -460,7 +460,7 @@ test('boot flow integrates view switch, filtering and modal opening', async () =
     const heroOverview = document.getElementById('heroOverview');
     assert.equal(heroTitle?.textContent, 'Discover Plex like it’s premiere night');
     assert.equal(heroTagline?.textContent, 'Curated spotlights and smart filters for every mood.');
-    assert.equal(heroOverview?.textContent, 'Browse your Plex library offline, keep personal watchlists, and open cinematic detail views without leaving the couch.');
+    assert.equal(heroOverview?.textContent, 'Browse your Plex library with live data, keep personal watchlists, and open cinematic detail views without leaving the couch.');
 
     const stateModule = await import('../../src/core/state.js');
     const main = await import('../../src/main.js');

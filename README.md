@@ -1,9 +1,7 @@
-# Plex Exporter – Offline Katalog
+# Plex Exporter – API-gestützter Katalog
 
 ## Überblick
-Der Plex Exporter stellt einen statischen Katalog deiner Plex-Bibliotheken bereit. Die Weboberfläche lebt unter `apps/frontend/` – die auslieferbaren Dateien liegen in `apps/frontend/public/`, die Quellmodule in `apps/frontend/src/`. Starte den Katalog direkt über `apps/frontend/public/index.html`. Dadurch lässt sich der Katalog ohne Webserver per Doppelklick oder über ein einfaches Hosting mit rein statischen Dateien öffnen. Deine exportierten Plex-Daten verbleiben unverändert unter `data/exports/`.
-
-Neu hinzugekommen ist ein Backend-Grundgerüst (`apps/backend/`), das perspektivisch API-Endpunkte für diese Exporte ausliefert. Gemeinsame Typdefinitionen werden unter `packages/shared/` vorgehalten und stehen sowohl Frontend als auch Backend zur Verfügung.
+Der Plex Exporter stellt einen webfähigen Katalog deiner Plex-Bibliotheken bereit, der seine Inhalte zur Laufzeit vom Backend bezieht. Die Weboberfläche lebt unter `apps/frontend/` – das auslieferbare HTML befindet sich in `apps/frontend/public/`, die Quellmodule in `apps/frontend/src/`. Das Backend (`apps/backend/`) liefert konfigurierte API-Endpunkte aus (`/api/v1/movies`, `/api/v1/series`, `/api/v1/filter`) und stellt die Frontend-Bundles bereit. Gemeinsame Typdefinitionen werden unter `packages/shared/` vorgehalten und stehen sowohl Frontend als auch Backend zur Verfügung.
 
 ## Funktionsumfang
 - Umschaltbare Film- und Serienansichten inklusive Deep-Linking über die URL-Fragmentnavigation (`#/movies`, `#/shows`).
@@ -21,8 +19,8 @@ Neu hinzugekommen ist ein Backend-Grundgerüst (`apps/backend/`), das perspektiv
 
 | Pfad | Beschreibung |
 | --- | --- |
-| `apps/frontend/public/index.html` | Einstiegspunkt und UI-Markup für den Katalog. |
-| `apps/frontend/public/details.html` | Standalone-Detailansicht, die dieselben Renderer wie das Modal nutzt. |
+| `apps/frontend/public/index.html` | Einstiegspunkt und UI-Markup für den Katalog (wird vom Backend ausgeliefert). |
+| `apps/frontend/public/details.html` | Standalone-Detailansicht, die dieselben Renderer wie das Modal nutzt und über das Backend erreichbar ist. |
 | `apps/backend/src/server.ts` | Express-Server mit vorbereiteten Middleware-Hooks und Health-Routing. |
 | `apps/backend/src/routes/health.ts` | Health-Check-Endpunkt für Betriebs- und Monitoring-Checks. |
 | `apps/backend/tests/` | Platz für Unit- und Integrations-Tests des Backends. |
@@ -74,13 +72,13 @@ Das Repository ist als npm-Workspace organisiert. Relevante Befehle:
 ### Filme aktualisieren
 1. Exportiere deine Filmbibliothek aus Plex (oder Tautulli) als `movies.json` und kopiere die Datei nach `data/exports/movies/movies.json`.
 2. Lege Poster oder Backdrops optional in eigenen Unterordnern ab (`data/exports/movies/Movie - <Titel> [<ratingKey>].images/`). Die Anwendung referenziert Pfade automatisch relativ zum Datenverzeichnis.
-3. Öffne `apps/frontend/public/index.html`, um den aktualisierten Bestand zu prüfen. Änderungen an den Daten werden beim nächsten Laden erkannt.
+3. Starte das Backend (`npm run dev --workspace @plex-exporter/backend`) und rufe den Katalog anschließend im Browser auf (Standard: `http://localhost:4000`). Änderungen an den Daten werden beim nächsten Laden der API sichtbar.
 
 ### Serien aktualisieren
 1. Exportiere deine Serienbibliothek als vollständige JSON-Datei (z. B. aus Plex) und speichere sie als `data/exports/series/series_full.json`.
 2. Erzeuge Index- und Detaildateien mit `npm run split:series`. Das Skript `tools/split_series.mjs` erstellt `series_index.json` sowie einzelne Dateien unter `data/exports/series/details/`.
 3. Kopiere Poster/Staffelbilder in passende Unterordner (`data/exports/series/Show - <Titel> [<ratingKey>].images/`). Die Anwendung verknüpft Staffel- und Episodenbilder automatisch über `apps/frontend/src/js/data.js`.
-4. Starte den Katalog neu in `apps/frontend/public/index.html`, um die aktualisierten Serien zu überprüfen.
+4. Aktualisiere die Ansicht über den laufenden Backend-Server (`http://localhost:4000`), um die Änderungen im Katalog zu prüfen.
 
 ### Datenspeicherung und Fallbacks
 - `apps/frontend/src/js/data.js` ruft ausschließlich die `/api/v1/*`-Endpoints auf und nutzt den gemeinsamen Cache-Layer (`fetchJson()`). Fehlerfälle blenden UI-Hinweise ein und liefern leere Listen, damit das Grid weiterhin reagiert.
@@ -88,8 +86,8 @@ Das Repository ist als npm-Workspace organisiert. Relevante Befehle:
 
 ### Produktive Bereitstellung von Exporten
 - Lege reale Plex-Exporte dauerhaft unter `data/exports/movies/` und `data/exports/series/` ab. Der Backend-Build kann diese Verzeichnisse nach Bedarf versionieren oder in eine Artefakt-Pipeline übernehmen.
-- Stelle sicher, dass der Webserver die Dateien unter `/data/exports/...` erreichbar macht – etwa über einen statischen Ordner, ein CDN-Bucket oder einen API-Endpunkt (`GET /data/exports/movies/movies.json`). Alternativ kannst du gezippte Exporte bereitstellen und beim Deployment entpacken.
-- Für lokale Demos kopiert das Frontend-Build Beispiel-Daten nach `apps/frontend/public/data/exports/`. Produktive Deployments sollten stattdessen die echten Exporte aus `data/exports/` einbinden (z. B. über Symlinks oder Copy-Schritte im Backend-Build), sodass das Frontend ohne Codeänderungen dieselben URLs nutzt.
+- Biete die JSON-Dateien und Bilder über das Backend an (z. B. über `/api/v1/*` oder begleitende statische Routen). Damit bleiben URLs im Frontend stabil, egal ob lokal oder im Deployment.
+- Nutze Automatisierungen im Backend-Build, um Exporte zu synchronisieren (z. B. Copy-Schritte in CI/CD, Container-Mounts oder Assets aus einem CDN/Bucket).
 
 ## Watchlist & Debugging
 - Die Watchlist speichert Einträge in `localStorage` (`watchlist:v1`). Über die Buttons im UI kannst du Einträge hinzufügen, entfernen, exportieren oder die Liste leeren. Beim Export wird eine `watchlist.json` im Browser heruntergeladen.
