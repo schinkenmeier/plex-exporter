@@ -116,7 +116,7 @@ export function initSettingsOverlay(cfg){
     if(status.state === 'loading' || status.regenerating) return `${label}: wird aktualisiert …`;
     if(status.state === 'error') return `${label}: Fehler (${status.lastError || 'unbekannt'})`;
     if(status.state === 'stale'){
-      return `${label}: ${status.size} Einträge (Cache abgelaufen)`;
+      return `${label}: ${status.size} Einträge (Pool veraltet)`;
     }
     const updated = formatUpdated(status.updatedAt);
     const expiry = formatExpiry(status.expiresAt);
@@ -126,7 +126,7 @@ export function initSettingsOverlay(cfg){
   function updateHeroStatus(snapshot){
     if(!heroStatus) return;
     if(!snapshot || !HeroPipeline.isEnabled() || snapshot.enabled === false){
-      heroStatus.textContent = 'Hero-Pipeline deaktiviert – Legacy-Hero aktiv.';
+      heroStatus.textContent = 'Hero-Pipeline deaktiviert – statisches Fallback aktiv.';
       setHeroButtonsDisabled(true, 'disabled');
       return;
     }
