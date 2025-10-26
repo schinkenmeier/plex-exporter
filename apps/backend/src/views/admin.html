@@ -709,7 +709,7 @@
             <header>
               <div>
                 <h3>Services</h3>
-                <span>SMTP, TMDB, Tautulli, API auth</span>
+                <span>TMDB, Tautulli, API auth</span>
               </div>
             </header>
             <div class="info-list" id="service-status">
@@ -832,22 +832,6 @@
           <article class="panel">
             <header>
               <div>
-                <h3>SMTP test</h3>
-                <span>Send a test message using the configured mail account.</span>
-              </div>
-            </header>
-            <div class="info-list">
-              <label class="input-label" for="smtp-email">Recipient email</label>
-              <input type="email" id="smtp-email" placeholder="admin@example.com">
-              <div class="button-row">
-                <button class="btn" id="btn-test-smtp">Send test mail</button>
-              </div>
-              <div class="muted" id="smtp-output">No test executed yet.</div>
-            </div>
-          </article>
-          <article class="panel">
-            <header>
-              <div>
                 <h3>Tautulli test</h3>
                 <span>Check API connectivity and list libraries.</span>
               </div>
@@ -934,9 +918,6 @@
         logLimit: document.getElementById("log-limit"),
         refreshLogs: document.getElementById("btn-refresh-logs"),
         clearLogs: document.getElementById("btn-clear-logs"),
-        smtpEmail: document.getElementById("smtp-email"),
-        smtpOutput: document.getElementById("smtp-output"),
-        smtpButton: document.getElementById("btn-test-smtp"),
         tautulliOutput: document.getElementById("tautulli-output"),
         tautulliButton: document.getElementById("btn-test-tautulli"),
         dbOutput: document.getElementById("db-output"),
@@ -957,7 +938,7 @@
         import: "Control the import worker and inspect the latest console output.",
         config: "Manage TMDb credentials and inspect the backend configuration snapshot.",
         logs: "Inspect the in-memory log buffer. Useful for quick diagnostics.",
-        diagnostics: "Connectivity checks for SMTP, Tautulli and database services.",
+        diagnostics: "Connectivity checks for Tautulli and database services.",
       };
 
       const viewLoaders = {
@@ -1134,7 +1115,6 @@
 
       function renderServiceStatus(config) {
         const items = [
-          { name: "SMTP", enabled: !!config.smtp?.enabled, detail: config.smtp?.host ? `${config.smtp.host}:${config.smtp.port ?? "-"}` : "" },
           { name: "Tautulli", enabled: !!config.tautulli?.enabled, detail: config.tautulli?.url ?? "" },
           { name: "TMDB", enabled: !!config.tmdb?.enabled, detail: config.tmdb?.accessToken ? "access token set" : "" },
           { name: "API auth", enabled: !!config.auth?.enabled, detail: config.auth?.token ? "token set" : "" },
@@ -1545,29 +1525,6 @@
         }
       }
 
-      async function runSmtpTest() {
-        const email = elements.smtpEmail.value.trim();
-        if (!email) {
-          showToast("Please enter a recipient email.", "error");
-          return;
-        }
-        elements.smtpButton.disabled = true;
-        elements.smtpOutput.textContent = "Sending test mail...";
-        try {
-          const data = await fetchJson(`${API_BASE}/test/smtp`, {
-            method: "POST",
-            body: JSON.stringify({ to: email }),
-          });
-          elements.smtpOutput.textContent = `Success: messageId ${data.messageId ?? "unknown"}`;
-          showToast("SMTP test succeeded", "success");
-        } catch (error) {
-          elements.smtpOutput.textContent = `Error: ${error.message}`;
-          showToast(error.message, "error");
-        } finally {
-          elements.smtpButton.disabled = false;
-        }
-      }
-
       async function runTautulliTest() {
         elements.tautulliButton.disabled = true;
         elements.tautulliOutput.textContent = "Testing Tautulli connection...";
@@ -1619,7 +1576,6 @@
         elements.clearLogs.addEventListener("click", handleClearLogs);
         elements.logLevel.addEventListener("change", () => loadLogs().catch(err => showToast(err.message, "error")));
         elements.logLimit.addEventListener("change", () => loadLogs().catch(err => showToast(err.message, "error")));
-        elements.smtpButton.addEventListener("click", runSmtpTest);
         elements.tautulliButton.addEventListener("click", runTautulliTest);
         elements.dbButton.addEventListener("click", runDbTest);
         if (elements.tmdbSaveButton) {

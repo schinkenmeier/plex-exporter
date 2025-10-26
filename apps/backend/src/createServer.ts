@@ -4,15 +4,14 @@ import helmet from 'helmet';
 
 import { type AppConfig } from './config/index.js';
 import { createLibrariesRouter } from './routes/libraries.js';
-import { createNotificationsRouter } from './routes/notifications.js';
 import { createHealthRouter } from './routes/health.js';
 import { createExportsRouter } from './routes/exports.js';
 import { createV1Router } from './routes/v1.js';
-import { createSmtpService, type MailSender } from './services/smtpService.js';
 import {
   createTautulliService,
   type TautulliClient,
 } from './services/tautulliService.js';
+import { createResendService, type MailSender } from './services/resendService.js';
 import {
   initializeDrizzleDatabase,
   type SqliteDatabase,
@@ -36,7 +35,7 @@ import { createBasicAuthMiddleware } from './middleware/basicAuth.js';
 import { createThumbnailRouter } from './routes/thumbnails.js';
 
 export interface ServerDependencies {
-  smtpService?: MailSender | null;
+  resendService?: MailSender | null;
   tautulliService?: TautulliClient | null;
   database?: SqliteDatabase | null;
   drizzleDatabase?: DrizzleDatabase | null;
@@ -52,11 +51,11 @@ export interface ServerDependencies {
 export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}) => {
   const app = express();
 
-  const smtpService =
-    'smtpService' in deps
-      ? deps.smtpService ?? null
-      : appConfig.smtp
-        ? createSmtpService(appConfig.smtp)
+  const resendService =
+    'resendService' in deps
+      ? deps.resendService ?? null
+      : appConfig.resend
+        ? createResendService(appConfig.resend)
         : null;
 
   const tautulliService =
@@ -207,7 +206,6 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
   app.use('/api/v1', createV1Router({ mediaRepository, thumbnailRepository, seasonRepository, castRepository }));
 
   // Protected routes
-  app.use('/notifications', authMiddleware, createNotificationsRouter({ smtpService }));
   app.use(
     '/libraries',
     authMiddleware,
@@ -223,7 +221,7 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
       config: appConfig,
       mediaRepository,
       thumbnailRepository,
-      smtpService,
+      resendService,
       tautulliService,
       seasonRepository,
       castRepository,

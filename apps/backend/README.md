@@ -21,23 +21,15 @@ Die Anwendung liest ihre Konfiguration beim Start aus Umgebungsvariablen und val
 | `NODE_ENV` | Node.js-Laufzeitmodus. | Nein | `development` |
 | `PORT` | HTTP-Port, auf dem der Server lauscht. | Nein | `4000` |
 | `SQLITE_PATH` | Pfad zur SQLite-Datenbank mit den Exportinformationen. | Nein | `./data/exports/plex-exporter.sqlite` |
-| `SMTP_HOST` | Hostname des SMTP-Servers. Wird benötigt, sobald E-Mail-Versand aktiviert wird. | Bedingt¹ | – |
-| `SMTP_PORT` | Port des SMTP-Servers. | Bedingt¹ | – |
-| `SMTP_USER` | Benutzername für den SMTP-Login. | Nein | – |
-| `SMTP_PASS` | Passwort bzw. App-Token für den SMTP-Login. | Nein | – |
-| `SMTP_FROM` | Absender-Adresse für E-Mails. | Bedingt¹ | – |
-| `SMTP_SECURE` | Ob eine TLS-gesicherte Verbindung (`true`/`false`) genutzt werden soll. | Nein | `false` |
-| `TAUTULLI_URL` | Basis-URL der Tautulli-Instanz. | Bedingt² | – |
-| `TAUTULLI_API_KEY` | API-Key für Zugriffe auf Tautulli. | Bedingt² | – |
+| `TAUTULLI_URL` | Basis-URL der Tautulli-Instanz. | Bedingt¹ | – |
+| `TAUTULLI_API_KEY` | API-Key für Zugriffe auf Tautulli. | Bedingt¹ | – |
 | `API_TOKEN` | Geheimer Token für geschützte Routen (`Bearer`- oder `X-API-Key`-Header). | Nein | – |
-| `ADMIN_USERNAME` | Benutzername für das Admin-Panel (Basic Auth). | Bedingt³ | – |
-| `ADMIN_PASSWORD` | Passwort für das Admin-Panel (Basic Auth). | Bedingt³ | – |
+| `ADMIN_USERNAME` | Benutzername für das Admin-Panel (Basic Auth). | Bedingt² | – |
+| `ADMIN_PASSWORD` | Passwort für das Admin-Panel (Basic Auth). | Bedingt² | – |
 
-¹ `SMTP_HOST`, `SMTP_PORT` und `SMTP_FROM` müssen gemeinsam gesetzt werden, sobald SMTP genutzt werden soll.
+¹ `TAUTULLI_URL` und `TAUTULLI_API_KEY` müssen gemeinsam gesetzt werden, sobald eine Integration aktiv ist.
 
-² `TAUTULLI_URL` und `TAUTULLI_API_KEY` müssen gemeinsam gesetzt werden, sobald eine Integration aktiv ist.
-
-³ `ADMIN_USERNAME` und `ADMIN_PASSWORD` müssen gemeinsam gesetzt werden, um das Admin-Panel zu aktivieren.
+² `ADMIN_USERNAME` und `ADMIN_PASSWORD` müssen gemeinsam gesetzt werden, um das Admin-Panel zu aktivieren.
 
 ## Build & Betrieb mit Docker
 
@@ -47,7 +39,7 @@ Die Anwendung liest ihre Konfiguration beim Start aus Umgebungsvariablen und val
 
 ### Lokale Umgebung mit Docker Compose
 - Docker-Image bauen: `docker compose build backend`
-- Backend & Mailhog starten: `docker compose up -d backend mailhog`
+- Backend starten: `docker compose up -d backend`
 - Optionales Tautulli-Mock aktivieren: `docker compose --profile tautulli up -d backend tautulli-mock`
   (liefert eine kleine statische Antwort aus `tools/tautulli-mock/server.cjs`).
 - Logs einsehen: `docker compose logs -f backend`
@@ -62,8 +54,8 @@ Die Anwendung liest ihre Konfiguration beim Start aus Umgebungsvariablen und val
 - Beim Containerstart wird `npm run start:prod` ausgeführt, wodurch der Server automatisch alle hinterlegten SQLite-Migrationen anwendet (`apps/backend/src/db/migrations/`). Manuelle Eingriffe sind nicht notwendig.
 
 ### Environment-Variablen in Docker Compose
-- Die Compose-Datei akzeptiert über `.env` im Projektwurzelverzeichnis verschiedene Parameter (`BACKEND_PORT`, `BACKEND_INTERNAL_PORT`, `BACKEND_SQLITE_PATH`, `BACKEND_SMTP_*`, `BACKEND_TAUTULLI_*`).
-- Standardmäßig lauscht das Backend auf Port `4000`, SMTP-Aufrufe werden an den `mailhog`-Container weitergeleitet (`SMTP_HOST=mailhog`, `SMTP_PORT=1025`).
+- Die Compose-Datei akzeptiert über `.env` im Projektwurzelverzeichnis verschiedene Parameter (`BACKEND_PORT`, `BACKEND_INTERNAL_PORT`, `BACKEND_SQLITE_PATH`, `BACKEND_TAUTULLI_*`).
+- Standardmäßig lauscht das Backend auf Port `4000`.
 - Für die Nutzung des Tautulli-Mocks setze `BACKEND_TAUTULLI_URL=http://tautulli-mock:8181/api/v2` sowie einen beliebigen `BACKEND_TAUTULLI_API_KEY`, damit die Validierung greift.
 
 ## Nächste Schritte
@@ -149,7 +141,7 @@ Das Admin-Panel bietet folgende Funktionen:
 #### Dashboard
 - System-Status (Uptime, Memory, Node.js-Version)
 - Datenbank-Statistiken (Anzahl Filme, Serien, Thumbnails)
-- Service-Übersicht (SMTP, Tautulli, TMDB, API Auth)
+- Service-Übersicht (Tautulli, TMDB, API Auth)
 
 #### Konfiguration
 - Anzeige aller Umgebungsvariablen (sensible Werte maskiert)
@@ -168,7 +160,6 @@ Das Admin-Panel bietet folgende Funktionen:
 - Logs leeren
 
 #### Service-Tests
-- **SMTP-Test**: Test-E-Mail versenden
 - **Tautulli-Test**: Verbindung und Libraries abrufen
 - **Datenbank-Test**: Verbindung und Datenzugriff prüfen
 

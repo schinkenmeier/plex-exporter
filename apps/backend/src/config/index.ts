@@ -94,12 +94,6 @@ const envSchema = z
       .default(DEFAULT_SQLITE_PATH),
     HERO_POLICY_PATH: optionalString,
     TMDB_ACCESS_TOKEN: optionalString,
-    SMTP_HOST: optionalString,
-    SMTP_PORT: optionalPort,
-    SMTP_USER: optionalString,
-    SMTP_PASS: optionalString,
-    SMTP_FROM: optionalEmail,
-    SMTP_SECURE: optionalBoolean,
     API_TOKEN: optionalString,
     TAUTULLI_URL: z
       .preprocess(
@@ -117,44 +111,10 @@ const envSchema = z
     TAUTULLI_API_KEY: optionalString,
     ADMIN_USERNAME: optionalString,
     ADMIN_PASSWORD: optionalString,
+    RESEND_API_KEY: optionalString,
+    RESEND_FROM_EMAIL: optionalEmail,
   })
   .superRefine((env, ctx) => {
-    const smtpFields = {
-      host: env.SMTP_HOST,
-      port: env.SMTP_PORT,
-      user: env.SMTP_USER,
-      pass: env.SMTP_PASS,
-      from: env.SMTP_FROM,
-    } as const;
-
-    const hasSmtpConfiguration = Object.values(smtpFields).some((value) => value !== undefined);
-
-    if (hasSmtpConfiguration) {
-      if (!env.SMTP_HOST) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['SMTP_HOST'],
-          message: 'SMTP_HOST is required when configuring SMTP credentials.',
-        });
-      }
-
-      if (!env.SMTP_PORT) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['SMTP_PORT'],
-          message: 'SMTP_PORT is required when configuring SMTP credentials.',
-        });
-      }
-
-      if (!env.SMTP_FROM) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['SMTP_FROM'],
-          message: 'SMTP_FROM is required when configuring SMTP credentials.',
-        });
-      }
-    }
-
     const hasPartialTautulliConfiguration = Boolean(env.TAUTULLI_URL) !== Boolean(env.TAUTULLI_API_KEY);
 
     if (hasPartialTautulliConfiguration) {
@@ -172,6 +132,16 @@ const envSchema = z
         code: z.ZodIssueCode.custom,
         message: 'ADMIN_USERNAME and ADMIN_PASSWORD need to be provided together.',
         path: ['ADMIN_USERNAME'],
+      });
+    }
+
+    const hasPartialResendConfiguration = Boolean(env.RESEND_API_KEY) !== Boolean(env.RESEND_FROM_EMAIL);
+
+    if (hasPartialResendConfiguration) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'RESEND_API_KEY and RESEND_FROM_EMAIL need to be provided together.',
+        path: ['RESEND_API_KEY'],
       });
     }
   });
@@ -196,16 +166,6 @@ export const config = {
   hero: {
     policyPath: rawConfig.HERO_POLICY_PATH || null,
   },
-  smtp: rawConfig.SMTP_HOST
-    ? {
-        host: rawConfig.SMTP_HOST,
-        port: rawConfig.SMTP_PORT!,
-        user: rawConfig.SMTP_USER,
-        pass: rawConfig.SMTP_PASS,
-        from: rawConfig.SMTP_FROM!,
-        secure: rawConfig.SMTP_SECURE ?? false,
-      }
-    : null,
   tautulli: rawConfig.TAUTULLI_URL
     ? {
         url: rawConfig.TAUTULLI_URL,
@@ -221,6 +181,12 @@ export const config = {
     ? {
         username: rawConfig.ADMIN_USERNAME,
         password: rawConfig.ADMIN_PASSWORD,
+      }
+    : null,
+  resend: rawConfig.RESEND_API_KEY && rawConfig.RESEND_FROM_EMAIL
+    ? {
+        apiKey: rawConfig.RESEND_API_KEY,
+        fromEmail: rawConfig.RESEND_FROM_EMAIL,
       }
     : null,
 } as const;

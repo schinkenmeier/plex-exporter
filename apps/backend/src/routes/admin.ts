@@ -14,7 +14,7 @@ import type ThumbnailRepository from '../repositories/thumbnailRepository.js';
 import SettingsRepository from '../repositories/settingsRepository.js';
 import SeasonRepository from '../repositories/seasonRepository.js';
 import CastRepository from '../repositories/castRepository.js';
-import type { MailSender } from '../services/smtpService.js';
+import type { MailSender } from '../services/resendService.js';
 import type { TautulliClient } from '../services/tautulliService.js';
 import type { DrizzleDatabase } from '../db/index.js';
 import { seasons, episodes, castMembers } from '../db/schema.js';
@@ -25,7 +25,7 @@ export interface AdminRouterOptions {
   config: AppConfig;
   mediaRepository: MediaRepository;
   thumbnailRepository: ThumbnailRepository;
-  smtpService: MailSender | null;
+  resendService: MailSender | null;
   tautulliService: TautulliClient | null;
   seasonRepository?: SeasonRepository | null;
   castRepository?: CastRepository | null;
@@ -43,7 +43,7 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
     config,
     mediaRepository,
     thumbnailRepository,
-    smtpService,
+    resendService,
     tautulliService,
     drizzleDatabase,
     seasonRepository: suppliedSeasonRepository,
@@ -145,14 +145,6 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
         policyPath: config.hero?.policyPath || '[not set]',
         policyExists: config.hero?.policyPath ? fs.existsSync(config.hero.policyPath) : false,
       },
-      smtp: {
-        enabled: !!config.smtp,
-        host: config.smtp?.host || '[not set]',
-        port: config.smtp?.port || '[not set]',
-        user: config.smtp?.user || '[not set]',
-        from: config.smtp?.from || '[not set]',
-        secure: config.smtp?.secure || false,
-      },
       tautulli: {
         enabled: !!config.tautulli,
         url: config.tautulli?.url || '[not set]',
@@ -165,6 +157,11 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
         updatedAt: tmdbStatus.updatedAt,
         fromEnv: tmdbStatus.fromEnv,
         fromDatabase: tmdbStatus.fromDatabase,
+      },
+      resend: {
+        enabled: !!config.resend,
+        apiKey: config.resend?.apiKey ? maskSensitive(config.resend.apiKey) : '[not set]',
+        fromEmail: config.resend?.fromEmail || '[not set]',
       },
     });
   });
@@ -433,46 +430,6 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
   });
 
   /**
-   * POST /admin/api/test/smtp
-   * Test SMTP connection
-   */
-  router.post('/api/test/smtp', async (req: Request, res: Response, next: NextFunction) => {
-    if (!smtpService) {
-      return res.status(503).json({
-        success: false,
-        error: 'SMTP service is not configured',
-        message: 'Please configure SMTP environment variables (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM)',
-      });
-    }
-
-    const { to } = req.body || {};
-    if (!to) {
-      return next(new HttpError(400, 'Recipient email address (to) is required'));
-    }
-
-    try {
-      const result = await smtpService.sendMail({
-        to,
-        subject: 'Plex Exporter Admin - SMTP Test',
-        text: 'This is a test email from the Plex Exporter Admin Panel.',
-        html: '<h1>SMTP Test</h1><p>This is a test email from the Plex Exporter Admin Panel.</p>',
-      });
-
-      res.json({
-        success: true,
-        message: 'Test email sent successfully',
-        messageId: result.messageId,
-        accepted: result.accepted,
-        rejected: result.rejected,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      logger.error('SMTP test failed', { error: message });
-      res.status(502).json({ success: false, error: 'SMTP test failed', details: message });
-    }
-  });
-
-  /**
    * POST /admin/api/test/tautulli
    * Test Tautulli connection
    */
@@ -521,6 +478,127 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
     }
   });
 
+  /**
+   * POST /admin/api/test/resend
+   * Test Resend email connection
+   */
+  router.post('/api/test/resend', async (req: Request, res: Response, next: NextFunction) => {
+    if (!resendService) {
+      return res.status(503).json({
+        success: false,
+        error: 'Resend service is not configured',
+        message: 'Please configure Resend environment variables (RESEND_API_KEY, RESEND_FROM_EMAIL) or set them in the admin panel',
+      });
+    }
+
+    const { to } = req.body || {};
+    if (!to) {
+      return next(new HttpError(400, 'Recipient email address (to) is required'));
+    }
+
+    try {
+      const result = await resendService.sendMail({
+        to,
+        subject: 'Plex Exporter Admin - Resend Test',
+        text: 'This is a test email from the Plex Exporter Admin Panel using Resend.',
+        html: '<h1>Resend Test</h1><p>This is a test email from the Plex Exporter Admin Panel using <strong>Resend</strong>.</p>',
+      });
+
+      res.json({
+        success: true,
+        message: 'Test email sent successfully',
+        id: result.id,
+        from: result.from,
+        to: result.to,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Resend test failed', { error: message });
+      res.status(502).json({ success: false, error: 'Resend test failed', details: message });
+    }
+  });
+
+  /**
+   * GET /admin/api/resend/settings
+   * Get current Resend settings from database
+   */
+  router.get('/api/resend/settings', (_req: Request, res: Response) => {
+    try {
+      const apiKey = settingsRepository.get('resend.apiKey');
+      const fromEmail = settingsRepository.get('resend.fromEmail');
+
+      res.json({
+        success: true,
+        settings: {
+          hasApiKey: !!apiKey?.value,
+          apiKey: apiKey?.value ? maskSensitive(apiKey.value) : null,
+          fromEmail: fromEmail?.value || null,
+          updatedAt: apiKey?.updatedAt || fromEmail?.updatedAt || null,
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Failed to get Resend settings', { error: message });
+      res.status(500).json({ success: false, error: 'Failed to get Resend settings', details: message });
+    }
+  });
+
+  /**
+   * PUT /admin/api/resend/settings
+   * Update Resend settings in database
+   */
+  router.put('/api/resend/settings', (req: Request, res: Response, next: NextFunction) => {
+    const { apiKey, fromEmail } = req.body || {};
+
+    if (!apiKey || !fromEmail) {
+      return next(new HttpError(400, 'Both apiKey and fromEmail are required'));
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(fromEmail)) {
+      return next(new HttpError(400, 'Invalid email format for fromEmail'));
+    }
+
+    try {
+      settingsRepository.set('resend.apiKey', apiKey);
+      settingsRepository.set('resend.fromEmail', fromEmail);
+
+      logger.info('Resend settings updated', { fromEmail });
+
+      res.json({
+        success: true,
+        message: 'Resend settings updated successfully',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Failed to update Resend settings', { error: message });
+      res.status(500).json({ success: false, error: 'Failed to update Resend settings', details: message });
+    }
+  });
+
+  /**
+   * DELETE /admin/api/resend/settings
+   * Clear Resend settings from database
+   */
+  router.delete('/api/resend/settings', (_req: Request, res: Response) => {
+    try {
+      settingsRepository.delete('resend.apiKey');
+      settingsRepository.delete('resend.fromEmail');
+
+      logger.info('Resend settings cleared');
+
+      res.json({
+        success: true,
+        message: 'Resend settings cleared successfully',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Failed to clear Resend settings', { error: message });
+      res.status(500).json({ success: false, error: 'Failed to clear Resend settings', details: message });
+    }
+  });
+
   return router;
 };
 
@@ -558,6 +636,16 @@ function getFileSize(filePath: string): number {
   } catch {
     return 0;
   }
+}
+
+function maskSensitive(value: string): string {
+  if (value.length <= 8) {
+    return '****';
+  }
+  const visibleChars = 4;
+  const start = value.substring(0, visibleChars);
+  const end = value.substring(value.length - visibleChars);
+  return `${start}${'*'.repeat(value.length - visibleChars * 2)}${end}`;
 }
 
 export default createAdminRouter;

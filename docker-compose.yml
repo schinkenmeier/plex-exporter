@@ -16,12 +16,8 @@ services:
       API_TOKEN: ${BACKEND_API_TOKEN:-}
       ADMIN_USERNAME: ${BACKEND_ADMIN_USERNAME:-}
       ADMIN_PASSWORD: ${BACKEND_ADMIN_PASSWORD:-}
-      SMTP_HOST: ${BACKEND_SMTP_HOST:-mailhog}
-      SMTP_PORT: ${BACKEND_SMTP_PORT:-1025}
-      SMTP_USER: ${BACKEND_SMTP_USER:-}
-      SMTP_PASS: ${BACKEND_SMTP_PASS:-}
-      SMTP_FROM: ${BACKEND_SMTP_FROM:-plex-exporter@example.test}
-      SMTP_SECURE: ${BACKEND_SMTP_SECURE:-false}
+      RESEND_API_KEY: ${BACKEND_RESEND_API_KEY:-}
+      RESEND_FROM_EMAIL: ${BACKEND_RESEND_FROM_EMAIL:-}
       TAUTULLI_URL: ${BACKEND_TAUTULLI_URL:-}
       TAUTULLI_API_KEY: ${BACKEND_TAUTULLI_API_KEY:-}
     volumes:
@@ -32,15 +28,6 @@ services:
       timeout: 10s
       start_period: 40s
       retries: 3
-    depends_on:
-      mailhog:
-        condition: service_started
-    restart: unless-stopped
-
-  mailhog:
-    image: mailhog/mailhog:v1.0.1
-    ports:
-      - "${MAILHOG_HTTP_PORT:-8025}:8025"
     restart: unless-stopped
 
   tautulli-mock:
