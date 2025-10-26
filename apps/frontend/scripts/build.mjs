@@ -46,20 +46,6 @@ async function pathIsFile(filePath){
   }
 }
 
-async function copySampleExports(){
-  const exportsDir = path.join(repoRoot, 'data', 'exports');
-  try{
-    const stats = await stat(exportsDir);
-    if(!stats.isDirectory()) return;
-  }catch{
-    return;
-  }
-
-  const targetDir = path.join(publicDir, 'data', 'exports');
-  await mkdir(path.dirname(targetDir), { recursive: true });
-  await cp(exportsDir, targetDir, { recursive: true, force: true });
-}
-
 async function copyFallbackScript(){
   const source = path.join(frontendDir, 'src', 'js', 'fallback.js');
   const target = path.join(distDir, 'fallback.js');
@@ -75,9 +61,6 @@ async function prepareStaticArtifacts(){
   await Promise.all([
     ensureConfigSample().catch(err => {
       console.warn('[build] Konnte config/frontend.json.sample nicht kopieren:', err?.message || err);
-    }),
-    copySampleExports().catch(err => {
-      console.warn('[build] Konnte Beispieldaten nicht kopieren:', err?.message || err);
     }),
     copyFallbackScript()
   ]);

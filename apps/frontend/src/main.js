@@ -657,7 +657,7 @@ function initHeaderInteractions(){
   const subtitle = document.getElementById('heroTagline');
   const TAGLINES = [
     'Curated spotlights and smart filters for every mood.',
-    'Bring Plex highlights on the road with offline browsing.',
+    'Bring Plex highlights anywhere with server-powered browsing.',
     'Plan your next movie night with shareable watchlists.'
   ];
   let idx = 0;

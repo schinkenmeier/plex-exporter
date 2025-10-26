@@ -10,7 +10,7 @@ plex-exporter/
 ├── .claude/              # Claude Code Konfiguration
 ├── apps/                 # Anwendungen
 │   ├── backend/          # Express Backend-API
-│   └── frontend/         # Statische Frontend-Webanwendung
+│   └── frontend/         # Frontend-Webanwendung mit API-Anbindung
 ├── config/               # Runtime-Konfigurationen
 │   └── frontend/         # Frontend-spezifische Konfiguration
 ├── data/                 # Anwendungsdaten (Single Source of Truth)
@@ -93,7 +93,7 @@ backend/
 **Siehe auch:** [apps/backend/.env.example](../apps/backend/.env.example)
 
 #### `apps/frontend/`
-Vanilla JavaScript Frontend mit ESBuild.
+Vanilla JavaScript Frontend mit ESBuild, das seine Daten zur Laufzeit vom Backend lädt.
 
 **Struktur:**
 ```
@@ -118,7 +118,7 @@ frontend/
 ```
 
 **Features:**
-- Offline-first Katalog
+- Backend-gestützter Katalog mit Live-APIs
 - TMDB-Integration für Metadaten
 - Hero-Rotation mit Policy Engine
 - Watchlist mit LocalStorage
