@@ -473,9 +473,11 @@ const extractIds = (record: MediaRecord): Record<string, string> => {
 };
 
 const ensureCtaId = (ids: Record<string, string>): string => {
-  if (ids.tmdb) return ids.tmdb;
-  if (ids.imdb) return ids.imdb;
+  // Always prefer ratingKey for API calls
   if (ids.ratingKey) return ids.ratingKey;
+  // Fallback to external IDs only if ratingKey is missing
+  if (ids.imdb) return ids.imdb;
+  if (ids.tmdb) return ids.tmdb;
   if (ids.tvdb) return ids.tvdb;
   return crypto.randomUUID();
 };

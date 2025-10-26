@@ -265,6 +265,14 @@ export async function boot(){
       } catch (err) {
         console.warn('[main] Hero pipeline initial prime failed:', err?.message || err);
       }
+      // Subscribe to pipeline updates to refresh hero when data changes
+      HeroPipeline.subscribe((snapshot) => {
+        const currentView = getState().view === 'shows' ? 'series' : 'movies';
+        const status = snapshot?.status?.[currentView];
+        if (status?.state === 'ready' && !status?.regenerating) {
+          refreshHeroWithPipeline();
+        }
+      });
     }
 
     setFooterStatus('Ansicht aufbauen …', true);
