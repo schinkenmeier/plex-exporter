@@ -2,12 +2,12 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 
-import { type AppConfig } from './config/index.js';
+import { type AppConfig, loadPersistedConfig } from './config/index.js';
 import { createLibrariesRouter } from './routes/libraries.js';
 import { createHealthRouter } from './routes/health.js';
 import { createExportsRouter } from './routes/exports.js';
 import { createV1Router } from './routes/v1.js';
-import bookmarksRouter from './routes/bookmarks.js';
+import watchlistRouter from './routes/watchlist.js';
 import welcomeEmailRouter from './routes/welcomeEmail.js';
 import newsletterRouter from './routes/newsletter.js';
 import {
@@ -21,7 +21,7 @@ import {
   type DrizzleDatabase,
 } from './db/index.js';
 import { setGlobalDb } from './db/globalDb.js';
-import { bookmarkService } from './services/bookmarkService.js';
+import { watchlistEmailService } from './services/watchlistEmailService.js';
 import { welcomeEmailService } from './services/welcomeEmailService.js';
 import { newsletterService } from './services/newsletterService.js';
 import MediaRepository from './repositories/mediaRepository.js';
@@ -40,6 +40,7 @@ import { setupSwagger } from './config/swaggerSetup.js';
 import { createAdminRouter } from './routes/admin.js';
 import { createBasicAuthMiddleware } from './middleware/basicAuth.js';
 import { createThumbnailRouter } from './routes/thumbnails.js';
+import logger from './services/logger.js';
 
 export interface ServerDependencies {
   resendService?: MailSender | null;
@@ -57,23 +58,6 @@ export interface ServerDependencies {
 
 export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}) => {
   const app = express();
-
-  const resendService =
-    'resendService' in deps
-      ? deps.resendService ?? null
-      : appConfig.resend
-        ? createResendService(appConfig.resend)
-        : null;
-
-  const tautulliService =
-    'tautulliService' in deps
-      ? deps.tautulliService ?? null
-      : appConfig.tautulli
-        ? createTautulliService({
-            baseUrl: appConfig.tautulli.url,
-            apiKey: appConfig.tautulli.apiKey,
-          })
-        : null;
 
   const databaseResult =
     'database' in deps || 'drizzleDatabase' in deps
@@ -93,13 +77,6 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
   // Set global database for email services
   setGlobalDb(drizzleDb);
 
-  // Initialize email services with mail sender if available
-  if (resendService) {
-    bookmarkService.setMailSender(resendService);
-    welcomeEmailService.setMailSender(resendService);
-    newsletterService.setMailSender(resendService);
-  }
-
   const settingsRepository =
     'settingsRepository' in deps
       ? deps.settingsRepository ?? null
@@ -107,6 +84,51 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
 
   if (!settingsRepository) {
     throw new Error('Settings repository could not be initialised.');
+  }
+
+  // Load persisted configuration from database (supplements environment variables)
+  const persistedConfig = loadPersistedConfig((key: string) => settingsRepository.get(key));
+
+  // Initialize Resend service with environment or persisted config
+  let resendService =
+    'resendService' in deps
+      ? deps.resendService ?? null
+      : null;
+
+  if (!resendService) {
+    const resendConfig = appConfig.resend ?? persistedConfig.resend;
+    if (resendConfig) {
+      resendService = createResendService(resendConfig);
+      if (!appConfig.resend && persistedConfig.resend) {
+        logger.info('Resend service initialized from database settings', { fromEmail: resendConfig.fromEmail });
+      }
+    }
+  }
+
+  // Initialize email services with mail sender if available
+  if (resendService) {
+    watchlistEmailService.setMailSender(resendService);
+    welcomeEmailService.setMailSender(resendService);
+    newsletterService.setMailSender(resendService);
+  }
+
+  // Initialize Tautulli service with environment or persisted config
+  let tautulliService =
+    'tautulliService' in deps
+      ? deps.tautulliService ?? null
+      : null;
+
+  if (!tautulliService) {
+    const tautulliConfig = appConfig.tautulli ?? persistedConfig.tautulli;
+    if (tautulliConfig) {
+      tautulliService = createTautulliService({
+        baseUrl: tautulliConfig.url,
+        apiKey: tautulliConfig.apiKey,
+      });
+      if (!appConfig.tautulli && persistedConfig.tautulli) {
+        logger.info('Tautulli service initialized from database settings', { url: tautulliConfig.url });
+      }
+    }
   }
 
   const storedTmdbSetting = settingsRepository.get('tmdb.accessToken');
@@ -221,7 +243,7 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
     app.use('/api/hero', createHeroRouter({ heroPipeline: heroPipelineService }));
   }
   app.use('/api/v1', createV1Router({ mediaRepository, thumbnailRepository, seasonRepository, castRepository }));
-  app.use('/api/bookmarks', bookmarksRouter);
+  app.use('/api/watchlist', watchlistRouter);
   app.use('/api/welcome-email', welcomeEmailRouter);
   app.use('/api/newsletter', newsletterRouter);
 

@@ -268,7 +268,6 @@ export const usersRelations = relations(users, ({ many }) => ({
   importJobs: many(importJobs),
   emailCampaigns: many(emailCampaigns),
   importSchedules: many(importSchedules),
-  bookmarks: many(userBookmarks),
 }));
 
 export const mediaItemsRelations = relations(mediaItems, ({ many }) => ({
@@ -334,28 +333,6 @@ export const importSchedulesRelations = relations(importSchedules, ({ one }) => 
     references: [users.id],
   }),
 }));
-
-export const userBookmarks = sqliteTable('user_bookmarks', {
-  id: text('id')
-    .primaryKey()
-    .$defaultFn(() => randomUUID()),
-  userId: text('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  mediaItemId: integer('media_item_id')
-    .notNull()
-    .references(() => mediaItems.id, { onDelete: 'cascade' }),
-  createdAt: text('created_at')
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-});
-
-export const insertUserBookmarkSchema = createInsertSchema(userBookmarks).omit({
-  id: true,
-  createdAt: true,
-});
-export type InsertUserBookmark = z.infer<typeof insertUserBookmarkSchema>;
-export type UserBookmark = typeof userBookmarks.$inferSelect;
 
 export const newsletterSubscriptions = sqliteTable('newsletter_subscriptions', {
   id: text('id')
@@ -428,13 +405,3 @@ export const insertWelcomeEmailSchema = createInsertSchema(welcomeEmails).omit({
 export type InsertWelcomeEmail = z.infer<typeof insertWelcomeEmailSchema>;
 export type WelcomeEmail = typeof welcomeEmails.$inferSelect;
 
-export const userBookmarksRelations = relations(userBookmarks, ({ one }) => ({
-  user: one(users, {
-    fields: [userBookmarks.userId],
-    references: [users.id],
-  }),
-  mediaItem: one(mediaItems, {
-    fields: [userBookmarks.mediaItemId],
-    references: [mediaItems.id],
-  }),
-}));

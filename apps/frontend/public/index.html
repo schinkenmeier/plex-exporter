@@ -92,7 +92,6 @@
           <button type="button" class="site-nav__tab" data-lib="series" aria-pressed="false">Shows</button>
         </div>
         <button id="watchlistToggle" type="button" class="watchlist-button" aria-expanded="false" aria-controls="watchlistPanel">Watchlist <span class="count" id="watchlistCount">0</span></button>
-        <button id="bookmarksToggle" type="button" class="bookmarks-button" aria-expanded="false" aria-controls="bookmarksPanel">Lesezeichen <span class="count" id="bookmarksCount">0</span></button>
         <button id="newsletterBtn" type="button" class="newsletter-button" aria-label="Newsletter abonnieren">Newsletter</button>
         <button id="headerSettingsBtn" type="button" class="header-settings-button" aria-haspopup="dialog" aria-controls="settingsOverlay" aria-label="Einstellungen öffnen">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-settings"></use></svg>
@@ -188,31 +187,14 @@
           <p class="watchlist-subtitle">Sammle Favoriten und teile sie mit Freund:innen.</p>
         </div>
         <div class="watchlist-actions">
-          <button type="button" class="primary" id="exportWatchlist">Merkliste exportieren</button>
+          <button type="button" class="primary" id="emailWatchlist">📧 Per E-Mail senden</button>
+          <button type="button" id="exportWatchlist">Merkliste exportieren</button>
           <button type="button" id="clearWatchlist">Merkliste leeren</button>
           <button type="button" id="closeWatchlist">Schließen</button>
         </div>
       </header>
       <p id="watchlistEmpty" class="watchlist-empty">Noch keine Einträge gemerkt.</p>
       <ul class="watchlist-items" id="watchlistItems"></ul>
-    </div>
-  </section>
-
-  <section class="bookmarks-panel" id="bookmarksPanel" hidden aria-hidden="true">
-    <div class="bookmarks-panel__inner wrap">
-      <header class="bookmarks-header">
-        <div class="bookmarks-titlegroup">
-          <h2 class="bookmarks-title">Lesezeichen</h2>
-          <p class="bookmarks-subtitle">Speichere deine Favoriten und erhalte sie per E-Mail.</p>
-        </div>
-        <div class="bookmarks-actions">
-          <button type="button" class="primary" id="emailBookmarks">📧 Per E-Mail senden</button>
-          <button type="button" id="clearBookmarks">Alle löschen</button>
-          <button type="button" id="closeBookmarks">Schließen</button>
-        </div>
-      </header>
-      <p id="bookmarksEmpty" class="bookmarks-empty">Noch keine Lesezeichen gesetzt.</p>
-      <ul class="bookmarks-items" id="bookmarksItems"></ul>
     </div>
   </section>
 

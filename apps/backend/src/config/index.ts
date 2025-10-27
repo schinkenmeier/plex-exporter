@@ -192,3 +192,68 @@ export const config = {
 } as const;
 
 export type AppConfig = typeof config;
+
+/**
+ * Persisted configuration interface
+ * Used to supplement environment-based config with database-stored values
+ */
+export interface PersistedConfig {
+  tmdb?: {
+    accessToken: string;
+  } | null;
+  resend?: {
+    apiKey: string;
+    fromEmail: string;
+  } | null;
+  tautulli?: {
+    url: string;
+    apiKey: string;
+  } | null;
+}
+
+/**
+ * Load persisted configuration from database
+ * This supplements the environment-based config with values stored in the database
+ * Environment variables always take precedence over database values
+ */
+export function loadPersistedConfig(
+  getSetting: (key: string) => { value: string } | null,
+): PersistedConfig {
+  const persisted: PersistedConfig = {};
+
+  // Load TMDB token if not set via environment
+  if (!rawConfig.TMDB_ACCESS_TOKEN) {
+    const tmdbToken = getSetting('tmdb.accessToken');
+    if (tmdbToken) {
+      persisted.tmdb = { accessToken: tmdbToken.value };
+    }
+  }
+
+  // Load Resend settings if not set via environment
+  if (!rawConfig.RESEND_API_KEY || !rawConfig.RESEND_FROM_EMAIL) {
+    const resendApiKey = getSetting('resend.apiKey');
+    const resendFromEmail = getSetting('resend.fromEmail');
+
+    if (resendApiKey && resendFromEmail) {
+      persisted.resend = {
+        apiKey: resendApiKey.value,
+        fromEmail: resendFromEmail.value,
+      };
+    }
+  }
+
+  // Load Tautulli settings if not set via environment
+  if (!rawConfig.TAUTULLI_URL || !rawConfig.TAUTULLI_API_KEY) {
+    const tautulliUrl = getSetting('tautulli.url');
+    const tautulliApiKey = getSetting('tautulli.apiKey');
+
+    if (tautulliUrl && tautulliApiKey) {
+      persisted.tautulli = {
+        url: tautulliUrl.value,
+        apiKey: tautulliApiKey.value,
+      };
+    }
+  }
+
+  return persisted;
+}

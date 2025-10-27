@@ -96,7 +96,7 @@ class WelcomeEmailService {
                   <strong>Browse your media:</strong> View all your movies and TV series in a beautiful interface
                 </li>
                 <li style="margin-bottom: 10px;">
-                  <strong>Bookmark favorites:</strong> Save your favorite items and get them sent to your email
+                  <strong>Merkliste per E-Mail:</strong> Merke dir Titel auf der Merkliste und lasse sie dir per E-Mail zusenden
                 </li>
                 <li style="margin-bottom: 10px;">
                   <strong>Get notifications:</strong> Subscribe to newsletters about newly added content

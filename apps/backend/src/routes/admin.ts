@@ -599,6 +599,86 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
     }
   });
 
+  /**
+   * GET /admin/api/tautulli/settings
+   * Get Tautulli settings from database
+   */
+  router.get('/api/tautulli/settings', (_req: Request, res: Response) => {
+    try {
+      const url = settingsRepository.get('tautulli.url');
+      const apiKey = settingsRepository.get('tautulli.apiKey');
+
+      res.json({
+        success: true,
+        settings: {
+          url: url?.value || null,
+          apiKey: apiKey?.value || null,
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Failed to get Tautulli settings', { error: message });
+      res.status(500).json({ success: false, error: 'Failed to get Tautulli settings', details: message });
+    }
+  });
+
+  /**
+   * PUT /admin/api/tautulli/settings
+   * Update Tautulli settings in database
+   */
+  router.put('/api/tautulli/settings', (req: Request, res: Response, next: NextFunction) => {
+    const { url, apiKey } = req.body || {};
+
+    if (!url || !apiKey) {
+      return next(new HttpError(400, 'Both url and apiKey are required'));
+    }
+
+    // Validate URL format
+    try {
+      new URL(url);
+    } catch {
+      return next(new HttpError(400, 'Invalid URL format for Tautulli URL'));
+    }
+
+    try {
+      settingsRepository.set('tautulli.url', url);
+      settingsRepository.set('tautulli.apiKey', apiKey);
+
+      logger.info('Tautulli settings updated', { url });
+
+      res.json({
+        success: true,
+        message: 'Tautulli settings updated successfully. Restart required to apply changes.',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Failed to update Tautulli settings', { error: message });
+      res.status(500).json({ success: false, error: 'Failed to update Tautulli settings', details: message });
+    }
+  });
+
+  /**
+   * DELETE /admin/api/tautulli/settings
+   * Clear Tautulli settings from database
+   */
+  router.delete('/api/tautulli/settings', (_req: Request, res: Response) => {
+    try {
+      settingsRepository.delete('tautulli.url');
+      settingsRepository.delete('tautulli.apiKey');
+
+      logger.info('Tautulli settings cleared');
+
+      res.json({
+        success: true,
+        message: 'Tautulli settings cleared successfully. Restart required to apply changes.',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Failed to clear Tautulli settings', { error: message });
+      res.status(500).json({ success: false, error: 'Failed to clear Tautulli settings', details: message });
+    }
+  });
+
   return router;
 };
 

@@ -72,6 +72,65 @@ export function exportJson(){
   setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
 }
 
+const API_BASE = typeof window !== 'undefined' && window.PLEX_EXPORTER_API_BASE
+  ? window.PLEX_EXPORTER_API_BASE
+  : 'http://localhost:4000';
+
+export async function sendEmail(email){
+  const items = listItems();
+  if(items.length === 0){
+    showToast('Keine Einträge in der Merkliste', 'error');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/api/watchlist/send-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        items: items.map(item => ({
+          title: item.title,
+          type: item.type === 'tv' ? 'tv' : 'movie',
+          year: item.year,
+          summary: item.summary,
+          poster: item.poster
+        }))
+      })
+    });
+
+    if(!response.ok){
+      const error = await response.json();
+      throw new Error(error.error || 'Fehler beim E-Mail-Versand');
+    }
+
+    const result = await response.json();
+    showToast('E-Mail erfolgreich versendet!', 'success');
+    return result.emailId;
+  } catch(err){
+    console.error(`${LOG_PREFIX} Failed to send email:`, err);
+    showToast(err.message || 'Fehler beim E-Mail-Versand', 'error');
+    throw err;
+  }
+}
+
+export function showEmailDialog(){
+  const email = prompt('E-Mail-Adresse für Merkliste:');
+  if(email && email.includes('@')){
+    sendEmail(email);
+  } else if(email){
+    showToast('Ungültige E-Mail-Adresse', 'error');
+  }
+}
+
+function showToast(message, type = 'info'){
+  if(typeof window.showErrorToast === 'function'){
+    window.showErrorToast(message);
+  } else {
+    console.log(`[${type}] ${message}`);
+  }
+}
+
 function listItems(){
   const s = getState();
   const pool = (s.movies||[]).concat(s.shows||[]);
@@ -117,11 +176,13 @@ export function initUi(){
   const closeBtn = document.getElementById('closeWatchlist');
   const clearBtn = document.getElementById('clearWatchlist');
   const exportBtn = document.getElementById('exportWatchlist');
+  const emailBtn = document.getElementById('emailWatchlist');
   openBtn && openBtn.addEventListener('click', ()=>{ openPanel(); setExpanded(true); });
   toggleBtn && toggleBtn.addEventListener('click', ()=>{ const p=document.getElementById('watchlistPanel'); if(p && !p.hidden){ closePanel(); } else { openPanel(); setExpanded(true); } });
   closeBtn && closeBtn.addEventListener('click', ()=>{ closePanel(); });
   clearBtn && clearBtn.addEventListener('click', ()=>{ clear(); });
   exportBtn && exportBtn.addEventListener('click', ()=>{ exportJson(); });
+  emailBtn && emailBtn.addEventListener('click', ()=>{ showEmailDialog(); });
 }
 
 function setExpanded(on){ const t=document.getElementById('watchlistToggle'); if(t) t.setAttribute('aria-expanded', on?'true':'false'); }
