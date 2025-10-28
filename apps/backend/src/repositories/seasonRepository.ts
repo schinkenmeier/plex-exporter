@@ -188,6 +188,118 @@ export class SeasonRepository {
       return results;
     });
   }
+
+  getByTautulliId(tautulliId: string): SeasonRecord | null {
+    const row = this.db
+      .select()
+      .from(seasons)
+      .where(eq(seasons.tautulliId, tautulliId))
+      .get();
+
+    return row ? mapSeasonRow(row) : null;
+  }
+
+  getById(id: number): SeasonRecord | null {
+    const row = this.db
+      .select()
+      .from(seasons)
+      .where(eq(seasons.id, id))
+      .get();
+
+    return row ? mapSeasonRow(row) : null;
+  }
+
+  create(input: Omit<SeasonInput, 'episodes'> & { mediaItemId: number }): SeasonRecord {
+    const [row] = this.db
+      .insert(seasons)
+      .values({
+        mediaItemId: input.mediaItemId,
+        tautulliId: input.tautulliId,
+        seasonNumber: input.seasonNumber,
+        title: input.title ?? null,
+        summary: input.summary ?? null,
+        poster: input.poster ?? null,
+        episodeCount: input.episodeCount ?? null,
+      })
+      .returning()
+      .all();
+
+    if (!row) {
+      throw new Error('Failed to create season');
+    }
+
+    return mapSeasonRow(row);
+  }
+
+  update(id: number, input: Partial<Omit<SeasonInput, 'episodes' | 'tautulliId'>>): SeasonRecord | null {
+    const [row] = this.db
+      .update(seasons)
+      .set({
+        seasonNumber: input.seasonNumber,
+        title: input.title ?? null,
+        summary: input.summary ?? null,
+        poster: input.poster ?? null,
+        episodeCount: input.episodeCount ?? null,
+      })
+      .where(eq(seasons.id, id))
+      .returning()
+      .all();
+
+    return row ? mapSeasonRow(row) : null;
+  }
+
+  getEpisodeByTautulliId(tautulliId: string): EpisodeRecord | null {
+    const row = this.db
+      .select()
+      .from(episodes)
+      .where(eq(episodes.tautulliId, tautulliId))
+      .get();
+
+    return row ? mapEpisodeRow(row) : null;
+  }
+
+  createEpisode(input: EpisodeInput & { seasonId: number }): EpisodeRecord {
+    const [row] = this.db
+      .insert(episodes)
+      .values({
+        seasonId: input.seasonId,
+        tautulliId: input.tautulliId,
+        episodeNumber: input.episodeNumber,
+        title: input.title,
+        summary: input.summary ?? null,
+        duration: input.duration ?? null,
+        rating: input.rating ?? null,
+        airDate: input.airDate ?? null,
+        thumb: input.thumb ?? null,
+      })
+      .returning()
+      .all();
+
+    if (!row) {
+      throw new Error('Failed to create episode');
+    }
+
+    return mapEpisodeRow(row);
+  }
+
+  updateEpisode(id: number, input: Partial<Omit<EpisodeInput, 'tautulliId'>>): EpisodeRecord | null {
+    const [row] = this.db
+      .update(episodes)
+      .set({
+        episodeNumber: input.episodeNumber,
+        title: input.title,
+        summary: input.summary ?? null,
+        duration: input.duration ?? null,
+        rating: input.rating ?? null,
+        airDate: input.airDate ?? null,
+        thumb: input.thumb ?? null,
+      })
+      .where(eq(episodes.id, id))
+      .returning()
+      .all();
+
+    return row ? mapEpisodeRow(row) : null;
+  }
 }
 
 export default SeasonRepository;

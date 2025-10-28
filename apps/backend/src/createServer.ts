@@ -13,6 +13,7 @@ import newsletterRouter from './routes/newsletter.js';
 import {
   createTautulliService,
   type TautulliClient,
+  TautulliService as TautulliServiceClass,
 } from './services/tautulliService.js';
 import { createResendService, type MailSender } from './services/resendService.js';
 import {
@@ -29,6 +30,9 @@ import ThumbnailRepository from './repositories/thumbnailRepository.js';
 import TautulliSnapshotRepository from './repositories/tautulliSnapshotRepository.js';
 import SeasonRepository from './repositories/seasonRepository.js';
 import CastRepository from './repositories/castRepository.js';
+import { LibrarySectionRepository } from './repositories/librarySectionRepository.js';
+import { SyncScheduleRepository } from './repositories/syncScheduleRepository.js';
+import { TautulliConfigRepository } from './repositories/tautulliConfigRepository.js';
 import { createMediaRouter } from './routes/media.js';
 import { errorHandler, requestLogger } from './middleware/errorHandler.js';
 import { createAuthMiddleware } from './middleware/auth.js';
@@ -40,6 +44,9 @@ import { setupSwagger } from './config/swaggerSetup.js';
 import { createAdminRouter } from './routes/admin.js';
 import { createBasicAuthMiddleware } from './middleware/basicAuth.js';
 import { createThumbnailRouter } from './routes/thumbnails.js';
+import { createTautulliSyncRouter } from './routes/tautulliSync.js';
+import { TautulliSyncService } from './services/tautulliSyncService.js';
+import { SchedulerService } from './services/schedulerService.js';
 import logger from './services/logger.js';
 
 export interface ServerDependencies {
@@ -185,8 +192,110 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
         ? new CastRepository(drizzleDb)
         : null;
 
+  // Initialize new repositories for Tautulli sync
+  const librarySectionRepo = new LibrarySectionRepository(drizzleDb);
+  const syncScheduleRepo = new SyncScheduleRepository(drizzleDb);
+  const tautulliConfigRepo = new TautulliConfigRepository(drizzleDb);
+
   if (!mediaRepository || !thumbnailRepository || !tautulliSnapshotRepository || !seasonRepository || !castRepository) {
     throw new Error('Database repositories are not configured.');
+  }
+
+  interface TautulliState {
+    service: TautulliClient | null;
+    syncService: TautulliSyncService | null;
+    scheduler: SchedulerService | null;
+  }
+
+  const tautulliState: TautulliState = {
+    service: tautulliService,
+    syncService: null,
+    scheduler: null,
+  };
+
+  const buildSyncService = (service: TautulliClient | null): TautulliSyncService | null => {
+    if (!service) {
+      return null;
+    }
+
+    if (
+      typeof service.getLibraries !== 'function' ||
+      typeof service.getLibraryMediaList !== 'function' ||
+      typeof service.getMetadata !== 'function'
+    ) {
+      logger.warn('Tautulli client does not expose required methods; sync service will not start');
+      return null;
+    }
+
+    return new TautulliSyncService(
+      service as TautulliServiceClass,
+      mediaRepository,
+      seasonRepository,
+      librarySectionRepo,
+      tmdbService ?? undefined,
+    );
+  };
+
+  const restartScheduler = (syncService: TautulliSyncService | null) => {
+    if (tautulliState.scheduler) {
+      tautulliState.scheduler.stop();
+      tautulliState.scheduler = null;
+      logger.info('Scheduler service stopped');
+    }
+
+    if (!syncService) {
+      return;
+    }
+
+    tautulliState.scheduler = new SchedulerService(
+      { enabled: true },
+      syncScheduleRepo,
+      syncService,
+    );
+    tautulliState.scheduler.start();
+    logger.info('Scheduler service started');
+  };
+
+  const refreshTautulliIntegration = (input?: { baseUrl: string; apiKey: string }) => {
+    const config = input ?? (() => {
+      const stored = tautulliConfigRepo.get();
+      if (!stored) {
+        throw new Error('Tautulli is not configured.');
+      }
+      return { baseUrl: stored.tautulliUrl, apiKey: stored.apiKey };
+    })();
+
+    tautulliState.service = createTautulliService({
+      baseUrl: config.baseUrl,
+      apiKey: config.apiKey,
+    });
+    tautulliService = tautulliState.service;
+
+    logger.info('Tautulli service initialized', {
+      source: input ? 'runtime' : 'stored',
+      url: config.baseUrl,
+    });
+
+    tautulliState.syncService = buildSyncService(tautulliState.service);
+    if (tautulliState.syncService) {
+      logger.info('Tautulli sync service initialized');
+    }
+
+    restartScheduler(tautulliState.syncService);
+  };
+
+  // Attempt to build sync and scheduler services with existing configuration
+  tautulliState.syncService = buildSyncService(tautulliState.service);
+  if (tautulliState.syncService) {
+    restartScheduler(tautulliState.syncService);
+  } else if (!tautulliState.service) {
+    const tautulliConfigFromTable = tautulliConfigRepo.get();
+    if (tautulliConfigFromTable) {
+      refreshTautulliIntegration({
+        baseUrl: tautulliConfigFromTable.tautulliUrl,
+        apiKey: tautulliConfigFromTable.apiKey,
+      });
+    }
   }
 
   const heroPipelineService = createHeroPipelineService({
@@ -248,10 +357,12 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
   app.use('/api/newsletter', newsletterRouter);
 
   // Protected routes
+  tautulliService = tautulliState.service;
+
   app.use(
     '/libraries',
     authMiddleware,
-    createLibrariesRouter({ tautulliService, snapshotRepository: tautulliSnapshotRepository }),
+    createLibrariesRouter({ tautulliService: tautulliState.service, snapshotRepository: tautulliSnapshotRepository }),
   );
   app.use('/media', createMediaRouter({ mediaRepository, thumbnailRepository }));
 
@@ -264,13 +375,28 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
       mediaRepository,
       thumbnailRepository,
       resendService,
-      tautulliService,
+      tautulliService: tautulliState.service,
       seasonRepository,
       castRepository,
       drizzleDatabase: drizzleDb ?? undefined,
       settingsRepository,
       tmdbManager,
       heroPipeline: heroPipelineService,
+    }),
+  );
+
+  // Tautulli Sync routes (protected with Basic Auth)
+  app.use(
+    '/admin/api/tautulli',
+    basicAuthMiddleware,
+    createTautulliSyncRouter({
+      getTautulliService: () => tautulliState.service,
+      getTautulliSyncService: () => tautulliState.syncService,
+      librarySectionRepo,
+      syncScheduleRepo,
+      tautulliConfigRepo,
+      getSchedulerService: () => tautulliState.scheduler,
+      refreshTautulliIntegration,
     }),
   );
 

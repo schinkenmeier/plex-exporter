@@ -56,6 +56,7 @@ const prepareInsert = (input: MediaCreateInput): MediaInsert => ({
   summary: input.summary ?? null,
   plexAddedAt: input.plexAddedAt ?? null,
   plexUpdatedAt: input.plexUpdatedAt ?? null,
+  lastSyncedAt: input.lastSyncedAt ?? null,
   poster: input.poster ?? null,
   backdrop: input.backdrop ?? null,
   genres: input.genres ?? null,
@@ -142,6 +143,7 @@ export interface MediaCreateInput {
   plexAddedAt?: string | null;
   plexUpdatedAt?: string | null;
   poster?: string | null;
+  lastSyncedAt?: string | null;
   backdrop?: string | null;
   genres?: string[] | null;
   directors?: string[] | null;
@@ -162,6 +164,7 @@ export interface MediaUpdateInput extends Partial<MediaCreateInput> {}
 
 export interface MediaFilterOptions {
   mediaType?: 'movie' | 'tv' | null;
+  librarySectionId?: number | null;
   year?: number | null;
   yearFrom?: number | null;
   yearTo?: number | null;
@@ -232,6 +235,7 @@ export class MediaRepository {
     if (input.summary !== undefined) changes.summary = input.summary ?? null;
     if (input.plexAddedAt !== undefined) changes.plexAddedAt = input.plexAddedAt ?? null;
     if (input.plexUpdatedAt !== undefined) changes.plexUpdatedAt = input.plexUpdatedAt ?? null;
+    if (input.lastSyncedAt !== undefined) changes.lastSyncedAt = input.lastSyncedAt ?? null;
     if (input.poster !== undefined) changes.poster = input.poster ?? null;
     if (input.backdrop !== undefined) changes.backdrop = input.backdrop ?? null;
     if (input.genres !== undefined) changes.genres = input.genres ?? null;
@@ -287,6 +291,9 @@ export class MediaRepository {
 
     if (options.mediaType) {
       conditions.push(eq(mediaItems.type, options.mediaType));
+    }
+    if (options.librarySectionId !== undefined && options.librarySectionId !== null) {
+      conditions.push(eq(mediaItems.librarySectionId, options.librarySectionId));
     }
     if (options.year !== undefined && options.year !== null) {
       conditions.push(eq(mediaItems.year, options.year));

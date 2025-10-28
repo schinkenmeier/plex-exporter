@@ -9,6 +9,8 @@ const mediaTypes = ['movie', 'tv'] as const;
 const importStatuses = ['pending', 'running', 'completed', 'failed'] as const;
 const emailStatuses = ['draft', 'scheduled', 'sent', 'failed'] as const;
 const scheduleFrequencies = ['hourly', 'daily', 'weekly', 'monthly'] as const;
+const jobTypes = ['tautulli_sync', 'cover_update'] as const;
+const sectionTypes = ['movie', 'show'] as const;
 
 export const users = sqliteTable('users', {
   id: text('id')
@@ -57,6 +59,7 @@ export const mediaItems = sqliteTable('media_items', {
   guid: text('guid'),
   plexUpdatedAt: text('plex_updated_at'),
   plexAddedAt: text('plex_added_at'),
+  lastSyncedAt: text('last_synced_at'),
   createdAt: text('created_at')
     .notNull()
     .default(sql`CURRENT_TIMESTAMP`),
@@ -404,4 +407,72 @@ export const insertWelcomeEmailSchema = createInsertSchema(welcomeEmails).omit({
 });
 export type InsertWelcomeEmail = z.infer<typeof insertWelcomeEmailSchema>;
 export type WelcomeEmail = typeof welcomeEmails.$inferSelect;
+
+export const librarySections = sqliteTable('library_sections', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  sectionId: integer('section_id').notNull().unique(),
+  sectionName: text('section_name').notNull(),
+  sectionType: text('section_type', { enum: sectionTypes }).notNull(),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+  lastSyncedAt: text('last_synced_at'),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const insertLibrarySectionSchema = createInsertSchema(librarySections).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertLibrarySection = z.infer<typeof insertLibrarySectionSchema>;
+export type LibrarySection = typeof librarySections.$inferSelect;
+
+export const syncSchedules = sqliteTable('sync_schedules', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  jobType: text('job_type', { enum: jobTypes }).notNull(),
+  cronExpression: text('cron_expression').notNull(),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+  lastRunAt: text('last_run_at'),
+  nextRunAt: text('next_run_at'),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const insertSyncScheduleSchema = createInsertSchema(syncSchedules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertSyncSchedule = z.infer<typeof insertSyncScheduleSchema>;
+export type SyncSchedule = typeof syncSchedules.$inferSelect;
+
+export const tautulliConfig = sqliteTable('tautulli_config', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  tautulliUrl: text('tautulli_url').notNull(),
+  apiKey: text('api_key').notNull(),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const insertTautulliConfigSchema = createInsertSchema(tautulliConfig).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertTautulliConfig = z.infer<typeof insertTautulliConfigSchema>;
+export type TautulliConfig = typeof tautulliConfig.$inferSelect;
 

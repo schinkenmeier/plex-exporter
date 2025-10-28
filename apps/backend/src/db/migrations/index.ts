@@ -8,6 +8,8 @@ import { convertLegacyMediaMigration } from './006_convert_legacy_media.js';
 import { integrationSettingsMigration } from './007_integration_settings.js';
 import { emailFeaturesMigration } from './008_email_features.js';
 import { removeBookmarksMigration } from './009_remove_bookmarks.js';
+import { tautulliSyncMigration } from './010_tautulli_sync.js';
+import { tautulliConfigMigration } from './011_tautulli_config.js';
 import type { Migration } from './types.js';
 
 const migrations: Migration[] = [
@@ -20,6 +22,8 @@ const migrations: Migration[] = [
   integrationSettingsMigration,
   emailFeaturesMigration,
   removeBookmarksMigration,
+  tautulliSyncMigration,
+  tautulliConfigMigration,
 ];
 
 export const runMigrations = (db: SqliteDatabase) => {

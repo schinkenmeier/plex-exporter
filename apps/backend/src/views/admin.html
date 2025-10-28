@@ -638,6 +638,7 @@
         <button class="nav-button" data-view="import">Imports</button>
         <button class="nav-button" data-view="config">Configuration</button>
         <button class="nav-button" data-view="logs">Logs</button>
+        <button class="nav-button" data-view="tautulli-sync">Tautulli Sync</button>
         <button class="nav-button" data-view="diagnostics">Diagnostics</button>
       </nav>
       <div class="sidebar-footer">
@@ -802,6 +803,8 @@
             <label class="input-label" for="resend-from-email-input">From email address</label>
             <input id="resend-from-email-input" type="email" autocomplete="off" placeholder="no-reply@example.com">
             <div class="muted" id="resend-status">Loading Resend status…</div>
+            <label class="input-label" for="resend-test-to-input">Test recipient email</label>
+            <input id="resend-test-to-input" type="email" autocomplete="off" placeholder="test@example.com">
             <div class="button-row">
               <button class="btn btn-primary" id="btn-save-resend">Save configuration</button>
               <button class="btn" id="btn-test-resend">Send test email</button>
@@ -844,6 +847,102 @@
           <div class="muted" id="log-summary">No logs loaded yet.</div>
           <div class="log-view" id="log-view">Press refresh to load logs.</div>
         </article>
+      </section>
+
+      <section class="view" id="view-tautulli-sync">
+        <div class="panel-grid">
+          <!-- Tautulli Connection Panel -->
+          <article class="panel">
+            <h3>Tautulli Connection</h3>
+            <p>Configure Tautulli API connection settings</p>
+            <div id="tautulli-config-content">
+              <label class="input-label">Tautulli URL</label>
+              <input type="text" id="tautulli-url" placeholder="https://tautulli.example.com" style="width: 100%; margin-bottom: 4px;">
+              <small class="muted" style="display: block; margin-bottom: 12px;">
+                Enter the base URL only (e.g., https://tautulli.dinspel.eu). Do not include /api/v2 - it will be added automatically.
+              </small>
+              <label class="input-label">API Key</label>
+              <input type="password" id="tautulli-api-key" placeholder="Enter your Tautulli API key" style="width: 100%; margin-bottom: 12px;">
+              <label class="input-label">
+                <input type="checkbox" id="show-api-key">
+                Show API Key
+              </label>
+              <div style="margin-top: 12px;">
+                <button class="btn-primary" id="btn-save-tautulli-config">Save Configuration</button>
+                <button class="btn" id="btn-test-connection" style="margin-left: 8px;">Test Connection</button>
+              </div>
+              <div id="tautulli-config-status" class="muted" style="margin-top: 16px;"></div>
+            </div>
+          </article>
+
+          <!-- Library Selection Panel -->
+          <article class="panel">
+            <h3>Library Configuration</h3>
+            <p>Select which Tautulli libraries to sync</p>
+            <div id="library-config-content">
+              <button class="btn" id="btn-load-libraries">Load Available Libraries</button>
+              <div id="library-list" class="muted" style="margin-top: 16px;">Click "Load Available Libraries" to fetch from Tautulli</div>
+              <div id="selected-libraries" style="margin-top: 16px; display: none;">
+                <h4>Selected Libraries</h4>
+                <div id="selected-libraries-list"></div>
+                <button class="btn-primary" id="btn-save-libraries" style="margin-top: 12px;">Save Configuration</button>
+              </div>
+            </div>
+          </article>
+
+          <!-- Manual Sync Panel -->
+          <article class="panel">
+            <h3>Manual Sync</h3>
+            <p>Trigger a one-time synchronization</p>
+            <div class="button-row">
+              <label class="input-label">
+                <input type="checkbox" id="sync-incremental" checked>
+                Incremental (only changed items)
+              </label>
+              <label class="input-label">
+                <input type="checkbox" id="sync-tmdb" checked>
+                Enrich with TMDB data
+              </label>
+              <label class="input-label">
+                <input type="checkbox" id="sync-covers">
+                Sync covers from Tautulli
+              </label>
+            </div>
+            <button class="btn-primary" id="btn-start-sync">Start Sync</button>
+            <div id="sync-status" class="muted" style="margin-top: 16px;"></div>
+          </article>
+
+          <!-- Schedule Configuration Panel -->
+          <article class="panel">
+            <h3>Sync Schedule</h3>
+            <p>Configure automatic daily synchronization</p>
+            <div id="schedule-config">
+              <label class="input-label">Job Type</label>
+              <select id="schedule-job-type">
+                <option value="tautulli_sync">Tautulli Sync</option>
+                <option value="cover_update">Cover Update</option>
+              </select>
+              <label class="input-label">Cron Expression</label>
+              <input type="text" id="schedule-cron" placeholder="0 3 * * *" value="0 3 * * *">
+              <small class="muted">Example: "0 3 * * *" = Daily at 3:00 AM</small>
+              <label class="input-label">
+                <input type="checkbox" id="schedule-enabled" checked>
+                Enabled
+              </label>
+              <button class="btn" id="btn-save-schedule" style="margin-top: 12px;">Save Schedule</button>
+            </div>
+            <div id="current-schedules" style="margin-top: 16px;">
+              <h4>Current Schedules</h4>
+              <div id="schedules-list" class="muted">Loading...</div>
+            </div>
+          </article>
+
+          <!-- Sync Statistics Panel -->
+          <article class="panel">
+            <h3>Configured Libraries</h3>
+            <div id="library-sections-list" class="muted">Loading...</div>
+          </article>
+        </div>
       </section>
 
       <section class="view" id="view-diagnostics">
@@ -903,6 +1002,7 @@
           import: document.getElementById("view-import"),
           config: document.getElementById("view-config"),
           logs: document.getElementById("view-logs"),
+          "tautulli-sync": document.getElementById("view-tautulli-sync"),
           diagnostics: document.getElementById("view-diagnostics"),
         },
         refreshButton: document.getElementById("refresh-button"),
@@ -947,6 +1047,7 @@
         tmdbTestOutput: document.getElementById("tmdb-test-output"),
         resendApiKeyInput: document.getElementById("resend-api-key-input"),
         resendFromEmailInput: document.getElementById("resend-from-email-input"),
+        resendTestToInput: document.getElementById("resend-test-to-input"),
         resendStatus: document.getElementById("resend-status"),
         resendSaveButton: document.getElementById("btn-save-resend"),
         resendTestButton: document.getElementById("btn-test-resend"),
@@ -982,6 +1083,7 @@
         import: "Control the import worker and inspect the latest console output.",
         config: "Manage TMDb credentials and inspect the backend configuration snapshot.",
         logs: "Inspect the in-memory log buffer. Useful for quick diagnostics.",
+        "tautulli-sync": "Manage Tautulli synchronization, library selection, and sync schedules.",
         diagnostics: "Connectivity checks for Tautulli and database services.",
       };
 
@@ -990,6 +1092,11 @@
         import: loadImportView,
         config: loadConfig,
         logs: loadLogs,
+        "tautulli-sync": async () => {
+          await loadTautulliConfig();
+          await loadLibrarySections();
+          await loadSchedules();
+        },
         diagnostics: async () => {},
       };
 
@@ -1471,13 +1578,14 @@
         if (elements.resendTestButton) elements.resendTestButton.disabled = true;
         if (elements.resendClearButton) elements.resendClearButton.disabled = true;
         try {
-          const data = await fetchJson(`${API_BASE}/resend/settings`, {
+          await fetchJson(`${API_BASE}/resend/settings`, {
             method: "PUT",
             body: JSON.stringify({ apiKey, fromEmail }),
           });
           elements.resendApiKeyInput.value = "";
           elements.resendFromEmailInput.value = "";
-          renderResendStatus(data.status);
+          // Reload status to update state
+          await loadResendStatus();
           if (elements.resendTestOutput) {
             elements.resendTestOutput.textContent = "Configuration saved. Run a test to verify.";
           }
@@ -1495,14 +1603,20 @@
 
       async function handleTestResend(event) {
         event?.preventDefault();
-        if (!elements.resendTestButton) return;
-        const apiKey = elements.resendApiKeyInput ? elements.resendApiKeyInput.value.trim() : "";
-        const fromEmail = elements.resendFromEmailInput ? elements.resendFromEmailInput.value.trim() : "";
-        if ((!apiKey || !fromEmail) && !state.resendStatus?.enabled) {
+        if (!elements.resendTestButton || !elements.resendTestToInput) return;
+        const toEmail = elements.resendTestToInput.value.trim();
+        if (!toEmail) {
           if (elements.resendTestOutput) {
-            elements.resendTestOutput.textContent = "Enter configuration or save one before running a test.";
+            elements.resendTestOutput.textContent = "Please enter a recipient email address.";
           }
-          showToast("Provide Resend configuration to run the test.", "error");
+          showToast("Please enter a recipient email address to send the test.", "error");
+          return;
+        }
+        if (!state.resendStatus?.enabled) {
+          if (elements.resendTestOutput) {
+            elements.resendTestOutput.textContent = "Please save Resend configuration before running a test.";
+          }
+          showToast("Please save Resend configuration before running a test.", "error");
           return;
         }
         elements.resendTestButton.disabled = true;
@@ -1510,14 +1624,13 @@
           elements.resendTestOutput.textContent = "Sending test email...";
         }
         try {
-          const payload = (apiKey && fromEmail) ? { apiKey, fromEmail } : {};
           const data = await fetchJson(`${API_BASE}/test/resend`, {
             method: "POST",
-            body: JSON.stringify(payload),
+            body: JSON.stringify({ to: toEmail }),
           });
-          let message = `Success: ${data.message}`;
-          if (data.emailId) {
-            message += ` | Email ID: ${data.emailId}`;
+          let message = `Success: Test email sent to ${toEmail}`;
+          if (data.id) {
+            message += ` | Email ID: ${data.id}`;
           }
           if (elements.resendTestOutput) {
             elements.resendTestOutput.textContent = message;
@@ -1820,11 +1933,300 @@
         }
       }
 
+      // Tautulli Sync Functions
+      let availableLibraries = [];
+      let selectedLibraryIds = new Set();
+
+      async function loadAvailableLibraries() {
+        try {
+          const res = await fetch("/admin/api/tautulli/libraries");
+          if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+          const data = await res.json();
+          availableLibraries = data.libraries || [];
+          renderLibraryList();
+          showToast("Libraries loaded", "success");
+        } catch (err) {
+          showToast(err.message, "error");
+        }
+      }
+
+      function renderLibraryList() {
+        const container = document.getElementById("library-list");
+        if (availableLibraries.length === 0) {
+          container.innerHTML = '<div class="muted">No libraries found</div>';
+          return;
+        }
+        container.innerHTML = availableLibraries.map(lib => `
+          <label style="display: block; margin: 8px 0;">
+            <input type="checkbox" value="${lib.sectionId}" class="library-checkbox"
+              ${selectedLibraryIds.has(lib.sectionId) ? 'checked' : ''}>
+            ${lib.friendlyName || lib.sectionName} (${lib.sectionType})
+          </label>
+        `).join('');
+        document.querySelectorAll('.library-checkbox').forEach(cb => {
+          cb.addEventListener('change', (e) => {
+            const id = parseInt(e.target.value);
+            if (e.target.checked) {
+              selectedLibraryIds.add(id);
+            } else {
+              selectedLibraryIds.delete(id);
+            }
+            updateSelectedLibraries();
+          });
+        });
+        updateSelectedLibraries();
+      }
+
+      function updateSelectedLibraries() {
+        const container = document.getElementById('selected-libraries');
+        const list = document.getElementById('selected-libraries-list');
+        if (selectedLibraryIds.size === 0) {
+          container.style.display = 'none';
+          return;
+        }
+        container.style.display = 'block';
+        const selected = availableLibraries.filter(lib => selectedLibraryIds.has(lib.sectionId));
+        list.innerHTML = selected.map(lib =>
+          `<div style="padding: 4px 0;">${lib.friendlyName || lib.sectionName} (${lib.sectionType})</div>`
+        ).join('');
+      }
+
+      async function saveLibraryConfiguration() {
+        try {
+          console.log('selectedLibraryIds:', selectedLibraryIds);
+          console.log('availableLibraries:', availableLibraries);
+          const selected = availableLibraries.filter(lib => selectedLibraryIds.has(lib.sectionId));
+          console.log('selected libraries:', selected);
+          const payload = {
+            sections: selected.map(lib => ({
+              sectionId: lib.sectionId,
+              sectionName: lib.sectionName,
+              sectionType: lib.sectionType,
+              enabled: true
+            }))
+          };
+          console.log('Sending payload:', payload);
+          const res = await fetch("/admin/api/tautulli/library-sections", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          showToast("Library configuration saved", "success");
+          await loadLibrarySections();
+        } catch (err) {
+          showToast(err.message, "error");
+        }
+      }
+
+      async function loadLibrarySections() {
+        try {
+          const res = await fetch("/admin/api/tautulli/library-sections");
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          const container = document.getElementById("library-sections-list");
+          if (!data.sections || data.sections.length === 0) {
+            container.innerHTML = '<div class="muted">No libraries configured</div>';
+            return;
+          }
+          container.innerHTML = data.sections.map(s => `
+            <div style="padding: 8px; background: var(--color-surface); border-radius: 8px; margin: 4px 0;">
+              <strong>${s.sectionName}</strong> (${s.sectionType}) - ${s.enabled ? 'Enabled' : 'Disabled'}
+            </div>
+          `).join('');
+        } catch (err) {
+          showToast(err.message, "error");
+        }
+      }
+
+      async function startManualSync() {
+        try {
+          const incremental = document.getElementById("sync-incremental").checked;
+          const enrichWithTmdb = document.getElementById("sync-tmdb").checked;
+          const syncCovers = document.getElementById("sync-covers").checked;
+
+          const res = await fetch("/admin/api/tautulli/sync/manual", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ incremental, enrichWithTmdb, syncCovers })
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+          document.getElementById("sync-status").textContent = "Sync started in background. Check logs for progress.";
+          showToast("Sync started", "success");
+        } catch (err) {
+          showToast(err.message, "error");
+        }
+      }
+
+      async function saveSchedule() {
+        try {
+          const jobType = document.getElementById("schedule-job-type").value;
+          const cronExpression = document.getElementById("schedule-cron").value;
+          const enabled = document.getElementById("schedule-enabled").checked;
+
+          const res = await fetch("/admin/api/tautulli/sync/schedules", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ jobType, cronExpression, enabled })
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+          showToast("Schedule saved", "success");
+          await loadSchedules();
+        } catch (err) {
+          showToast(err.message, "error");
+        }
+      }
+
+      async function loadSchedules() {
+        try {
+          const res = await fetch("/admin/api/tautulli/sync/schedules");
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          const container = document.getElementById("schedules-list");
+          if (!data.schedules || data.schedules.length === 0) {
+            container.innerHTML = '<div class="muted">No schedules configured</div>';
+            return;
+          }
+          container.innerHTML = data.schedules.map(s => `
+            <div style="padding: 8px; background: var(--color-surface); border-radius: 8px; margin: 4px 0;">
+              <strong>${s.jobType}</strong>: ${s.cronExpression} - ${s.enabled ? 'Enabled' : 'Disabled'}
+              ${s.lastRunAt ? `<br><small>Last run: ${new Date(s.lastRunAt).toLocaleString()}</small>` : ''}
+            </div>
+          `).join('');
+        } catch (err) {
+          showToast(err.message, "error");
+        }
+      }
+
+      async function loadTautulliConfig() {
+        try {
+          const res = await fetch("/admin/api/tautulli/config");
+          const data = await res.json();
+
+          if (data.configured) {
+            document.getElementById("tautulli-url").value = data.tautulliUrl || "";
+            document.getElementById("tautulli-config-status").textContent =
+              "Configuration loaded. API Key is set.";
+            document.getElementById("tautulli-config-status").classList.remove("error");
+          } else {
+            document.getElementById("tautulli-config-status").textContent =
+              "No configuration found. Please enter Tautulli URL and API Key.";
+            document.getElementById("tautulli-config-status").classList.add("muted");
+          }
+        } catch (err) {
+          document.getElementById("tautulli-config-status").textContent =
+            "Failed to load configuration: " + err.message;
+          document.getElementById("tautulli-config-status").classList.add("error");
+        }
+      }
+
+      async function saveTautulliConfig() {
+        const url = document.getElementById("tautulli-url").value.trim();
+        const apiKey = document.getElementById("tautulli-api-key").value.trim();
+        const statusEl = document.getElementById("tautulli-config-status");
+
+        if (!url || !apiKey) {
+          statusEl.textContent = "Please enter both Tautulli URL and API Key";
+          statusEl.classList.add("error");
+          return;
+        }
+
+        try {
+          statusEl.textContent = "Saving configuration...";
+          statusEl.classList.remove("error");
+
+          const res = await fetch("/admin/api/tautulli/config", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tautulliUrl: url, apiKey }),
+          });
+
+          if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.message || "Failed to save configuration");
+          }
+
+          const data = await res.json();
+          statusEl.textContent = "Configuration saved successfully!";
+          statusEl.classList.remove("error");
+
+          // Clear API key input for security
+          document.getElementById("tautulli-api-key").value = "";
+
+          showToast("Tautulli configuration saved", "success");
+        } catch (err) {
+          statusEl.textContent = "Failed to save: " + err.message;
+          statusEl.classList.add("error");
+          showToast(err.message, "error");
+        }
+      }
+
+      async function testTautulliConnection() {
+        const url = document.getElementById("tautulli-url").value.trim();
+        const apiKey = document.getElementById("tautulli-api-key").value.trim();
+        const statusEl = document.getElementById("tautulli-config-status");
+
+        try {
+          statusEl.textContent = "Testing connection...";
+          statusEl.classList.remove("error");
+
+          const body = url && apiKey ? { tautulliUrl: url, apiKey } : {};
+
+          const res = await fetch("/admin/api/tautulli/config/test", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+
+          if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.message || "Connection test failed");
+          }
+
+          const data = await res.json();
+          statusEl.textContent = `Connection successful! Found ${data.libraryCount} libraries.`;
+          statusEl.classList.remove("error");
+          showToast("Connection test successful", "success");
+        } catch (err) {
+          statusEl.textContent = "Connection test failed: " + err.message;
+          statusEl.classList.add("error");
+          showToast(err.message, "error");
+        }
+      }
+
+      function bindTautulliSyncEvents() {
+        const btnSaveConfig = document.getElementById("btn-save-tautulli-config");
+        const btnTestConnection = document.getElementById("btn-test-connection");
+        const showApiKeyCheckbox = document.getElementById("show-api-key");
+        const apiKeyInput = document.getElementById("tautulli-api-key");
+        const btnLoadLibs = document.getElementById("btn-load-libraries");
+        const btnSaveLibs = document.getElementById("btn-save-libraries");
+        const btnStartSync = document.getElementById("btn-start-sync");
+        const btnSaveSchedule = document.getElementById("btn-save-schedule");
+
+        if (btnSaveConfig) btnSaveConfig.addEventListener("click", saveTautulliConfig);
+        if (btnTestConnection) btnTestConnection.addEventListener("click", testTautulliConnection);
+        if (showApiKeyCheckbox) {
+          showApiKeyCheckbox.addEventListener("change", (e) => {
+            apiKeyInput.type = e.target.checked ? "text" : "password";
+          });
+        }
+        if (btnLoadLibs) btnLoadLibs.addEventListener("click", loadAvailableLibraries);
+        if (btnSaveLibs) btnSaveLibs.addEventListener("click", saveLibraryConfiguration);
+        if (btnStartSync) btnStartSync.addEventListener("click", startManualSync);
+        if (btnSaveSchedule) btnSaveSchedule.addEventListener("click", saveSchedule);
+      }
+
       function init() {
         bindEvents();
+        bindTautulliSyncEvents();
         const stored = localStorage.getItem("admin:autoRefresh") === "1";
         setAutoRefresh(stored);
         loadDashboard().catch(err => showToast(err.message, "error"));
+        loadLibrarySections().catch(() => {});
+        loadSchedules().catch(() => {});
       }
 
       window.addEventListener("visibilitychange", () => {

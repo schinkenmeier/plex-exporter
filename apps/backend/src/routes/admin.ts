@@ -187,9 +187,17 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
       const record = settingsRepository.set('tmdb.accessToken', rawToken);
       const service = tmdbManager.setDatabaseToken(record.value, { updatedAt: record.updatedAt });
       heroPipeline.setTmdbService(service);
+      const status = tmdbManager.getStatus();
       res.json({
         success: true,
-        status: tmdbManager.getStatus(),
+        status: {
+          enabled: status.hasToken,
+          source: status.source,
+          tokenPreview: status.tokenPreview,
+          updatedAt: status.updatedAt,
+          fromEnv: status.fromEnv,
+          fromDatabase: status.fromDatabase,
+        },
       });
     } catch (error) {
       next(error);
@@ -200,9 +208,17 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
     settingsRepository.delete('tmdb.accessToken');
     const service = tmdbManager.setDatabaseToken(null);
     heroPipeline.setTmdbService(service);
+    const status = tmdbManager.getStatus();
     res.json({
       success: true,
-      status: tmdbManager.getStatus(),
+      status: {
+        enabled: status.hasToken,
+        source: status.source,
+        tokenPreview: status.tokenPreview,
+        updatedAt: status.updatedAt,
+        fromEnv: status.fromEnv,
+        fromDatabase: status.fromDatabase,
+      },
     });
   });
 
@@ -527,14 +543,18 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
       const apiKey = settingsRepository.get('resend.apiKey');
       const fromEmail = settingsRepository.get('resend.fromEmail');
 
+      const hasDbConfig = !!apiKey?.value && !!fromEmail?.value;
+      const hasEnvConfig = !!(config.resend?.apiKey && config.resend?.fromEmail);
+
       res.json({
         success: true,
-        settings: {
-          hasApiKey: !!apiKey?.value,
-          apiKey: apiKey?.value ? maskSensitive(apiKey.value) : null,
-          fromEmail: fromEmail?.value || null,
-          updatedAt: apiKey?.updatedAt || fromEmail?.updatedAt || null,
-        },
+        enabled: hasDbConfig || hasEnvConfig,
+        fromDatabase: hasDbConfig,
+        fromEnv: hasEnvConfig && !hasDbConfig,
+        source: hasEnvConfig && !hasDbConfig ? 'environment' : 'database',
+        apiKeyPreview: apiKey?.value ? maskSensitive(apiKey.value) : null,
+        fromEmail: fromEmail?.value || null,
+        updatedAt: apiKey?.updatedAt || fromEmail?.updatedAt || null,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
