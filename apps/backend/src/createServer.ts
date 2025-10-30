@@ -347,7 +347,9 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
   // Public routes (no auth required)
   app.use('/health', createHealthRouter(appConfig));
   app.use('/api/exports', createExportsRouter());
-  app.use('/api/thumbnails', createThumbnailRouter());
+  app.use('/api/thumbnails', createThumbnailRouter({
+    tautulliService: tautulliState.service as any
+  }));
   if (heroPipelineService) {
     app.use('/api/hero', createHeroRouter({ heroPipeline: heroPipelineService }));
   }

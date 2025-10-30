@@ -314,30 +314,94 @@ function finishGridTransition(grid){
 }
 
 
+const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
+const TMDB_CARD_SIZE = 'w500';
+
+function normaliseLocalPoster(candidate){
+  const raw = typeof candidate === 'string' ? candidate.trim() : '';
+  if(!raw) return '';
+  if(/^data:/i.test(raw)) return raw;
+  if(/^https?:\/\//i.test(raw)) return raw;
+  if(raw.startsWith('//')) return `https:${raw}`;
+  if(/^[a-z]+:\/\//i.test(raw)) return ''; // unsupported schemes like library://
+  if(raw.startsWith('/')) return raw;
+  if(raw.startsWith('assets/')) return raw;
+  if(raw.startsWith('./') || raw.startsWith('../')) return raw;
+  if(!raw.includes('/') && raw.includes('.thumb.')) return '';
+  return raw;
+}
+
+function extractPosterValue(candidate){
+  if(!candidate) return '';
+  if(typeof candidate === 'string') return candidate;
+  if(Array.isArray(candidate)){
+    for(const entry of candidate){
+      const value = extractPosterValue(entry);
+      if(value) return value;
+    }
+    return '';
+  }
+  if(candidate && typeof candidate === 'object'){
+    const value =
+      candidate.file_path ??
+      candidate.filePath ??
+      candidate.path ??
+      candidate.url ??
+      candidate.poster ??
+      candidate.location ??
+      '';
+    if(typeof value === 'string') return value;
+  }
+  return '';
+}
+
+function normaliseTmdbPoster(candidate){
+  const raw = extractPosterValue(candidate).trim();
+  if(!raw) return '';
+  if(/^data:/i.test(raw)) return raw;
+  if(/^https?:\/\//i.test(raw)) return raw;
+  if(raw.startsWith('//')) return `https:${raw}`;
+  if(raw.startsWith('/')) return `${TMDB_IMAGE_BASE}/${TMDB_CARD_SIZE}${raw}`;
+  if(raw.startsWith('t/p/')){
+    const suffix = raw.slice(4);
+    return suffix ? `${TMDB_IMAGE_BASE}/${TMDB_CARD_SIZE}/${suffix}` : `${TMDB_IMAGE_BASE}/${TMDB_CARD_SIZE}`;
+  }
+  if(/^w\d+\//i.test(raw) || /^original\//i.test(raw)){
+    return `${TMDB_IMAGE_BASE}/${raw}`;
+  }
+  if(raw.includes('/')){
+    const trimmed = raw.replace(/^\//, '');
+    return `${TMDB_IMAGE_BASE}/${TMDB_CARD_SIZE}/${trimmed}`;
+  }
+  return `${TMDB_IMAGE_BASE}/${TMDB_CARD_SIZE}/${raw}`;
+}
+
 function resolvePoster(item){
   if(!item) return '';
 
-  // Try TMDb poster URLs first
-  const tmdbPoster = useTmdbForCards() && (item?.tmdb?.poster || item?.tmdbPoster);
-  if(tmdbPoster && (tmdbPoster.startsWith('http') || tmdbPoster.startsWith('/'))){
-    return tmdbPoster;
+  const localPath = normaliseLocalPoster(item?.thumbFile || item?.poster || item?.art || item?.thumb || '');
+
+  let tmdbPoster = '';
+  const tmdb = item?.tmdb || {};
+  const tmdbCandidates = [
+    item?.tmdbPoster,
+    tmdb.poster,
+    tmdb.poster_path,
+    tmdb.posterPath
+  ];
+  if(Array.isArray(tmdb.posters)) tmdbCandidates.push(...tmdb.posters);
+  if(Array.isArray(tmdb.images?.posters)) tmdbCandidates.push(...tmdb.images.posters);
+  for(const candidate of tmdbCandidates){
+    const resolved = normaliseTmdbPoster(candidate);
+    if(resolved){
+      tmdbPoster = resolved;
+      break;
+    }
   }
 
-  // Try local/export paths
-  const localPath = item?.thumbFile || item?.poster || item?.art || item?.thumb || '';
-  if(localPath){
-    // If it's already a full URL or starts with /, use it
-    if(localPath.startsWith('http') || localPath.startsWith('/data/') || localPath.startsWith('/library/')){
-      return localPath;
-    }
-    // If it looks like a filename, skip it (it will 404, and img.onerror will handle fallback)
-    // Return empty string to trigger fallback immediately
-    if(!localPath.includes('/') && localPath.includes('.thumb.')){
-      return '';
-    }
-    return localPath;
-  }
-
+  if(useTmdbForCards() && tmdbPoster) return tmdbPoster;
+  if(localPath) return localPath;
+  if(tmdbPoster) return tmdbPoster;
   return '';
 }
 

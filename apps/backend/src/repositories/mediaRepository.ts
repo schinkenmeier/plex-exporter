@@ -43,6 +43,10 @@ const mapRowToRecord = (row: MediaRow): MediaRecord => ({
   originallyAvailableAt: row.originallyAvailableAt ?? null,
   poster: row.poster ?? null,
   backdrop: row.backdrop ?? null,
+  tmdbId: row.tmdbId ?? null,
+  tmdbRating: row.tmdbRating ?? null,
+  tmdbVoteCount: row.tmdbVoteCount ?? null,
+  tmdbEnriched: row.tmdbEnriched ?? false,
 });
 
 const prepareInsert = (input: MediaCreateInput): MediaInsert => ({
@@ -72,6 +76,10 @@ const prepareInsert = (input: MediaCreateInput): MediaInsert => ({
   duration: input.duration ?? null,
   addedAt: input.addedAt ?? null,
   originallyAvailableAt: input.originallyAvailableAt ?? null,
+  tmdbId: input.tmdbId ?? null,
+  tmdbRating: input.tmdbRating ?? null,
+  tmdbVoteCount: input.tmdbVoteCount ?? null,
+  tmdbEnriched: input.tmdbEnriched ?? false,
 });
 
 const buildSortExpressions = (
@@ -129,6 +137,10 @@ export interface MediaRecord {
   originallyAvailableAt: string | null;
   poster: string | null;
   backdrop: string | null;
+  tmdbId: number | null;
+  tmdbRating: number | null;
+  tmdbVoteCount: number | null;
+  tmdbEnriched: boolean;
 }
 
 export interface MediaCreateInput {
@@ -158,6 +170,10 @@ export interface MediaCreateInput {
   duration?: number | null;
   addedAt?: string | null;
   originallyAvailableAt?: string | null;
+  tmdbId?: number | null;
+  tmdbRating?: number | null;
+  tmdbVoteCount?: number | null;
+  tmdbEnriched?: boolean;
 }
 
 export interface MediaUpdateInput extends Partial<MediaCreateInput> {}
@@ -253,6 +269,10 @@ export class MediaRepository {
     if (input.originallyAvailableAt !== undefined) {
       changes.originallyAvailableAt = input.originallyAvailableAt ?? null;
     }
+    if (input.tmdbId !== undefined) changes.tmdbId = input.tmdbId ?? null;
+    if (input.tmdbRating !== undefined) changes.tmdbRating = input.tmdbRating ?? null;
+    if (input.tmdbVoteCount !== undefined) changes.tmdbVoteCount = input.tmdbVoteCount ?? null;
+    if (input.tmdbEnriched !== undefined) changes.tmdbEnriched = input.tmdbEnriched ?? false;
 
     if (Object.keys(changes).length === 0) {
       return existing;

@@ -228,12 +228,22 @@ const pruneCache = (cache: Map<string, CacheEntry>, maxEntries: number) => {
   }
 };
 
+export interface TmdbSearchResult {
+  id: number;
+  title?: string;
+  name?: string;
+  release_date?: string;
+  first_air_date?: string;
+  original_title?: string;
+}
+
 export interface TmdbService {
   isEnabled(): boolean;
   fetchDetails(type: 'movie' | 'tv', id: string | number, options?: FetchDetailsOptions): Promise<TmdbHeroDetails | null>;
   getRateLimitState(): TmdbRateLimitState;
   fetchDetailsByImdb(type: 'movie' | 'tv', imdbId: string | number, options?: FetchDetailsOptions): Promise<TmdbHeroDetails | null>;
   getPosterUrl(path: string | null | undefined, size?: string): string | null;
+  searchMovie(query: string, options?: { year?: number | null; language?: string }): Promise<TmdbSearchResult[]>;
 }
 
 export const createTmdbService = ({ accessToken, cacheTtlMs, maxCacheEntries }: TmdbServiceOptions): TmdbService => {
@@ -455,12 +465,95 @@ export const createTmdbService = ({ accessToken, cacheTtlMs, maxCacheEntries }: 
     return buildImageUrl(path, size);
   };
 
+  const searchMovie = async (
+    query: string,
+    options: { year?: number | null; language?: string } = {},
+  ): Promise<TmdbSearchResult[]> => {
+    if (!enabled) return [];
+    const normalizedQuery = typeof query === 'string' ? query.trim() : '';
+    if (!normalizedQuery) return [];
+    const now = Date.now();
+    const language = normalizeLanguage(options.language);
+    const normalizedYear =
+      options.year != null && Number.isFinite(options.year) ? Math.trunc(Number(options.year)) : undefined;
+
+    relaxRateLimit();
+    if (rateLimit.active && rateLimit.until > now) {
+      throw new TmdbRateLimitError('TMDB rate limit active', {
+        retryAfterMs: rateLimit.retryAfterMs,
+        until: rateLimit.until,
+      });
+    }
+
+    try {
+      const response = await axios.get(`${API_BASE_URL}/search/movie`, {
+        params: {
+          query: normalizedQuery,
+          language,
+          include_adult: false,
+          ...(normalizedYear ? { year: normalizedYear } : {}),
+        },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json;charset=utf-8',
+        },
+      });
+
+      const results = Array.isArray(response.data?.results) ? response.data.results : [];
+      rateLimit = { ...rateLimit, active: false, retryAfterMs: 0, until: 0, lastStatus: null };
+
+      return results
+        .filter((entry: any) => entry && entry.id != null)
+        .map((entry: any): TmdbSearchResult => ({
+          id: Number(entry.id),
+          title: typeof entry.title === 'string' ? entry.title : undefined,
+          name: typeof entry.name === 'string' ? entry.name : undefined,
+          original_title: typeof entry.original_title === 'string' ? entry.original_title : undefined,
+          release_date: typeof entry.release_date === 'string' ? entry.release_date : undefined,
+          first_air_date: typeof entry.first_air_date === 'string' ? entry.first_air_date : undefined,
+        }));
+    } catch (error) {
+      if (isAxiosError(error)) {
+        const status = error.response?.status ?? null;
+        if (status === 401 || status === 403) {
+          enabled = false;
+          logger.error('TMDB token rejected (search)', {
+            namespace: 'tmdb',
+            status,
+          });
+          return [];
+        }
+        if (status === 429) {
+          const retryAfterHeader = error.response?.headers?.['retry-after'];
+          const retryAfterMs = parseRetryAfter(retryAfterHeader);
+          registerRateLimit(status, retryAfterMs);
+          throw new TmdbRateLimitError('TMDB rate limit exceeded', {
+            retryAfterMs: rateLimit.retryAfterMs,
+            until: rateLimit.until,
+          });
+        }
+        logger.warn('TMDB search request failed', {
+          namespace: 'tmdb',
+          status,
+          message: error.message,
+        });
+      } else {
+        logger.warn('TMDB search request failed', {
+          namespace: 'tmdb',
+          error: error instanceof Error ? error.message : error,
+        });
+      }
+      throw error;
+    }
+  };
+
   return {
     isEnabled: () => enabled,
     fetchDetails,
     getRateLimitState,
     fetchDetailsByImdb,
     getPosterUrl,
+    searchMovie,
   };
 };
 

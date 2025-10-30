@@ -151,6 +151,10 @@ export class TautulliService implements TautulliClient {
     return fn();
   }
 
+  getBaseUrl(): string {
+    return this.config.baseUrl;
+  }
+
   async getLibraries(): Promise<TautulliLibrarySummary[]> {
     return this.executeWithRateLimit(async () => {
       const response = await this.httpClient.get<TautulliLibrariesPayload>('/api/v2', {
@@ -197,7 +201,20 @@ export class TautulliService implements TautulliClient {
         throw new Error(errorMessage);
       }
 
-      return response.data.response.data?.data ?? [];
+      const data = response.data.response.data;
+      const items = data?.data ?? [];
+
+      // Log Tautulli's response metadata to help debug pagination issues
+      console.log(`[Tautulli API] get_library_media_info response:`, {
+        sectionId,
+        start,
+        length,
+        recordsTotal: data?.recordsTotal,
+        recordsFiltered: data?.recordsFiltered,
+        itemsReturned: items.length,
+      });
+
+      return items;
     });
   }
 

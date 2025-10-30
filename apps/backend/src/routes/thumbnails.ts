@@ -1,9 +1,11 @@
 import express, { type Router } from 'express';
 import path from 'node:path';
 import { existsSync } from 'node:fs';
+import type TautulliService from '../services/tautulliService.js';
 
 export interface ThumbnailRouterOptions {
   exportsBasePath?: string;
+  tautulliService?: TautulliService;
 }
 
 /**
@@ -107,6 +109,43 @@ export const createThumbnailRouter = (options: ThumbnailRouterOptions = {}): Rou
     res.setHeader('Cache-Control', 'public, max-age=86400'); // 24 hours
     res.sendFile(filePath);
   });
+
+  /**
+   * Proxy Tautulli images
+   * GET /thumbnails/tautulli/library/metadata/:id/:type/:timestamp
+   * where :type is either 'thumb' or 'art'
+   * Proxies image requests to Tautulli with authentication
+   */
+  if (options.tautulliService) {
+    router.get('/tautulli/library/metadata/:id/:type/:timestamp', async (req, res) => {
+      const { id, type, timestamp } = req.params;
+
+      if (!id || !timestamp || !type || (type !== 'thumb' && type !== 'art')) {
+        return res.status(400).json({ error: 'Invalid parameters' });
+      }
+
+      try {
+        const tautulliBaseUrl = options.tautulliService!.getBaseUrl();
+        const imageUrl = `${tautulliBaseUrl}/library/metadata/${id}/${type}/${timestamp}`;
+
+        // Fetch image from Tautulli using the service's http client (which has API key)
+        const response = await (options.tautulliService! as any).httpClient.get(imageUrl, {
+          responseType: 'arraybuffer',
+          timeout: 10000,
+        });
+
+        // Forward the image with proper headers
+        res.setHeader('Content-Type', response.headers['content-type'] || 'image/jpeg');
+        res.setHeader('Cache-Control', 'public, max-age=86400'); // 24 hours
+        res.setHeader('Access-Control-Allow-Origin', '*'); // Allow CORS for images
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin'); // Allow cross-origin embedding
+        res.send(Buffer.from(response.data));
+      } catch (error) {
+        console.error('[Tautulli Proxy] Failed to fetch image:', error);
+        res.status(502).json({ error: 'Failed to fetch image from Tautulli' });
+      }
+    });
+  }
 
   return router;
 };

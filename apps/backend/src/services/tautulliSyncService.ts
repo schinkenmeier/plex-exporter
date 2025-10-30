@@ -194,8 +194,10 @@ export class TautulliSyncService {
   ): Promise<TautulliMediaItem[]> {
     const allMedia: TautulliMediaItem[] = [];
     let start = 0;
-    const length = 100; // Fetch in batches of 100
+    const length = 1000; // Fetch in batches of 1000 (more efficient)
     let hasMore = true;
+
+    console.log(`[Tautulli Sync] Starting to fetch media from library section ${sectionId}`);
 
     while (hasMore) {
       onProgress?.({
@@ -206,19 +208,23 @@ export class TautulliSyncService {
       });
 
       const batch = await this.tautulliService.getLibraryMediaList(sectionId, start, length);
+      console.log(`[Tautulli Sync] Batch fetched: start=${start}, length=${length}, received=${batch.length} items`);
 
       if (batch.length === 0) {
+        console.log(`[Tautulli Sync] No more items to fetch (empty batch)`);
         hasMore = false;
       } else {
         allMedia.push(...batch);
         start += length;
 
         if (batch.length < length) {
+          console.log(`[Tautulli Sync] Last batch received (${batch.length} < ${length})`);
           hasMore = false;
         }
       }
     }
 
+    console.log(`[Tautulli Sync] Finished fetching. Total items retrieved: ${allMedia.length}`);
     return allMedia;
   }
 
@@ -236,6 +242,8 @@ export class TautulliSyncService {
     let skipped = 0;
     const errors: string[] = [];
 
+    console.log(`[Tautulli Sync] Starting to sync ${mediaItems.length} movies`);
+
     for (let i = 0; i < mediaItems.length; i++) {
       const item = mediaItems[i];
 
@@ -248,7 +256,13 @@ export class TautulliSyncService {
 
       try {
         // Get detailed metadata
-        const metadata = await this.tautulliService.getMetadata(item.rating_key);
+        let metadata = await this.tautulliService.getMetadata(item.rating_key);
+
+        // Fallback: If metadata is incomplete, use data from the list item
+        if (!metadata.title || !metadata.rating_key) {
+          console.warn(`[Tautulli Sync] Incomplete metadata for "${item.title}" (rating_key: ${item.rating_key}), using list data as fallback`);
+          metadata = item as unknown as TautulliMetadata;
+        }
 
         // Check if already exists
         const existing = this.mediaRepo.getByPlexId(item.rating_key);
@@ -259,7 +273,17 @@ export class TautulliSyncService {
           continue;
         }
 
-        const mediaData = this.mapTautulliToMediaItem(metadata, 'movie', sectionId);
+        const mediaData = this.mapTautulliToMediaItem(metadata, 'movie', sectionId, item.rating_key);
+
+        // DEBUG: Log mediaData structure
+        console.log(`[DEBUG] mediaData for "${item.title}":`, {
+          hasPlexId: !!mediaData.plexId,
+          hasMediaType: !!mediaData.mediaType,
+          plexId: mediaData.plexId,
+          mediaType: mediaData.mediaType,
+          itemRatingKey: item.rating_key,
+          metadataRatingKey: metadata.rating_key,
+        });
 
         // Enrich with TMDB if requested
         if (options.enrichWithTmdb && this.tmdbService && metadata.guid) {
@@ -269,7 +293,10 @@ export class TautulliSyncService {
               Object.assign(mediaData, tmdbData);
             }
           } catch (error) {
-            // Silently skip TMDB errors, continue with Tautulli data
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.warn(`[Tautulli Sync] TMDb enrichment failed for movie "${item.title}" (rating_key: ${item.rating_key}):`, errorMessage);
+            errors.push(`TMDb enrichment failed for ${item.title}: ${errorMessage}`);
+            // Continue with Tautulli data
           }
         }
 
@@ -288,9 +315,18 @@ export class TautulliSyncService {
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`[Tautulli Sync] Failed to sync movie "${item.title}" (rating_key: ${item.rating_key}):`, errorMessage);
         errors.push(`Failed to sync movie ${item.title}: ${errorMessage}`);
       }
     }
+
+    console.log(`[Tautulli Sync] Movies sync completed:`, {
+      total: mediaItems.length,
+      created,
+      updated,
+      skipped,
+      errorCount: errors.length,
+    });
 
     return { created, updated, skipped, errors };
   }
@@ -309,6 +345,8 @@ export class TautulliSyncService {
     let skipped = 0;
     const errors: string[] = [];
 
+    console.log(`[Tautulli Sync] Starting to sync ${mediaItems.length} TV series`);
+
     for (let i = 0; i < mediaItems.length; i++) {
       const item = mediaItems[i];
 
@@ -321,7 +359,13 @@ export class TautulliSyncService {
 
       try {
         // Get detailed metadata for the show
-        const metadata = await this.tautulliService.getMetadata(item.rating_key);
+        let metadata = await this.tautulliService.getMetadata(item.rating_key);
+
+        // Fallback: If metadata is incomplete, use data from the list item
+        if (!metadata.title || !metadata.rating_key) {
+          console.warn(`[Tautulli Sync] Incomplete metadata for "${item.title}" (rating_key: ${item.rating_key}), using list data as fallback`);
+          metadata = item as unknown as TautulliMetadata;
+        }
 
         // Check if already exists
         const existing = this.mediaRepo.getByPlexId(item.rating_key);
@@ -332,7 +376,7 @@ export class TautulliSyncService {
           continue;
         }
 
-        const mediaData = this.mapTautulliToMediaItem(metadata, 'tv', sectionId);
+        const mediaData = this.mapTautulliToMediaItem(metadata, 'tv', sectionId, item.rating_key);
 
         // Enrich with TMDB if requested
         if (options.enrichWithTmdb && this.tmdbService && metadata.guid) {
@@ -342,7 +386,10 @@ export class TautulliSyncService {
               Object.assign(mediaData, tmdbData);
             }
           } catch (error) {
-            // Silently skip TMDB errors
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.warn(`[Tautulli Sync] TMDb enrichment failed for series "${item.title}" (rating_key: ${item.rating_key}):`, errorMessage);
+            errors.push(`TMDb enrichment failed for ${item.title}: ${errorMessage}`);
+            // Continue with Tautulli data
           }
         }
 
@@ -368,9 +415,18 @@ export class TautulliSyncService {
         await this.syncSeasonsAndEpisodes(item.rating_key, mediaItemId, onProgress);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`[Tautulli Sync] Failed to sync series "${item.title}" (rating_key: ${item.rating_key}):`, errorMessage);
         errors.push(`Failed to sync series ${item.title}: ${errorMessage}`);
       }
     }
+
+    console.log(`[Tautulli Sync] TV series sync completed:`, {
+      total: mediaItems.length,
+      created,
+      updated,
+      skipped,
+      errorCount: errors.length,
+    });
 
     return { created, updated, skipped, errors };
   }
@@ -484,9 +540,10 @@ export class TautulliSyncService {
     metadata: TautulliMetadata,
     type: 'movie' | 'tv',
     sectionId: number,
+    ratingKey?: string,
   ): {
     plexId: string;
-    type: 'movie' | 'tv';
+    mediaType: 'movie' | 'tv';
     title: string;
     sortTitle?: string;
     year?: number;
@@ -510,9 +567,33 @@ export class TautulliSyncService {
     plexAddedAt?: string;
     plexUpdatedAt?: string;
   } {
+    // Convert Tautulli URLs to use our backend proxy
+    // This avoids CORS and authentication issues in the frontend
+    const convertToProxyUrl = (tautulliUrl?: string): string | undefined => {
+      if (!tautulliUrl) return undefined;
+
+      // Convert relative URLs to full paths first
+      const fullUrl = tautulliUrl.startsWith('/')
+        ? `${this.tautulliService.getBaseUrl()}${tautulliUrl}`
+        : tautulliUrl;
+
+      // Check if it's a Tautulli thumbnail URL pattern
+      const match = fullUrl.match(/\/library\/metadata\/(\d+)\/(thumb|art)\/(\d+)/);
+      if (match) {
+        const [, id, type, timestamp] = match;
+        // Use our backend proxy endpoint
+        return `http://localhost:4000/api/thumbnails/tautulli/library/metadata/${id}/${type}/${timestamp}`;
+      }
+
+      return fullUrl;
+    };
+
+    const posterUrl = convertToProxyUrl(metadata.thumb);
+    const backdropUrl = convertToProxyUrl(metadata.art);
+
     return {
-      plexId: metadata.rating_key,
-      type,
+      plexId: ratingKey || metadata.rating_key,
+      mediaType: type,
       title: metadata.title,
       sortTitle: metadata.sort_title,
       year: metadata.year,
@@ -521,8 +602,8 @@ export class TautulliSyncService {
       summary: metadata.summary,
       tagline: metadata.tagline,
       duration: metadata.duration,
-      poster: metadata.thumb,
-      backdrop: metadata.art,
+      poster: posterUrl,
+      backdrop: backdropUrl,
       studio: metadata.studio,
       librarySectionId: sectionId,
       genres: metadata.genres,
@@ -552,35 +633,90 @@ export class TautulliSyncService {
     tmdbVoteCount?: number;
     tmdbEnriched: boolean;
   } | null> {
-    if (!this.tmdbService || !metadata.guid) {
+    if (!this.tmdbService) {
+      console.warn(`[TMDb Enrichment] TMDb service not available`);
+      return null;
+    }
+
+    if (!metadata.guid) {
+      console.warn(`[TMDb Enrichment] No GUID found for "${metadata.title}"`);
       return null;
     }
 
     try {
-      // Extract TMDB ID from guid (e.g., "plex://movie/5d776825880197001ec90d13")
-      // This is a simplified extraction - you may need to adjust based on actual guid format
+      // Try to extract TMDB ID from guid (e.g., "tmdb://12345")
       const guidMatch = metadata.guid.match(/tmdb:\/\/(\d+)/);
-      if (!guidMatch) {
+      let tmdbId: number | null = null;
+
+      if (guidMatch) {
+        tmdbId = parseInt(guidMatch[1], 10);
+        console.log(`[TMDb Enrichment] Found TMDb ID in GUID for "${metadata.title}": ${tmdbId}`);
+      } else {
+        // Fallback: Search by title + year if no TMDb ID in GUID
+        console.log(`[TMDb Enrichment] No TMDb ID in GUID for "${metadata.title}", searching by title...`);
+
+        if (!metadata.title) {
+          console.warn(`[TMDb Enrichment] Cannot search without title for rating_key: ${metadata.rating_key}`);
+          return null;
+        }
+
+        try {
+          const searchResults = await this.tmdbService.searchMovie(metadata.title, {
+            year: metadata.year,
+            language: 'de',
+          });
+          if (searchResults && searchResults.length > 0) {
+            tmdbId = searchResults[0].id;
+            console.log(`[TMDb Enrichment] Found TMDb ID via search for "${metadata.title}": ${tmdbId}`);
+          } else {
+            console.warn(`[TMDb Enrichment] No TMDb search results for "${metadata.title}" (${metadata.year})`);
+            return null;
+          }
+        } catch (searchError) {
+          console.warn(`[TMDb Enrichment] Search failed for "${metadata.title}":`, searchError);
+          return null;
+        }
+      }
+
+      if (!tmdbId) {
         return null;
       }
 
-      const tmdbId = parseInt(guidMatch[1], 10);
+      console.log(`[TMDb Enrichment] Fetching TMDb details for "${metadata.title}" (TMDb ID: ${tmdbId}, type: ${type})`);
       const tmdbData = await this.tmdbService.fetchDetails(type, tmdbId, { language: 'de' });
 
       if (!tmdbData) {
+        console.warn(`[TMDb Enrichment] No TMDb data returned for "${metadata.title}" (TMDb ID: ${tmdbId})`);
         return null;
       }
 
-      return {
+      const result = {
         tmdbId,
-        poster: tmdbData.poster ? `https://image.tmdb.org/t/p/w500${tmdbData.poster}` : undefined,
-        backdrop: tmdbData.backdrops?.[0] ? `https://image.tmdb.org/t/p/w1280${tmdbData.backdrops[0]}` : undefined,
+        // tmdbData.poster is already a full URL from getPosterUrl(), don't add prefix
+        poster: tmdbData.poster ?? undefined,
+        // backdrops come as paths, need full URL
+        backdrop: tmdbData.backdrops?.[0]
+          ? (tmdbData.backdrops[0].startsWith('http')
+            ? tmdbData.backdrops[0]
+            : `https://image.tmdb.org/t/p/w1280${tmdbData.backdrops[0]}`)
+          : undefined,
         tmdbRating: tmdbData.voteAverage ?? undefined,
         tmdbVoteCount: tmdbData.voteCount ?? undefined,
         tmdbEnriched: true,
       };
+
+      console.log(`[TMDb Enrichment] Successfully enriched "${metadata.title}":`, {
+        tmdbId,
+        hasPoster: !!result.poster,
+        hasBackdrop: !!result.backdrop,
+        rating: result.tmdbRating,
+      });
+
+      return result;
     } catch (error) {
-      return null;
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`[TMDb Enrichment] Error enriching "${metadata.title}":`, errorMessage);
+      throw error; // Re-throw to be caught by caller
     }
   }
 }

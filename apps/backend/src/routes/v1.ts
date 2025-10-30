@@ -76,6 +76,23 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
     return relativePath;
   };
 
+  // Helper function to convert Tautulli URLs to proxy URLs
+  const convertTautulliUrlToProxy = (url: string | null | undefined, req?: Request): string | null | undefined => {
+    if (!url) return url;
+
+    // Check if it's a Tautulli URL (either https://tautulli.dinspel.eu or just the path)
+    const match = url.match(/\/library\/metadata\/(\d+)\/(thumb|art)\/(\d+)/);
+    if (match) {
+      const [, id, type, timestamp] = match;
+      // Build full backend URL if request is available
+      const protocol = req?.protocol || 'http';
+      const host = req?.get('host') || 'localhost:4000';
+      return `${protocol}://${host}/api/thumbnails/tautulli/library/metadata/${id}/${type}/${timestamp}`;
+    }
+
+    return url;
+  };
+
   // Helper function to map media records to API responses (with bulk thumbnail loading)
   const mapMediaListToResponse = (items: any[], includeExtended = true, req?: Request) => {
     // Bulk load all thumbnails in one query
@@ -95,6 +112,8 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
         addedAt: item.plexAddedAt,
         updatedAt: item.plexUpdatedAt,
         thumbFile: buildThumbnailUrl(thumbnailPath, item.mediaType, req),
+        poster: convertTautulliUrlToProxy(item.poster, req),
+        backdrop: convertTautulliUrlToProxy(item.backdrop, req),
       };
 
       if (!includeExtended) return base;
@@ -113,6 +132,10 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
         tagline: item.tagline,
         duration: item.duration,
         originallyAvailableAt: item.originallyAvailableAt,
+        // TMDb enrichment
+        tmdbId: item.tmdbId,
+        tmdbRating: item.tmdbRating,
+        tmdbVoteCount: item.tmdbVoteCount,
       };
     });
   };
