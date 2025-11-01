@@ -10,7 +10,7 @@ COPY package.json package-lock.json ./
 COPY apps/backend/package.json apps/backend/
 COPY packages/shared/package.json packages/shared/
 
-RUN npm install --workspace @plex-exporter/backend
+RUN CI=true npm install --workspace @plex-exporter/backend
 
 # Copy the remaining project files and build the production bundle
 COPY . .
@@ -28,7 +28,7 @@ COPY apps/backend/package.json apps/backend/
 COPY packages/shared/package.json packages/shared/
 
 # Install only production dependencies
-RUN npm install --workspace @plex-exporter/backend --omit=dev && \
+RUN CI=true npm install --workspace @plex-exporter/backend --omit=dev && \
     npm cache clean --force
 
 # Copy built application from builder stage

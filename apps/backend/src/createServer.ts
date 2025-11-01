@@ -231,7 +231,7 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
     // Initialize ImageStorageService for downloading covers
     const imageStorageService = new ImageStorageService({
       tautulliService: service as TautulliServiceClass,
-      exportsBasePath: persistedConfig?.exports?.basePath,
+      exportsBasePath: undefined, // TODO: Add exports config to PersistedConfig if needed
     });
 
     return new TautulliSyncService(

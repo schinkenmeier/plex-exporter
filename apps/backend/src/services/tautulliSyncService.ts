@@ -626,6 +626,8 @@ export class TautulliSyncService {
     plexUpdatedAt?: string;
     tmdbId?: number;
     imdbId?: string;
+    tmdbRating?: number;
+    tmdbVoteCount?: number;
   } {
     // Convert Tautulli URLs to use our backend proxy
     // This avoids CORS and authentication issues in the frontend

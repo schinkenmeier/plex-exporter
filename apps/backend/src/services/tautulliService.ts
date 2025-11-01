@@ -151,9 +151,6 @@ export class TautulliService implements TautulliClient {
     return fn();
   }
 
-  getBaseUrl(): string {
-    return this.config.baseUrl;
-  }
 
   async getLibraries(): Promise<TautulliLibrarySummary[]> {
     return this.executeWithRateLimit(async () => {
