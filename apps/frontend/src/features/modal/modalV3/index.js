@@ -27,7 +27,6 @@ function normalizeTabLabel(rawLabel, fallback){
 const LOG_PREFIX = '[modalV3]';
 let moviesCache = null;
 let showsCache = null;
-const demoModule = { promise: null };
 
 function isViewModelCandidate(content){
   if(!content || typeof content !== 'object' || Array.isArray(content)) return false;
@@ -50,16 +49,6 @@ function matchesIdentifier(item, rawId){
   if(item?.rating_key != null && String(item.rating_key) === str) return true;
   if(item?.id != null && String(item.id) === str) return true;
   return false;
-}
-
-async function ensureDemoModule(){
-  if(!demoModule.promise){
-    demoModule.promise = import('../../../js/modal/demoData.js').catch(err => {
-      console.warn(LOG_PREFIX, 'Demo-Daten konnten nicht geladen werden.', err?.message || err);
-      return { DEMO_MOVIE: null, DEMO_SERIES: null };
-    });
-  }
-  return demoModule.promise;
 }
 
 async function ensureMovies(){
@@ -90,10 +79,6 @@ function findInList(list, id){
 }
 
 async function resolveMoviePayload(input){
-  if(input === 'demo'){
-    const { DEMO_MOVIE } = await ensureDemoModule();
-    return DEMO_MOVIE ? { item: DEMO_MOVIE } : null;
-  }
   if(input && typeof input === 'object'){
     if(input.item || input.movie) return { item: input.item || input.movie };
     return { item: input };
@@ -110,10 +95,6 @@ async function resolveMoviePayload(input){
 }
 
 async function resolveSeriesPayload(input){
-  if(input === 'demo'){
-    const { DEMO_SERIES } = await ensureDemoModule();
-    return DEMO_SERIES ? { item: DEMO_SERIES } : null;
-  }
   if(input && typeof input === 'object'){
     const base = input.item || input.show || input.media || input;
     let detail = input.detail || input.showDetail || null;

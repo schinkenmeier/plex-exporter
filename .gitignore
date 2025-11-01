@@ -16,6 +16,11 @@ build/
 .env
 .env.local
 .env.*.local
+apps/backend/.env
+
+# Frontend runtime config (user-specific)
+apps/frontend/config/frontend.json
+apps/frontend/public/config/frontend.json
 
 # Logs
 *.log

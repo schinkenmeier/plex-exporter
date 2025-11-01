@@ -108,7 +108,8 @@ const cssOptions = {
   logLevel: 'info',
   entryPoints: [
     path.join(frontendDir, 'styles', 'app.css'),
-    path.join(frontendDir, 'styles', 'hero.css')
+    path.join(frontendDir, 'styles', 'hero.css'),
+    path.join(frontendDir, 'styles', 'email-features.css')
   ],
   outdir: distDir,
   entryNames: '[name]',

@@ -26,8 +26,8 @@ Der Plex Exporter stellt einen webfähigen Katalog deiner Plex-Bibliotheken bere
 | `apps/backend/tests/` | Platz für Unit- und Integrations-Tests des Backends. |
 | `apps/backend/README.md` | Einstieg in das neue Backend-Paket (Ziele, nächste Schritte). |
 | `apps/frontend/package.json` | npm-Skripte und Dev-Abhängigkeiten für das Frontend. |
-| `config/frontend.json` | Laufzeitkonfiguration (Startansicht, Sprache) für Deployments; das Build spiegelt sie nach `apps/frontend/public/config/frontend.json`. |
-| `config/frontend.json.sample` | Beispielkonfiguration; das Frontend-Build legt sie als `apps/frontend/public/config/frontend.json.sample` ab und nutzt sie als Fallback, falls keine reale Konfiguration existiert. |
+| `apps/frontend/config/frontend.json` | Laufzeitkonfiguration (Startansicht, Sprache) für Deployments; das Build spiegelt sie nach `apps/frontend/public/config/frontend.json`. |
+| `apps/frontend/config/frontend.json.sample` | Beispielkonfiguration; das Frontend-Build legt sie als `apps/frontend/public/config/frontend.json.sample` ab und nutzt sie als Fallback, falls keine reale Konfiguration existiert. |
 | `apps/frontend/src/main.js` | Bootstrapping der Anwendung, Initialisierung von Filtern, Watchlist, Debug und Einstellungen. |
 | `apps/frontend/public/hero.policy.json` | Steuerdatei für die Hero-Rotation (Poolgrößen, Slots, Cache-Laufzeiten). |
 | `apps/frontend/src/core/` | Fundamentale Infrastruktur (State-Management, Loader, DOM-/Error-Helfer, Konfigurations- und Metadatenservice). |
@@ -59,7 +59,7 @@ Das Repository ist als npm-Workspace organisiert. Relevante Befehle:
 | `npm run dev --workspace @plex-exporter/backend` | Beobachtet den Backend-Server mit automatischem Reload. |
 | `npm run split:series --workspace @plex-exporter/tools` | Teilt eine Serien-Exportdatei in Index- und Detaildateien auf. |
 
-## Konfiguration (`config/frontend.json`)
+## Konfiguration (`apps/frontend/config/frontend.json`)
 | Schlüssel | Typ | Beschreibung |
 | --- | --- | --- |
 | `startView` | String (`"movies"`\|`"shows"`) | Legt fest, welche Bibliothek nach dem Laden angezeigt wird. |
@@ -96,7 +96,7 @@ Das Repository ist als npm-Workspace organisiert. Relevante Befehle:
 - `cache.ttlHours` und `cache.graceMinutes` steuern die Wiederverwendung bereits berechneter Hero-Pools. Innerhalb der TTL (Standard 24 Stunden) liefert das Backend seine letzte Berechnung mit `fromCache: true`; die Grace-Periode erlaubt einen sanften Übergang, bevor ein Neuaufbau erzwungen wird.
 - `apps/frontend/src/features/hero/policy.js` lädt die Policy (mit Fallback auf eingebaute Defaults), validiert Werte und stellt abgeleitete Helfer (`getPoolSizes()`, `getCacheTtl()`, …) bereit. Die Datei akzeptiert Hot-Reload ohne Seitenneustart: Änderungen an `hero.policy.json` werden beim nächsten `initHeroPolicy()`-Aufruf übernommen.
 - Die Hero-Pipeline nutzt ausschließlich das Backend (`/api/hero/<kind>`), um vorberechnete Pools samt Metadaten (Quelle, Ablaufzeit, Slot-Zusammenfassung) zu beziehen. Serverseitige TTLs werden über `cache.ttlHours`/`cache.graceMinutes` gesteuert und in der API-Antwort reflektiert (`expiresAt`, `fromCache`).
-- Ein Feature-Flag steuert den gesamten Pipeline-Pfad: `apps/frontend/src/features/hero/pipeline.js` liest zuerst einen lokalen Override (`localStorage.feature.heroPipeline`), fällt dann auf `config/frontend.json` (`heroPipelineEnabled` oder `features.heroPipeline`) zurück und aktiviert die Pipeline standardmäßig, wenn kein Flag gesetzt ist. Wird die Pipeline deaktiviert, blendet das Frontend automatisch das statische Fallback-Hero ein.
+- Ein Feature-Flag steuert den gesamten Pipeline-Pfad: `apps/frontend/src/features/hero/pipeline.js` liest zuerst einen lokalen Override (`localStorage.feature.heroPipeline`), fällt dann auf `apps/frontend/config/frontend.json` (`heroPipelineEnabled` oder `features.heroPipeline`) zurück und aktiviert die Pipeline standardmäßig, wenn kein Flag gesetzt ist. Wird die Pipeline deaktiviert, blendet das Frontend automatisch das statische Fallback-Hero ein.
 
 ## Fallbacks, Fehlerbehandlung & Sprachindikator
 - Netzwerkfehler, Rate Limits oder ungültige Antworten werden abgefangen, im Log markiert und blockieren die UI nicht; Hero-Rotation und Modals signalisieren stattdessen Statusmeldungen bzw. nutzen vorhandene Caches.

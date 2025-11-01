@@ -3,8 +3,6 @@ const DEFAULT_SIZES = {
   poster: 'w500',
   backdrop: 'w780',
   profile: 'h632',
-  logo: 'w500',
-  episode: 'w780',
 };
 
 function normaliseBase(base){
@@ -42,17 +40,13 @@ function pickBackground(type){
       return '#1f2933';
     case 'profile':
       return '#111827';
-    case 'logo':
-      return '#0f172a';
-    case 'episode':
-      return '#0b1120';
     default:
       return '#101827';
   }
 }
 
 function pickForeground(type){
-  return type === 'logo' ? '#e5e7eb' : '#f9fafb';
+  return '#f9fafb';
 }
 
 export function makeInitials(text, limit = 2){
@@ -96,14 +90,6 @@ function fallbackProfile(name){
   return fallbackSvg({ type: 'profile', text: name, width: 400, height: 600, fontSize: 140, radius: 32 });
 }
 
-function fallbackLogo(title){
-  return fallbackSvg({ type: 'logo', text: title, width: 500, height: 281, fontSize: 96, radius: 24 });
-}
-
-function fallbackEpisode(title){
-  return fallbackSvg({ type: 'episode', text: title, width: 780, height: 439, fontSize: 110, radius: 24 });
-}
-
 function normaliseOptions(options){
   return {
     imageBase: options?.imageBase ?? options?.base ?? DEFAULT_IMAGE_BASE,
@@ -130,18 +116,6 @@ export function urlProfile(path, options = {}){
   return candidate || fallbackProfile(title);
 }
 
-export function urlLogo(path, options = {}){
-  const { imageBase, title, size } = normaliseOptions(options);
-  const candidate = buildUrl(path, size || DEFAULT_SIZES.logo, imageBase);
-  return candidate || fallbackLogo(title);
-}
-
-export function urlEpisode(path, options = {}){
-  const { imageBase, title, size } = normaliseOptions(options);
-  const candidate = buildUrl(path, size || DEFAULT_SIZES.episode, imageBase);
-  return candidate || fallbackEpisode(title);
-}
-
 export function buildFallbackPoster(title){
   return fallbackPoster(title);
 }
@@ -154,24 +128,12 @@ export function buildFallbackProfile(name){
   return fallbackProfile(name);
 }
 
-export function buildFallbackLogo(title){
-  return fallbackLogo(title);
-}
-
-export function buildFallbackEpisode(title){
-  return fallbackEpisode(title);
-}
-
 export default {
   urlPoster,
   urlBackdrop,
   urlProfile,
-  urlLogo,
-  urlEpisode,
   makeInitials,
   buildFallbackPoster,
   buildFallbackBackdrop,
   buildFallbackProfile,
-  buildFallbackLogo,
-  buildFallbackEpisode,
 };
