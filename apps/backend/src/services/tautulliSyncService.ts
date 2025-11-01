@@ -3,6 +3,7 @@ import type { MediaRepository } from '../repositories/mediaRepository.js';
 import type { SeasonRepository } from '../repositories/seasonRepository.js';
 import type { LibrarySectionRepository } from '../repositories/librarySectionRepository.js';
 import type { TmdbService } from './tmdbService.js';
+import type { ImageStorageService } from './imageStorageService.js';
 
 export interface SyncOptions {
   incremental?: boolean;
@@ -50,6 +51,7 @@ export class TautulliSyncService {
     private readonly seasonRepo: SeasonRepository,
     private readonly librarySectionRepo: LibrarySectionRepository,
     private readonly tmdbService?: TmdbService,
+    private readonly imageStorageService?: ImageStorageService,
   ) {}
 
   /**
@@ -275,22 +277,45 @@ export class TautulliSyncService {
 
         const mediaData = this.mapTautulliToMediaItem(metadata, 'movie', sectionId, item.rating_key);
 
-        // DEBUG: Log mediaData structure
-        console.log(`[DEBUG] mediaData for "${item.title}":`, {
-          hasPlexId: !!mediaData.plexId,
-          hasMediaType: !!mediaData.mediaType,
-          plexId: mediaData.plexId,
-          mediaType: mediaData.mediaType,
-          itemRatingKey: item.rating_key,
-          metadataRatingKey: metadata.rating_key,
-        });
+        // Download images from Tautulli first (if syncCovers is enabled)
+        if (options.syncCovers) {
+          try {
+            const downloadedImages = await this.downloadTautulliImages(
+              metadata,
+              'movie',
+              item.rating_key,
+              options.syncCovers,
+            );
+            // Override poster/backdrop with local paths if downloaded
+            if (downloadedImages.poster) {
+              mediaData.poster = downloadedImages.poster;
+            }
+            if (downloadedImages.backdrop) {
+              mediaData.backdrop = downloadedImages.backdrop;
+            }
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.warn(`[Tautulli Sync] Image download failed for movie "${item.title}":`, errorMessage);
+            // Continue without images
+          }
+        }
 
-        // Enrich with TMDB if requested
+        // Enrich with TMDB if requested (after images are downloaded from Tautulli)
         if (options.enrichWithTmdb && this.tmdbService && metadata.guid) {
           try {
             const tmdbData = await this.enrichWithTmdb(metadata, 'movie');
             if (tmdbData) {
-              Object.assign(mediaData, tmdbData);
+              // Only override poster/backdrop if TMDb provides them and we don't have local ones
+              if (tmdbData.poster && !mediaData.poster) {
+                mediaData.poster = tmdbData.poster;
+              }
+              if (tmdbData.backdrop && !mediaData.backdrop) {
+                mediaData.backdrop = tmdbData.backdrop;
+              }
+              // Update other TMDb fields
+              if (tmdbData.tmdbId !== undefined) mediaData.tmdbId = tmdbData.tmdbId;
+              if (tmdbData.tmdbRating !== undefined) mediaData.tmdbRating = tmdbData.tmdbRating;
+              if (tmdbData.tmdbVoteCount !== undefined) mediaData.tmdbVoteCount = tmdbData.tmdbVoteCount;
             }
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
@@ -378,12 +403,45 @@ export class TautulliSyncService {
 
         const mediaData = this.mapTautulliToMediaItem(metadata, 'tv', sectionId, item.rating_key);
 
-        // Enrich with TMDB if requested
+        // Download images from Tautulli first (if syncCovers is enabled)
+        if (options.syncCovers) {
+          try {
+            const downloadedImages = await this.downloadTautulliImages(
+              metadata,
+              'tv',
+              item.rating_key,
+              options.syncCovers,
+            );
+            // Override poster/backdrop with local paths if downloaded
+            if (downloadedImages.poster) {
+              mediaData.poster = downloadedImages.poster;
+            }
+            if (downloadedImages.backdrop) {
+              mediaData.backdrop = downloadedImages.backdrop;
+            }
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.warn(`[Tautulli Sync] Image download failed for series "${item.title}":`, errorMessage);
+            // Continue without images
+          }
+        }
+
+        // Enrich with TMDB if requested (after images are downloaded from Tautulli)
         if (options.enrichWithTmdb && this.tmdbService && metadata.guid) {
           try {
             const tmdbData = await this.enrichWithTmdb(metadata, 'tv');
             if (tmdbData) {
-              Object.assign(mediaData, tmdbData);
+              // Only override poster/backdrop if TMDb provides them and we don't have local ones
+              if (tmdbData.poster && !mediaData.poster) {
+                mediaData.poster = tmdbData.poster;
+              }
+              if (tmdbData.backdrop && !mediaData.backdrop) {
+                mediaData.backdrop = tmdbData.backdrop;
+              }
+              // Update other TMDb fields
+              if (tmdbData.tmdbId !== undefined) mediaData.tmdbId = tmdbData.tmdbId;
+              if (tmdbData.tmdbRating !== undefined) mediaData.tmdbRating = tmdbData.tmdbRating;
+              if (tmdbData.tmdbVoteCount !== undefined) mediaData.tmdbVoteCount = tmdbData.tmdbVoteCount;
             }
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
@@ -566,6 +624,8 @@ export class TautulliSyncService {
     guid?: string;
     plexAddedAt?: string;
     plexUpdatedAt?: string;
+    tmdbId?: number;
+    imdbId?: string;
   } {
     // Convert Tautulli URLs to use our backend proxy
     // This avoids CORS and authentication issues in the frontend
@@ -590,6 +650,9 @@ export class TautulliSyncService {
 
     const posterUrl = convertToProxyUrl(metadata.thumb);
     const backdropUrl = convertToProxyUrl(metadata.art);
+
+    // Extract IDs from GUID
+    const ids = this.extractIdsFromGuid(metadata.guid);
 
     return {
       plexId: ratingKey || metadata.rating_key,
@@ -616,7 +679,162 @@ export class TautulliSyncService {
       guid: metadata.guid,
       plexAddedAt: metadata.added_at?.toString(),
       plexUpdatedAt: metadata.updated_at?.toString(),
+      tmdbId: ids.tmdbId,
+      imdbId: ids.imdbId,
     };
+  }
+
+  /**
+   * Download images from Tautulli and store them locally
+   */
+  private async downloadTautulliImages(
+    metadata: TautulliMetadata,
+    mediaType: 'movie' | 'tv',
+    ratingKey: string,
+    syncCovers?: boolean,
+  ): Promise<{ poster?: string; backdrop?: string }> {
+    if (!this.imageStorageService) {
+      console.warn(`[Tautulli Sync] ImageStorageService not available for ${ratingKey}`);
+      return {};
+    }
+    if (!syncCovers) {
+      console.log(`[Tautulli Sync] syncCovers is disabled, skipping image download for ${ratingKey}`);
+      return {};
+    }
+    console.log(`[Tautulli Sync] Starting image download for ${metadata.title} (${ratingKey})`);
+    const result: { poster?: string; backdrop?: string } = {};
+    const downloadItems: Array<{
+      ratingKey: string;
+      type: 'thumb' | 'art';
+      timestamp: string;
+      targetPath: string;
+      mediaType: 'movie' | 'tv';
+    }> = [];
+
+    // Parse poster URL
+    if (metadata.thumb) {
+      console.log(`[Tautulli Sync] Parsing poster URL: ${metadata.thumb}`);
+      const posterInfo = this.parseTautulliImageUrl(metadata.thumb);
+      if (posterInfo) {
+        const posterPath = this.imageStorageService.getMediaImagePath(mediaType, ratingKey, 'poster');
+        console.log(`[Tautulli Sync] Poster path: ${posterPath}, metadata ID: ${posterInfo.id}, timestamp: ${posterInfo.timestamp}`);
+        downloadItems.push({
+          ratingKey: posterInfo.id,
+          type: posterInfo.type,
+          timestamp: posterInfo.timestamp,
+          targetPath: posterPath,
+          mediaType,
+        });
+        result.poster = posterPath;
+      } else {
+        console.warn(`[Tautulli Sync] Could not parse poster URL: ${metadata.thumb}`);
+      }
+    } else {
+      console.log(`[Tautulli Sync] No poster URL found for ${ratingKey}`);
+    }
+
+    // Parse backdrop URL
+    if (metadata.art) {
+      console.log(`[Tautulli Sync] Parsing backdrop URL: ${metadata.art}`);
+      const backdropInfo = this.parseTautulliImageUrl(metadata.art);
+      if (backdropInfo) {
+        const backdropPath = this.imageStorageService.getMediaImagePath(mediaType, ratingKey, 'backdrop');
+        console.log(`[Tautulli Sync] Backdrop path: ${backdropPath}, metadata ID: ${backdropInfo.id}, timestamp: ${backdropInfo.timestamp}`);
+        downloadItems.push({
+          ratingKey: backdropInfo.id,
+          type: backdropInfo.type,
+          timestamp: backdropInfo.timestamp,
+          targetPath: backdropPath,
+          mediaType,
+        });
+        result.backdrop = backdropPath;
+      } else {
+        console.warn(`[Tautulli Sync] Could not parse backdrop URL: ${metadata.art}`);
+      }
+    } else {
+      console.log(`[Tautulli Sync] No backdrop URL found for ${ratingKey}`);
+    }
+
+    // Download images in batch
+    if (downloadItems.length > 0) {
+      console.log(`[Tautulli Sync] Downloading ${downloadItems.length} images for ${ratingKey}`);
+      try {
+        await this.imageStorageService.downloadBatch(downloadItems);
+        console.log(`[Tautulli Sync] Successfully downloaded images for ${ratingKey}`);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`[Tautulli Sync] Failed to download images for ${ratingKey}:`, errorMessage);
+        throw error;
+      }
+    } else {
+      console.warn(`[Tautulli Sync] No images to download for ${ratingKey}`);
+    }
+
+    return result;
+  }
+
+  /**
+   * Parse Tautulli image URL to extract id, type, and timestamp
+   */
+  private parseTautulliImageUrl(url?: string): { id: string; type: 'thumb' | 'art'; timestamp: string } | null {
+    if (!url) return null;
+    const match = url.match(/\/library\/metadata\/(\d+)\/(thumb|art)\/(\d+)/);
+    if (!match) return null;
+    return {
+      id: match[1],
+      type: match[2] as 'thumb' | 'art',
+      timestamp: match[3],
+    };
+  }
+
+  /**
+   * Extract TMDb ID and IMDB ID from GUID
+   */
+  private extractIdsFromGuid(guid?: string): { tmdbId?: number; imdbId?: string } {
+    if (!guid) {
+      return {};
+    }
+    const trimmed = guid.trim();
+    if (!trimmed) {
+      return {};
+    }
+    const result: { tmdbId?: number; imdbId?: string } = {};
+    // Handle direct IMDB ID format (starts with "tt")
+    if (trimmed.startsWith('tt') && /^tt\d+$/.test(trimmed)) {
+      result.imdbId = trimmed;
+      return result;
+    }
+    // Split by comma in case of multiple GUIDs
+    const guidParts = trimmed.includes(',') ? trimmed.split(',') : [trimmed];
+    for (const guidPart of guidParts) {
+      const part = guidPart.trim();
+      if (!part) continue;
+      const [schemePart, restPart] = part.split('://');
+      // If no ://, check if it's a direct ID
+      if (!restPart) {
+        if (part.startsWith('tt') && /^tt\d+$/.test(part)) {
+          result.imdbId = part;
+        }
+        continue;
+      }
+      const scheme = schemePart.toLowerCase();
+      const rest = restPart.split('?')[0].replace(/^\/+/, '');
+      const tail = rest.split('/').pop() || rest;
+      if (!tail) continue;
+      // Extract TMDb ID
+      if (scheme.includes('tmdb') || scheme.includes('themoviedb')) {
+        const tmdbId = parseInt(tail, 10);
+        if (!isNaN(tmdbId)) {
+          result.tmdbId = tmdbId;
+        }
+      }
+      // Extract IMDB ID
+      if (scheme.includes('imdb')) {
+        const imdbId = tail.startsWith('tt') ? tail : `tt${tail}`;
+        result.imdbId = imdbId;
+      }
+    }
+    return result;
   }
 
   /**

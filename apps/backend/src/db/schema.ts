@@ -72,6 +72,7 @@ export const mediaItems = sqliteTable('media_items', {
   tmdbEnriched: integer('tmdb_enriched', { mode: 'boolean' })
     .notNull()
     .default(false),
+  imdbId: text('imdb_id'),
 });
 
 export const insertMediaItemSchema = createInsertSchema(mediaItems).omit({

@@ -47,6 +47,7 @@ const mapRowToRecord = (row: MediaRow): MediaRecord => ({
   tmdbRating: row.tmdbRating ?? null,
   tmdbVoteCount: row.tmdbVoteCount ?? null,
   tmdbEnriched: row.tmdbEnriched ?? false,
+  imdbId: row.imdbId ?? null,
 });
 
 const prepareInsert = (input: MediaCreateInput): MediaInsert => ({
@@ -80,6 +81,7 @@ const prepareInsert = (input: MediaCreateInput): MediaInsert => ({
   tmdbRating: input.tmdbRating ?? null,
   tmdbVoteCount: input.tmdbVoteCount ?? null,
   tmdbEnriched: input.tmdbEnriched ?? false,
+  imdbId: input.imdbId ?? null,
 });
 
 const buildSortExpressions = (
@@ -141,6 +143,7 @@ export interface MediaRecord {
   tmdbRating: number | null;
   tmdbVoteCount: number | null;
   tmdbEnriched: boolean;
+  imdbId: string | null;
 }
 
 export interface MediaCreateInput {
@@ -174,6 +177,7 @@ export interface MediaCreateInput {
   tmdbRating?: number | null;
   tmdbVoteCount?: number | null;
   tmdbEnriched?: boolean;
+  imdbId?: string | null;
 }
 
 export interface MediaUpdateInput extends Partial<MediaCreateInput> {}

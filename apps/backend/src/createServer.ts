@@ -47,6 +47,7 @@ import { createThumbnailRouter } from './routes/thumbnails.js';
 import { createTautulliSyncRouter } from './routes/tautulliSync.js';
 import { TautulliSyncService } from './services/tautulliSyncService.js';
 import { SchedulerService } from './services/schedulerService.js';
+import { ImageStorageService } from './services/imageStorageService.js';
 import logger from './services/logger.js';
 
 export interface ServerDependencies {
@@ -227,12 +228,19 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
       return null;
     }
 
+    // Initialize ImageStorageService for downloading covers
+    const imageStorageService = new ImageStorageService({
+      tautulliService: service as TautulliServiceClass,
+      exportsBasePath: persistedConfig?.exports?.basePath,
+    });
+
     return new TautulliSyncService(
       service as TautulliServiceClass,
       mediaRepository,
       seasonRepository,
       librarySectionRepo,
       tmdbService ?? undefined,
+      imageStorageService,
     );
   };
 

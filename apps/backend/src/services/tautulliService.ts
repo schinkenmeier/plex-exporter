@@ -282,6 +282,55 @@ export class TautulliService implements TautulliClient {
       return response.data.response.data?.children_list ?? [];
     });
   }
+
+  /**
+   * Fetch a library image (poster/backdrop) from Tautulli
+   * @param ratingKey The rating key of the media item
+   * @param type Either 'thumb' (poster) or 'art' (backdrop)
+   * @param timestamp The timestamp from the Tautulli metadata
+   * @returns The image data as Buffer
+   */
+  async fetchLibraryImage(
+    ratingKey: string,
+    type: 'thumb' | 'art',
+    timestamp: string,
+  ): Promise<{ data: Buffer; headers?: Record<string, string> }> {
+    const imagePath = `/library/metadata/${ratingKey}/${type}/${timestamp}`;
+    const fullUrl = `${this.config.baseUrl}${imagePath}?apikey=${this.config.apiKey}`;
+
+    const executeRequest = async () => {
+      // Use axios directly for binary data
+      const axiosInstance = this.httpClient as any;
+      if (axiosInstance && typeof axiosInstance.get === 'function') {
+        const response = await axiosInstance.get(fullUrl, {
+          responseType: 'arraybuffer',
+          timeout: this.config.timeoutMs ?? 30000,
+        });
+
+        return {
+          data: Buffer.from(response.data),
+          headers: response.headers as Record<string, string> | undefined,
+        };
+      } else {
+        // Fallback: use fetch if axios is not available in expected format
+        const fetchResponse = await fetch(fullUrl);
+        const arrayBuffer = await fetchResponse.arrayBuffer();
+        return {
+          data: Buffer.from(arrayBuffer),
+          headers: Object.fromEntries(fetchResponse.headers.entries()),
+        };
+      }
+    };
+
+    return this.rateLimiter?.execute(executeRequest) ?? executeRequest();
+  }
+
+  /**
+   * Get the base URL of the Tautulli instance
+   */
+  getBaseUrl(): string {
+    return this.config.baseUrl;
+  }
 }
 
 export const createTautulliService = (

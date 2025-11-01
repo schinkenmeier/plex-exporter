@@ -853,23 +853,23 @@
         <div class="panel-grid">
           <!-- Tautulli Connection Panel -->
           <article class="panel">
-            <h3>Tautulli Connection</h3>
-            <p>Configure Tautulli API connection settings</p>
+            <h3>Tautulli-Verbindung</h3>
+            <p>Tautulli API-Verbindungseinstellungen konfigurieren</p>
             <div id="tautulli-config-content">
               <label class="input-label">Tautulli URL</label>
               <input type="text" id="tautulli-url" placeholder="https://tautulli.example.com" style="width: 100%; margin-bottom: 4px;">
               <small class="muted" style="display: block; margin-bottom: 12px;">
-                Enter the base URL only (e.g., https://tautulli.dinspel.eu). Do not include /api/v2 - it will be added automatically.
+                Nur die Basis-URL eingeben (z.B. https://tautulli.dinspel.eu). /api/v2 nicht angeben - wird automatisch hinzugefügt.
               </small>
-              <label class="input-label">API Key</label>
-              <input type="password" id="tautulli-api-key" placeholder="Enter your Tautulli API key" style="width: 100%; margin-bottom: 12px;">
+              <label class="input-label">API-Schlüssel</label>
+              <input type="password" id="tautulli-api-key" placeholder="Ihren Tautulli API-Schlüssel eingeben" style="width: 100%; margin-bottom: 12px;">
               <label class="input-label">
                 <input type="checkbox" id="show-api-key">
-                Show API Key
+                API-Schlüssel anzeigen
               </label>
               <div style="margin-top: 12px;">
-                <button class="btn-primary" id="btn-save-tautulli-config">Save Configuration</button>
-                <button class="btn" id="btn-test-connection" style="margin-left: 8px;">Test Connection</button>
+                <button class="btn-primary" id="btn-save-tautulli-config">Konfiguration speichern</button>
+                <button class="btn" id="btn-test-connection" style="margin-left: 8px;">Verbindung testen</button>
               </div>
               <div id="tautulli-config-status" class="muted" style="margin-top: 16px;"></div>
             </div>
@@ -877,70 +877,85 @@
 
           <!-- Library Selection Panel -->
           <article class="panel">
-            <h3>Library Configuration</h3>
-            <p>Select which Tautulli libraries to sync</p>
+            <h3>Bibliotheks-Konfiguration</h3>
+            <p>Wählen Sie aus, welche Tautulli-Bibliotheken synchronisiert werden sollen</p>
             <div id="library-config-content">
-              <button class="btn" id="btn-load-libraries">Load Available Libraries</button>
-              <div id="library-list" class="muted" style="margin-top: 16px;">Click "Load Available Libraries" to fetch from Tautulli</div>
+              <button class="btn" id="btn-load-libraries">Verfügbare Bibliotheken laden</button>
+              <div id="library-list" class="muted" style="margin-top: 16px;">Klicken Sie auf "Verfügbare Bibliotheken laden", um diese von Tautulli abzurufen</div>
               <div id="selected-libraries" style="margin-top: 16px; display: none;">
-                <h4>Selected Libraries</h4>
+                <h4>Ausgewählte Bibliotheken</h4>
                 <div id="selected-libraries-list"></div>
-                <button class="btn-primary" id="btn-save-libraries" style="margin-top: 12px;">Save Configuration</button>
+                <button class="btn-primary" id="btn-save-libraries" style="margin-top: 12px;">Konfiguration speichern</button>
               </div>
             </div>
           </article>
 
           <!-- Manual Sync Panel -->
           <article class="panel">
-            <h3>Manual Sync</h3>
-            <p>Trigger a one-time synchronization</p>
-            <div class="button-row">
-              <label class="input-label">
+            <h3>Manueller Sync</h3>
+            <p>Einen einmaligen Synchronisationsvorgang auslösen</p>
+            <div class="alert alert-info" style="margin-bottom: 16px;">
+              <strong>Sync-Ablauf:</strong> Zuerst werden Metadaten und IDs (TMDb, IMDb) von Tautulli abgerufen, dann werden bei aktivierter Option die Bilder lokal gespeichert, und anschließend optional TMDb-Anreicherung durchgeführt.
+            </div>
+            <div class="option-list">
+              <label class="checkbox">
                 <input type="checkbox" id="sync-incremental" checked>
-                Incremental (only changed items)
+                <div>
+                  <strong>Inkrementell</strong>
+                  <div class="muted" style="font-size: 11px; margin-top: 2px;">Nur geänderte Einträge synchronisieren</div>
+                </div>
               </label>
-              <label class="input-label">
+              <label class="checkbox">
+                <input type="checkbox" id="sync-covers" checked>
+                <div>
+                  <strong>Covers von Tautulli herunterladen</strong>
+                  <div class="muted" style="font-size: 11px; margin-top: 2px;">Poster und Backdrops lokal speichern (empfohlen für manuellen Sync)</div>
+                </div>
+              </label>
+              <label class="checkbox">
                 <input type="checkbox" id="sync-tmdb" checked>
-                Enrich with TMDB data
-              </label>
-              <label class="input-label">
-                <input type="checkbox" id="sync-covers">
-                Sync covers from Tautulli
+                <div>
+                  <strong>Mit TMDb anreichern</strong>
+                  <div class="muted" style="font-size: 11px; margin-top: 2px;">Zusätzliche Metadaten und Bewertungen von TMDb abrufen</div>
+                </div>
               </label>
             </div>
-            <button class="btn-primary" id="btn-start-sync">Start Sync</button>
+            <button class="btn-primary" id="btn-start-sync">Sync starten</button>
             <div id="sync-status" class="muted" style="margin-top: 16px;"></div>
           </article>
 
           <!-- Schedule Configuration Panel -->
           <article class="panel">
-            <h3>Sync Schedule</h3>
-            <p>Configure automatic daily synchronization</p>
+            <h3>Automatischer Sync</h3>
+            <p>Automatische tägliche Synchronisation konfigurieren</p>
+            <div class="alert alert-info" style="margin-bottom: 16px;">
+              <strong>Hinweis:</strong> Bei automatischen Syncs werden standardmäßig keine Bilder heruntergeladen, um die Performance zu optimieren. Für Bild-Downloads verwenden Sie bitte den manuellen Sync.
+            </div>
             <div id="schedule-config">
-              <label class="input-label">Job Type</label>
+              <label class="input-label">Job-Typ</label>
               <select id="schedule-job-type">
                 <option value="tautulli_sync">Tautulli Sync</option>
                 <option value="cover_update">Cover Update</option>
               </select>
-              <label class="input-label">Cron Expression</label>
+              <label class="input-label">Cron-Ausdruck</label>
               <input type="text" id="schedule-cron" placeholder="0 3 * * *" value="0 3 * * *">
-              <small class="muted">Example: "0 3 * * *" = Daily at 3:00 AM</small>
+              <small class="muted">Beispiel: "0 3 * * *" = Täglich um 3:00 Uhr</small>
               <label class="input-label">
                 <input type="checkbox" id="schedule-enabled" checked>
-                Enabled
+                Aktiviert
               </label>
-              <button class="btn" id="btn-save-schedule" style="margin-top: 12px;">Save Schedule</button>
+              <button class="btn" id="btn-save-schedule" style="margin-top: 12px;">Zeitplan speichern</button>
             </div>
             <div id="current-schedules" style="margin-top: 16px;">
-              <h4>Current Schedules</h4>
-              <div id="schedules-list" class="muted">Loading...</div>
+              <h4>Aktuelle Zeitpläne</h4>
+              <div id="schedules-list" class="muted">Lädt...</div>
             </div>
           </article>
 
           <!-- Sync Statistics Panel -->
           <article class="panel">
-            <h3>Configured Libraries</h3>
-            <div id="library-sections-list" class="muted">Loading...</div>
+            <h3>Konfigurierte Bibliotheken</h3>
+            <div id="library-sections-list" class="muted">Lädt...</div>
           </article>
         </div>
       </section>
@@ -2052,7 +2067,7 @@
           });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-          document.getElementById("sync-status").textContent = "Sync started in background. Check logs for progress.";
+          document.getElementById("sync-status").textContent = "Sync im Hintergrund gestartet. Prüfen Sie die Logs für den Fortschritt.";
           showToast("Sync started", "success");
         } catch (err) {
           showToast(err.message, "error");

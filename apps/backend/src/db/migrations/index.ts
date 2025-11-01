@@ -10,6 +10,7 @@ import { emailFeaturesMigration } from './008_email_features.js';
 import { removeBookmarksMigration } from './009_remove_bookmarks.js';
 import { tautulliSyncMigration } from './010_tautulli_sync.js';
 import { tautulliConfigMigration } from './011_tautulli_config.js';
+import { addImdbIdMigration } from './012_add_imdb_id.js';
 import type { Migration } from './types.js';
 
 const migrations: Migration[] = [
@@ -24,6 +25,7 @@ const migrations: Migration[] = [
   removeBookmarksMigration,
   tautulliSyncMigration,
   tautulliConfigMigration,
+  addImdbIdMigration,
 ];
 
 export const runMigrations = (db: SqliteDatabase) => {

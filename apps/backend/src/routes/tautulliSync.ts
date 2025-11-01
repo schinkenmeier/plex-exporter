@@ -398,7 +398,7 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
       const options = {
         incremental: incremental ?? false,
         enrichWithTmdb: enrichWithTmdb ?? true,
-        syncCovers: syncCovers ?? false,
+        syncCovers: syncCovers ?? true, // Default to true for manual syncs
       };
 
       // Start sync in background (don't await)
