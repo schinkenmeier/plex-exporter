@@ -169,7 +169,18 @@ export class TautulliService implements TautulliClient {
         throw new Error(errorMessage);
       }
 
-      const libraries = response.data.response.data ?? [];
+      const data = response.data.response.data;
+      let libraries: TautulliLibrarySummary[] = [];
+
+      if (Array.isArray(data)) {
+        libraries = data;
+      } else if (data && typeof data === 'object') {
+        const maybeLibraries = (data as Record<string, unknown>).libraries;
+        if (Array.isArray(maybeLibraries)) {
+          libraries = maybeLibraries as TautulliLibrarySummary[];
+        }
+      }
+
       console.log('Parsed libraries count:', libraries.length);
 
       return libraries;
@@ -292,34 +303,154 @@ export class TautulliService implements TautulliClient {
     type: 'thumb' | 'art',
     timestamp: string,
   ): Promise<{ data: Buffer; headers?: Record<string, string> }> {
-    const imagePath = `/library/metadata/${ratingKey}/${type}/${timestamp}`;
-    const fullUrl = `${this.config.baseUrl}${imagePath}?apikey=${this.config.apiKey}`;
-
+    const proxiedUrl = this.buildImageProxyUrl(ratingKey, type, timestamp);
     const executeRequest = async () => {
-      // Use axios directly for binary data
-      const axiosInstance = this.httpClient as any;
+      const axiosInstance = this.httpClient as AxiosInstance;
+
       if (axiosInstance && typeof axiosInstance.get === 'function') {
-        const response = await axiosInstance.get(fullUrl, {
+        const response = await axiosInstance.get<ArrayBuffer>(proxiedUrl, {
           responseType: 'arraybuffer',
           timeout: this.config.timeoutMs ?? 30000,
+          headers: {
+            Accept: 'image/*',
+          },
         });
 
+        const buffer = this.ensureImageResponse(
+          response.data,
+          this.normalizeHeaderValue(response.headers?.['content-type']),
+          ratingKey,
+          type,
+          timestamp,
+        );
+
         return {
-          data: Buffer.from(response.data),
+          data: buffer,
           headers: response.headers as Record<string, string> | undefined,
         };
-      } else {
-        // Fallback: use fetch if axios is not available in expected format
-        const fetchResponse = await fetch(fullUrl);
-        const arrayBuffer = await fetchResponse.arrayBuffer();
-        return {
-          data: Buffer.from(arrayBuffer),
-          headers: Object.fromEntries(fetchResponse.headers.entries()),
-        };
       }
+
+      const fetchResponse = await fetch(proxiedUrl, {
+        headers: {
+          Accept: 'image/*',
+        },
+      });
+
+      if (!fetchResponse.ok) {
+        throw new Error(
+          `Failed to download ${type} for rating key ${ratingKey}: HTTP ${fetchResponse.status}`,
+        );
+      }
+
+      const arrayBuffer = await fetchResponse.arrayBuffer();
+      const buffer = this.ensureImageResponse(
+        arrayBuffer,
+        this.normalizeHeaderValue(fetchResponse.headers.get('content-type') ?? undefined),
+        ratingKey,
+        type,
+        timestamp,
+      );
+
+      return {
+        data: buffer,
+        headers: Object.fromEntries(fetchResponse.headers.entries()),
+      };
     };
 
     return this.rateLimiter?.execute(executeRequest) ?? executeRequest();
+  }
+
+  private buildImageProxyUrl(
+    ratingKey: string,
+    type: 'thumb' | 'art',
+    timestamp: string,
+  ): string {
+    const baseUrlWithoutApi = this.config.baseUrl
+      .replace(/\/api\/v2\/?$/i, '')
+      .replace(/\/$/, '');
+
+    const baseForUrl = `${baseUrlWithoutApi}/`;
+    const imagePath = `/library/metadata/${ratingKey}/${type}/${timestamp}`;
+    const url = new URL(baseForUrl);
+    url.pathname = `${url.pathname.replace(/\/$/, '')}/pms_image_proxy`;
+    url.searchParams.set('img', imagePath);
+    url.searchParams.set('apikey', this.config.apiKey);
+    return url.toString();
+  }
+
+  private ensureImageResponse(
+    rawData: ArrayBuffer | Buffer,
+    contentType: string | undefined,
+    ratingKey: string,
+    type: 'thumb' | 'art',
+    timestamp: string,
+  ): Buffer {
+    const buffer = Buffer.isBuffer(rawData) ? rawData : Buffer.from(rawData);
+    const looksLikeImage = this.hasImageSignature(buffer);
+
+    if (!contentType?.startsWith('image/') && !looksLikeImage) {
+      const snippet = buffer.toString('utf8', 0, Math.min(buffer.length, 200)).trim();
+      throw new Error(
+        `Tautulli returned non-image content for ${type} ${ratingKey} (${timestamp}). Content-Type: ${
+          contentType ?? 'unknown'
+        }. Payload starts with: ${snippet}`,
+      );
+    }
+
+    return buffer;
+  }
+
+  private normalizeHeaderValue(headerValue: unknown): string | undefined {
+    if (!headerValue) {
+      return undefined;
+    }
+
+    if (Array.isArray(headerValue)) {
+      return headerValue[0]?.toLowerCase();
+    }
+
+    return String(headerValue).toLowerCase();
+  }
+
+  private hasImageSignature(buffer: Buffer): boolean {
+    if (buffer.length < 4) {
+      return false;
+    }
+
+    const signatureChecks: Array<(buf: Buffer) => boolean> = [
+      // JPEG
+      (buf) => buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff,
+      // PNG
+      (buf) => buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47,
+      // GIF
+      (buf) =>
+        buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46 && (buf[3] === 0x38 || buf[3] === 0x39),
+      // WebP (RIFF....WEBP)
+      (buf) =>
+        buf.length >= 12 &&
+        buf[0] === 0x52 &&
+        buf[1] === 0x49 &&
+        buf[2] === 0x46 &&
+        buf[3] === 0x46 &&
+        buf[8] === 0x57 &&
+        buf[9] === 0x45 &&
+        buf[10] === 0x42 &&
+        buf[11] === 0x50,
+      // BMP
+      (buf) => buf[0] === 0x42 && buf[1] === 0x4d,
+      // TIFF (little endian)
+      (buf) => buf[0] === 0x49 && buf[1] === 0x49 && buf[2] === 0x2a && buf[3] === 0x00,
+      // TIFF (big endian)
+      (buf) => buf[0] === 0x4d && buf[1] === 0x4d && buf[2] === 0x00 && buf[3] === 0x2a,
+    ];
+
+    return signatureChecks.some((check) => {
+      try {
+        return check(buffer);
+      } catch {
+        return false;
+      }
+    });
   }
 
   /**
