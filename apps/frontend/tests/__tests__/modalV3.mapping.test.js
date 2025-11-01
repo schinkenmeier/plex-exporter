@@ -5,11 +5,10 @@ import { mapMovie, mapShow, mergeShowDetail, normalizeGenresList, normalizePeopl
 
 describe('modalV3/mapping', () => {
   describe('mapMovie', () => {
-    it('normalizes movie type and identifiers', () => {
-      const source = { type: 'show', tmdbId: '123', guid: 'imdb://tt12345' };
+    it('normalizes movie identifiers', () => {
+      const source = { type: 'movie', guid: 'imdb://tt12345' };
       const mapped = mapMovie(source);
-      assert.strictEqual(mapped.type, 'tv');
-      assert.strictEqual(mapped.ids.tmdb, '123');
+      assert.strictEqual(mapped.type, 'movie');
       assert.strictEqual(mapped.ids.imdb, 'tt12345');
       assert.notStrictEqual(mapped, source);
     });
@@ -19,7 +18,6 @@ describe('modalV3/mapping', () => {
     it('ensures show structure with normalized seasons and cast', () => {
       const source = {
         type: 'movie',
-        tmdbId: '321',
         cast: [{ name: 'Hero', thumb: '/cast.jpg' }],
         seasons: [{ season: 1, episodes: [{ episode: 1, thumb: '/ep.jpg' }] }],
       };
@@ -34,11 +32,11 @@ describe('modalV3/mapping', () => {
   });
 
   describe('mergeShowDetail', () => {
-    it('merges TMDB detail into base show and preserves ids', () => {
-      const target = { title: 'Show', ids: { tmdb: '5' }, seasons: [] };
-      const detail = { tmdbId: '5', genres: ['Drama'], seasons: [{ seasonNumber: 1 }] };
+    it('merges additional detail into base show and preserves ids', () => {
+      const target = { title: 'Show', ids: { imdb: 'tt123' }, seasons: [] };
+      const detail = { genres: ['Drama'], seasons: [{ seasonNumber: 1 }] };
       const merged = mergeShowDetail(target, detail);
-      assert.strictEqual(merged.ids.tmdb, '5');
+      assert.strictEqual(merged.ids.imdb, 'tt123');
       assert.strictEqual(merged.genres[0].tag, 'Drama');
       assert.strictEqual(merged.seasons.length, 1);
     });

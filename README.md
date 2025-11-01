@@ -5,10 +5,10 @@ Der Plex Exporter stellt einen webfähigen Katalog deiner Plex-Bibliotheken bere
 
 ## Funktionsumfang
 - Umschaltbare Film- und Serienansichten inklusive Deep-Linking über die URL-Fragmentnavigation (`#/movies`, `#/shows`).
-- Umfangreiche Filter mit Genres, Jahrspannenauswahl, Sortierung und optionalen TMDB-Postern (gesteuert in `apps/frontend/src/main.js` und `apps/frontend/src/features/filter/index.js`).
+- Umfangreiche Filter mit Genres, Jahrspannenauswahl, Sortierung und flexibler Kartendarstellung (gesteuert in `apps/frontend/src/main.js` und `apps/frontend/src/features/filter/index.js`).
 - Schnelle Datenladewege über die Backend-Endpoints (`/api/v1/movies`, `/api/v1/series`, `/api/v1/filter`) mit integrierter Cache-Strategie (`apps/frontend/src/js/data.js`).
 - Watchlist mit Export- und Importmöglichkeiten (lokal im Browser gespeichert, Logik in `apps/frontend/src/features/watchlist/index.js`).
-- Debug-Overlay zur Fehlersuche mit Quellinformationen, TMDB-Status und Filterzusammenfassung (`apps/frontend/src/js/debug.js`).
+- Debug-Overlay zur Fehlersuche mit Quellinformationen, Hero-Pipeline-Status und Filterzusammenfassung (`apps/frontend/src/js/debug.js`).
 - Cinematic-Detailansicht (Modal V3) für Filme & Serien mit Sticky-Poster, Schnellinfos, Tabs und optional reduzierter Bewegung (implementiert in `apps/frontend/src/features/modal/modalV3/`).
 
 ## Projektstruktur
@@ -26,15 +26,15 @@ Der Plex Exporter stellt einen webfähigen Katalog deiner Plex-Bibliotheken bere
 | `apps/backend/tests/` | Platz für Unit- und Integrations-Tests des Backends. |
 | `apps/backend/README.md` | Einstieg in das neue Backend-Paket (Ziele, nächste Schritte). |
 | `apps/frontend/package.json` | npm-Skripte und Dev-Abhängigkeiten für das Frontend. |
-| `config/frontend.json` | Laufzeitkonfiguration (Startansicht, TMDB-Schalter, Sprache) für Deployments; das Build spiegelt sie nach `apps/frontend/public/config/frontend.json`. |
+| `config/frontend.json` | Laufzeitkonfiguration (Startansicht, Sprache) für Deployments; das Build spiegelt sie nach `apps/frontend/public/config/frontend.json`. |
 | `config/frontend.json.sample` | Beispielkonfiguration; das Frontend-Build legt sie als `apps/frontend/public/config/frontend.json.sample` ab und nutzt sie als Fallback, falls keine reale Konfiguration existiert. |
 | `apps/frontend/src/main.js` | Bootstrapping der Anwendung, Initialisierung von Filtern, Watchlist, Debug und Einstellungen. |
 | `apps/frontend/public/hero.policy.json` | Steuerdatei für die Hero-Rotation (Poolgrößen, Slots, Cache-Laufzeiten). |
 | `apps/frontend/src/core/` | Fundamentale Infrastruktur (State-Management, Loader, DOM-/Error-Helfer, Konfigurations- und Metadatenservice). |
 | `apps/frontend/src/features/` | Feature-spezifische Module für Filter, Grid, Hero, Modals und Watchlist. |
-| `apps/frontend/src/features/hero/…` | Pipeline für Hero-Highlights (Policy, Pooling, Normalisierung, Storage, TMDB-Anbindung). |
-| `apps/frontend/src/services/` | Integrationslayer für externe APIs (aktuell TMDB-Client & Mapper). |
-| `apps/frontend/src/shared/` | Gemeinsame Utilities wie Cache-Layer und Stores. |
+| `apps/frontend/src/features/hero/…` | Pipeline für Hero-Highlights (Policy, Pooling, Normalisierung, Storage). |
+| `apps/frontend/src/services/` | Integrationslayer für externe APIs (derzeit leer, wird bei Bedarf ergänzt). |
+| `apps/frontend/src/shared/` | Gemeinsame Utilities wie Cache-Layer und Helferfunktionen. |
 | `apps/frontend/src/ui/` | Präsentationsnahe Komponenten (Loader, Skeletons, Error-Toast). |
 | `apps/frontend/src/js/data.js` | Datenlader für die `/api/v1/*`-Endpoints inklusive Cache-, Fehler- und Thumbnail-Normalisierung. |
 | `apps/frontend/src/js/…` | Browser-nahe Helfer & Brückenmodule (Debug-Overlay, Settings-Overlay, Fallback-Skripte, Demodaten). |
@@ -63,9 +63,7 @@ Das Repository ist als npm-Workspace organisiert. Relevante Befehle:
 | Schlüssel | Typ | Beschreibung |
 | --- | --- | --- |
 | `startView` | String (`"movies"`\|`"shows"`) | Legt fest, welche Bibliothek nach dem Laden angezeigt wird. |
-| `tmdbEnabled` | Boolean | Aktiviert den optionalen Abruf von TMDB-Metadaten (wird beim Start berücksichtigt). |
-| `tmdbApiKey` | String | Optionaler TMDB v3 API Key als Fallback, wenn kein Token im Browser hinterlegt wurde. |
-| `lang` | String | Sprache für TMDB-Anfragen sowie lokalisierte UI-Texte. |
+| `lang` | String | Sprache für UI-Texte und Datumsausgaben. |
 | `features.*` | Objekt | Optionale Feature-Flags (z. B. `heroPipeline`), die beim Frontend-Boot berücksichtigt werden. |
 
 ## Datenpflege
@@ -91,46 +89,17 @@ Das Repository ist als npm-Workspace organisiert. Relevante Befehle:
 
 ## Watchlist & Debugging
 - Die Watchlist speichert Einträge in `localStorage` (`watchlist:v1`). Über die Buttons im UI kannst du Einträge hinzufügen, entfernen, exportieren oder die Liste leeren. Beim Export wird eine `watchlist.json` im Browser heruntergeladen.
-- Das Debug-Overlay (Button "Debug" in den Einstellungen) zeigt Informationen über aktuelle Filter, Datenquellen und TMDB-Status. Die Ausgabe lässt sich direkt kopieren, um Fehlerberichte zu erleichtern.
+- Das Debug-Overlay (Button "Debug" in den Einstellungen) zeigt Informationen über aktuelle Filter, Datenquellen und den Status der Hero-Pipeline. Die Ausgabe lässt sich direkt kopieren, um Fehlerberichte zu erleichtern.
 
 ## Hero-Rotation & Policy-Datei
 - Die Hero-Fläche liest ihre Steuerung aus `apps/frontend/public/hero.policy.json`. Die Datei definiert Poolgrößen (`poolSizeMovies`, `poolSizeSeries`), Slot-Quoten (`slots.*`), Diversitäts-Gewichte, Rotations-Intervalle sowie bevorzugte Fallback-Quellen und Text-Limits.
 - `cache.ttlHours` und `cache.graceMinutes` steuern die Wiederverwendung bereits berechneter Hero-Pools. Innerhalb der TTL (Standard 24 Stunden) liefert das Backend seine letzte Berechnung mit `fromCache: true`; die Grace-Periode erlaubt einen sanften Übergang, bevor ein Neuaufbau erzwungen wird.
 - `apps/frontend/src/features/hero/policy.js` lädt die Policy (mit Fallback auf eingebaute Defaults), validiert Werte und stellt abgeleitete Helfer (`getPoolSizes()`, `getCacheTtl()`, …) bereit. Die Datei akzeptiert Hot-Reload ohne Seitenneustart: Änderungen an `hero.policy.json` werden beim nächsten `initHeroPolicy()`-Aufruf übernommen.
 - Die Hero-Pipeline nutzt ausschließlich das Backend (`/api/hero/<kind>`), um vorberechnete Pools samt Metadaten (Quelle, Ablaufzeit, Slot-Zusammenfassung) zu beziehen. Serverseitige TTLs werden über `cache.ttlHours`/`cache.graceMinutes` gesteuert und in der API-Antwort reflektiert (`expiresAt`, `fromCache`).
-- `apps/frontend/src/features/hero/normalizer.js` aggregiert Plex-Daten, führt optionale TMDb-Anreicherungen durch und harmonisiert Titel, Taglines, Laufzeiten, Zertifizierungen und Backdrops. Dadurch kann das Hero-Modul (`apps/frontend/src/features/hero/index.js`) sofort renderbare Einträge verarbeiten.
 - Ein Feature-Flag steuert den gesamten Pipeline-Pfad: `apps/frontend/src/features/hero/pipeline.js` liest zuerst einen lokalen Override (`localStorage.feature.heroPipeline`), fällt dann auf `config/frontend.json` (`heroPipelineEnabled` oder `features.heroPipeline`) zurück und aktiviert die Pipeline standardmäßig, wenn kein Flag gesetzt ist. Wird die Pipeline deaktiviert, blendet das Frontend automatisch das statische Fallback-Hero ein.
 
-## Einstellungs-Overlay & TMDB-Zugangsdaten
-- Der Einstellungsdialog verwaltet TMDb-Zugänge getrennt nach Laufzeit-Token (v4 Bearer) und dauerhaftem API Key (v3). Ein eingetragener Token wird ausschließlich im Browser (`localStorage.tmdbToken`) gespeichert und eignet sich für persönliche Setups oder temporäre Freigaben. Ein API Key gehört in `config/frontend.json` (`tmdbApiKey`), damit er beim Bauen/Verteilen des statischen Katalogs berücksichtigt wird.
-- Empfehlung: Teile das veröffentlichte Archiv ohne Browser-Token. Hinterlege falls nötig einen v3 API Key im Build (`config/frontend.json`) und ergänze persönliche v4 Token erst lokal im Overlay, sodass sie nicht in Repos oder Deployments landen.
-- Statusmeldungen im Overlay unterscheiden automatisch zwischen Token (`as: 'token'`) und API Key (`as: 'apikey'`). Wird ein v3 Key irrtümlich als Token eingegeben, informiert das UI und verweist auf die `config/frontend.json`.
-- Der Abschnitt „TMDb Cache“ enthält Schaltflächen zum Testen und Leeren: `Cache leeren` ruft `apps/frontend/src/services/tmdb.js#clearCache()` auf und entfernt heruntergeladene Metadaten aus `localStorage`. Bei Problemen mit veralteten Postern lohnt sich das Löschen des Caches sowie ein erneutes Speichern/Testen des Tokens.
-- Weitere Troubleshooting-Hinweise blendet das Overlay automatisch ein, etwa wenn `tmdbEnabled=false` gesetzt ist oder wenn ein gespeicherter Token ungültig wurde (der Token wird dann gelöscht und die Eingabe geleert).
-
-## TMDB-Integration
-- Setze `tmdbEnabled` in `config/frontend.json` auf `true`, um TMDB-Aufrufe zu erlauben. Standardmäßig bleiben alle Anfragen deaktiviert.
-- Hinterlege einen TMDB v4 Bearer Token zur Laufzeit im Einstellungsdialog oder trage deinen API Key dauerhaft im Feld `tmdbApiKey` ein. Tokens werden im Browser in `localStorage` gespeichert.
-- Sobald TMDB aktiviert ist, lädt das Frontend Cover und Backdrops nach (`apps/frontend/src/services/tmdb.js`). Die Nutzung ist optional und kann jederzeit über den UI-Toggle abgeschaltet werden.
-
-### TMDB-Laufzeitkonfiguration (`config/frontend.json`)
-- Kopiere `config/frontend.json.sample` nach `config/frontend.json`, um Defaults für Sprache, Region, API-Basis und TTL zu setzen. Das Frontend-Build spiegelt die reale Datei als `apps/frontend/public/config/frontend.json` und legt zusätzlich die Sample-Variante ab. So greifen lokale Demos automatisch auf deine Konfiguration zurück; halte produktive Werte dennoch aus Repos fern, falls sie persönliche API Keys/Tokens enthalten.
-- Ergänze `tmdbApiKey` (v3) oder trage einen v4 Bearer Token via Einstellungs-Overlay ein. Das UI kombiniert beide Quellen: Tokens landen im `localStorage.tmdbToken`, während API Keys ausschließlich aus `config/frontend.json` gelesen werden.
-- Aktiviere das Feature-Flag für die Modal-Anreicherung über `tmdbEnabled: true` in `config/frontend.json`. Beim Bootstrapping synchronisiert `apps/frontend/src/main.js` dieses Flag mit `window.FEATURES.tmdbEnrichment`, sodass du das Verhalten auch manuell via `window.FEATURES = { tmdbEnrichment: true }` im Browser vorladen kannst.
-
-### Cache-Strategie & On-Demand-Laden
-- Die TMDB-Metadaten werden mehrstufig gecacht. Kern-Keys lauten `tmdb:movie:{id}:v1`, `tmdb:tv:{id}:v1` sowie `tmdb:tv:{id}:season:{number}:v1` und landen im gemeinsamen Cache-Store (`apps/frontend/src/shared/cacheStore.js`).
-- Die Standard-TTL beträgt 24 Stunden. Sie lässt sich in `config/frontend.json` über `ttlHours`/`tmdbTtlHours` überschreiben. Lädt eine Anreicherung erneut, wird der Cache-Eintrag aktualisiert und die TTL pro Key respektiert.
-- Modals und Staffeln bleiben schlank: `apps/frontend/src/features/modal/modalV3/index.js` lädt TMDB-Details erst beim Öffnen einer Detailansicht und verwendet zunächst vorhandene Plex-Daten. Staffel- und Episodeninformationen (`apps/frontend/src/features/modal/modalV3/seasons.js`) werden lazy nachgeladen, sobald Nutzer:innen eine Staffel aufklappen; erst dann ruft das Frontend `getSeasonEnriched` ab und mapt Stillbilder.
-
-### Fallbacks, Fehlerbehandlung & Sprachindikator
-- Fehlt eine TMDB-ID, versucht der Dienst zunächst die IMDb-ID (`resolveByExternalId`) zu übersetzen oder fällt auf eine Suche nach Titel & Jahr zurück. Scheitern alle Schritte, wird die Session gecacht (`SESSION_CACHE`) und das UI bleibt bei den Plex-Daten.
+## Fallbacks, Fehlerbehandlung & Sprachindikator
 - Netzwerkfehler, Rate Limits oder ungültige Antworten werden abgefangen, im Log markiert und blockieren die UI nicht; Hero-Rotation und Modals signalisieren stattdessen Statusmeldungen bzw. nutzen vorhandene Caches.
-- Liegen keine lokalisierten Texte vor, markiert das Modal die Beschreibung mit einem `EN`-Badge: Sobald TMDB nur englische Inhalte liefert und die UI-Sprache nicht Englisch ist, erscheint das Badge als Hinweis auf den Sprachfallback.
-
-### Datenschutz-Hinweise zur API-Key-Nutzung
-- TMDB-Keys oder Tokens im Browser gelten als öffentlich: Alles, was in `apps/frontend/src/js/config.js`, `config/frontend.json` oder `localStorage` liegt, kann von Personen mit Zugriff auf den statischen Export ausgelesen werden.
-- Empfohlenes Vorgehen: Verteile Builds ohne hinterlegte Tokens und hinterlege persönliche Zugangsdaten erst lokal über das Einstellungs-Overlay. API Keys, die in `config.js` gebündelt werden, sollten nur für private/vertrauenswürdige Deployments eingesetzt werden.
 
 ## Nützliche Befehle
 | Befehl | Beschreibung |

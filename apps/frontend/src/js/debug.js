@@ -81,8 +81,6 @@ function render(){
       issues: heroPolicyIssues
     },
     heroCache: heroPipeline,
-    tmdb: { enabled: !!cfg.tmdbEnabled, lang: cfg.lang, tokenPresent: !!(localStorage.getItem('tmdbToken')||cfg.tmdbApiKey) },
-    useTmdbImages: localStorage.getItem('useTmdb')==='1',
     reduceMotion: localStorage.getItem('prefReduceMotion')==='1',
     locationHash: location.hash,
     userAgent: navigator.userAgent,

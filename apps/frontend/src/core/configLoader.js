@@ -1,8 +1,7 @@
 const LOG_PREFIX = '[configLoader]';
 
 export const DEFAULT_FRONTEND_CONFIG = {
-  startView: 'movies',
-  tmdbEnabled: false
+  startView: 'movies'
 };
 
 const CONFIG_CANDIDATES = [

@@ -5,7 +5,6 @@ const castState = new WeakMap();
 let listIdCounter = 0;
 
 function formatSourceLabel(source){
-  if(source === 'tmdb') return 'TMDB';
   if(source === 'local') return 'Lokal';
   return '';
 }
@@ -58,7 +57,7 @@ function ensureList(root){
 function getState(root){
   let state = castState.get(root);
   if(!state){
-    state = { entries: [], expanded: false, tmdbEnabled: false };
+    state = { entries: [], expanded: false };
     castState.set(root, state);
   }
   return state;
@@ -66,51 +65,6 @@ function getState(root){
 
 function isNonEmptyString(value){
   return typeof value === 'string' && value.trim().length > 0;
-}
-
-function hasTmdbProfileCandidate(entry){
-  if(!entry || typeof entry !== 'object') return false;
-  if(entry.source === 'tmdb') return true;
-  if(entry.image && typeof entry.image === 'object'){
-    if(entry.image.source === 'tmdb') return true;
-    if(isNonEmptyString(entry.image.url) && /image\.tmdb\.org\/t\/p\//.test(entry.image.url)) return true;
-  }
-  const raw = entry.raw && typeof entry.raw === 'object' ? entry.raw : {};
-  const candidates = [
-    entry.tmdbProfile,
-    entry.profile,
-    entry.profile_path,
-    entry.profilePath,
-    raw.tmdbProfile,
-    raw.profile,
-    raw.profile_path,
-    raw.profilePath,
-    raw.tmdb?.profile,
-    raw.tmdb?.profile_path,
-    raw.tmdb?.profilePath,
-  ];
-  return candidates.some(isNonEmptyString);
-}
-
-function hasTmdbCastData(payload){
-  if(Array.isArray(payload?.cast) && payload.cast.some(hasTmdbProfileCandidate)){
-    return true;
-  }
-  const source = payload?.item || payload;
-  const tmdbCast = source?.tmdbDetail?.credits?.cast;
-  if(Array.isArray(tmdbCast)){
-    return tmdbCast.some(hasTmdbProfileCandidate);
-  }
-  return false;
-}
-
-function normalizeTmdbProfile(path){
-  const str = String(path || '').trim();
-  if(!str) return '';
-  if(/^https?:\/\//i.test(str)) return str;
-  if(str.startsWith('//')) return `https:${str}`;
-  const suffix = str.startsWith('/') ? str : `/${str}`;
-  return `https://image.tmdb.org/t/p/w185${suffix}`;
 }
 
 function normalizeLocalImage(path){
@@ -121,25 +75,9 @@ function normalizeLocalImage(path){
   return str;
 }
 
-function resolveCastImage(entry, tmdbEnabled){
+function resolveCastImage(entry){
   if(!entry) return '';
   const raw = entry.raw || {};
-  if(tmdbEnabled){
-    const tmdbCandidates = [
-      entry.tmdbProfile,
-      raw?.tmdb?.profile,
-      raw?.tmdb?.profile_path,
-      raw?.tmdb?.profilePath,
-      raw?.tmdbProfile,
-      raw?.profile,
-      raw?.profile_path,
-      raw?.profilePath,
-    ];
-    for(const candidate of tmdbCandidates){
-      const url = normalizeTmdbProfile(candidate);
-      if(url) return url;
-    }
-  }
   const localCandidates = [entry.thumb, raw?.thumb, raw?.photo, raw?.image];
   for(const candidate of localCandidates){
     const url = normalizeLocalImage(candidate);
@@ -156,7 +94,7 @@ function castInitials(name){
   return chars.length ? chars.join('').toUpperCase() : str.charAt(0).toUpperCase();
 }
 
-function createCastCard(entry, tmdbEnabled){
+function createCastCard(entry){
   const name = String(entry?.name || '').trim();
   if(!name) return null;
   const character = String(entry?.character || entry?.role || '').trim();
@@ -184,7 +122,7 @@ function createCastCard(entry, tmdbEnabled){
   if(entry?.source){
     avatar.dataset.source = entry.source;
   }
-  const imageUrl = resolveCastImage(entry, tmdbEnabled);
+  const imageUrl = resolveCastImage(entry);
   if(imageUrl){
     avatar.classList.add('has-image');
     const img = document.createElement('img');
@@ -234,9 +172,8 @@ function renderEntries(root, entries, expanded){
   const list = ensureList(root);
   if(!list) return;
   const state = getState(root);
-  const tmdbEnabled = Boolean(state.tmdbEnabled);
   const visible = expanded ? entries : entries.slice(0, MAX_INITIAL_CAST);
-  list.replaceChildren(...visible.map(entry => createCastCard(entry, tmdbEnabled)).filter(Boolean));
+  list.replaceChildren(...visible.map(createCastCard).filter(Boolean));
   if(visible.length){
     list.setAttribute('role', 'list');
   }else{
@@ -346,7 +283,6 @@ export function renderCast(target, payload){
   const state = getState(root);
   state.entries = entries;
   state.expanded = false;
-  state.tmdbEnabled = hasTmdbCastData(payload);
   setCastLoading(root, false);
   if(!entries.length){
     ensureList(root).replaceChildren();
@@ -360,4 +296,3 @@ export function renderCast(target, payload){
   updateMoreButton(root);
   root.dataset.count = String(entries.length);
 }
-

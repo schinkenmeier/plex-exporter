@@ -29,13 +29,11 @@ function getPreferredLanguage(){
 }
 
 function resolveOriginalLanguage(viewModel){
-  const tmdb = viewModel?.tmdb || viewModel?.item?.tmdbDetail || viewModel?.item?.tmdb || null;
   const candidates = [
-    tmdb?.originalLanguage,
-    tmdb?.original_language,
     viewModel?.item?.originalLanguage,
     viewModel?.item?.original_language,
-    tmdb?.languages?.[0],
+    viewModel?.item?.languages?.[0],
+    viewModel?.item?.language,
   ];
   for(const entry of candidates){
     if(!entry) continue;

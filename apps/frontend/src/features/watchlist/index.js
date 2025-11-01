@@ -20,10 +20,36 @@ function persist(){
   }
 }
 
+function resolvePrimaryId(item){
+  if(!item) return '';
+  const ids = item.ids && typeof item.ids === 'object'
+    ? Object.entries(item.ids)
+    : [];
+  const orderedKeys = ['imdb', 'slug', 'ratingKey', 'guid'];
+  const candidates = [];
+  orderedKeys.forEach(key => {
+    const match = ids.find(([entryKey]) => entryKey === key);
+    if(match && match[1] != null){
+      candidates.push(match[1]);
+    }
+  });
+  ids.forEach(([key, value]) => {
+    if(key === 'tmdb' || key === 'themoviedb') return;
+    if(value != null) candidates.push(value);
+  });
+  candidates.push(item.ratingKey, item.rating_key, item.id);
+  for(const value of candidates){
+    if(value == null) continue;
+    const str = String(value).trim();
+    if(str) return str;
+  }
+  return '';
+}
+
 function idFor(item){
   if(!item) return '';
   const kind = (item.type==='tv' || item.libraryType==='show') ? 'show' : 'movie';
-  const id = item.ids?.imdb || item.ids?.tmdb || String(item.ratingKey||'');
+  const id = resolvePrimaryId(item);
   return id ? `${kind}:${id}` : '';
 }
 
@@ -159,7 +185,7 @@ export function renderPanel(){
     open.textContent = 'Öffnen';
     open.addEventListener('click', ()=>{
       const kind = (item.type==='tv') ? 'show' : 'movie';
-      const id = item.ids?.imdb || item.ids?.tmdb || String(item.ratingKey||'');
+      const id = resolvePrimaryId(item);
       if(id) location.hash = `#/${kind}/${id}`;
     });
     li.append(t, open, rm);

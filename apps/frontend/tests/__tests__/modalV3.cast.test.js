@@ -51,22 +51,15 @@ describe('modalV3 cast rendering', () => {
     }
   });
 
-  it('renders TMDB profile images when tmdbDetail credits are present', () => {
+  it('renders local cast entries with provided thumbnails', () => {
     const container = document.createElement('div');
     document.body.appendChild(container);
 
     const payload = {
       item: {
         cast: [
-          { name: 'Lokaler Star', role: 'Held', thumb: '/library/local.jpg' }
-        ],
-        tmdbDetail: {
-          credits: {
-            cast: [
-              { name: 'TMDB Star', character: 'Sidekick', profile_path: '/tmdb-profile.jpg' }
-            ]
-          }
-        }
+          { name: 'Lokaler Star', role: 'Held', thumb: 'https://example.org/local.jpg' }
+        ]
       }
     };
 
@@ -75,20 +68,19 @@ describe('modalV3 cast rendering', () => {
     const root = container.querySelector('[data-v3-cast]');
     assert.ok(root, 'cast root should be rendered');
     const cards = Array.from(root.querySelectorAll('.v3-cast-card'));
-    const tmdbCard = cards.find(card => card.querySelector('.v3-cast-card__name')?.textContent === 'TMDB Star');
-    assert.ok(tmdbCard, 'TMDB cast card should be present');
-    const image = tmdbCard.querySelector('img');
-    assert.ok(image, 'TMDB cast card should include an image');
-    assert.equal(image.getAttribute('src'), 'https://image.tmdb.org/t/p/w185/tmdb-profile.jpg');
+    assert.equal(cards.length, 1);
+    const image = cards[0].querySelector('img');
+    assert.ok(image, 'Cast card should include an image when thumb is provided');
+    assert.equal(image.getAttribute('src'), 'https://example.org/local.jpg');
   });
 
-  it('uses TMDB profiles provided via payload.cast entries', () => {
+  it('falls back to initials when no image is available', () => {
     const container = document.createElement('div');
     document.body.appendChild(container);
 
     const payload = {
       cast: [
-        { name: 'Direkter TMDB Star', role: 'Gast', tmdbProfile: '/direct-tmdb.jpg' }
+        { name: 'Fallback Star', role: 'Gast' }
       ]
     };
 
@@ -99,7 +91,9 @@ describe('modalV3 cast rendering', () => {
     const card = root.querySelector('.v3-cast-card');
     assert.ok(card, 'Cast card should be rendered');
     const image = card.querySelector('img');
-    assert.ok(image, 'Cast card should use TMDB profile image');
-    assert.equal(image.getAttribute('src'), 'https://image.tmdb.org/t/p/w185/direct-tmdb.jpg');
+    assert.equal(image, null, 'Card without image should render fallback');
+    const initials = card.querySelector('.v3-cast-card__initials');
+    assert.ok(initials, 'Fallback initials should be rendered');
+    assert.equal(initials.textContent, 'FS');
   });
 });

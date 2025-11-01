@@ -14,9 +14,9 @@ export const DEMO_MOVIE = {
   countries: [{ tag: 'Deutschland' }, { tag: 'Kanada' }],
   genres: [{ tag: 'Science-Fiction' }, { tag: 'Drama' }, { tag: 'Abenteuer' }],
   cast: [
-    { name: 'Mara Lenz', role: 'Captain Alys Vega', tmdbProfile: '/3rxeQHiuCYaXJqfyUG8yt0YdHtH.jpg' },
-    { name: 'Tariq Benassi', role: 'Navigator Elian Soh', tmdbProfile: '/wGl8DCycJ2U0FvJbLABd8R4FS3X.jpg' },
-    { name: 'Hannah Ko', role: 'Wissenschaftlerin Dr. Mira Han', tmdbProfile: '/hJuDvwzS0SPlsE6MN4pF2UYDGtt.jpg' },
+    { name: 'Mara Lenz', role: 'Captain Alys Vega' },
+    { name: 'Tariq Benassi', role: 'Navigator Elian Soh' },
+    { name: 'Hannah Ko', role: 'Wissenschaftlerin Dr. Mira Han' },
   ],
   directors: [{ tag: 'Jonas Falk' }],
   writers: [{ tag: 'Lea Winter' }],
@@ -24,8 +24,8 @@ export const DEMO_MOVIE = {
   labels: [{ tag: 'Dolby Atmos' }, { tag: '4K' }],
   collections: [{ tag: 'Aurora-Saga' }],
   trailer: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-  tmdbPoster: 'https://image.tmdb.org/t/p/w500/2lUYbD2C3XSuwqMUbDVDQuz9mqz.jpg',
-  ids: { tmdb: 'demo-lumen', imdb: 'tt0000001' },
+  poster: '',
+  ids: { imdb: 'tt0000001' },
   addedAt: '2024-06-01T12:00:00Z',
 };
 
@@ -43,16 +43,16 @@ export const DEMO_SERIES = {
   countries: [{ tag: 'USA' }, { tag: 'Island' }],
   creators: [{ tag: 'Elina Sørensen' }],
   cast: [
-    { name: 'Noah Adler', role: 'Commander Ivar Hale', tmdbProfile: '/4MqUjb1SYrzHmFSVoKHSKP5MGGm.jpg' },
-    { name: 'Sofia Idris', role: 'Ingenieurin Kaia Rhee', tmdbProfile: '/tHMgWz6EpRdbgoMJ2JfzFzjg3QB.jpg' },
-    { name: 'Helena Ruiz', role: 'Strategin Tala Voss', tmdbProfile: '/ziEuG1ESSofxDCspotYlrwz3Tq.png' },
+    { name: 'Noah Adler', role: 'Commander Ivar Hale' },
+    { name: 'Sofia Idris', role: 'Ingenieurin Kaia Rhee' },
+    { name: 'Helena Ruiz', role: 'Strategin Tala Voss' },
   ],
   seasons: [
     {
       title: 'Staffel 1',
       seasonNumber: 1,
       year: 2023,
-      thumbFile: 'https://image.tmdb.org/t/p/w300/4dO2YpC8S9nLmQAXoJLRV8LZRxn.jpg',
+      thumbFile: '',
       episodes: [
         {
           title: 'Kapitel Eins: Erwachen',
@@ -76,7 +76,7 @@ export const DEMO_SERIES = {
       title: 'Staffel 2',
       seasonNumber: 2,
       year: 2024,
-      thumbFile: 'https://image.tmdb.org/t/p/w300/bSL4hY8SgdKzac8AUbWQm74y87C.jpg',
+      thumbFile: '',
       episodes: [
         {
           title: 'Kapitel Dreizehn: Resonanz',
@@ -97,6 +97,6 @@ export const DEMO_SERIES = {
       ],
     },
   ],
-  tmdbPoster: 'https://image.tmdb.org/t/p/w500/a4I481szRmycyreQTLrRe4f4YJe.jpg',
-  ids: { tmdb: 'demo-aurora-station', imdb: 'tt0000002' },
+  poster: '',
+  ids: { imdb: 'tt0000002' },
 };

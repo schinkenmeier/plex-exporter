@@ -1,6 +1,6 @@
 import { getState } from '../../core/state.js';
 import { el } from '../../core/dom.js';
-import { humanYear, formatRating, renderChipsLimited, useTmdbForCards, isNew, getGenreNames, collectionTags } from '../../js/utils.js';
+import { humanYear, formatRating, renderChipsLimited, isNew, getGenreNames, collectionTags } from '../../js/utils.js';
 import * as Watch from '../watchlist/index.js';
 import { openMovieDetailV3, openSeriesDetailV3 } from '../modal/modalV3/index.js';
 import { navigateToHash } from '../../main.js';
@@ -314,9 +314,6 @@ function finishGridTransition(grid){
 }
 
 
-const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
-const TMDB_CARD_SIZE = 'w500';
-
 function normaliseLocalPoster(candidate){
   const raw = typeof candidate === 'string' ? candidate.trim() : '';
   if(!raw) return '';
@@ -331,77 +328,19 @@ function normaliseLocalPoster(candidate){
   return raw;
 }
 
-function extractPosterValue(candidate){
-  if(!candidate) return '';
-  if(typeof candidate === 'string') return candidate;
-  if(Array.isArray(candidate)){
-    for(const entry of candidate){
-      const value = extractPosterValue(entry);
-      if(value) return value;
-    }
-    return '';
-  }
-  if(candidate && typeof candidate === 'object'){
-    const value =
-      candidate.file_path ??
-      candidate.filePath ??
-      candidate.path ??
-      candidate.url ??
-      candidate.poster ??
-      candidate.location ??
-      '';
-    if(typeof value === 'string') return value;
-  }
-  return '';
-}
-
-function normaliseTmdbPoster(candidate){
-  const raw = extractPosterValue(candidate).trim();
-  if(!raw) return '';
-  if(/^data:/i.test(raw)) return raw;
-  if(/^https?:\/\//i.test(raw)) return raw;
-  if(raw.startsWith('//')) return `https:${raw}`;
-  if(raw.startsWith('/')) return `${TMDB_IMAGE_BASE}/${TMDB_CARD_SIZE}${raw}`;
-  if(raw.startsWith('t/p/')){
-    const suffix = raw.slice(4);
-    return suffix ? `${TMDB_IMAGE_BASE}/${TMDB_CARD_SIZE}/${suffix}` : `${TMDB_IMAGE_BASE}/${TMDB_CARD_SIZE}`;
-  }
-  if(/^w\d+\//i.test(raw) || /^original\//i.test(raw)){
-    return `${TMDB_IMAGE_BASE}/${raw}`;
-  }
-  if(raw.includes('/')){
-    const trimmed = raw.replace(/^\//, '');
-    return `${TMDB_IMAGE_BASE}/${TMDB_CARD_SIZE}/${trimmed}`;
-  }
-  return `${TMDB_IMAGE_BASE}/${TMDB_CARD_SIZE}/${raw}`;
-}
-
 function resolvePoster(item){
   if(!item) return '';
-
-  const localPath = normaliseLocalPoster(item?.thumbFile || item?.poster || item?.art || item?.thumb || '');
-
-  let tmdbPoster = '';
-  const tmdb = item?.tmdb || {};
-  const tmdbCandidates = [
-    item?.tmdbPoster,
-    tmdb.poster,
-    tmdb.poster_path,
-    tmdb.posterPath
+  const candidates = [
+    item?.poster,
+    item?.thumbFile,
+    item?.thumb,
+    item?.art,
+    item?.backdrop,
   ];
-  if(Array.isArray(tmdb.posters)) tmdbCandidates.push(...tmdb.posters);
-  if(Array.isArray(tmdb.images?.posters)) tmdbCandidates.push(...tmdb.images.posters);
-  for(const candidate of tmdbCandidates){
-    const resolved = normaliseTmdbPoster(candidate);
-    if(resolved){
-      tmdbPoster = resolved;
-      break;
-    }
+  for(const candidate of candidates){
+    const resolved = normaliseLocalPoster(candidate);
+    if(resolved) return resolved;
   }
-
-  if(useTmdbForCards() && tmdbPoster) return tmdbPoster;
-  if(localPath) return localPath;
-  if(tmdbPoster) return tmdbPoster;
   return '';
 }
 
@@ -485,10 +424,24 @@ function progressPercent(item){
 
 function resolveItemId(item){
   if(!item) return '';
-  const preferred = item?.ids?.imdb || item?.ids?.tmdb;
-  if(preferred) return String(preferred);
-  if(item?.ratingKey) return String(item.ratingKey);
-  return '';
+  const ids = item.ids && typeof item.ids === 'object'
+    ? Object.entries(item.ids)
+    : [];
+  const orderedKeys = ['imdb', 'slug', 'ratingKey', 'guid'];
+  const candidates = [];
+  orderedKeys.forEach(key => {
+    const pair = ids.find(([entryKey]) => entryKey === key);
+    if(pair && pair[1] != null){
+      candidates.push(pair[1]);
+    }
+  });
+  ids.forEach(([key, value]) => {
+    if(key === 'tmdb' || key === 'themoviedb') return;
+    if(value != null) candidates.push(value);
+  });
+  candidates.push(item.ratingKey, item.rating_key, item.id);
+  const first = candidates.find(value => value != null && String(value).trim());
+  return first ? String(first).trim() : '';
 }
 
 function gridItemSignature(entry){

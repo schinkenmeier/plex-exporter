@@ -19,9 +19,8 @@ Dieser Leitfaden skizziert den Aufbau der Plex-Exporter-Weboberfläche, das neue
 ## Hero-Policy & Pipeline (`apps/frontend/src/features/hero/...`)
 
 * **Policy-Layer (`hero/policy.js`):** Lädt `hero.policy.json` ohne Browser-Cache, wendet Defaults an und protokolliert Validierungswarnungen (`getValidationIssues()`). Die Policy definiert Poolgrößen, Slot-Quoten, Diversitätsgewichtungen und Rotationsintervalle. `getCacheTtl()` liefert serverseitige TTL-/Grace-Werte, die das Backend in den `/api/hero`-Antworten widerspiegelt.
-* **Pipeline (`hero/pipeline.js`):** Koordiniert Feature-Flags, TMDb-Status und API-Aufrufe. Für `primeAll()`/`refreshKind()` werden ausschließlich die Endpoints `/api/hero/movies` bzw. `/api/hero/series` genutzt; Ergebnisse aktualisieren den internen Snapshot (`pools`, `status`, `tmdb`). Events (`hero:pipeline-update`) informieren UI-Module, ohne lokale Rebuild-Fallbacks anzustoßen.
-* **Normalizer (`hero/normalizer.js`):** Konvertiert Rohdaten (inkl. optionaler TMDb-Details) in ein vereinheitlichtes Schema mit Text-Clamps, IDs, Backdrops und Meta-Tags. Der Normalizer kann TMDb-Daten synchronisieren (`fetchDetailsForItem`) und versieht Ergebnisse mit Quellenangaben.
-* **Feature-Flags (`hero/pipeline.js`):** Der Pipeline-State liest zuerst `localStorage.feature.heroPipeline` (manueller Toggle). Fehlt er, werden `config.heroPipelineEnabled` und `config.features.heroPipeline` herangezogen. Ohne explizites Flag bleibt die Pipeline aktiv. Beim Deaktivieren rendert das System das statische Fallback (`showHeroFallback()`). Pipeline-Status, Cache-Herkunft und TMDb-Rate-Limits werden über `hero:pipeline-update` Events und das Debug-Overlay sichtbar gemacht.
+* **Pipeline (`hero/pipeline.js`):** Koordiniert Feature-Flags und API-Aufrufe. Für `primeAll()`/`refreshKind()` werden ausschließlich die Endpoints `/api/hero/movies` bzw. `/api/hero/series` genutzt; Ergebnisse aktualisieren den internen Snapshot (`pools`, `status`). Events (`hero:pipeline-update`) informieren UI-Module, ohne lokale Rebuild-Fallbacks anzustoßen.
+* **Feature-Flags (`hero/pipeline.js`):** Der Pipeline-State liest zuerst `localStorage.feature.heroPipeline` (manueller Toggle). Fehlt er, werden `config.heroPipelineEnabled` und `config.features.heroPipeline` herangezogen. Ohne explizites Flag bleibt die Pipeline aktiv. Beim Deaktivieren rendert das System das statische Fallback (`showHeroFallback()`). Pipeline-Status und Cache-Herkunft werden über `hero:pipeline-update` Events sowie das Debug-Overlay sichtbar gemacht.
 
 ## Datenpfade und Normalisierung (`apps/frontend/src/js/data.js`)
 
@@ -42,16 +41,14 @@ Dieser Leitfaden skizziert den Aufbau der Plex-Exporter-Weboberfläche, das neue
 
 * `renderGrid(view)` liest aus dem State die aktuelle Sicht (`movies` oder `shows`) bzw. das gefilterte Ergebnis und erzeugt Karten (`cardEl`) mit Postern, Metadaten und Aktionen.
 * Collection-Gruppierung (`groupCollectionsIfEnabled()`) baut bei aktivierter Option virtuelle Sammlungs-Karten. Klicks auf Karten delegieren in die Detailansicht (`location.hash`).
-* Interaktionen mit der Watchlist (`Watch.toggle`) und TMDB-Poster (`useTmdbOn()` aus `utils.js`) sind direkt in den Karten verdrahtet.
+* Interaktionen mit der Watchlist (`Watch.toggle`) sind direkt in den Karten verdrahtet.
 
-## Watchlist-, TMDB- und Debug-Module
+## Watchlist- und Debug-Module
 
 * Watchlist (`apps/frontend/src/features/watchlist/index.js`)
   * Speichert Einträge unter `watchlist:v1` in `localStorage` und identifiziert Titel anhand kombinierter Schlüssel (`movie|show` + ID).
   * `initUi()` bindet Buttons im Header/Panel, aktualisiert `watchlistCount` und erlaubt Export/Clear-Operationen.
-* TMDB-Service (`apps/frontend/src/services/tmdb.js`)
-  * `hydrateOptional(movies, shows, cfg)` läuft idle und reichert Titel optional mit Poster/Backdrop-URLs an, sofern `cfg.tmdbEnabled` und ein Token (`localStorage.tmdbToken` oder `cfg.tmdbApiKey`) vorhanden sind.
-  * Ergebnisse werden in einem lokalen Cache (`tmdbCache`) persistiert; `clearCache()` leert diesen.
+    * Ergebnisse werden in einem lokalen Cache persistiert; `clearCache()` leert diesen.
 * Debug-Overlay (`apps/frontend/src/js/debug.js`)
   * `initDebugUi()` hängt das Panel an den DOM, zeigt State-Zusammenfassungen (`getState()`) sowie Datenquellen (`getSources()`) an und erlaubt das Kopieren eines JSON-Reports.
 
@@ -70,20 +67,20 @@ Dieser Leitfaden skizziert den Aufbau der Plex-Exporter-Weboberfläche, das neue
 4. Konfiguriert die Hero-Pipeline (`HeroPipeline.configure({ cfg, policy })`). Ist das Feature deaktiviert, wechselt das UI sofort in den Fallback-Modus; andernfalls abonniert die Pipeline den Backend-Status und stößt bei Bedarf API-Aufrufe (`/api/hero/...`) an.
 5. Berechnet Facetten (`Filter.computeFacets()`), speichert Kataloge & Facetten im State und initialisiert Filter-UI (`Filter.renderFacets()`, `Filter.initFilters()`).
 6. Baut die Ansicht (`renderSwitch()`, `renderStats(true)`, `renderFooterMeta()`, `renderGrid()`) und versteckt anschließend den Loader.
-7. Startet optionale Module: TMDB-Hydration (per `requestIdleCallback`), Watchlist (`Watch.initUi()`), Settings-Overlay (inkl. TMDb-Troubleshooting), Advanced-Filter-Toggle, Header/Scroll-Helfer sowie Debug-Overlay. Das automatische Ausblenden von Hero und Filterbar läuft primär über Scroll-Driven CSS-Animationen (`animation-timeline: scroll`); `initFilterBarAutoHideFallback()` aktiviert ein rAF-basiertes JS-Fallback in Browsern ohne Scroll-Timeline-Unterstützung und respektiert dabei Fokus-/Pointer-Interaktionen sowie die Reduce-Motion-Präferenz.
+7. Startet optionale Module: Watchlist (`Watch.initUi()`), Settings-Overlay, Advanced-Filter-Toggle, Header/Scroll-Helfer sowie Debug-Overlay. Das automatische Ausblenden von Hero und Filterbar läuft primär über Scroll-Driven CSS-Animationen (`animation-timeline: scroll`); `initFilterBarAutoHideFallback()` aktiviert ein rAF-basiertes JS-Fallback in Browsern ohne Scroll-Timeline-Unterstützung und respektiert dabei Fokus-/Pointer-Interaktionen sowie die Reduce-Motion-Präferenz.
 8. Ein `hashchange`-Listener unterstützt View-Wechsel (`#/movies`, `#/shows`) und öffnet bei `#/movie/<id>` bzw. `#/show/<id>` die neue Detailansicht (`openMovieDetailV3()`/`openSeriesDetailV3()`). Die Hero-Pipeline reagiert auf View-Wechsel über `setActiveView()` und entscheidet eigenständig, ob ein neuer API-Aufruf nötig ist.
 
 ## Detail-System (`apps/frontend/src/features/modal/modalV3/index.js`)
 
 * **Zentrale Steuerung:**
-  * Module importieren `openMovieDetailV3()` und `openSeriesDetailV3()` direkt aus `apps/frontend/src/features/modal/modalV3/index.js`. Beide Funktionen akzeptieren IDs oder bereits geladene Datensätze, kümmern sich um Demo- und TMDB-Hydration und steuern Render-Sessions über Tokens (`startRender()`/`isCurrentRender()`).
+  * Module importieren `openMovieDetailV3()` und `openSeriesDetailV3()` direkt aus `apps/frontend/src/features/modal/modalV3/index.js`. Beide Funktionen akzeptieren IDs oder bereits geladene Datensätze und steuern Render-Sessions über Tokens (`startRender()`/`isCurrentRender()`).
   * `renderMediaDetail(target, viewModel, options)` rendert den Pane-Stack außerhalb des Modals (z. B. auf `apps/frontend/public/details.html`). Standardmäßig wird das Markup ersetzt; `options.layout = 'standalone'` aktiviert einen eigenständigen Card-Look.
   * Die Anwendung nutzt ausschließlich die V3-Renderer; die alten V2-Module werden nicht mehr dynamisch geladen.
 
 * **Cinematic Shell (`apps/frontend/src/features/modal/modalV3`)**
   * `createPaneStack()` erzeugt das semantische Grundgerüst (Header, Poster-Sidebar, Tab-Stack). Spezialisierte Renderer (`header.js`, `overview.js`, `details.js`, `cast.js`, `seasons.js`) füllen die einzelnen Segmente.
   * Die Tab-Navigation (`applyTabs()`) setzt ARIA-Rollen, Tastatur-Shortcuts (Links/Rechts, Home/End) und steuert Sichtbarkeit/Focus der Pane-Inhalte (`data-pane`). Damit lassen sich Überblick, Details, Staffeln und Cast parallel vorhalten – identisch zur V2-UX, aber modularisiert.
-  * `loadMovieDetailViewModel()`/`loadSeriesDetailViewModel()` kombinieren State-Daten, `Data.loadMovies()`/`Data.loadShows()`, optionale `loadShowDetail()`-Requests und TMDB-Anreicherungen (`metadataService`). Das Resultat ist das strukturierte `MediaDetailViewModel`, das Layout, Badges, Chips und Metadaten vorbefüllt.
+  * `loadMovieDetailViewModel()`/`loadSeriesDetailViewModel()` kombinieren State-Daten, `Data.loadMovies()`/`Data.loadShows()` und optionale `loadShowDetail()`-Requests. Das Resultat ist das strukturierte `MediaDetailViewModel`, das Layout, Badges, Chips und Metadaten vorbefüllt.
   * Demo-Datensätze für Debug- und Showcase-Szenarien liegen weiterhin in `apps/frontend/src/js/modal/demoData.js` und werden erst bei Bedarf via Dynamic Import geladen (`openMovieDetailV3('demo')`/`openSeriesDetailV3('demo')`).
 
 * **Hilfsmodule & Zusammenspiel:**
@@ -102,7 +99,6 @@ Dieser Leitfaden skizziert den Aufbau der Plex-Exporter-Weboberfläche, das neue
 ## Shared Models (`packages/shared/src/index.ts`)
 
 * `MediaItem` und `MediaLibrary` beschreiben den strukturierten Plex-Export aus Sicht beider Anwendungen.
-* `TmdbCredentials` vereinheitlicht die Übergabe von TMDB-Zugangsdaten (API-Key oder v4-Token).
 * `HealthStatus` kann sowohl für interne Checks als auch externe Monitoring-Endpunkte verwendet werden.
 
 ## Build- und Startbefehle
@@ -119,8 +115,6 @@ Weiterführende Referenzen:
 * `apps/frontend/src/core/state.js`
 * `apps/frontend/src/features/filter/index.js`
 * `apps/frontend/src/features/grid/index.js`
-* `apps/frontend/src/services/tmdb.js`
 * `apps/frontend/src/features/watchlist/index.js`
 * `apps/frontend/src/js/debug.js`
 * `tools/split_series.mjs`
-

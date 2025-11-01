@@ -6,8 +6,6 @@
   <title>Details – Plex-Katalog</title>
   <meta name="description" content="Standalone-Detailansicht für Filme und Serien aus dem Plex-Katalog." />
   <link rel="icon" type="image/svg+xml" href="assets/plex-katalog-favicon.svg" />
-  <link rel="preconnect" href="https://image.tmdb.org" crossorigin />
-  <link rel="preconnect" href="https://api.themoviedb.org" crossorigin />
   <link rel="stylesheet" href="dist/app.css" />
   <link rel="stylesheet" href="../styles/modal.v3.css" />
   <meta name="color-scheme" content="dark light" />
@@ -26,41 +24,9 @@
   </main>
   <script type="module">
     import { renderMediaDetail, loadMovieDetailViewModel, loadSeriesDetailViewModel } from '../src/features/modal/modalV3/index.js';
-    import { syncDefaultMetadataService } from '../src/core/metadataService.js';
     import { loadFrontendConfig, DEFAULT_FRONTEND_CONFIG } from '../src/core/configLoader.js';
 
     const LOG_PREFIX = '[details]';
-    const DEFAULT_FEATURE_FLAGS = { tmdbEnrichment: false };
-    const globalFeatures = (() => {
-      try {
-        const existing = typeof window !== 'undefined' && window.FEATURES ? window.FEATURES : {};
-        const merged = { ...DEFAULT_FEATURE_FLAGS, ...existing };
-        if(typeof window !== 'undefined'){
-          window.FEATURES = merged;
-        }
-        return merged;
-      } catch (err) {
-        console.warn(`${LOG_PREFIX} Failed to initialise feature flags:`, err?.message || err);
-        if(typeof window !== 'undefined'){
-          window.FEATURES = { ...DEFAULT_FEATURE_FLAGS };
-          return window.FEATURES;
-        }
-        return { ...DEFAULT_FEATURE_FLAGS };
-      }
-    })();
-
-    function applyFeatureFlags(cfg){
-      try {
-        if(globalFeatures){
-          globalFeatures.tmdbEnrichment = !!(cfg && cfg.tmdbEnabled);
-        }
-        if(typeof window !== 'undefined' && window.FEATURES && window.FEATURES !== globalFeatures){
-          window.FEATURES = { ...window.FEATURES, ...globalFeatures };
-        }
-      } catch (err) {
-        console.warn(`${LOG_PREFIX} Failed to apply feature flags:`, err?.message || err);
-      }
-    }
 
     const statusEl = document.getElementById('detailStatus');
     const rootEl = document.getElementById('detailRoot');
@@ -91,14 +57,11 @@
       return String(raw).trim();
     }
 
-    async function loadViewModel(kind, id, params) {
-      const tmdbParam = normalizeId(params.get('tmdb'));
-      const options = {};
-      if(tmdbParam) options.tmdbId = tmdbParam;
+    async function loadViewModel(kind, id) {
       if(kind === 'movie') {
-        return loadMovieDetailViewModel(id, options);
+        return loadMovieDetailViewModel(id);
       }
-      return loadSeriesDetailViewModel(id, options);
+      return loadSeriesDetailViewModel(id);
     }
 
     async function loadConfig(){
@@ -126,9 +89,7 @@
       }
 
       try {
-        const cfg = await loadConfig();
-        applyFeatureFlags(cfg);
-        syncDefaultMetadataService(cfg);
+        await loadConfig();
         setStatus('Details werden geladen …', 'loading');
         const viewModel = await loadViewModel(kind, identifier, params);
         if(!viewModel) {

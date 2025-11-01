@@ -1,11 +1,6 @@
 import { prefixShowThumb } from '../../../js/data.js';
 
 const GUID_PATTERNS = {
-  tmdb: [
-    'tmdb://',
-    'themoviedb://',
-    'com.plexapp.agents.themoviedb://'
-  ],
   imdb: [
     'imdb://',
     'com.plexapp.agents.imdb://'
@@ -61,12 +56,8 @@ function ensureIds(target){
     if(str) ids[key] = str;
   };
 
-  assign('tmdb', target.tmdbId);
-  assign('tmdb', target?.tmdb?.id);
   assign('imdb', target.imdbId);
-  assign('imdb', target?.tmdb?.imdbId);
   assign('tvdb', target.tvdbId);
-  assign('tvdb', target?.tmdb?.tvdbId);
 
   const guidSources = [];
   if(Array.isArray(target?.guids)) guidSources.push(...target.guids);
@@ -79,9 +70,6 @@ function ensureIds(target){
 
   if(Object.keys(ids).length){
     target.ids = ids;
-    if(ids.tmdb && !target.tmdbId){
-      target.tmdbId = ids.tmdb;
-    }
   }
   return target;
 }

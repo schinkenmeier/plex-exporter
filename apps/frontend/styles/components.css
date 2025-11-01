@@ -135,9 +135,6 @@
 #clearWatchlist,
 #exportWatchlist,
 #settingsClose2,
-#tmdbSave,
-#tmdbTest,
-#tmdbClearCache,
 #resetFilters,
 #toggleAdvanced,
 #watchlistToggle,
@@ -160,7 +157,6 @@
 .btn.primary,
 .primary,
 .watchlist-actions > button.primary,
-#tmdbSave,
 #exportWatchlist {
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
   color: var(--accent-contrast);
@@ -186,8 +182,6 @@
 #closeWatchlist,
 #clearWatchlist,
 #settingsClose2,
-#tmdbTest,
-#tmdbClearCache,
 #resetFilters,
 #toggleAdvanced,
 #watchlistToggle,
@@ -200,8 +194,7 @@
 .hero__cta:hover,
 .btn.primary:hover,
 .primary:hover,
-.watchlist-actions > button.primary:hover,
-#tmdbSave:hover,
+.watchlist-actions > button.primary:hover:hover,
 #exportWatchlist:hover {
   transform: translateY(-2px);
   background: linear-gradient(140deg, rgba(111, 153, 255, 0.98) 0%, rgba(160, 118, 255, 0.98) 100%);
@@ -217,9 +210,7 @@
 #yearReset:hover,
 #closeWatchlist:hover,
 #clearWatchlist:hover,
-#settingsClose2:hover,
-#tmdbTest:hover,
-#tmdbClearCache:hover,
+#settingsClose2:hover:hover:hover,
 #resetFilters:hover,
 #toggleAdvanced:hover,
 #watchlistToggle:hover,
@@ -234,9 +225,7 @@
 #yearReset:focus-visible,
 #closeWatchlist:focus-visible,
 #clearWatchlist:focus-visible,
-#settingsClose2:focus-visible,
-#tmdbTest:focus-visible,
-#tmdbClearCache:focus-visible,
+#settingsClose2:focus-visible:focus-visible:focus-visible,
 #resetFilters:focus-visible,
 #toggleAdvanced:focus-visible,
 #watchlistToggle:focus-visible,
@@ -254,14 +243,11 @@
 #yearReset:focus-visible,
 #closeWatchlist:focus-visible,
 #clearWatchlist:focus-visible,
-#settingsClose2:focus-visible,
-#tmdbTest:focus-visible,
-#tmdbClearCache:focus-visible,
+#settingsClose2:focus-visible:focus-visible:focus-visible,
 #resetFilters:focus-visible,
 #toggleAdvanced:focus-visible,
 #watchlistToggle:focus-visible,
-#settingsBtn:focus-visible,
-#tmdbSave:focus-visible,
+#settingsBtn:focus-visible:focus-visible,
 #exportWatchlist:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -282,10 +268,7 @@
 #yearReset:disabled,
 #closeWatchlist:disabled,
 #clearWatchlist:disabled,
-#settingsClose2:disabled,
-#tmdbSave:disabled,
-#tmdbTest:disabled,
-#tmdbClearCache:disabled,
+#settingsClose2:disabled:disabled:disabled:disabled,
 #resetFilters:disabled,
 #toggleAdvanced:disabled,
 #watchlistToggle:disabled,

@@ -230,10 +230,6 @@ function createDom(){
         <section id="advancedFilters" hidden></section>
         <div id="grid" style="width:1200px;min-height:600px;"></div>
         <div id="footerMeta"><span id="footerStatus"></span></div>
-        <div class="footer-credits">
-          <img class="footer-credits__logo" src="tmdb.svg" alt="TMDb" />
-          <p class="footer-credits__text">This product uses the TMDb API but is not endorsed or certified by TMDb.</p>
-        </div>
         <div id="scrollProgress"></div>
         <button id="scrollTop" type="button"></button>
         <div id="modal-root" hidden></div>
@@ -450,7 +446,7 @@ test('boot flow integrates view switch, filtering and modal opening', async () =
         };
      }
       if(typeof url === 'string' && (url.endsWith('config/frontend.json') || url.endsWith('config.json'))){
-        return { ok: true, json: async () => ({ startView: 'movies', tmdbEnabled: false, heroPipelineEnabled: false }) };
+        return { ok: true, json: async () => ({ startView: 'movies', heroPipelineEnabled: false }) };
       }
       throw new Error(`Unexpected fetch call for ${url}`);
     };
@@ -474,8 +470,8 @@ test('boot flow integrates view switch, filtering and modal opening', async () =
     await main.boot();
     await settle();
 
-    const tmdbAttribution = document.querySelector('.footer-credits__text');
-    assert.equal(tmdbAttribution?.textContent?.trim(), 'This product uses the TMDb API but is not endorsed or certified by TMDb.');
+    const attribution = document.querySelector('.footer-credits__text');
+    assert.equal(attribution, null);
 
     const hero = document.getElementById('hero');
     for(let i = 0; i < 8; i += 1){

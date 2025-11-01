@@ -39,8 +39,13 @@ function matchesIdentifier(item, rawId){
   if(!item) return false;
   const str = rawId == null ? '' : String(rawId).trim();
   if(!str) return false;
-  if(item?.ids?.imdb && String(item.ids.imdb) === str) return true;
-  if(item?.ids?.tmdb && String(item.ids.tmdb) === str) return true;
+  const ids = item?.ids && typeof item.ids === 'object'
+    ? Object.entries(item.ids)
+    : [];
+  for(const [key, value] of ids){
+    if(key === 'tmdb' || key === 'themoviedb') continue;
+    if(value != null && String(value).trim() === str) return true;
+  }
   if(item?.ratingKey != null && String(item.ratingKey) === str) return true;
   if(item?.rating_key != null && String(item.rating_key) === str) return true;
   if(item?.id != null && String(item.id) === str) return true;
@@ -111,7 +116,7 @@ async function resolveSeriesPayload(input){
   }
   if(input && typeof input === 'object'){
     const base = input.item || input.show || input.media || input;
-    let detail = input.detail || input.showDetail || input.tmdbDetail || null;
+    let detail = input.detail || input.showDetail || null;
     if(base && !detail){
       try{
         detail = await loadShowDetail(base);

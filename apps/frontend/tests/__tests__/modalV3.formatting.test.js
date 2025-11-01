@@ -41,14 +41,14 @@ describe('modalV3/formatting', () => {
       assert.strictEqual(studioText({ studio: 'Warp Films' }), 'Warp Films');
     });
 
-    it('uses TMDB production companies when local data missing', () => {
-      const item = { tmdbDetail: { productionCompanies: [{ name: 'BBC' }] } };
-      assert.strictEqual(studioText(item), 'BBC');
+    it('falls back to network when no studio is set', () => {
+      const item = { network: 'Channel 4' };
+      assert.strictEqual(studioText(item), 'Channel 4');
     });
 
-    it('falls back to TMDB networks', () => {
-      const item = { tmdbDetail: { networks: [{ name: 'Channel 4' }] } };
-      assert.strictEqual(studioText(item), 'Channel 4');
+    it('uses studioName when provided', () => {
+      const item = { studioName: 'Pinewood' };
+      assert.strictEqual(studioText(item), 'Pinewood');
     });
 
     it('returns empty string if nothing is available', () => {

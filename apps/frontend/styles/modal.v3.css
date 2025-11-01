@@ -629,11 +629,6 @@ body.modalv3-open {
   color: var(--fg);
 }
 
-.v3-badge[data-source="tmdb"] {
-  border-color: color-mix(in srgb, var(--accent) 55%, var(--border) 45%);
-  color: color-mix(in srgb, var(--accent) 70%, var(--fg) 30%);
-}
-
 .v3-head__rating-chip {
   display: inline-flex;
   align-items: center;
@@ -869,11 +864,6 @@ body.modalv3-open {
   color: var(--muted);
 }
 
-.v3-cast-card__avatar[data-source="tmdb"] {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--border) 55%);
-}
-
 .v3-cast-card__avatar[data-source="local"] {
   box-shadow: 0 0 0 2px color-mix(in srgb, #35c27a 48%, transparent);
   border-color: color-mix(in srgb, #35c27a 38%, var(--border) 62%);
@@ -923,12 +913,6 @@ body.modalv3-open {
   background: color-mix(in srgb, var(--bg-translucent) 88%, transparent);
   color: color-mix(in srgb, var(--fg) 82%, var(--muted) 18%);
   font-weight: 600;
-}
-
-.v3-cast-card__badge[data-variant="source"][data-source="tmdb"] {
-  background: color-mix(in srgb, var(--accent) 52%, var(--card) 48%);
-  border-color: color-mix(in srgb, var(--accent) 48%, transparent);
-  color: #051020;
 }
 
 .v3-cast-card__badge[data-variant="source"][data-source="local"] {
@@ -1154,10 +1138,6 @@ body.modalv3-open {
   font-weight: 600;
 }
 
-.v3-episode__still[data-source="tmdb"] {
-  border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
-}
-
 .v3-episode__still[data-source="local"] {
   border: 1px solid color-mix(in srgb, #35c27a 32%, transparent);
 }
@@ -1183,12 +1163,6 @@ body.modalv3-open {
   background: color-mix(in srgb, var(--bg-translucent) 86%, transparent);
   color: var(--fg);
   box-shadow: 0 8px 18px rgba(8, 12, 20, 0.35);
-}
-
-.v3-episode__still-badge[data-source="tmdb"] {
-  background: color-mix(in srgb, var(--accent) 52%, var(--card) 48%);
-  border-color: color-mix(in srgb, var(--accent) 46%, transparent);
-  color: #04111f;
 }
 
 .v3-episode__still-badge[data-source="local"] {
@@ -1244,12 +1218,6 @@ body.modalv3-open {
 .v3-episode__badge[data-variant="rating"] {
   border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   color: color-mix(in srgb, var(--accent) 70%, var(--fg) 30%);
-}
-
-.v3-episode__badge[data-variant="source"][data-source="tmdb"] {
-  border-color: color-mix(in srgb, var(--accent) 46%, transparent);
-  background: color-mix(in srgb, var(--accent) 34%, var(--bg-translucent) 66%);
-  color: color-mix(in srgb, var(--accent) 80%, #08121f 20%);
 }
 
 .v3-episode__badge[data-variant="source"][data-source="local"] {

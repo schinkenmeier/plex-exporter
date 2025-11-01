@@ -1,4 +1,4 @@
-const DEFAULT_IMAGE_BASE = 'https://image.tmdb.org/t/p';
+const DEFAULT_IMAGE_BASE = '';
 const DEFAULT_SIZES = {
   poster: 'w500',
   backdrop: 'w780',
@@ -13,18 +13,23 @@ function normaliseBase(base){
   return raw.replace(/\/$/, '');
 }
 
-function ensurePath(path){
-  if(!path) return '';
-  const str = String(path);
-  if(!str) return '';
-  return str.startsWith('/') ? str : `/${str}`;
-}
-
 function buildUrl(path, size, base){
-  const cleaned = ensurePath(path);
-  if(!cleaned) return '';
+  const raw = String(path || '').trim();
+  if(!raw) return '';
+  if(/^data:/i.test(raw)) return raw;
+  if(/^https?:\/\//i.test(raw)) return raw;
+  if(raw.startsWith('//')) return `https:${raw}`;
+  if(raw.startsWith('/api/')) return raw;
+  if(raw.startsWith('/')) return raw;
   const root = normaliseBase(base);
-  return `${root}/${size}${cleaned}`;
+  if(!root) return '';
+  const normalizedRoot = root.replace(/\/+$/, '');
+  const normalizedSize = size ? String(size).replace(/^\/+|\/+$/g, '') : '';
+  const normalizedPath = raw.replace(/^\/+/, '');
+  const segments = [normalizedRoot];
+  if(normalizedSize) segments.push(normalizedSize);
+  segments.push(normalizedPath);
+  return segments.join('/');
 }
 
 function encodeSvg(svg){

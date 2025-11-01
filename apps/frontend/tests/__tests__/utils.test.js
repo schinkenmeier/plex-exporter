@@ -6,13 +6,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 
-// Mock localStorage for useTmdbOn
-global.localStorage = {
-  data: {},
-  getItem(key) { return this.data[key] || null; },
-  setItem(key, value) { this.data[key] = value; }
-};
-
 const { humanYear, formatRating, isNew, getGenreNames, collectionTags } = await import('../../src/js/utils.js');
 
 describe('Utils Module', () => {

@@ -5,7 +5,6 @@ import * as Data from './js/data.js';
 import * as Filter from './features/filter/index.js';
 import { renderGrid } from './features/grid/index.js';
 import { openMovieDetailV3, openSeriesDetailV3 } from './features/modal/modalV3/index.js';
-import { hydrateOptional } from './services/tmdb.js';
 import * as Watch from './features/watchlist/index.js';
 import * as Newsletter from './features/newsletter/index.js';
 import * as Debug from './js/debug.js';
@@ -15,41 +14,16 @@ import { refreshHero, setHeroNavigation, showHeroFallback } from './features/her
 import { initHeroAutoplay } from './features/hero/autoplay.js';
 import * as HeroPolicy from './features/hero/policy.js';
 import * as HeroPipeline from './features/hero/pipeline.js';
-import { syncDefaultMetadataService } from './core/metadataService.js';
 import { loadFrontendConfig, DEFAULT_FRONTEND_CONFIG } from './core/configLoader.js';
 import { DEFAULT_PAGE_SIZE } from '@plex-exporter/shared';
 console.log('[main] Imports loaded, Modal V3 functions:', { openMovieDetailV3, openSeriesDetailV3 });
-
-const DEFAULT_FEATURE_FLAGS = { tmdbEnrichment: false };
-const globalFeatures = (()=>{
-  const existing = typeof window !== 'undefined' && window.FEATURES ? window.FEATURES : {};
-  const merged = { ...DEFAULT_FEATURE_FLAGS, ...existing };
-  if(typeof window !== 'undefined'){
-    window.FEATURES = merged;
-  }
-  return merged;
-})();
-
-function applyFeatureFlags(cfg){
-  try{
-    if(globalFeatures){
-      globalFeatures.tmdbEnrichment = !!(cfg && cfg.tmdbEnabled);
-    }
-    if(typeof window !== 'undefined' && window.FEATURES && window.FEATURES !== globalFeatures){
-      window.FEATURES = { ...window.FEATURES, ...globalFeatures };
-    }
-  }catch(err){
-    console.warn('[main] Failed to apply feature flags:', err?.message || err);
-  }
-}
 
 let taglineTicker = null;
 const heroFallbackNotice = { reason: null };
 
 const HERO_FALLBACK_MESSAGES = {
-  'rate-limit': () => showError('TMDb drosselt Anfragen', 'Highlights werden kurzzeitig langsamer aktualisiert.'),
-  error: detail => showError('Highlights vorübergehend nicht verfügbar', detail?.status?.lastError || 'TMDb-Daten konnten nicht geladen werden.'),
-  default: () => showError('Highlights vorübergehend nicht verfügbar', 'TMDb-Daten konnten nicht geladen werden.')
+  error: detail => showError('Highlights vorübergehend nicht verfügbar', detail?.status?.lastError || 'Die Highlights werden bald erneut geladen.'),
+  default: () => showError('Highlights vorübergehend nicht verfügbar', 'Die Highlights werden bald erneut geladen.')
 };
 
 function announceHeroFallback(reason, detail){
@@ -166,15 +140,12 @@ function refreshHeroWithPipeline(listOverride){
     const ready = HeroPipeline.isReady();
     const busy = status?.regenerating;
     const items = Array.isArray(plan?.items) ? plan.items : [];
-    const tmdbRateLimit = plan?.snapshot?.tmdb?.rateLimit;
-    const rateLimited = !!tmdbRateLimit?.active;
     const pipelineError = status?.state === 'error';
-    const shouldFallback = (!items.length && (pipelineError || (rateLimited && ready && !busy)));
+    const shouldFallback = (!items.length && pipelineError);
     if(shouldFallback){
-      const reason = pipelineError ? 'error' : 'rate-limit';
-      const applied = showHeroFallback(reason);
+      const applied = showHeroFallback('error');
       if(applied){
-        announceHeroFallback(reason, { status, rateLimit: tmdbRateLimit });
+        announceHeroFallback('error', { status });
       }
       return;
     }
@@ -230,8 +201,6 @@ export async function boot(){
   });
 
   const [cfg, heroPolicy] = await Promise.all([configPromise, policyPromise]);
-  applyFeatureFlags(cfg);
-  syncDefaultMetadataService(cfg);
   const heroPipelineInfo = HeroPipeline.configure({ cfg, policy: heroPolicy });
   setState({
     cfg,
@@ -289,14 +258,6 @@ export async function boot(){
 
     hideLoader();
 
-    if(cfg.tmdbEnabled){
-      if(window.requestIdleCallback){
-        window.requestIdleCallback(()=> hydrateOptional?.(movies, shows, cfg), { timeout: 600 });
-      }else{
-        setTimeout(()=> hydrateOptional?.(movies, shows, cfg), 400);
-      }
-    }
-
     if(!isTestEnv){
       Watch.initUi();
       Newsletter.initUi();
@@ -324,38 +285,6 @@ export async function boot(){
     showRetryableError('Fehler beim Laden der Daten', () => window.location.reload());
     throw error;
   }
-  // Re-render grid on TMDB hydration progress to reveal new posters/data
-  // Note: Grid cards only re-render if user has enabled TMDB images
-  // Hero banner always uses TMDB data when credentials are available
-  let tmdbRaf;
-  window.addEventListener('tmdb:chunk', ()=>{
-    if(tmdbRaf) return; // throttle to animation frame
-    tmdbRaf = requestAnimationFrame(()=>{
-      tmdbRaf = null;
-      try{
-        const useTmdbCards = localStorage.getItem('useTmdb')==='1';
-        if(useTmdbCards){
-          renderGrid(getState().view);
-        }
-        // Always refresh hero when new TMDB data arrives (hero uses TMDB automatically)
-        refreshHeroWithPipeline();
-      }catch(err){
-        console.warn('[main] TMDB chunk render failed:', err.message);
-      }
-    });
-  });
-  window.addEventListener('tmdb:done', ()=>{
-    try{
-      const useTmdbCards = localStorage.getItem('useTmdb')==='1';
-      if(useTmdbCards){
-        renderGrid(getState().view);
-      }
-      // Always refresh hero when TMDB hydration is complete
-      refreshHeroWithPipeline();
-    }catch(err){
-      console.warn('[main] TMDB done render failed:', err.message);
-    }
-  });
 }
 
 // Debounced hashchange handler to prevent race conditions
@@ -378,9 +307,22 @@ async function applyHashNavigation(hash){
   }
   const match = hash.match(/^#\/(movie|show)\/(.+)/);
   if(!match) return false;
-  const [, kind, id ] = match;
+  const [, kind, rawId ] = match;
+  const targetId = String(rawId).trim();
   const pool = kind === 'movie' ? getState().movies : getState().shows;
-  const item = (pool||[]).find(x => (x?.ids?.imdb===id || x?.ids?.tmdb===id || String(x?.ratingKey)===id));
+  const item = (pool || []).find(candidate => {
+    if(!candidate) return false;
+    const ids = candidate.ids && typeof candidate.ids === 'object'
+      ? Object.entries(candidate.ids)
+      : [];
+    const candidates = [];
+    ids.forEach(([key, value]) => {
+      if(key === 'tmdb' || key === 'themoviedb') return;
+      if(value != null) candidates.push(value);
+    });
+    candidates.push(candidate.ratingKey, candidate.rating_key, candidate.id);
+    return candidates.some(value => value != null && String(value).trim() === targetId);
+  });
   if(!item) return false;
   if(kind === 'show') openSeriesDetailV3(item);
   else openMovieDetailV3(item);

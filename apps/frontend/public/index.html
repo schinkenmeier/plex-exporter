@@ -18,7 +18,6 @@
   <link rel="canonical" href="https://example.com/plex-katalog/" />
   <link rel="manifest" href="site.webmanifest">
   <link rel="icon" type="image/svg+xml" href="assets/plex-katalog-favicon.svg">
-  <link rel="preconnect" href="https://image.tmdb.org" crossorigin>
   <link rel="preconnect" href="https://api.themoviedb.org" crossorigin>
   <link rel="preload" as="image" href="assets/Plex-Katalog-Logo.svg" type="image/svg+xml" fetchpriority="high">
   <link rel="preload" as="style" href="dist/app.css">
@@ -31,7 +30,7 @@
   </script>
   <script type="module" src="dist/main.js" defer></script>
   <meta name="color-scheme" content="dark light" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://image.tmdb.org https://www.themoviedb.org https://tautulli.dinspel.eu http://localhost:4000; connect-src 'self' https://api.themoviedb.org https://image.tmdb.org http://localhost:4000; font-src 'self'; base-uri 'self'; form-action 'self';" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://tautulli.dinspel.eu http://localhost:4000; connect-src 'self' http://localhost:4000; font-src 'self'; base-uri 'self'; form-action 'self';" />
 </head>
 <body>
   
@@ -225,12 +224,6 @@
         <button type="button" id="openWatchlist" class="btn-link">Merkliste anzeigen</button>
         <button type="button" id="openDebug" class="btn-link">Debug</button>
       </nav>
-      <div class="footer-credits">
-        <a class="footer-credits__link" href="https://www.themoviedb.org/" target="_blank" rel="noopener noreferrer">
-          <img src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_long_2.svg" alt="TMDb" width="120" height="22" loading="lazy" decoding="async">
-        </a>
-        <p class="footer-credits__text">This product uses the TMDb API but is not endorsed or certified by TMDb.</p>
-      </div>
     </div>
   </footer>
 
@@ -240,7 +233,7 @@
   </button>
 
   <!-- Einstellungen Overlay -->
-  <div id="settingsOverlay" class="settings-overlay" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" aria-describedby="settingsIntro tmdbStatus" hidden>
+  <div id="settingsOverlay" class="settings-overlay" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" aria-describedby="settingsIntro" hidden>
     <div class="settings-dialog" tabindex="-1">
       <div class="settings-header">
         <h2 id="settingsTitle" class="settings-title">Einstellungen</h2>
@@ -248,23 +241,8 @@
       <div class="settings-body">
         <p id="settingsIntro" class="settings-help">Verwalte hier Token, Animationen und weitere Anzeigeoptionen.</p>
         <div class="settings-row">
-          <label class="settings-label" for="tmdbTokenInput">TMDB Bearer Token</label>
-          <input id="tmdbTokenInput" type="password" placeholder="Bearer Token eingeben" autocomplete="off" />
-          <div class="settings-inline">
-            <button type="button" id="tmdbSave" class="primary">Token speichern</button>
-            <button type="button" id="tmdbTest">Token testen</button>
-            <button type="button" id="tmdbClearCache">TMDB-Cache leeren</button>
-          </div>
-          <p class="settings-help">Token wird lokal (localStorage) gespeichert. Leerlassen, um TMDB zu deaktivieren.</p>
-          <p class="settings-help" id="tmdbStatus" aria-live="polite"></p>
-        </div>
-        <div class="settings-row">
           <label class="settings-inline"><input id="prefReduceMotion" type="checkbox" /> Animationen reduzieren</label>
           <p class="settings-help">Deaktiviert scroll-basierte Animationen von Hero und Filterbar.</p>
-        </div>
-        <div class="settings-row">
-          <label class="settings-inline"><input id="useTmdbSetting" type="checkbox" /> TMDB-Bilder für Kartengalerie nutzen <span id="tmdbStatusBadge" class="status-badge" aria-hidden="true"></span></label>
-          <p class="settings-help">Zeigt TMDB-Poster in der Kartengalerie statt Plex-Bilder. Nur verfügbar mit gültigem Token. <strong>Hinweis:</strong> Das Hero-Banner nutzt automatisch TMDB-Daten, wenn ein Token vorhanden ist.</p>
         </div>
         <div class="settings-row">
           <p class="settings-help">Das Cinematic-Modal ist standardmäßig aktiv.</p>

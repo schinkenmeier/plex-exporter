@@ -36,62 +36,37 @@ function logoEntryLanguage(entry){
 function resolveBaseItem(viewModel){
   if(!viewModel) return null;
   const item = viewModel.item || {};
-  const tmdbDetail = viewModel.tmdb || item.tmdbDetail || null;
   const type = viewModel.kind === 'show' ? 'tv' : item.type;
-  return { ...item, tmdbDetail, type };
+  return { ...item, type };
 }
 
 function deriveMeta(viewModel){
   const baseItem = resolveBaseItem(viewModel);
   const runtime = viewModel?.meta?.runtime || (baseItem ? runtimeText(baseItem) : '');
   const rating = viewModel?.meta?.rating || (baseItem ? ratingText(baseItem) : '');
-  const tmdbRating = viewModel?.meta?.tmdbRating || '';
   const studio = viewModel?.meta?.studio || (baseItem ? studioText(baseItem) : '');
   const contentRating = viewModel?.meta?.contentRating || '';
   const seasonCount = viewModel?.meta?.seasonCount ?? null;
-  return { runtime, rating, tmdbRating, studio, contentRating, seasonCount };
+  return { runtime, rating, studio, contentRating, seasonCount };
 }
 
 function resolveDetail(viewModel){
   if(!viewModel) return null;
-  return viewModel.tmdb || viewModel.item?.tmdbDetail || viewModel.item?.tmdb || null;
+  return viewModel.item || null;
 }
 
 function pickHeroLogo(viewModel){
-  const detail = resolveDetail(viewModel);
-  const seen = new Set();
+  const item = viewModel?.item || {};
   const logos = [];
-
-  const pushList = list => {
+  const collect = list => {
     if(!Array.isArray(list)) return;
     for(const entry of list){
-      if(!entry) continue;
       const url = sanitizeUrl(logoEntryToUrl(entry));
-      if(!url || seen.has(url)) continue;
-      seen.add(url);
-      logos.push({ entry, url });
+      if(url) logos.push({ entry, url });
     }
   };
-
-  const pushDetail = source => {
-    if(!source) return;
-    pushList(source.images?.logos);
-    pushList(source.logos);
-  };
-
-  pushDetail(detail);
-  const item = viewModel?.item || null;
-  if(item){
-    const itemDetail = item.tmdbDetail || null;
-    if(itemDetail && itemDetail !== detail) pushDetail(itemDetail);
-    const itemTmdb = item.tmdb || null;
-    if(itemTmdb && itemTmdb !== detail && itemTmdb !== itemDetail) pushDetail(itemTmdb);
-  }
-  const tmdbDetail = viewModel?.tmdb || null;
-  if(tmdbDetail && tmdbDetail !== detail && tmdbDetail !== item?.tmdbDetail && tmdbDetail !== item?.tmdb){
-    pushDetail(tmdbDetail);
-  }
-
+  collect(item.logos);
+  collect(item.images?.logos);
   if(!logos.length) return '';
   const preferences = ['de', 'en', ''];
   for(const pref of preferences){
@@ -102,14 +77,10 @@ function pickHeroLogo(viewModel){
     });
     if(match?.url) return match.url;
   }
-  for(const entry of logos){
-    if(entry?.url) return entry.url;
-  }
-  return '';
+  return logos[0]?.url || '';
 }
 
 function pickLogo(viewModel, excludeUrl=''){
-  const detail = resolveDetail(viewModel);
   const candidates = [];
   const seen = new Set();
   const exclude = sanitizeUrl(excludeUrl);
@@ -120,12 +91,11 @@ function pickLogo(viewModel, excludeUrl=''){
     seen.add(url);
     candidates.push(url);
   };
-  if(Array.isArray(detail?.images?.logos)) detail.images.logos.forEach(push);
-  if(Array.isArray(detail?.networks)) detail.networks.forEach(push);
-  if(Array.isArray(detail?.productionCompanies)) detail.productionCompanies.forEach(push);
-  if(detail?.collection) push(detail.collection);
-  const itemLogos = viewModel?.item?.tmdbDetail?.images?.logos;
-  if(Array.isArray(itemLogos)) itemLogos.forEach(push);
+  const item = viewModel?.item || {};
+  if(Array.isArray(item.logos)) item.logos.forEach(push);
+  if(Array.isArray(item.images?.logos)) item.images.logos.forEach(push);
+  if(Array.isArray(item.networks)) item.networks.forEach(push);
+  if(Array.isArray(item.productionCompanies)) item.productionCompanies.forEach(push);
   return candidates[0] || '';
 }
 
@@ -139,16 +109,6 @@ function ratingBucket(value){
 
 function pickHeroRating(viewModel){
   if(!viewModel) return null;
-  const tmdb = viewModel.tmdb || viewModel.item?.tmdbDetail || null;
-  const tmdbVote = Number(tmdb?.voteAverage ?? tmdb?.vote_average);
-  if(Number.isFinite(tmdbVote) && tmdbVote > 0){
-    return {
-      label: 'TMDB',
-      text: formatRating(tmdbVote),
-      value: tmdbVote,
-      bucket: ratingBucket(tmdbVote),
-    };
-  }
   const fallback = Number(
     viewModel.item?.rating ??
     viewModel.item?.audienceRating ??
@@ -483,7 +443,7 @@ function renderTitleSection(target, viewModel){
   const metaParts = [];
   if(viewModel?.year) metaParts.push(viewModel.year);
   if(derivedMeta.runtime) metaParts.push(derivedMeta.runtime);
-  const rating = derivedMeta.rating || derivedMeta.tmdbRating;
+  const rating = derivedMeta.rating;
   if(rating) metaParts.push(rating);
   const studio = derivedMeta.studio;
   if(studio) metaParts.push(studio);
@@ -602,7 +562,6 @@ function renderQuickfactsSection(target, viewModel){
   if(derivedMeta.contentRating) entries.push(['Freigabe', derivedMeta.contentRating]);
   if(derivedMeta.runtime) entries.push(['Laufzeit', derivedMeta.runtime]);
   if(derivedMeta.rating) entries.push(['Bewertung', derivedMeta.rating]);
-  if(derivedMeta.tmdbRating) entries.push(['TMDB', derivedMeta.tmdbRating]);
   if(derivedMeta.studio) entries.push([viewModel?.kind === 'show' ? 'Netzwerk' : 'Studio', derivedMeta.studio]);
   const seasonCount = formatSeasonCount(derivedMeta.seasonCount);
   if(seasonCount) entries.push(['Staffeln', seasonCount]);
@@ -704,4 +663,3 @@ export function getPosterRoot(target){
   const poster = coercePosterTarget(target);
   return poster?.root || null;
 }
-

@@ -1,6 +1,6 @@
 import { getState } from '../../core/state.js';
 import { openMovieDetailV3, openSeriesDetailV3 } from '../modal/modalV3/index.js';
-import { humanYear, formatRating, useTmdbOn } from '../../js/utils.js';
+import { humanYear, formatRating } from '../../js/utils.js';
 import * as HeroPipeline from './pipeline.js';
 
 const NUMBER_FORMAT = typeof Intl !== 'undefined' ? new Intl.NumberFormat('en-US') : { format: (value)=>String(value) };
@@ -12,19 +12,14 @@ let lastFallbackReason = null;
 
 const HERO_FALLBACK_COPY = {
   default: {
-    title: 'Highlights temporarily unavailable',
-    tagline: 'TMDb data could not be loaded just now.',
-    overview: 'The hero banner falls back to a neutral gradient until artwork and metadata are available again. Feel free to keep browsing and refresh later.'
-  },
-  'rate-limit': {
-    title: 'Highlights are catching their breath',
-    tagline: 'TMDb is currently rate limiting our artwork requests.',
-    overview: 'We are slowing down hero generation until the limit resets. Your library stays accessible in the meantime.'
+    title: 'Highlights vorübergehend nicht verfügbar',
+    tagline: 'Das Highlight-Banner wird gerade aktualisiert.',
+    overview: 'Wir laden die Auswahl im Hintergrund neu. Du kannst in der Zwischenzeit wie gewohnt weiterstöbern.'
   },
   error: {
-    title: 'Highlights paused',
-    tagline: 'Fresh TMDb data is temporarily unavailable.',
-    overview: 'We will automatically retry fetching artwork. You can also trigger a manual refresh from the settings when you are ready.'
+    title: 'Highlights pausiert',
+    tagline: 'Beim Aktualisieren der Highlights ist ein Fehler aufgetreten.',
+    overview: 'Wir versuchen es automatisch erneut oder du startest die Aktualisierung über die Einstellungen manuell.'
   }
 };
 
@@ -298,7 +293,7 @@ function normalizeLegacyItem(raw){
   if(!title) return null;
 
   const ids = collectIds(raw);
-  const targetId = ids.tmdb || ids.imdb || ids.ratingKey || '';
+  const targetId = ids.imdb || ids.ratingKey || ids.slug || ids.guid || '';
   if(!targetId) return null;
 
   const year = parseYear(raw);
@@ -337,9 +332,14 @@ function normalizeLegacyItem(raw){
 function collectIds(raw){
   const ids = {};
   if(raw?.ids && typeof raw.ids === 'object'){
-    if(raw.ids.tmdb) ids.tmdb = String(raw.ids.tmdb);
-    if(raw.ids.imdb) ids.imdb = String(raw.ids.imdb);
-    if(raw.ids.tvdb) ids.tvdb = String(raw.ids.tvdb);
+    Object.entries(raw.ids).forEach(([key, value]) => {
+      if(value == null) return;
+      const normalizedKey = String(key).trim();
+      if(!normalizedKey) return;
+      const lower = normalizedKey.toLowerCase();
+      if(lower === 'tmdb' || lower === 'themoviedb') return;
+      ids[normalizedKey] = String(value);
+    });
   }
   if(raw?.ratingKey != null) ids.ratingKey = String(raw.ratingKey);
   if(raw?.guid) ids.guid = String(raw.guid);
@@ -408,14 +408,6 @@ function parseTagline(raw){
 }
 
 function collectLegacyBackdrops(raw){
-  const preferTmdb = useTmdbOn();
-  const tmdbCandidates = [
-    raw?.tmdb?.backdrop,
-    raw?.tmdb?.backdrop_path,
-    raw?.tmdb?.backdropPath,
-    raw?.tmdb?.background,
-    raw?.tmdb?.art
-  ];
   const localCandidates = [
     raw?.art,
     raw?.background,
@@ -425,30 +417,19 @@ function collectLegacyBackdrops(raw){
     raw?.thumbFile
   ];
   const urls = [];
-  if(preferTmdb){
-    tmdbCandidates.forEach(candidate => {
-      const url = normalizeMediaPath(candidate, true);
-      if(url && !urls.includes(url)) urls.push(url);
-    });
-  }
   localCandidates.forEach(candidate => {
-    const url = normalizeMediaPath(candidate, false);
+    const url = normalizeMediaPath(candidate);
     if(url && !urls.includes(url)) urls.push(url);
   });
   return urls;
 }
 
-function normalizeMediaPath(path, preferTmdb){
+function normalizeMediaPath(path){
   if(typeof path !== 'string') return '';
   const trimmed = path.trim();
   if(!trimmed) return '';
   if(trimmed.startsWith('http')) return trimmed;
-  if(trimmed.startsWith('/')){
-    if(preferTmdb && !trimmed.startsWith('/library/')){
-      return `https://image.tmdb.org/t/p/original${trimmed}`;
-    }
-    return trimmed;
-  }
+  if(trimmed.startsWith('//')) return `https:${trimmed}`;
   return trimmed;
 }
 

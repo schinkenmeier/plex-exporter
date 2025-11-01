@@ -1,11 +1,9 @@
 import { getState } from '../core/state.js';
 import { renderGrid } from '../features/grid/index.js';
 import * as HeroPipeline from '../features/hero/pipeline.js';
-import { syncDefaultMetadataService } from '../core/metadataService.js';
 
 let heroRefreshHandler = null;
 let reduceMotionHandler = null;
-let tmdbHydrationStarted = false;
 
 export function setHeroRefreshHandler(handler){
   heroRefreshHandler = typeof handler === 'function' ? handler : null;
@@ -42,14 +40,7 @@ export function initSettingsOverlay(cfg){
   const open2 = document.getElementById('openSettings');
   const headerSettingsBtn = document.getElementById('headerSettingsBtn');
   const close2 = document.getElementById('settingsClose2');
-  const tmdbInput = document.getElementById('tmdbTokenInput');
-  const tmdbSave = document.getElementById('tmdbSave');
-  const tmdbTest = document.getElementById('tmdbTest');
-  const tmdbStatus = document.getElementById('tmdbStatus');
-  const tmdbClear = document.getElementById('tmdbClearCache');
-  const tmdbBadge = document.getElementById('tmdbStatusBadge');
   const reduce = document.getElementById('prefReduceMotion');
-  const useTmdb = document.getElementById('useTmdbSetting');
   const resetFilters = document.getElementById('resetFilters');
   const body = overlay?.querySelector('.settings-body');
 
@@ -135,10 +126,6 @@ export function initSettingsOverlay(cfg){
     const segments = [];
     segments.push(describeHeroStatus('Filme', snapshot.status?.movies));
     segments.push(describeHeroStatus('Serien', snapshot.status?.series));
-    if(snapshot.tmdb){
-      if(!snapshot.tmdb.allowed) segments.push('TMDb deaktiviert');
-      else segments.push(`TMDb ${snapshot.tmdb.active ? 'aktiv' : 'aus (Toggle)'}`);
-    }
     if(snapshot.featureSource){
       segments.push(`Feature-Flag: ${snapshot.featureSource}`);
     }
@@ -275,189 +262,20 @@ export function initSettingsOverlay(cfg){
   overlay && overlay.addEventListener('click', (ev)=>{ if(ev.target===overlay) closeOverlay(); });
   overlay && overlay.addEventListener('keydown', handleKeydown);
 
-  function setTmdbStatus(msg='', kind=''){
-    if(!tmdbStatus) return;
-    tmdbStatus.textContent = msg;
-    tmdbStatus.dataset.kind = kind; // kind: success|error|info|pending
-    if(tmdbBadge){ tmdbBadge.dataset.kind = kind || ''; tmdbBadge.title = msg || ''; }
-    // Auto-Fallback: Bei Fehler und vorhandenem v3 API Key, gespeicherten ungültigen Token entfernen
-    try{
-      if(kind==='error' && cfg && cfg.tmdbApiKey){
-        const stored = String(localStorage.getItem('tmdbToken')||'').trim();
-        const currentInput = String(tmdbInput?.value||'').trim();
-        if(stored && currentInput){
-          try{ localStorage.removeItem('tmdbToken'); }
-          catch(err){ console.warn('[settingsOverlay] Failed to remove tmdbToken from storage:', err?.message || err); }
-          if(tmdbInput) tmdbInput.value = '';
-          setUseTmdbAvailability(true);
-          const m = 'Ungültiger Token entfernt. Verwende API Key aus config/frontend.json.';
-          tmdbStatus.textContent = m;
-          tmdbStatus.dataset.kind = 'info';
-          if(tmdbBadge){ tmdbBadge.dataset.kind = 'info'; tmdbBadge.title = m; }
-        }
-      }
-    }catch(err){ console.warn('[settingsOverlay] Failed to reset TMDB status state:', err?.message || err); }
-  }
-
-  function setUseTmdbAvailability(allowed){
-    if(!useTmdb) return;
-    useTmdb.disabled = !allowed;
-    useTmdb.title = useTmdb.disabled ? 'Nur verfügbar mit gültigem Token oder API Key.' : '';
-    if(!allowed && useTmdb.checked){
-      try{ localStorage.setItem('useTmdb', '0'); }
-      catch(err){ console.warn('[settingsOverlay] Failed to persist TMDB toggle state:', err?.message || err); }
-      useTmdb.checked = false;
-      renderGrid(getState().view);
-      notifyHeroRefresh();
-    }
-  }
-
   function syncSettingsUi(){
-    let token = '';
-    try{ tmdbInput && (tmdbInput.value = token = (localStorage.getItem('tmdbToken')||'')); }
-    catch(err){ console.warn('[settingsOverlay] Failed to read stored tmdbToken:', err?.message || err); }
-    try{ reduce && (reduce.checked = localStorage.getItem('prefReduceMotion')==='1'); }
-    catch(err){ console.warn('[settingsOverlay] Failed to read reduce-motion preference:', err?.message || err); }
-    try{ if(useTmdb){
-      useTmdb.checked = localStorage.getItem('useTmdb')==='1';
-      useTmdb.disabled = !token;
-      useTmdb.title = useTmdb.disabled ? 'Nur verfügbar mit gültigem Token.' : '';
-    } }
-    catch(err){ console.warn('[settingsOverlay] Failed to sync TMDB toggle from storage:', err?.message || err); }
-    try{ setUseTmdbAvailability(!!token || !!(cfg&&cfg.tmdbApiKey)); }
-    catch(err){ console.warn('[settingsOverlay] Failed to update TMDB availability:', err?.message || err); }
-    setTmdbStatus('', '');
-
-    // Check if TMDB is disabled in config
-    if(cfg && cfg.tmdbEnabled === false){
-      setTmdbStatus('⚠️ TMDB ist in config/frontend.json deaktiviert (tmdbEnabled: false). Hero-Banner benötigt TMDB!', 'error');
-    }else if(!token){
-      setTmdbStatus('Kein Token hinterlegt. TMDB ist deaktiviert.', 'info');
+    try{
+      if(reduce){
+        reduce.checked = localStorage.getItem('prefReduceMotion') === '1';
+      }
+    }catch(err){
+      console.warn('[settingsOverlay] Failed to read reduce-motion preference:', err?.message || err);
     }
-    // Optional: Auto-Check bei geöffnetem Dialog
-    if(token){
-      (async()=>{
-        setTmdbStatus('Prüfe Token...', 'pending');
-        try{
-          const svc = await import('./services/tmdb.js');
-          const res = await svc.validateToken?.(token);
-          if(res && res.ok){
-            setUseTmdbAvailability(true);
-            if(res.as==='bearer') setTmdbStatus('Token gültig (v4 Bearer).', 'success');
-            else if(res.as==='apikey') setTmdbStatus('API Key gültig (v3). Tipp: dauerhaft in config/frontend.json unter "tmdbApiKey" eintragen.', 'success');
-          }else{
-            setUseTmdbAvailability(false);
-            if(res?.hint==='looksV3') setTmdbStatus('Eingegebener Wert sieht wie ein v3 API Key aus. Bitte in config/frontend.json als "tmdbApiKey" eintragen oder v4 Bearer Token verwenden.', 'error');
-            else setTmdbStatus('Token ungültig oder keine Berechtigung (401).', 'error');
-          }
-        }catch(e){ setTmdbStatus('Prüfung fehlgeschlagen. Netzwerk/Browser-Konsole prüfen.', 'error'); }
-      })();
-    } else { setUseTmdbAvailability(!!(cfg&&cfg.tmdbApiKey)); }
   }
 
-  heroRefreshMovies && heroRefreshMovies.addEventListener('click', ()=>{
-    runHeroRegeneration('movies', 'Aktualisiere Film-Highlights …');
-  });
-  heroRefreshShows && heroRefreshShows.addEventListener('click', ()=>{
-    runHeroRegeneration('series', 'Aktualisiere Serien-Highlights …');
-  });
-  heroRefreshAll && heroRefreshAll.addEventListener('click', ()=>{
-    runHeroRegeneration('all', 'Aktualisiere alle Highlights …');
-  });
-
-  tmdbSave && tmdbSave.addEventListener('click', async ()=>{
-    const raw = String(tmdbInput?.value||'').trim();
-    try{ localStorage.setItem('tmdbToken', raw); }
-    catch(err){ console.warn('[settingsOverlay] Failed to persist tmdbToken:', err?.message || err); }
-    if(!raw){
-      syncDefaultMetadataService(cfg, { preferStoredToken: false, token: '' });
-      setTmdbStatus('Kein Token hinterlegt. TMDB ist deaktiviert.', 'info');
-      setUseTmdbAvailability(!!(cfg&&cfg.tmdbApiKey));
-      HeroPipeline.updateTmdbActive(useTmdb?.checked ?? false);
-      runHeroRegeneration('all', 'Highlights aktualisieren (Token entfernt)…');
-      return;
-    }
-    syncDefaultMetadataService(cfg, { preferStoredToken: false, token: raw });
-    setTmdbStatus('Prüfe Token...', 'pending');
-    try{
-      const svc = await import('../services/tmdb.js');
-      const res = await svc.validateToken?.(raw);
-      if(res && res.ok){
-        setUseTmdbAvailability(true);
-        if(res.as==='bearer') setTmdbStatus('Token gültig (v4 Bearer).', 'success');
-        else if(res.as==='apikey') setTmdbStatus('API Key gültig (v3). Tipp: dauerhaft in config/frontend.json unter "tmdbApiKey" eintragen.', 'success');
-      }else{
-        setUseTmdbAvailability(false);
-        if(res?.hint==='looksV3') setTmdbStatus('Eingegebener Wert sieht wie ein v3 API Key aus. Bitte in config/frontend.json als "tmdbApiKey" eintragen oder v4 Bearer Token verwenden.', 'error');
-        else setTmdbStatus('Token ungültig oder keine Berechtigung (401).', 'error');
-      }
-    }catch(e){ setTmdbStatus('Prüfung fehlgeschlagen. Netzwerk/Browser-Konsole prüfen.', 'error'); }
-
-    // Check if tmdbEnabled is false and warn user
-    if(cfg && cfg.tmdbEnabled === false && raw){
-      setTmdbStatus('⚠️ Token gespeichert, aber TMDB in config/frontend.json deaktiviert. Bitte "tmdbEnabled": true setzen!', 'error');
-    }
-
-    // Hero uses TMDB automatically when token is available - update pipeline state
-    HeroPipeline.updateTmdbActive(true);
-    runHeroRegeneration('all', 'Highlights aktualisieren (Token geändert)…');
-  });
-
-  tmdbTest && tmdbTest.addEventListener('click', async ()=>{
-    const raw = String(tmdbInput?.value||'').trim();
-    if(!raw){ setTmdbStatus('Bitte Token eingeben.', 'error'); return; }
-    setTmdbStatus('Prüfe Token...', 'pending');
-    try{
-      const svc = await import('../services/tmdb.js');
-      const res = await svc.validateToken?.(raw);
-      if(res && res.ok){
-        if(res.as==='bearer') setTmdbStatus('Token gültig (v4 Bearer).', 'success');
-        else if(res.as==='apikey') setTmdbStatus('API Key gültig (v3). Tipp: dauerhaft in config/frontend.json unter "tmdbApiKey" eintragen.', 'success');
-      }else{
-        if(res?.hint==='looksV3') setTmdbStatus('Eingegebener Wert sieht wie ein v3 API Key aus. Dieser funktioniert hier nicht als Bearer. Bitte in config/frontend.json als "tmdbApiKey" eintragen oder v4 Bearer Token verwenden.', 'error');
-        else setTmdbStatus('Token ungültig oder keine Berechtigung (401).', 'error');
-      }
-    }catch(e){ setTmdbStatus('Prüfung fehlgeschlagen. Netzwerk/Browser-Konsole prüfen.', 'error'); }
-  });
-  tmdbClear && tmdbClear.addEventListener('click', ()=>{
-    // Use safe clear utility that preserves user settings
-    import('./utils.js').then(m=>{
-      const result = m.clearHeroCache?.();
-      if(result && !result.error){
-        console.log('[settingsOverlay] Cleared hero cache:', result);
-        setTmdbStatus(`Cache geleert: ${result.heroEntries} Hero-Einträge, ${result.tmdbCacheEntries} TMDB-Einträge. Token erhalten.`, 'success');
-      }
-    });
-    // Also clear the TMDB service cache
-    import('../services/tmdb.js').then(m=>m.clearCache?.());
-    runHeroRegeneration('all', 'Highlights aktualisieren (TMDB-Cache geleert)…');
-  });
   reduce && reduce.addEventListener('change', ()=>{
     try{ localStorage.setItem('prefReduceMotion', reduce.checked ? '1' : '0'); }
     catch(err){ console.warn('[settingsOverlay] Failed to store reduce-motion preference:', err?.message || err); }
     notifyReduceMotion(reduce.checked);
-  });
-  useTmdb && useTmdb.addEventListener('change', ()=>{
-    try{ localStorage.setItem('useTmdb', useTmdb.checked ? '1' : '0'); }
-    catch(err){ console.warn('[settingsOverlay] Failed to store TMDB usage preference:', err?.message || err); }
-    // Start TMDB hydration when enabling the toggle (if not already started)
-    if(useTmdb.checked && !tmdbHydrationStarted){
-      tmdbHydrationStarted = true;
-      import('../services/tmdb.js').then(m=>{
-        const s = getState();
-        m.hydrateOptional?.(s.movies, s.shows, s.cfg);
-      }).catch(err=>{ console.warn('[settingsOverlay] Failed to hydrate TMDB data:', err?.message || err); });
-      // Re-render a bit later to reflect incoming posters
-      setTimeout(()=>{ if(useTmdb.checked) renderGrid(getState().view); }, 1200);
-      setTimeout(()=>{ if(useTmdb.checked) renderGrid(getState().view); }, 3000);
-    }
-    // Note: Hero TMDB is automatic based on token, not card toggle
-    // But we still notify pipeline to refresh state
-    HeroPipeline.updateTmdbActive(true);
-    // Only regenerate hero if card toggle changed (cards don't affect hero)
-    // Actually, no need to regenerate hero for card toggle - it uses its own logic
-    renderGrid(getState().view);
-    notifyHeroRefresh();
   });
   resetFilters && resetFilters.addEventListener('click', ()=>{
     const search = document.getElementById('search'); if(search) search.value='';
@@ -478,4 +296,3 @@ export function initSettingsOverlay(cfg){
     });
   });
 }
-

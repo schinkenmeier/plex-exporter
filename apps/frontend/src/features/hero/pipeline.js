@@ -1,6 +1,3 @@
-import { useTmdbForHero } from '../../js/utils.js';
-import { addRateLimitListener, getRateLimitState } from './tmdbClient.js';
-
 const LOG_PREFIX = '[hero:pipeline]';
 const FEATURE_FLAG_KEY = 'feature.heroPipeline';
 const UPDATE_EVENT = 'hero:pipeline-update';
@@ -27,15 +24,6 @@ function resolveHeroApiBase(){
 }
 
 const listeners = new Set();
-let detachRateLimitListener = null;
-const DEFAULT_RATE_LIMIT = {
-  active: false,
-  until: 0,
-  retryAfterMs: 0,
-  lastStatus: null,
-  strikes: 0
-};
-
 const state = {
   cfg: {},
   policy: null,
@@ -47,13 +35,6 @@ const state = {
   status: {
     movies: createStatus('movies'),
     series: createStatus('series')
-  },
-  tmdb: {
-    allowed: false,
-    active: false,
-    backendRateLimit: { ...DEFAULT_RATE_LIMIT },
-    clientRateLimit: { ...DEFAULT_RATE_LIMIT },
-    rateLimit: { ...DEFAULT_RATE_LIMIT }
   },
   activeKind: 'movies',
   inFlight: new Map()
@@ -74,68 +55,6 @@ function now(){
 function normalizeKind(kind){
   if(kind === 'show' || kind === 'shows' || kind === 'series') return 'series';
   return 'movies';
-}
-
-function rateLimitEquals(a, b){
-  if(a === b) return true;
-  if(!a || !b) return false;
-  return a.active === b.active
-    && a.until === b.until
-    && a.retryAfterMs === b.retryAfterMs
-    && a.lastStatus === b.lastStatus
-    && a.strikes === b.strikes;
-}
-
-function mergeRateLimitStates(backend, client){
-  const sources = [backend, client].filter(Boolean);
-  if(!sources.length) return { ...DEFAULT_RATE_LIMIT };
-  const merged = { ...DEFAULT_RATE_LIMIT };
-  for(const info of sources){
-    if(info.active){
-      merged.active = true;
-    }
-    const until = Number(info.until);
-    if(Number.isFinite(until)){
-      merged.until = Math.max(merged.until, until);
-    }
-    const retryAfter = Number(info.retryAfterMs);
-    if(Number.isFinite(retryAfter)){
-      merged.retryAfterMs = Math.max(merged.retryAfterMs, retryAfter);
-    }
-    if(info.lastStatus != null){
-      if(info.active || merged.lastStatus == null){
-        merged.lastStatus = info.lastStatus;
-      }
-    }
-    const strikes = Number(info.strikes);
-    if(Number.isFinite(strikes)){
-      merged.strikes = Math.max(merged.strikes, strikes);
-    }
-  }
-  return merged;
-}
-
-function updateCombinedRateLimit(){
-  const next = mergeRateLimitStates(state.tmdb.backendRateLimit, state.tmdb.clientRateLimit);
-  if(rateLimitEquals(state.tmdb.rateLimit, next)) return false;
-  state.tmdb.rateLimit = next;
-  return true;
-}
-
-function attachRateLimitListener(){
-  if(detachRateLimitListener) return;
-  try {
-    state.tmdb.clientRateLimit = { ...getRateLimitState() };
-  } catch (_err) {
-    state.tmdb.clientRateLimit = { ...DEFAULT_RATE_LIMIT };
-  }
-  updateCombinedRateLimit();
-  const handler = info => {
-    state.tmdb.clientRateLimit = info ? { ...info } : { ...DEFAULT_RATE_LIMIT };
-    if(!updateCombinedRateLimit()) return;
-    notify();
-  };
-  detachRateLimitListener = addRateLimitListener(handler);
 }
 
 function createStatus(kind){
@@ -195,11 +114,6 @@ function buildSnapshot(){
     featureSource: state.featureSource,
     ready: state.ready,
     activeKind: state.activeKind,
-    tmdb: {
-      allowed: state.tmdb.allowed,
-      active: state.tmdb.active,
-      rateLimit: state.tmdb.rateLimit ? { ...state.tmdb.rateLimit } : { ...DEFAULT_RATE_LIMIT }
-    },
     status: {
       movies: cloneStatus(state.status.movies),
       series: cloneStatus(state.status.series)
@@ -283,21 +197,6 @@ function applyBackendPayload(kind, payload){
   const poolItems = Array.isArray(payload?.items) ? payload.items.slice() : [];
   state.pools[normalized] = poolItems;
   const meta = payload?.meta || {};
-  const tmdbMeta = meta.tmdb || {};
-  if(typeof tmdbMeta.enabled === 'boolean'){
-    state.tmdb.allowed = !!tmdbMeta.enabled;
-    state.tmdb.active = !!tmdbMeta.enabled;
-  }
-  if(tmdbMeta.rateLimit && typeof tmdbMeta.rateLimit === 'object'){
-    state.tmdb.backendRateLimit = {
-      active: !!tmdbMeta.rateLimit.active,
-      until: Number(tmdbMeta.rateLimit.until) || 0,
-      retryAfterMs: Number(tmdbMeta.rateLimit.retryAfterMs) || 0,
-      lastStatus: tmdbMeta.rateLimit.lastStatus ?? null,
-      strikes: Number(tmdbMeta.rateLimit.strikes) || 0
-    };
-  }
-  updateCombinedRateLimit();
   updateStatus(normalized, {
     state: 'ready',
     regenerating: false,
@@ -396,9 +295,6 @@ export function configure({ cfg, policy } = {}){
   const feature = computeFeatureState(cfg);
   state.enabled = !!feature.enabled;
   state.featureSource = feature.source;
-  state.tmdb.allowed = !!cfg?.tmdbEnabled;
-  state.tmdb.active = state.tmdb.allowed && useTmdbForHero();
-  attachRateLimitListener();
   refreshReadyState();
   notify();
   return { enabled: state.enabled, source: state.featureSource };
@@ -442,15 +338,6 @@ export function refreshAll(){
     return Promise.resolve({ skipped: true });
   }
   return Promise.all([refreshKind('movies'), refreshKind('series')]);
-}
-
-export function updateTmdbActive(active){
-  // Hero always uses TMDB when credentials are available
-  // This function now just checks if credentials exist
-  const next = !!(state.tmdb.allowed && useTmdbForHero());
-  if(state.tmdb.active === next) return;
-  state.tmdb.active = next;
-  notify();
 }
 
 export function isEnabled(){
@@ -500,7 +387,6 @@ export function getDebugSnapshot(){
     enabled: snapshot.enabled,
     featureSource: snapshot.featureSource,
     ready: snapshot.ready,
-    tmdb: snapshot.tmdb,
     status: snapshot.status,
     poolSizes: {
       movies: snapshot.pools.movies.length,
@@ -517,7 +403,6 @@ export default {
   ensureKind,
   refreshKind,
   refreshAll,
-  updateTmdbActive,
   isEnabled,
   isReady,
   getSnapshot,

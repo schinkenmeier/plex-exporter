@@ -106,7 +106,7 @@ frontend/
 │   ├── core/             # Core Infrastructure (State, Config, Loader)
 │   ├── features/         # Feature-Module (Filter, Grid, Hero, Modal, Watchlist)
 │   ├── js/               # Utility Module & Browser-Bridges
-│   ├── services/         # External Service Integrations (TMDB)
+│   ├── services/         # External Service Integrations (optional)
 │   ├── shared/           # Shared Utilities (Cache, Stores)
 │   ├── ui/               # UI Components (Loader, Toast)
 │   └── main.js           # Application Bootstrap
@@ -119,7 +119,6 @@ frontend/
 
 **Features:**
 - Backend-gestützter Katalog mit Live-APIs
-- TMDB-Integration für Metadaten
 - Hero-Rotation mit Policy Engine
 - Watchlist mit LocalStorage
 - Modal Detail-Ansichten
@@ -143,9 +142,7 @@ Frontend Runtime-Konfiguration.
 ```json
 {
   "startView": "movies",          // "movies" oder "shows"
-  "tmdbEnabled": true,             // TMDB-Integration aktivieren
-  "tmdbApiKey": "",                // TMDB v3 API Key (optional)
-  "lang": "de",                    // Sprache für TMDB
+  "lang": "de",
   "features": {
     "heroPipeline": true           // Hero-Banner Feature
   }
@@ -217,7 +214,6 @@ Gemeinsame TypeScript Types und Interfaces.
 
 **Exports:**
 - `MediaItem`, `MediaLibrary` - Plex-Export-Datenstrukturen
-- `TmdbCredentials` - TMDB-Authentifizierung
 - `HealthStatus` - API Health-Check Interface
 
 **Verwendung:**

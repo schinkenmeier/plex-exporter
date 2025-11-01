@@ -24,9 +24,8 @@ function cleanString(value){
 function resolveBaseItem(viewModel){
   if(!viewModel) return null;
   const item = viewModel.item || {};
-  const tmdbDetail = viewModel.tmdb || item.tmdbDetail || null;
   const type = viewModel.kind === 'show' ? 'tv' : item.type;
-  return { ...item, tmdbDetail, type };
+  return { ...item, type };
 }
 
 function deriveMeta(viewModel){
@@ -34,7 +33,6 @@ function deriveMeta(viewModel){
   return {
     runtime: cleanString(viewModel?.meta?.runtime) || (baseItem ? runtimeText(baseItem) : ''),
     rating: cleanString(viewModel?.meta?.rating) || (baseItem ? ratingText(baseItem) : ''),
-    tmdbRating: cleanString(viewModel?.meta?.tmdbRating),
     studio: cleanString(viewModel?.meta?.studio) || (baseItem ? studioText(baseItem) : ''),
     contentRating: cleanString(viewModel?.meta?.contentRating),
     seasonCount: viewModel?.meta?.seasonCount ?? null,
@@ -66,23 +64,6 @@ function namesFromList(source){
   }));
 }
 
-function crewByJob(detail, jobs){
-  const jobSet = new Set(toArray(jobs).map(job => cleanString(job).toLowerCase()).filter(Boolean));
-  if(!jobSet.size) return [];
-  const crew = toArray(detail?.credits?.crew);
-  const matches = crew.filter(member => {
-    if(!member) return false;
-    const job = cleanString(member.job).toLowerCase();
-    return job && jobSet.has(job);
-  }).map(member => member?.name || member?.original_name || member?.originalName || '');
-  return mergeUniqueStrings(matches);
-}
-
-function creatorsFromDetail(detail){
-  const createdBy = detail?.createdBy || detail?.created_by;
-  return namesFromList(createdBy);
-}
-
 function formatSeasonCount(value){
   const num = Number(value);
   if(!Number.isFinite(num) || num <= 0) return '';
@@ -101,13 +82,6 @@ function gatherLanguages(viewModel){
     languages.push(str);
   };
 
-  const tmdb = viewModel?.tmdb || viewModel?.item?.tmdbDetail || null;
-  const spoken = tmdb?.spokenLanguages || tmdb?.spoken_languages;
-  toArray(spoken).forEach(entry => {
-    if(!entry) return;
-    add(entry?.name || entry?.englishName || entry?.iso_639_1 || entry);
-  });
-
   toArray(viewModel?.item?.languages).forEach(add);
   toArray(viewModel?.item?.audioLanguages).forEach(add);
   toArray(viewModel?.item?.audio_language).forEach(add);
@@ -125,7 +99,7 @@ function buildHighlightChips(viewModel){
   }
   const release = cleanString(viewModel?.releaseDate) || cleanString(viewModel?.year);
   if(release) chips.push({ label: 'Veröffentlichung', value: release, key: 'release' });
-  const rating = meta.rating || meta.tmdbRating;
+  const rating = meta.rating;
   if(rating) chips.push({ label: 'Bewertung', value: rating, key: 'rating' });
   if(!chips.length) return null;
   const wrapper = document.createElement('div');
@@ -188,15 +162,14 @@ function gatherGeneralEntries(viewModel){
 function gatherCreditEntries(viewModel){
   const entries = [];
   const item = viewModel?.item || {};
-  const detail = viewModel?.tmdb || item?.tmdbDetail || null;
-  const directors = mergeUniqueStrings(namesFromList(item?.directors), crewByJob(detail, ['Director']));
+  const directors = namesFromList(item?.directors);
   if(directors.length) entries.push({ term: 'Regie', value: directors.join(', ') });
-  const writers = mergeUniqueStrings(namesFromList(item?.writers), crewByJob(detail, ['Writer', 'Screenplay', 'Story']));
+  const writers = namesFromList(item?.writers);
   if(writers.length) entries.push({ term: 'Drehbuch', value: writers.join(', ') });
-  const producers = mergeUniqueStrings(namesFromList(item?.producers), crewByJob(detail, ['Producer', 'Executive Producer']));
+  const producers = namesFromList(item?.producers);
   if(producers.length) entries.push({ term: 'Produktion', value: producers.join(', ') });
   if(viewModel?.kind === 'show'){
-    const creators = mergeUniqueStrings(namesFromList(item?.creators || item?.showrunners), creatorsFromDetail(detail));
+    const creators = namesFromList(item?.creators || item?.showrunners);
     if(creators.length) entries.push({ term: 'Creator', value: creators.join(', ') });
   }
   return entries;
@@ -213,11 +186,7 @@ function buildLink(href){
 
 function gatherMetadataEntries(viewModel){
   const entries = [];
-  const tmdbUrl = cleanString(viewModel?.tmdbUrl);
-  if(tmdbUrl) entries.push({ term: 'TMDB', value: buildLink(tmdbUrl) });
-  const tmdbId = cleanString(viewModel?.tmdb?.id || viewModel?.item?.tmdbId || viewModel?.item?.ids?.tmdb);
-  if(tmdbId) entries.push({ term: 'TMDB-ID', value: tmdbId });
-  const imdbId = cleanString(viewModel?.item?.imdbId || viewModel?.item?.ids?.imdb || viewModel?.tmdb?.imdbId || viewModel?.tmdb?.externalIds?.imdbId);
+  const imdbId = cleanString(viewModel?.item?.imdbId || viewModel?.item?.ids?.imdb);
   if(imdbId) entries.push({ term: 'IMDb-ID', value: imdbId });
   const ratingKey = cleanString(viewModel?.item?.ratingKey || viewModel?.item?.rating_key || viewModel?.item?.id);
   if(ratingKey) entries.push({ term: 'Plex-ID', value: ratingKey });
