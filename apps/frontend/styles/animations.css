@@ -396,6 +396,19 @@ img[loading="lazy"] {
   transition-timing-function: cubic-bezier(0.22, 0.68, 0.36, 0.98);
 }
 
+/* Disable card hover animations during scroll for better performance */
+body.is-scrolling .card,
+body.is-scrolling .card:hover,
+body.is-scrolling .card:focus-within {
+  transform: translateZ(0) !important;
+  transition: none !important;
+}
+
+body.is-scrolling .card:hover .card__img,
+body.is-scrolling .card:focus-within .card__img {
+  transform: scale(1) translateZ(0) !important;
+}
+
 /* Override for specific performance-critical elements */
 .no-transition,
 .card__img,

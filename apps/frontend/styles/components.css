@@ -572,6 +572,10 @@
   max-height: 580px;
   /* Optimize rendering performance */
   contain: layout style paint;
+  /* GPU acceleration */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
 .card::before {
@@ -764,9 +768,10 @@
 
 .card:hover,
 .card:focus-within {
-  transform: translateY(-2px);
+  transform: translateY(-2px) translateZ(0);
   box-shadow: 0 12px 42px rgba(2, 6, 14, 0.45);
   border-color: rgba(107, 148, 224, 0.14);
+  will-change: transform, box-shadow;
 }
 
 .card:hover::before,
@@ -775,7 +780,8 @@
 }
 
 .card:hover .card__img {
-  transform: scale(1.02);
+  transform: scale(1.02) translateZ(0);
+  will-change: transform;
 }
 
 .card:hover .card__media-gradient,

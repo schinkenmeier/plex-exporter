@@ -344,7 +344,9 @@ export class VirtualList {
     this.range = { start, end };
     const offsetRow = Math.floor(start / this.columns);
     const offsetY = offsetRow * this.rowHeight;
+    // Use translate3d for GPU acceleration
     this.windowEl.style.transform = `translate3d(0, ${offsetY}px, 0)`;
+    this.windowEl.style.willChange = 'transform';
 
     const nextRendered = new Set();
     const toRender = [];
@@ -390,31 +392,47 @@ export class VirtualList {
       }
     }
 
-    // Build a map of current positions
-    const currentMap = new Map();
-    for(let i = 0; i < currentChildren.length; i++){
-      currentMap.set(currentChildren[i], i);
+    // Simplified and optimized DOM reconciliation
+    // Strategy: minimize DOM operations by batching changes
+    
+    const existingSet = new Set(currentChildren);
+    const targetSet = new Set(toRender);
+    
+    // Remove nodes that are no longer needed
+    for(let i = currentChildren.length - 1; i >= 0; i--){
+      if(!targetSet.has(currentChildren[i])){
+        currentChildren[i].remove();
+      }
     }
-
-    // Update nodes position by position
+    
+    // Now rebuild the order efficiently
+    const fragment = document.createDocumentFragment();
+    const toInsert = [];
+    
     for(let i = 0; i < toRender.length; i++){
       const desired = toRender[i];
-      const current = currentChildren[i];
-
+      const current = this.itemsHost.children[i];
+      
       if(current !== desired){
-        if(currentMap.has(desired)){
-          // Node exists somewhere - move it
-          this.itemsHost.insertBefore(desired, current || null);
+        if(!existingSet.has(desired)){
+          // New node - collect for batch insert
+          toInsert.push({ node: desired, position: i });
         } else {
-          // New node - insert it
-          this.itemsHost.insertBefore(desired, current || null);
+          // Existing node in wrong position - move it
+          const existingNode = Array.from(this.itemsHost.children).find(c => c === desired);
+          if(existingNode){
+            this.itemsHost.insertBefore(existingNode, current || null);
+          }
         }
       }
     }
-
-    // Remove any extra nodes at the end
-    while(this.itemsHost.children.length > toRender.length){
-      this.itemsHost.lastChild.remove();
+    
+    // Batch insert new nodes
+    if(toInsert.length > 0){
+      for(const { node, position } of toInsert){
+        const currentAtPos = this.itemsHost.children[position];
+        this.itemsHost.insertBefore(node, currentAtPos || null);
+      }
     }
 
     this.renderedKeys = nextRendered;

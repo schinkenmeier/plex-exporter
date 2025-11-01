@@ -716,12 +716,18 @@ function initFilterBarAutoHideFallback(){
 function initInfiniteScroll(){
   let isThrottled = false;
   let lastScrollY = 0;
-  const SCROLL_THRESHOLD = 300; // Load more when 300px from bottom
-  const THROTTLE_DELAY = 150; // ms
+  let ticking = false;
+  const SCROLL_THRESHOLD = 400; // Load more when 400px from bottom
+  const THROTTLE_DELAY = 100; // ms - reduced for better responsiveness
   
   const checkAndLoadMore = () => {
-    if(isThrottled) return;
+    if(isThrottled || ticking) return;
+    ticking = true;
     isThrottled = true;
+    
+    requestAnimationFrame(() => {
+      ticking = false;
+    });
     
     setTimeout(() => {
       isThrottled = false;
@@ -750,5 +756,64 @@ function initInfiniteScroll(){
     }
   };
   
-  window.addEventListener('scroll', checkAndLoadMore, { passive: true });
+  // Track scroll state for disabling animations
+  let scrollTimeout = null;
+  const handleScrollState = () => {
+    document.body.classList.add('is-scrolling');
+    if(scrollTimeout) clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(() => {
+      document.body.classList.remove('is-scrolling');
+      scrollTimeout = null;
+    }, 150);
+  };
+  
+  // Use Intersection Observer for better performance if available
+  const sentinel = document.createElement('div');
+  sentinel.className = 'infinite-scroll-sentinel';
+  Object.assign(sentinel.style, {
+    position: 'absolute',
+    bottom: '400px',
+    height: '1px',
+    width: '1px',
+    pointerEvents: 'none',
+    opacity: '0',
+    visibility: 'hidden'
+  });
+  
+  const main = document.getElementById('main');
+  if(main && typeof IntersectionObserver !== 'undefined'){
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if(entry.isIntersecting){
+          const state = getState();
+          const meta = state.filteredMeta || {};
+          if(meta.hasMore && !meta.isLoadingMore){
+            filterLoadMore().catch(err => {
+              console.warn('[main] Failed to load more items via observer:', err?.message || err);
+            });
+          }
+        }
+      });
+    }, {
+      root: null,
+      rootMargin: '300px',
+      threshold: 0
+    });
+    
+    // Insert sentinel and observe it
+    main.appendChild(sentinel);
+    observer.observe(sentinel);
+    
+    // Fallback to scroll event for older browsers + scroll state tracking
+    window.addEventListener('scroll', () => {
+      handleScrollState();
+      checkAndLoadMore();
+    }, { passive: true });
+  } else {
+    // Fallback: use scroll events
+    window.addEventListener('scroll', () => {
+      handleScrollState();
+      checkAndLoadMore();
+    }, { passive: true });
+  }
 }

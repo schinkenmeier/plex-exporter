@@ -333,12 +333,17 @@ header.site-header {
   left: 0;
   right: 0;
   will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .grid-virtual__items {
   display: grid;
   gap: clamp(18px, 2vw, 28px);
   grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  /* Optimize for smooth scrolling */
+  transform: translateZ(0);
+  contain: layout style paint;
 }
 
 .grid-virtual__spacer {
