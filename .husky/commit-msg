@@ -1,0 +1,43 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+COMMIT_MSG_FILE=$1
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+
+echo "📝 Validating commit message..."
+
+# Check minimum length
+if [ ${#COMMIT_MSG} -lt 10 ]; then
+  echo "❌ ERROR: Commit message too short (minimum 10 characters)"
+  echo "   Current: $COMMIT_MSG"
+  exit 1
+fi
+
+# Check for WIP commits on main/develop branches
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+if echo "$COMMIT_MSG" | grep -iqE "^(wip|tmp|temp|test):"; then
+  if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "develop" ]; then
+    echo "❌ ERROR: WIP commits not allowed on $BRANCH branch"
+    echo "   Use a feature branch for work-in-progress commits"
+    exit 1
+  fi
+fi
+
+# Suggest conventional commit format (informational only)
+if ! echo "$COMMIT_MSG" | grep -qE "^(feat|fix|docs|style|refactor|perf|test|chore|build|ci|revert)(\(.+\))?: .+"; then
+  echo "ℹ️  Consider using conventional commit format:"
+  echo "   feat: add new feature"
+  echo "   fix: fix bug"
+  echo "   docs: update documentation"
+  echo "   style: format code"
+  echo "   refactor: refactor code"
+  echo "   perf: improve performance"
+  echo "   test: add tests"
+  echo "   chore: update dependencies"
+  echo ""
+  echo "   See: https://www.conventionalcommits.org/"
+  echo ""
+fi
+
+echo "✅ Commit message validated"
+exit 0

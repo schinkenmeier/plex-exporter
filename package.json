@@ -6,5 +6,15 @@
     "apps/backend",
     "packages/*",
     "tools"
-  ]
+  ],
+  "scripts": {
+    "prepare": "husky install",
+    "test": "npm test --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "echo 'Run linting via GitHub Actions'",
+    "type-check": "npm run type-check --workspaces --if-present"
+  },
+  "devDependencies": {
+    "husky": "^8.0.3"
+  }
 }
