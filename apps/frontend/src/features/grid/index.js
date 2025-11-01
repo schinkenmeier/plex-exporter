@@ -277,6 +277,7 @@ function refreshGridItemNode(current, item){
 }
 
 let lastRenderedView = null;
+let lastItemCount = 0;
 
 export function renderGrid(view){
   const { movies, shows, filtered } = getState();
@@ -287,12 +288,36 @@ export function renderGrid(view){
   if(!grid) return;
 
   const shouldAnimate = lastRenderedView !== view;
+  const currentItemCount = items.length;
+  const isLoadingMore = currentItemCount > lastItemCount && lastItemCount > 0 && !shouldAnimate;
+  const newItemsCount = isLoadingMore ? currentItemCount - lastItemCount : 0;
+  
   lastRenderedView = view;
+  lastItemCount = currentItemCount;
 
   if(shouldAnimate) beginGridTransition(grid);
   const vlist = ensureVirtualList(grid);
   vlist.setItems(items);
   if(shouldAnimate) finishGridTransition(grid);
+  
+  // Animate newly added items for infinite scroll
+  if(isLoadingMore && newItemsCount > 0){
+    requestAnimationFrame(() => {
+      const itemsHost = grid.querySelector('.grid-virtual__items');
+      if(itemsHost){
+        const cards = Array.from(itemsHost.querySelectorAll('.card'));
+        // Get the last N cards (newly added ones)
+        const newCards = cards.slice(-newItemsCount);
+        newCards.forEach((card, index) => {
+          if(card && !card.classList.contains('loaded')){
+            card.classList.add('loaded');
+            card.style.animationDelay = `${index * 0.03}s`;
+          }
+        });
+      }
+    });
+  }
+  
   const empty = document.getElementById('empty');
   if(empty) empty.hidden = items.length > 0;
   grid.setAttribute('aria-busy', 'false');

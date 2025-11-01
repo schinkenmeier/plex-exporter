@@ -3,6 +3,7 @@ import { setState, getState } from './core/state.js';
 import { showLoader, setLoader, hideLoader, showSkeleton, clearSkeleton } from './core/loader.js';
 import * as Data from './js/data.js';
 import * as Filter from './features/filter/index.js';
+import { loadMoreItems as filterLoadMore } from './features/filter/index.js';
 import { renderGrid } from './features/grid/index.js';
 import { openMovieDetailV3, openSeriesDetailV3 } from './features/modal/modalV3/index.js';
 import * as Watch from './features/watchlist/index.js';
@@ -267,6 +268,7 @@ export async function boot(){
       initScrollProgress();
       initScrollTop();
       initFilterBarAutoHideFallback();
+      initInfiniteScroll();
       refreshHeroWithPipeline(filtered);
       initHeroAutoplay({ onRefresh: refreshHeroWithPipeline });
       Debug.initDebugUi();
@@ -428,17 +430,16 @@ function renderFooterMeta(){
   if(results){
     const fallbackTotal = Array.isArray(s.filtered) ? s.filtered.length : 0;
     const meta = s.filteredMeta || { page: 1, pageSize: DEFAULT_PAGE_SIZE, total: fallbackTotal };
-    const safePageSize = Math.max(1, Number(meta.pageSize) || DEFAULT_PAGE_SIZE);
     const totalItems = Math.max(0, Number(meta.total) || 0);
-    const totalPages = Math.max(1, Math.ceil(totalItems / safePageSize));
-    const currentPage = Math.min(Math.max(1, Number(meta.page) || 1), totalPages);
+    const loadedItems = Math.max(0, Array.isArray(s.filtered) ? s.filtered.length : 0);
     const setField = (name, value) => {
       const field = results.querySelector(`[data-field="${name}"]`);
       if(field) field.textContent = String(value);
     };
-    setField('page', currentPage);
-    setField('pages', totalPages);
-    setField('pageSize', safePageSize);
+    // Show simplified info: "X von Y Titeln" instead of page numbers
+    setField('page', loadedItems);
+    setField('pages', totalItems);
+    setField('pageSize', loadedItems);
     setField('total', totalItems);
     results.hidden = false;
   }
@@ -710,4 +711,44 @@ function initFilterBarAutoHideFallback(){
   filters.addEventListener('pointerdown', reveal, { passive:true });
 
   update();
+}
+
+function initInfiniteScroll(){
+  let isThrottled = false;
+  let lastScrollY = 0;
+  const SCROLL_THRESHOLD = 300; // Load more when 300px from bottom
+  const THROTTLE_DELAY = 150; // ms
+  
+  const checkAndLoadMore = () => {
+    if(isThrottled) return;
+    isThrottled = true;
+    
+    setTimeout(() => {
+      isThrottled = false;
+    }, THROTTLE_DELAY);
+    
+    const scrollY = window.scrollY || document.documentElement.scrollTop;
+    const windowHeight = window.innerHeight;
+    const documentHeight = document.documentElement.scrollHeight;
+    const distanceFromBottom = documentHeight - (scrollY + windowHeight);
+    
+    // Only check when scrolling down
+    if(scrollY <= lastScrollY){
+      lastScrollY = scrollY;
+      return;
+    }
+    lastScrollY = scrollY;
+    
+    const state = getState();
+    const meta = state.filteredMeta || {};
+    
+    // Load more if near bottom and there's more to load
+    if(distanceFromBottom <= SCROLL_THRESHOLD && meta.hasMore && !meta.isLoadingMore){
+      filterLoadMore().catch(err => {
+        console.warn('[main] Failed to load more items on scroll:', err?.message || err);
+      });
+    }
+  };
+  
+  window.addEventListener('scroll', checkAndLoadMore, { passive: true });
 }

@@ -95,12 +95,30 @@ function toFilterPayload(opts, cfg){
 const DEFAULT_PAGE = 1;
 const MAX_PAGE = 1000;
 let activeFilterRequest = 0;
+let activeLoadMoreRequest = 0;
+
+const clampPageSize = (value) => {
+  const num = Number(value);
+  if(!Number.isFinite(num)) return DEFAULT_PAGE_SIZE;
+  const int = Math.floor(num);
+  if(int < 1) return 1;
+  if(int > MAX_PAGE_SIZE) return MAX_PAGE_SIZE;
+  return int;
+};
+
+const clampPage = (value) => {
+  const num = Number(value);
+  if(!Number.isFinite(num) || num < DEFAULT_PAGE) return DEFAULT_PAGE;
+  const int = Math.floor(num);
+  if(int > MAX_PAGE) return MAX_PAGE;
+  return int;
+};
 
 export function applyFilters(pagination = {}){
   const state = getState();
   const view = state.view;
   if(view !== 'movies' && view !== 'shows'){
-    setState({ filtered: [], filteredMeta: { page: DEFAULT_PAGE, pageSize: DEFAULT_PAGE_SIZE, total: 0 } });
+    setState({ filtered: [], filteredMeta: { page: DEFAULT_PAGE, pageSize: DEFAULT_PAGE_SIZE, total: 0, hasMore: false, isLoadingMore: false } });
     return [];
   }
 
@@ -109,23 +127,7 @@ export function applyFilters(pagination = {}){
   const pool = view === 'shows' ? state.shows : state.movies;
   const fallback = Array.isArray(pool) ? filterSharedMediaItems(pool, payload, Date.now()) : [];
 
-  const previousMeta = state.filteredMeta || { page: DEFAULT_PAGE, pageSize: DEFAULT_PAGE_SIZE, total: 0 };
-  const clampPageSize = (value) => {
-    const num = Number(value);
-    if(!Number.isFinite(num)) return DEFAULT_PAGE_SIZE;
-    const int = Math.floor(num);
-    if(int < 1) return 1;
-    if(int > MAX_PAGE_SIZE) return MAX_PAGE_SIZE;
-    return int;
-  };
-  const clampPage = (value) => {
-    const num = Number(value);
-    if(!Number.isFinite(num) || num < DEFAULT_PAGE) return DEFAULT_PAGE;
-    const int = Math.floor(num);
-    if(int > MAX_PAGE) return MAX_PAGE;
-    return int;
-  };
-
+  const previousMeta = state.filteredMeta || { page: DEFAULT_PAGE, pageSize: DEFAULT_PAGE_SIZE, total: 0, hasMore: false, isLoadingMore: false };
   const desiredPageSize = clampPageSize(
     pagination && Object.prototype.hasOwnProperty.call(pagination, 'pageSize')
       ? pagination.pageSize
@@ -141,8 +143,11 @@ export function applyFilters(pagination = {}){
     page: desiredPage,
     pageSize: desiredPageSize,
     total: fallback.length,
+    hasMore: false,
+    isLoadingMore: false,
   };
 
+  // Reset filtered items when applying new filters (not loading more)
   setState({ filtered: fallback, filteredMeta: fallbackMeta });
 
   const requestId = ++activeFilterRequest;
@@ -151,10 +156,13 @@ export function applyFilters(pagination = {}){
       if(requestId !== activeFilterRequest) return;
       if(!response || !Array.isArray(response.items)) return;
       const total = Number.isFinite(response.total) && response.total >= 0 ? response.total : response.items.length;
+      const hasMore = Boolean(response.hasMore || response.pagination?.hasMore);
       const resolvedMeta = {
         page: clampPage(response.page ?? desiredPage),
         pageSize: clampPageSize(response.pageSize ?? desiredPageSize),
         total,
+        hasMore,
+        isLoadingMore: false,
       };
       setState({ filtered: response.items, filteredMeta: resolvedMeta });
       renderGridForCurrentView();
@@ -162,9 +170,72 @@ export function applyFilters(pagination = {}){
     })
     .catch(err => {
       console.error('[filter] Failed to fetch filtered items:', err?.message || err);
+      setState({ filteredMeta: { ...fallbackMeta, isLoadingMore: false } });
     });
 
   return fallback;
+}
+
+export function loadMoreItems(){
+  const state = getState();
+  const view = state.view;
+  const meta = state.filteredMeta || {};
+  
+  // Don't load if already loading, no more items, or invalid view
+  if(meta.isLoadingMore || !meta.hasMore || (view !== 'movies' && view !== 'shows')){
+    return Promise.resolve([]);
+  }
+
+  const nextPage = clampPage((meta.page || 1) + 1);
+  const pageSize = clampPageSize(meta.pageSize || DEFAULT_PAGE_SIZE);
+  
+  setState({ filteredMeta: { ...meta, isLoadingMore: true } });
+  updateLoadMoreIndicator(true);
+  
+  const opts = getFilterOpts();
+  const payload = toFilterPayload(opts, state.cfg || {});
+  const currentItems = Array.isArray(state.filtered) ? state.filtered : [];
+  
+  const requestId = ++activeLoadMoreRequest;
+  
+  return searchLibrary(view, payload, { includeFacets: false, page: nextPage, pageSize })
+    .then((response) => {
+      if(requestId !== activeLoadMoreRequest) return [];
+      if(!response || !Array.isArray(response.items)) return [];
+      
+      const total = Number.isFinite(response.total) && response.total >= 0 ? response.total : currentItems.length + response.items.length;
+      const hasMore = Boolean(response.hasMore || response.pagination?.hasMore);
+      const newItems = [...currentItems, ...response.items];
+      
+      const resolvedMeta = {
+        page: clampPage(response.page ?? nextPage),
+        pageSize: clampPageSize(response.pageSize ?? pageSize),
+        total,
+        hasMore,
+        isLoadingMore: false,
+      };
+      
+      setState({ filtered: newItems, filteredMeta: resolvedMeta });
+      updateLoadMoreIndicator(false);
+      renderGridForCurrentView();
+      notifyFiltersUpdated(newItems);
+      
+      return response.items;
+    })
+    .catch(err => {
+      console.error('[filter] Failed to load more items:', err?.message || err);
+      setState({ filteredMeta: { ...meta, isLoadingMore: false } });
+      updateLoadMoreIndicator(false);
+      return [];
+    });
+}
+
+function updateLoadMoreIndicator(show){
+  const indicator = document.getElementById('loadMoreIndicator');
+  if(indicator){
+    indicator.hidden = !show;
+    indicator.setAttribute('aria-hidden', show ? 'false' : 'true');
+  }
 }
 
 let gridModulePromise = null;

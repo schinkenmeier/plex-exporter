@@ -6,7 +6,7 @@ const S = {
   shows: [],
   facets: {},
   filtered: [],
-  filteredMeta: { page: 1, pageSize: DEFAULT_PAGE_SIZE, total: 0 },
+  filteredMeta: { page: 1, pageSize: DEFAULT_PAGE_SIZE, total: 0, hasMore: false, isLoadingMore: false },
   cfg: {},
   heroPolicy: null,
   heroPolicyIssues: [],
