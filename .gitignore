@@ -47,9 +47,9 @@ coverage/
 Thumbs.db
 nul
 
-# Data & Database
-data/sqlite/
-data/exports/*.sqlite
+# Data & Database (Docker bind mount volumes)
+data/
+!data/.gitkeep
 apps/*/data/
 
 # Temporary files

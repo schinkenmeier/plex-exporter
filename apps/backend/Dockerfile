@@ -37,12 +37,14 @@ COPY --from=builder /app/apps/backend/src/views ./apps/backend/src/views
 COPY --from=builder /app/packages/shared/src ./packages/shared/src
 
 # Create directories for data volumes
-RUN mkdir -p /app/data/exports /app/storage/sqlite
+RUN mkdir -p /app/data/exports /app/data/sqlite
 
-# Create entrypoint script inline
+# Create entrypoint script inline with directory initialization
 RUN echo '#!/bin/sh\n\
 set -e\n\
 echo "=== Plex Exporter Container Starting ==="\n\
+echo "Ensuring data directories exist..."\n\
+mkdir -p /app/data/exports /app/data/sqlite\n\
 echo "Starting Plex Exporter Backend..."\n\
 exec node apps/backend/dist/server.js' > /app/docker-entrypoint.sh && \
     chmod +x /app/docker-entrypoint.sh

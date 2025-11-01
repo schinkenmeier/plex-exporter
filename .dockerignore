@@ -18,9 +18,10 @@ coverage
 *~
 .DS_Store
 
-# Build outputs
-dist
-build
+# Build outputs (will be rebuilt inside container)
+apps/backend/dist
+apps/backend/build
+apps/frontend/public/dist
 *.tsbuildinfo
 
 # Environment files
@@ -29,7 +30,7 @@ build
 .env.*.local
 **/.env
 
-# Data directories
+# Data directories (bind mount volumes)
 data/
 storage/
 *.sqlite

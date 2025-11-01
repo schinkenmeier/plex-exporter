@@ -74,7 +74,9 @@ export const createThumbnailRouter = (options: ThumbnailRouterOptions = {}): Rou
       return res.status(404).json({ error: 'Thumbnail not found' });
     }
 
-    // Set cache headers for better performance
+    // Allow embedding from the frontend dev server and set cache headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     res.setHeader('Cache-Control', 'public, max-age=86400'); // 24 hours
     res.sendFile(filePath);
   });
@@ -105,9 +107,50 @@ export const createThumbnailRouter = (options: ThumbnailRouterOptions = {}): Rou
       return res.status(404).json({ error: 'Thumbnail not found' });
     }
 
-    // Set cache headers for better performance
+    // Allow embedding from the frontend dev server and set cache headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     res.setHeader('Cache-Control', 'public, max-age=86400'); // 24 hours
     res.sendFile(filePath);
+  });
+
+  /**
+   * Serve downloaded Plex covers (movies + tv)
+   * GET /thumbnails/covers/:path(*)
+   * Supports nested paths like covers/movie/{ratingKey}/poster.jpg
+   */
+  router.get('/covers/*', (req, res) => {
+    const relativePath = (req.params as any)[0];
+
+    if (!relativePath || relativePath.includes('..') || relativePath.startsWith('/')) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
+
+    const coverRoot = path.resolve(basePath, 'covers');
+    const resolvedPath = path.resolve(coverRoot, relativePath);
+    if (!resolvedPath.startsWith(coverRoot)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const candidatePaths: string[] = [];
+    const ext = path.extname(resolvedPath);
+    candidatePaths.push(resolvedPath);
+    if (!ext) {
+      const commonExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
+      for (const extension of commonExtensions) {
+        candidatePaths.push(`${resolvedPath}${extension}`);
+      }
+    }
+
+    const existingPath = candidatePaths.find((candidate) => existsSync(candidate));
+    if (!existingPath) {
+      return res.status(404).json({ error: 'Thumbnail not found' });
+    }
+
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Cache-Control', 'public, max-age=86400'); // 24 hours
+    res.sendFile(existingPath);
   });
 
   /**

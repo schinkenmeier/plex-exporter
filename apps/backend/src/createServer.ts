@@ -5,7 +5,6 @@ import helmet from 'helmet';
 import { type AppConfig, loadPersistedConfig } from './config/index.js';
 import { createLibrariesRouter } from './routes/libraries.js';
 import { createHealthRouter } from './routes/health.js';
-import { createExportsRouter } from './routes/exports.js';
 import { createV1Router } from './routes/v1.js';
 import watchlistRouter from './routes/watchlist.js';
 import welcomeEmailRouter from './routes/welcomeEmail.js';
@@ -320,6 +319,12 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
     password: appConfig.admin?.password ?? null,
   });
 
+  // Trust proxy when running behind Caddy reverse proxy
+  // Use 'loopback' to only trust localhost/container networks
+  if (appConfig.runtime.env === 'production') {
+    app.set('trust proxy', 'loopback');
+  }
+
   // Security headers with Helmet
   app.use(helmet({
     contentSecurityPolicy: {
@@ -337,7 +342,7 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
   // Enable CORS for frontend access
   app.use(cors({
     origin: appConfig.runtime.env === 'production'
-      ? ['http://localhost:5500', 'http://127.0.0.1:5500'] // Live Server default ports
+      ? true // Allow same-origin requests when served through Caddy reverse proxy
       : '*', // Allow all origins in development
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -354,7 +359,6 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
 
   // Public routes (no auth required)
   app.use('/health', createHealthRouter(appConfig));
-  app.use('/api/exports', createExportsRouter());
   app.use('/api/thumbnails', createThumbnailRouter({
     tautulliService: tautulliState.service as any
   }));

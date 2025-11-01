@@ -1,0 +1,104 @@
+# Caddy Configuration for Plex Exporter Frontend
+# Serves static frontend files and proxies API requests to backend
+
+{
+	# Global options
+	auto_https off  # Disable for local development
+	# For production with domain: enable auto_https and set your domain below
+}
+
+# HTTP Server (Port 80)
+:80 {
+	# Root directory for static frontend files
+	root * /srv/frontend
+
+	# Enable compression
+	encode gzip zstd
+
+	# Handle API and backend routes first (before file_server)
+	handle /api/* {
+		reverse_proxy backend:4000 {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	handle /health {
+		reverse_proxy backend:4000 {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	handle /admin* {
+		reverse_proxy backend:4000 {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	# Serve static files for everything else
+	handle {
+		# Try to serve the file, otherwise serve index.html for SPA routing
+		try_files {path} /index.html
+		file_server
+	}
+
+	# Security headers
+	header {
+		# Prevent MIME type sniffing
+		X-Content-Type-Options "nosniff"
+		# Prevent clickjacking
+		X-Frame-Options "DENY"
+		# XSS protection
+		X-XSS-Protection "1; mode=block"
+		# Referrer policy
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Remove server header for security
+		-Server
+	}
+
+	# Cache static assets aggressively
+	@static {
+		path *.css *.js *.svg *.png *.jpg *.jpeg *.webp *.woff *.woff2 *.ttf *.eot *.ico *.map
+	}
+	header @static {
+		Cache-Control "public, max-age=31536000, immutable"
+	}
+
+	# Cache HTML with shorter TTL
+	@html {
+		path *.html
+	}
+	header @html {
+		Cache-Control "public, max-age=3600, must-revalidate"
+	}
+
+	# Cache JSON config files with short TTL
+	@json {
+		path *.json
+	}
+	header @json {
+		Cache-Control "public, max-age=300"
+	}
+
+	# Access logging
+	log {
+		output stdout
+		format console
+		level INFO
+	}
+}
+
+# Optional: HTTPS Server (Port 443)
+# Uncomment for local HTTPS testing with self-signed certificates
+# :443 {
+# 	tls internal  # Uses Caddy's internal CA for local development
+# 	import :80    # Import all directives from :80
+# }
