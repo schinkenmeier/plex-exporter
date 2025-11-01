@@ -6,6 +6,7 @@ import { openMovieDetailV3, openSeriesDetailV3 } from '../modal/modalV3/index.js
 import { navigateToHash } from '../../main.js';
 import { VirtualList } from './virtualList.js';
 import { buildFallbackPoster } from '../../js/imageHelper.js';
+import { prefixThumbValue } from '../../js/data.js';
 
 const CARD_SIGNATURE_PROP = '__gridVirtualSignature';
 
@@ -330,6 +331,7 @@ function normaliseLocalPoster(candidate){
 
 function resolvePoster(item){
   if(!item) return '';
+  const type = item?.type === 'tv' || item?.mediaType === 'tv' || item?.section_type === 'show' ? 'series' : 'movies';
   const candidates = [
     item?.poster,
     item?.thumbFile,
@@ -338,8 +340,18 @@ function resolvePoster(item){
     item?.backdrop,
   ];
   for(const candidate of candidates){
-    const resolved = normaliseLocalPoster(candidate);
-    if(resolved) return resolved;
+    if(!candidate) continue;
+    if(typeof candidate === 'object' && typeof candidate.url === 'string'){
+      const normalized = prefixThumbValue(candidate.url, type) || candidate.url;
+      const resolved = normaliseLocalPoster(normalized);
+      if(resolved) return resolved;
+      continue;
+    }
+    if(typeof candidate === 'string'){
+      const normalized = prefixThumbValue(candidate, type) || candidate;
+      const resolved = normaliseLocalPoster(normalized);
+      if(resolved) return resolved;
+    }
   }
   return '';
 }

@@ -7,6 +7,7 @@ import {
   buildFallbackProfile,
   makeInitials,
 } from '../../../js/imageHelper.js';
+import { prefixThumbValue } from '../../../js/data.js';
 
 const DEFAULT_TABS = {
   overview: 'Überblick',
@@ -41,20 +42,67 @@ function parseYear(value){
   return Number.isFinite(year) ? String(year) : '';
 }
 
-function normalizeImageUrl(value){
+function normalizeAbsoluteThumbnailUrl(str, type){
+  try{
+    const base =
+      typeof window !== 'undefined' && window.location ? window.location.origin : 'http://localhost';
+    const url = new URL(str, base);
+    if(!url.pathname.startsWith('/api/thumbnails/')) return null;
+    const rest = url.pathname.replace(/^\/api\/thumbnails\/?/, '');
+    const normalized = prefixThumbValue(rest, type);
+    if(normalized){
+      // prefixThumbValue may already return a fully-qualified URL
+      if(/^https?:\/\//i.test(normalized)){
+        return normalized;
+      }
+      url.pathname = normalized;
+      return url.toString();
+    }
+  }catch(err){
+    console.warn('[modal] Failed to normalize absolute thumbnail URL:', err?.message || err);
+  }
+  return null;
+}
+
+function normalizeImageUrl(value, mediaType){
   const str = firstString(value);
   if(!str) return '';
+
+  const type = mediaType === 'show' ? 'series' : 'movies';
+  const absoluteNormalized = normalizeAbsoluteThumbnailUrl(str, type);
+  if(absoluteNormalized) return absoluteNormalized;
+
+  if(!/^data:/i.test(str)){
+    const prefixed = prefixThumbValue(str, type);
+    if(prefixed) {
+      return prefixed;
+    }
+  }
+
   if(/^https?:\/\//i.test(str) || str.startsWith('data:')) return str;
   if(str.startsWith('//')) return `https:${str}`;
   if(str.startsWith('/')) return str;
   return '';
 }
 
-function selectImage(candidates, fallbackBuilder, title){
+function selectImage(kind, candidates, fallbackBuilder, title){
+  const type = kind === 'show' ? 'series' : 'movies';
   for(const candidate of candidates){
-    const url = normalizeImageUrl(candidate);
-    if(url){
-      return { url, source: 'local' };
+    if(!candidate) continue;
+    if(typeof candidate === 'object' && candidate.url){
+      const url = normalizeImageUrl(candidate.url, type);
+      if(url){
+        return {
+          ...candidate,
+          url,
+          source: candidate.source ?? 'local',
+        };
+      }
+    } else {
+      const url = normalizeImageUrl(candidate, type);
+      if(url){
+        return { url, source: 'local' };
+      }
     }
   }
   return { url: fallbackBuilder(title), source: 'fallback' };
@@ -117,9 +165,10 @@ function pickReleaseDate(item, kind){
   );
 }
 
-function buildPoster(item){
+function buildPoster(kind, item){
   const title = pickTitle(item);
   return selectImage(
+    kind,
     [
       item.poster,
       item.thumbFile,
@@ -131,9 +180,10 @@ function buildPoster(item){
   );
 }
 
-function buildBackdrop(item){
+function buildBackdrop(kind, item){
   const title = pickTitle(item);
   return selectImage(
+    kind,
     [
       item.backdrop,
       item.background,
@@ -201,7 +251,7 @@ function buildMeta(kind, item){
 function buildCastEntries(item){
   const combined = buildCastList(item);
   return combined.slice(0, 20).map((entry, index) => {
-    const imageUrl = normalizeImageUrl(entry.thumb || entry.photo);
+    const imageUrl = normalizeImageUrl(entry.thumb || entry.photo, 'movies');
     const image = imageUrl
       ? { url: imageUrl, source: 'local' }
       : { url: buildFallbackProfile(entry.name), source: 'fallback' };
@@ -239,6 +289,7 @@ function buildSeasonSummaries(show){
         : `Staffel ${index + 1}`
     );
     const poster = selectImage(
+      'show',
       [
         season.poster,
         season.thumbFile,
@@ -307,8 +358,8 @@ function buildBaseViewModel(kind, item){
   const tagline = pickTagline(item);
   const releaseDate = pickReleaseDate(item, kind) || '';
   const year = parseYear(item.year) || parseYear(releaseDate);
-  const poster = buildPoster(item);
-  const backdrop = buildBackdrop(item);
+  const poster = buildPoster(kind, item);
+  const backdrop = buildBackdrop(kind, item);
   const cast = buildCastEntries(item);
   const seasons = kind === 'show' ? buildSeasonSummaries(item) : [];
   const { tabs, defaultTab } = buildTabs(kind, { hasCast: cast.length, seasons });

@@ -66,6 +66,21 @@ describe('prefixThumbValue', () => {
     assert.strictEqual(result, 'http://localhost/api/thumbnails/movies/thumbs/poster.jpg');
   });
 
+  it('maps cover assets to the covers thumbnail endpoint', () => {
+    const result = prefixThumbValue('covers/movie/123/poster.jpg', 'movies');
+    assert.strictEqual(result, 'http://localhost/api/thumbnails/covers/movie/123/poster.jpg');
+  });
+
+  it('maps absolute cover paths to the covers thumbnail endpoint', () => {
+    const result = prefixThumbValue('/covers/movie/123/poster.jpg', 'movies');
+    assert.strictEqual(result, 'http://localhost/api/thumbnails/covers/movie/123/poster.jpg');
+  });
+
+  it('normalizes percent-encoded cover paths', () => {
+    const result = prefixThumbValue('covers%2Fmovie%2F123%2Fposter.jpg', 'movies');
+    assert.strictEqual(result, 'http://localhost/api/thumbnails/covers/movie/123/poster.jpg');
+  });
+
   it('returns the thumbnail collection root when no segments remain', () => {
     const result = prefixThumbValue('../', 'movies');
     assert.strictEqual(result, 'http://localhost/api/thumbnails/movies');
@@ -93,6 +108,29 @@ describe('prefixThumb helpers', () => {
     assert.strictEqual(result.thumb, 'http://localhost/api/thumbnails/series/season/poster.jpg');
     assert.strictEqual(result.thumbFile, 'http://localhost/api/thumbnails/series/season/poster.jpg');
     assert.ok(!result.thumb.includes('../..'));
+  });
+
+  it('prefixMovieThumb normalizes poster/backdrop strings', () => {
+    const movie = {
+      thumb: 'covers/movie/1/poster.jpg',
+      poster: 'covers/movie/1/poster.jpg',
+      backdrop: 'covers/movie/1/backdrop.jpg',
+    };
+
+    const result = prefixMovieThumb(movie);
+    assert.strictEqual(result.poster, 'http://localhost/api/thumbnails/covers/movie/1/poster.jpg');
+    assert.strictEqual(result.backdrop, 'http://localhost/api/thumbnails/covers/movie/1/backdrop.jpg');
+  });
+
+  it('prefixMovieThumb normalizes poster objects', () => {
+    const movie = {
+      poster: { url: 'covers/movie/1/poster.jpg', source: 'local' },
+    };
+    const result = prefixMovieThumb(movie);
+    assert.deepStrictEqual(result.poster, {
+      url: 'http://localhost/api/thumbnails/covers/movie/1/poster.jpg',
+      source: 'local',
+    });
   });
 });
 

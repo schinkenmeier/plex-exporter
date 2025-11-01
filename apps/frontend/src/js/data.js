@@ -118,17 +118,28 @@ const THUMBNAIL_API_ROOT = '/api/thumbnails';
 
 function buildThumbnailUrl(type, segments){
   let decodeWarned = false;
-  const encodedSegments = segments.map(segment => {
+
+  const normalizedSegments = [];
+  for(const segment of segments){
+    if(segment == null) continue;
+    const raw = String(segment);
+    if(!raw) continue;
+
+    let decoded = raw;
     try{
-      return encodeURIComponent(decodeURIComponent(segment));
+      decoded = decodeURIComponent(raw);
     }catch(err){
       if(!decodeWarned){
         decodeWarned = true;
-        console.warn(`${LOG_PREFIX} Failed to normalize thumbnail segment "${segment}":`, err?.message || err);
+        console.warn(`${LOG_PREFIX} Failed to decode thumbnail segment "${raw}":`, err?.message || err);
       }
-      return encodeURIComponent(segment);
     }
-  });
+
+    const cleaned = decoded.replace(/\\/g, '/').split('/').filter(Boolean);
+    normalizedSegments.push(...cleaned);
+  }
+
+  const encodedSegments = normalizedSegments.map((segment) => encodeURIComponent(segment));
   const suffix = encodedSegments.join('/');
   const path = `${THUMBNAIL_API_ROOT}/${type}${suffix ? `/${suffix}` : ''}`;
   return buildApiPath(path);
@@ -138,28 +149,75 @@ export function prefixThumbValue(value, type){
   const raw = value == null ? '' : String(value).trim();
   if(!raw) return '';
   if(raw.startsWith('//') || SCHEME_RE.test(raw)) return raw;
-  if(raw.startsWith('/api/')) return raw;
-  if(raw.startsWith('/')){
-    return buildThumbnailUrl(type, [raw]);
+  let input = raw;
+  if(input.startsWith('/api/thumbnails/')){
+    input = input.replace(/^\/api\/thumbnails\/?/, '');
+  } else if(input.startsWith('/api/')) {
+    return raw;
+  }
+  if(input.startsWith('/covers/')){
+    const coverPath = raw.replace(/^\/covers\/?/, '');
+    const segments = coverPath ? coverPath.split('/') : [];
+    return buildThumbnailUrl('covers', segments);
+  }
+  if(input.startsWith('/')){
+    return buildThumbnailUrl(type, [input]);
   }
 
-  const normalizedRaw = raw.replace(/\\/g, '/');
+  const normalizedRaw = input.replace(/\\/g, '/');
   const segments = normalizedRaw.split('/');
   const normalizedSegments = [];
+  let decodeWarned = false;
   for(const segment of segments){
-    if(!segment || segment === '.') continue;
-    if(segment === '..'){
-      if(normalizedSegments.length) normalizedSegments.pop();
-      continue;
+    if(segment == null || segment === '') continue;
+
+    let decodedSegment = segment;
+    try{
+      decodedSegment = decodeURIComponent(segment);
+    }catch(err){
+      if(!decodeWarned){
+        decodeWarned = true;
+        console.warn(`${LOG_PREFIX} Failed to decode thumbnail path segment "${segment}":`, err?.message || err);
+      }
     }
-    normalizedSegments.push(segment);
+
+    const parts = decodedSegment.replace(/\\/g, '/').split('/');
+    for(const part of parts){
+      if(!part || part === '.') continue;
+      if(part === '..'){
+        if(normalizedSegments.length) normalizedSegments.pop();
+        continue;
+      }
+      normalizedSegments.push(part);
+    }
   }
-  if(normalizedSegments.length > 1 && normalizedSegments[0] === type){
-    normalizedSegments.shift();
+
+  const firstSegment = normalizedSegments[0];
+  if(firstSegment){
+    let decodedFirst = firstSegment;
+    try{
+      decodedFirst = decodeURIComponent(firstSegment);
+    }catch(err){
+      if(!decodeWarned){
+        decodeWarned = true;
+        console.warn(`${LOG_PREFIX} Failed to decode first segment "${firstSegment}":`, err?.message || err);
+      }
+    }
+    const firstToken = decodedFirst.split('/').filter(Boolean)[0];
+    if(normalizedSegments.length > 1 && firstToken === type){
+      normalizedSegments.shift();
+    }
+    if(firstToken === 'covers'){
+      return buildThumbnailUrl('covers', normalizedSegments.slice(1));
+    }
   }
 
   if(!normalizedSegments.length){
     return buildThumbnailUrl(type, []);
+  }
+
+  if(normalizedSegments.length > 1 && normalizedSegments[0] === type){
+    normalizedSegments.shift();
   }
 
   return buildThumbnailUrl(type, normalizedSegments);
@@ -178,6 +236,31 @@ export function prefixThumb(obj, type){
     obj.thumbFile = str;
     if(obj.thumb == null) obj.thumb = str;
   }
+
+  const normalizeAsset = (target, key) => {
+    if(!target || typeof target !== 'object') return;
+    const value = target[key];
+    if(!value) return;
+
+    if(typeof value === 'string'){
+      const normalized = prefixThumbValue(value, type);
+      if(normalized){
+        target[key] = normalized;
+      }
+      return;
+    }
+
+    if(typeof value === 'object' && typeof value.url === 'string'){
+      const normalized = prefixThumbValue(value.url, type);
+      if(normalized){
+        target[key] = { ...value, url: normalized };
+      }
+    }
+  };
+
+  normalizeAsset(obj, 'poster');
+  normalizeAsset(obj, 'backdrop');
+
   return obj;
 }
 

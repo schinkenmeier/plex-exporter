@@ -1,5 +1,42 @@
 import { formatRating } from '../../../js/utils.js';
+import { prefixThumbValue } from '../../../js/data.js';
 import { runtimeText, ratingText, studioText } from './formatting.js';
+
+function normalizeThumbnailUrl(url, type){
+  if(!url) return '';
+  const str = String(url).trim();
+  if(!str) return '';
+  if(/^data:/i.test(str)) return str;
+
+  const normalizedType = type === 'show' ? 'series' : type;
+
+  if(/^https?:\/\//i.test(str)){
+    try{
+      const parsed = new URL(str, (typeof window !== 'undefined' && window.location?.origin) || 'http://localhost');
+      if(parsed.pathname.startsWith('/api/thumbnails/')){
+        const rest = parsed.pathname.replace(/^\/api\/thumbnails\/?/, '');
+        const rebuilt = prefixThumbValue(rest, normalizedType === 'series' ? 'series' : 'movies');
+        if(rebuilt){
+          if(/^https?:\/\//i.test(rebuilt)){
+            return rebuilt;
+          }
+          parsed.pathname = rebuilt;
+          return parsed.toString();
+        }
+      }
+      return parsed.toString();
+    }catch(err){
+      console.warn('[modal] Failed to normalize absolute thumbnail URL:', err?.message || err);
+    }
+  }
+
+  if(str.startsWith('//')) return `https:${str}`;
+
+  const rebuilt = prefixThumbValue(str, normalizedType === 'series' ? 'series' : 'movies');
+  if(rebuilt) return rebuilt;
+
+  return str;
+}
 
 function sanitizeUrl(url){
   if(!url) return '';
@@ -309,8 +346,10 @@ function resetBackdrop(backdrop){
 function applyBackdrop(backdrop, viewModel){
   if(!backdrop) return;
   const source = viewModel?.backdrop?.source || '';
+  const type = viewModel?.kind === 'show' ? 'series' : 'movies';
   const rawUrl = viewModel?.backdrop?.url || viewModel?.item?.art || viewModel?.item?.background || '';
-  const sanitized = sanitizeUrl(rawUrl);
+  const normalized = normalizeThumbnailUrl(rawUrl, type) || rawUrl;
+  const sanitized = sanitizeUrl(normalized);
   if(backdrop.dataset) backdrop.dataset.source = source || '';
   if(!sanitized){
     resetBackdrop(backdrop);
