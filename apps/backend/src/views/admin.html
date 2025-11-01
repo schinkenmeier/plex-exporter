@@ -635,7 +635,6 @@
       </div>
       <nav class="nav-list">
         <button class="nav-button active" data-view="dashboard">Dashboard</button>
-        <button class="nav-button" data-view="import">Imports</button>
         <button class="nav-button" data-view="config">Configuration</button>
         <button class="nav-button" data-view="logs">Logs</button>
         <button class="nav-button" data-view="tautulli-sync">Tautulli Sync</button>
@@ -656,7 +655,7 @@
       <header class="page-header">
         <div>
           <h2>Admin dashboard</h2>
-          <p id="header-text">System overview, import control and service status in one place.</p>
+          <p id="header-text">System overview and service status in one place.</p>
         </div>
         <div class="header-actions">
           <span class="muted" id="auto-refresh-label">auto refresh off</span>
@@ -729,49 +728,6 @@
             </div>
           </article>
         </div>
-      </section>
-
-      <section class="view" id="view-import">
-        <article class="card">
-          <div>
-            <h3>Import control</h3>
-            <p>Trigger and monitor library imports based on the export JSON data.</p>
-          </div>
-          <div class="option-list">
-            <label class="checkbox"><input type="checkbox" id="opt-dry-run">Dry run (no database writes)</label>
-            <label class="checkbox"><input type="checkbox" id="opt-force">Force overwrite existing entries</label>
-            <label class="checkbox"><input type="checkbox" id="opt-verbose">Verbose logging</label>
-            <label class="checkbox"><input type="checkbox" id="opt-movies">Import movies only</label>
-            <label class="checkbox"><input type="checkbox" id="opt-shows">Import shows only</label>
-          </div>
-          <div class="button-row">
-            <button class="btn-primary" id="btn-start-import">Start import</button>
-            <button class="btn-danger" id="btn-stop-import" disabled>Stop import</button>
-            <button class="btn" id="btn-refresh-import">Refresh status</button>
-            <button class="btn" id="btn-clear-import-logs">Clear logs</button>
-          </div>
-          <div id="import-message"></div>
-          <div class="panel">
-            <header>
-              <div>
-                <h3>Current status</h3>
-                <span>Running process details</span>
-              </div>
-            </header>
-            <div class="info-list" id="import-status">
-              <div class="muted">No status loaded yet.</div>
-            </div>
-          </div>
-          <div class="panel">
-            <header>
-              <div>
-                <h3>Import log</h3>
-                <span>Latest console output</span>
-              </div>
-            </header>
-            <div class="log-view" id="import-logs">No log output yet.</div>
-          </div>
-        </article>
       </section>
 
       <section class="view" id="view-config">
@@ -1014,7 +970,6 @@
         navButtons: Array.from(document.querySelectorAll(".nav-button")),
         views: {
           dashboard: document.getElementById("view-dashboard"),
-          import: document.getElementById("view-import"),
           config: document.getElementById("view-config"),
           logs: document.getElementById("view-logs"),
           "tautulli-sync": document.getElementById("view-tautulli-sync"),
@@ -1041,18 +996,6 @@
         systemStatus: document.getElementById("system-status"),
         serviceStatus: document.getElementById("service-status"),
         seriesOverview: document.getElementById("series-overview"),
-        importMessage: document.getElementById("import-message"),
-        importStatus: document.getElementById("import-status"),
-        importLogs: document.getElementById("import-logs"),
-        startImport: document.getElementById("btn-start-import"),
-        stopImport: document.getElementById("btn-stop-import"),
-        refreshImport: document.getElementById("btn-refresh-import"),
-        clearImportLogs: document.getElementById("btn-clear-import-logs"),
-        optDryRun: document.getElementById("opt-dry-run"),
-        optForce: document.getElementById("opt-force"),
-        optVerbose: document.getElementById("opt-verbose"),
-        optMovies: document.getElementById("opt-movies"),
-        optShows: document.getElementById("opt-shows"),
         configView: document.getElementById("config-view"),
         tmdbTokenInput: document.getElementById("tmdb-token-input"),
         tmdbTokenStatus: document.getElementById("tmdb-token-status"),
@@ -1087,15 +1030,12 @@
         currentView: "dashboard",
         autoRefresh: false,
         autoTimer: null,
-        importTimer: null,
-        importPollCount: 0,
         tmdbStatus: null,
         resendStatus: null,
       };
 
       const viewDescriptions = {
-        dashboard: "System overview, import control and service status in one place.",
-        import: "Control the import worker and inspect the latest console output.",
+        dashboard: "System overview and service status in one place.",
         config: "Manage TMDb credentials and inspect the backend configuration snapshot.",
         logs: "Inspect the in-memory log buffer. Useful for quick diagnostics.",
         "tautulli-sync": "Manage Tautulli synchronization, library selection, and sync schedules.",
@@ -1104,7 +1044,6 @@
 
       const viewLoaders = {
         dashboard: loadDashboard,
-        import: loadImportView,
         config: loadConfig,
         logs: loadLogs,
         "tautulli-sync": async () => {
@@ -1342,148 +1281,6 @@
         }).join('');
 
         elements.seriesOverview.innerHTML = content;
-      }
-
-      async function loadImportView() {
-        try {
-          await updateImportStatus();
-          setLastUpdated("import");
-        } catch (error) {
-          showToast(error.message, "error");
-          elements.importStatus.innerHTML = `<div class="alert alert-error">${escapeHtml(error.message)}</div>`;
-        }
-      }
-
-      async function updateImportStatus() {
-        const status = await fetchJson(`${API_BASE}/import/status`);
-        renderImportStatus(status);
-        renderImportLogs(status.logs || []);
-        updateImportButtons(status.running);
-        if (status.running) {
-          startImportPolling();
-        } else {
-          stopImportPolling();
-        }
-        return status;
-      }
-
-      function renderImportStatus(status) {
-        if (!status) {
-          elements.importStatus.innerHTML = `<div class="muted">No status returned.</div>`;
-          return;
-        }
-        const badge = status.running ? `<span class="chip chip-info">running</span>` :
-          status.error ? `<span class="chip chip-danger">failed</span>` :
-            `<span class="chip chip-success">idle</span>`;
-        elements.importStatus.innerHTML = `
-          <div class="info-item"><span class="label">Status</span><span class="value">${badge}</span></div>
-          <div class="info-item"><span class="label">PID</span><span class="value">${escapeHtml(status.pid ?? "-")}</span></div>
-          <div class="info-item"><span class="label">Started</span><span class="value">${status.startedAt ? new Date(status.startedAt).toLocaleString("de-DE") : "-"}</span></div>
-          <div class="info-item"><span class="label">Finished</span><span class="value">${status.finishedAt ? new Date(status.finishedAt).toLocaleString("de-DE") : "-"}</span></div>
-          <div class="info-item"><span class="label">Exit code</span><span class="value">${escapeHtml(status.exitCode ?? "-")}</span></div>
-          ${status.error ? `<div class="alert alert-error">${escapeHtml(status.error)}</div>` : ""}
-        `;
-      }
-
-      function renderImportLogs(lines) {
-        if (!lines || lines.length === 0) {
-          elements.importLogs.textContent = "No log output yet.";
-          return;
-        }
-        elements.importLogs.innerHTML = lines.map(line => `<div>${escapeHtml(line)}</div>`).join("");
-        elements.importLogs.scrollTop = elements.importLogs.scrollHeight;
-      }
-
-      function updateImportButtons(running) {
-        elements.startImport.disabled = running;
-        elements.stopImport.disabled = !running;
-      }
-
-      function showImportMessage(type, message) {
-        if (!message) {
-          elements.importMessage.innerHTML = "";
-          return;
-        }
-        const cls = type === "error" ? "alert-error" : type === "success" ? "alert-info" : "alert-info";
-        elements.importMessage.innerHTML = `<div class="alert ${cls}">${escapeHtml(message)}</div>`;
-      }
-
-      async function handleStartImport() {
-        const payload = {
-          dryRun: elements.optDryRun.checked,
-          force: elements.optForce.checked,
-          verbose: elements.optVerbose.checked,
-          moviesOnly: elements.optMovies.checked,
-          seriesOnly: elements.optShows.checked,
-        };
-        elements.startImport.disabled = true;
-        showImportMessage(null);
-        try {
-          const result = await fetchJson(`${API_BASE}/import`, {
-            method: "POST",
-            body: JSON.stringify(payload),
-          });
-          showToast(result.message || "Import started", "success");
-          showImportMessage("success", result.message || "Import started.");
-          updateImportButtons(true);
-          startImportPolling(true);
-        } catch (error) {
-          elements.startImport.disabled = false;
-          showToast(error.message, "error");
-          showImportMessage("error", error.message);
-        }
-      }
-
-      async function handleStopImport() {
-        try {
-          const result = await fetchJson(`${API_BASE}/import/stop`, { method: "POST" });
-          showToast(result.message || "Stop signal sent", "info");
-          showImportMessage("info", result.message || "Stop signal sent.");
-          stopImportPolling();
-          await updateImportStatus();
-        } catch (error) {
-          showToast(error.message, "error");
-          showImportMessage("error", error.message);
-        }
-      }
-
-      async function handleClearImportLogs() {
-        try {
-          await fetchJson(`${API_BASE}/import/logs`, { method: "DELETE" });
-          elements.importLogs.textContent = "Import log cleared.";
-          showToast("Import log cleared", "info");
-        } catch (error) {
-          showToast(error.message, "error");
-        }
-      }
-
-      function startImportPolling(immediate = false) {
-        if (state.importTimer) {
-          return;
-        }
-        if (immediate) {
-          updateImportStatus().catch(err => console.error(err));
-        }
-        state.importPollCount = 0;
-        state.importTimer = setInterval(async () => {
-          state.importPollCount += 1;
-          try {
-            const status = await updateImportStatus();
-            if (!status.running) {
-              stopImportPolling();
-            }
-          } catch (error) {
-            console.error(error);
-            showToast(`Import polling failed: ${error.message}`, "error");
-          }
-        }, state.importPollCount < 10 ? 1000 : 3000);
-      }
-
-      function stopImportPolling() {
-        if (state.importTimer) {
-          clearInterval(state.importTimer);
-          state.importTimer = null;
-        }
       }
 
       async function loadConfigSnapshot() {
@@ -1915,10 +1712,6 @@
           }
         });
         elements.autoToggle.addEventListener("change", event => setAutoRefresh(event.target.checked));
-        elements.startImport.addEventListener("click", handleStartImport);
-        elements.stopImport.addEventListener("click", handleStopImport);
-        elements.refreshImport.addEventListener("click", () => updateImportStatus().catch(err => showToast(err.message, "error")));
-        elements.clearImportLogs.addEventListener("click", handleClearImportLogs);
         elements.refreshLogs.addEventListener("click", () => loadLogs().catch(err => showToast(err.message, "error")));
         elements.clearLogs.addEventListener("click", handleClearLogs);
         elements.logLevel.addEventListener("change", () => loadLogs().catch(err => showToast(err.message, "error")));

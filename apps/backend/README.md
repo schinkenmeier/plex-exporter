@@ -148,11 +148,10 @@ Das Admin-Panel bietet folgende Funktionen:
 - Übersicht über aktivierte Services
 - Validierung der Konfiguration
 
-#### Import-Management
-- Import-Prozesse starten und stoppen
-- Live-Status und Progress-Tracking
-- Import-Logs in Echtzeit
-- Optionen: Dry-Run, Force, Verbose, Movies-Only, Series-Only
+#### Tautulli Sync
+- Verwaltung von URL und API-Key der Tautulli-Instanz
+- Auswahl synchronisierter Bibliotheken und geplanter Sync-Zeiten
+- Manuelles Anstoßen einer Synchronisation mit Statusausgabe
 
 #### System-Logs
 - Anzeige der letzten 500 Log-Einträge

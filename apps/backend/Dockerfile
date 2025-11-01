@@ -43,8 +43,6 @@ RUN mkdir -p /app/data/exports /app/storage/sqlite
 RUN echo '#!/bin/sh\n\
 set -e\n\
 echo "=== Plex Exporter Container Starting ==="\n\
-echo "Running startup checks..."\n\
-node apps/backend/dist/scripts/startup.js || true\n\
 echo "Starting Plex Exporter Backend..."\n\
 exec node apps/backend/dist/server.js' > /app/docker-entrypoint.sh && \
     chmod +x /app/docker-entrypoint.sh

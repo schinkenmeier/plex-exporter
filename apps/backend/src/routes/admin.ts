@@ -5,7 +5,6 @@ import fs from 'node:fs';
 import os from 'node:os';
 import { sql } from 'drizzle-orm';
 import { type AppConfig } from '../config/index.js';
-import { importService } from '../services/importService.js';
 import { logBuffer } from '../services/logBuffer.js';
 import logger from '../services/logger.js';
 import { HttpError } from '../middleware/errorHandler.js';
@@ -351,59 +350,6 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
       logger.error('Failed to get database stats', { error: message });
       return res.status(500).json({ error: 'Failed to get database stats', details: message });
     }
-  });
-
-  /**
-   * POST /admin/api/import
-   * Start import process
-   */
-  router.post('/api/import', async (req: Request, res: Response) => {
-    const { dryRun, force, verbose, moviesOnly, seriesOnly } = req.body || {};
-
-    const result = await importService.start({
-      dryRun: !!dryRun,
-      force: !!force,
-      verbose: !!verbose,
-      moviesOnly: !!moviesOnly,
-      seriesOnly: !!seriesOnly,
-    });
-
-    if (result.success) {
-      res.json({ success: true, message: result.message, status: importService.getStatus() });
-    } else {
-      res.status(400).json({ success: false, error: result.message });
-    }
-  });
-
-  /**
-   * POST /admin/api/import/stop
-   * Stop running import process
-   */
-  router.post('/api/import/stop', (_req: Request, res: Response) => {
-    const result = importService.stop();
-
-    if (result.success) {
-      res.json({ success: true, message: result.message });
-    } else {
-      res.status(400).json({ success: false, error: result.message });
-    }
-  });
-
-  /**
-   * GET /admin/api/import/status
-   * Get import process status
-   */
-  router.get('/api/import/status', (_req: Request, res: Response) => {
-    res.json(importService.getStatus());
-  });
-
-  /**
-   * DELETE /admin/api/import/logs
-   * Clear import logs
-   */
-  router.delete('/api/import/logs', (_req: Request, res: Response) => {
-    importService.clearLogs();
-    res.json({ success: true, message: 'Import logs cleared' });
   });
 
   /**

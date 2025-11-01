@@ -13,10 +13,10 @@
 ## Fortschritt (Stand 2025-10-23)
 - Media-, Thumbnail- und TautulliSnapshot-Repositories wurden auf Drizzle umgestellt; Express-Routen und Tests verwenden jetzt ausschließlich die neuen ORM-basierten Repositories.
 - `media_thumbnails` und `tautulli_snapshots` sind im Drizzle-Schema verankert, Legacy-Zugriffe über `better-sqlite3.prepare()` entfallen in den produktiven Pfaden.
-- Import-Skripte (`movieImporter`, `seriesImporter`) nutzen die Drizzle-Repositories und umgehen direkte SQL-Transaktionen.
+- Legacy-Import-Skripte wurden entfernt; Tautulli-Synchronisation und API-Routen verwenden direkt die Drizzle-Repositories.
 - Hero-Pipeline-Cache (`hero_pools`) wird ebenfalls über Drizzle verwaltet; vorbereitete Statements wurden durch ORM-Upserts ersetzt.
 - Saison-, Episoden- und Cast-Repositories liefern relationale Daten via `/api/v1` (Seasons inkl. Episoden & Cast); damit sind die neuen Tabellen erstmals produktiv angebunden.
-- Admin Dashboard & Import-Panel zeigen die neuen Kennzahlen (Seasons/Episodes/Cast) und kleine Serien-Samples direkt aus der Drizzle-Datenbank.
+- Admin Dashboard visualisiert die neuen Kennzahlen (Seasons/Episodes/Cast) und kleine Serien-Samples direkt aus der Drizzle-Datenbank.
 - Frontend-Detailansichten greifen bevorzugt auf `/api/v1/series/:id` zu, um Seasons, Episoden und Cast dynamisch zu laden; statische Exporte dienen nur noch als Fallback.
 - `npm test` läuft grün gegen das Drizzle-Setup; Migration `006_convert_legacy_media` bleibt für Alt-Daten aktiv und entfernt verbleibende `media_metadata`/`thumbnails`-Tabellen.
 

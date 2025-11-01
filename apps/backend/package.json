@@ -12,11 +12,6 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
-    "import": "tsx src/scripts/import-exports.ts",
-    "import:dry-run": "tsx src/scripts/import-exports.ts --dry-run",
-    "import:movies": "tsx src/scripts/import-exports.ts --movies-only",
-    "import:series": "tsx src/scripts/import-exports.ts --series-only",
-    "import:verbose": "tsx src/scripts/import-exports.ts --verbose",
     "migrate:drizzle": "tsx src/scripts/migrate-to-drizzle.ts"
   },
   "dependencies": {
