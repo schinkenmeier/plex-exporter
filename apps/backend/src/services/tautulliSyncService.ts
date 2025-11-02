@@ -512,13 +512,15 @@ export class TautulliSyncService {
         // Check if season exists
         const existingSeason = this.seasonRepo.getByTautulliId(seasonMetadata.rating_key);
 
+        const seasonPoster = this.convertTautulliThumbnailUrl(seasonMetadata.thumb);
+
         const seasonData = {
           mediaItemId,
           tautulliId: seasonMetadata.rating_key,
           seasonNumber: seasonMetadata.media_index ?? 0,
           title: seasonMetadata.title,
           summary: seasonMetadata.summary,
-          poster: seasonMetadata.thumb,
+          poster: seasonPoster ?? null,
           episodeCount: 0, // Will be updated after episodes
         };
 
@@ -543,6 +545,8 @@ export class TautulliSyncService {
           try {
             const existingEpisode = this.seasonRepo.getEpisodeByTautulliId(episodeMetadata.rating_key);
 
+            const episodeThumb = this.convertTautulliThumbnailUrl(episodeMetadata.thumb);
+
             const episodeData = {
               seasonId,
               tautulliId: episodeMetadata.rating_key,
@@ -552,7 +556,7 @@ export class TautulliSyncService {
               duration: episodeMetadata.duration,
               rating: episodeMetadata.rating?.toString(),
               airDate: episodeMetadata.originally_available_at,
-              thumb: episodeMetadata.thumb,
+              thumb: episodeThumb ?? null,
             };
 
             if (existingEpisode) {
@@ -589,6 +593,29 @@ export class TautulliSyncService {
     }
 
     return deleted;
+  }
+
+  private convertTautulliThumbnailUrl(tautulliUrl?: string | null): string | undefined {
+    if (!tautulliUrl) return undefined;
+
+    let normalized = tautulliUrl;
+
+    if (!normalized.startsWith('/')) {
+      try {
+        const parsed = new URL(normalized, this.tautulliService.getBaseUrl());
+        normalized = parsed.pathname + (parsed.search ?? '');
+      } catch {
+        normalized = tautulliUrl;
+      }
+    }
+
+    const match = normalized.match(/\/library\/metadata\/(\d+)\/(thumb|art)\/(\d+)/);
+    if (match) {
+      const [, id, type, timestamp] = match;
+      return `/api/thumbnails/tautulli/library/metadata/${id}/${type}/${timestamp}`;
+    }
+
+    return tautulliUrl;
   }
 
   /**
@@ -629,29 +656,8 @@ export class TautulliSyncService {
     tmdbRating?: number;
     tmdbVoteCount?: number;
   } {
-    // Convert Tautulli URLs to use our backend proxy
-    // This avoids CORS and authentication issues in the frontend
-    const convertToProxyUrl = (tautulliUrl?: string): string | undefined => {
-      if (!tautulliUrl) return undefined;
-
-      // Convert relative URLs to full paths first
-      const fullUrl = tautulliUrl.startsWith('/')
-        ? `${this.tautulliService.getBaseUrl()}${tautulliUrl}`
-        : tautulliUrl;
-
-      // Check if it's a Tautulli thumbnail URL pattern
-      const match = fullUrl.match(/\/library\/metadata\/(\d+)\/(thumb|art)\/(\d+)/);
-      if (match) {
-        const [, id, type, timestamp] = match;
-        // Use our backend proxy endpoint
-        return `http://localhost:4000/api/thumbnails/tautulli/library/metadata/${id}/${type}/${timestamp}`;
-      }
-
-      return fullUrl;
-    };
-
-    const posterUrl = convertToProxyUrl(metadata.thumb);
-    const backdropUrl = convertToProxyUrl(metadata.art);
+    const posterUrl = this.convertTautulliThumbnailUrl(metadata.thumb);
+    const backdropUrl = this.convertTautulliThumbnailUrl(metadata.art);
 
     // Extract IDs from GUID
     const ids = this.extractIdsFromGuid(metadata.guid);

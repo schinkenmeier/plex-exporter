@@ -80,14 +80,28 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
   const convertTautulliUrlToProxy = (url: string | null | undefined, req?: Request): string | null | undefined => {
     if (!url) return url;
 
-    // Check if it's a Tautulli URL (either https://tautulli.dinspel.eu or just the path)
+    const buildAbsoluteUrl = (path: string): string => {
+      if (!req) return path;
+      const protocol = req.protocol;
+      const host = req.get('host');
+      if (protocol && host) {
+        return `${protocol}://${host}${path}`;
+      }
+      return path;
+    };
+
+    if (url.startsWith('/api/thumbnails/tautulli/')) {
+      return buildAbsoluteUrl(url);
+    }
+
+    if (/^https?:\/\/[^\s]+\/api\/thumbnails\/tautulli\//.test(url)) {
+      return url;
+    }
+
     const match = url.match(/\/library\/metadata\/(\d+)\/(thumb|art)\/(\d+)/);
     if (match) {
       const [, id, type, timestamp] = match;
-      // Build full backend URL if request is available
-      const protocol = req?.protocol || 'http';
-      const host = req?.get('host') || 'localhost:4000';
-      return `${protocol}://${host}/api/thumbnails/tautulli/library/metadata/${id}/${type}/${timestamp}`;
+      return buildAbsoluteUrl(`/api/thumbnails/tautulli/library/metadata/${id}/${type}/${timestamp}`);
     }
 
     return url;
@@ -145,7 +159,7 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
     return mapMediaListToResponse([item], includeExtended, req)[0];
   };
 
-  const mapEpisodesToResponse = (episodes: EpisodeRecord[]) =>
+  const mapEpisodesToResponse = (episodes: EpisodeRecord[], req?: Request) =>
     episodes.map((episode) => ({
       id: episode.id,
       ratingKey: episode.tautulliId,
@@ -155,19 +169,19 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
       duration: episode.duration,
       rating: episode.rating,
       airDate: episode.airDate,
-      thumb: episode.thumb,
+      thumb: convertTautulliUrlToProxy(episode.thumb, req),
     }));
 
-  const mapSeasonsToResponse = (seasonsWithEpisodes: SeasonRecordWithEpisodes[]) =>
+  const mapSeasonsToResponse = (seasonsWithEpisodes: SeasonRecordWithEpisodes[], req?: Request) =>
     seasonsWithEpisodes.map((season) => ({
       id: season.id,
       ratingKey: season.tautulliId,
       seasonNumber: season.seasonNumber,
       title: season.title,
       summary: season.summary,
-      poster: season.poster,
+      poster: convertTautulliUrlToProxy(season.poster, req),
       episodeCount: season.episodeCount,
-      episodes: mapEpisodesToResponse(season.episodes),
+      episodes: mapEpisodesToResponse(season.episodes, req),
     }));
 
   const mapCastToResponse = (cast: CastAppearance[]) =>
@@ -270,7 +284,7 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
       const response = {
         ...mapMediaToResponse(series, true, req),
         thumbnails: thumbnails.map(t => t.path),
-        seasons: mapSeasonsToResponse(seasons),
+        seasons: mapSeasonsToResponse(seasons, req),
         cast: mapCastToResponse(cast),
       };
 

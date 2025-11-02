@@ -70,9 +70,11 @@ describe('v1 routes', () => {
       expect.objectContaining({
         ratingKey: 'movie-1',
         title: 'Injected Movie',
-        thumbFile: '/thumbs/movie-1.jpg',
       }),
     ]);
+    expect(response.body[0].thumbFile).toMatch(
+      /^https?:\/\/.+\/api\/thumbnails\/movies\/%2Fthumbs%2Fmovie-1\.jpg$/,
+    );
   });
 
   it('returns movie details with thumbnails from injected repositories', async () => {
@@ -111,5 +113,41 @@ describe('v1 routes', () => {
       totalSeries: 1,
       totalItems: 2,
     });
+  });
+
+  it('returns seasons and episodes with Tautulli proxy thumbnails', async () => {
+    const series = mediaRepository.create({
+      plexId: 'show-proxy-1',
+      title: 'Proxy Series',
+      mediaType: 'tv',
+    });
+
+    const season = seasonRepository.create({
+      mediaItemId: series.id,
+      tautulliId: 'season-proxy-1',
+      seasonNumber: 1,
+      title: 'Season 1',
+      poster: 'https://tautulli.example.com/library/metadata/111/thumb/222?width=320',
+    });
+
+    seasonRepository.createEpisode({
+      seasonId: season.id,
+      tautulliId: 'episode-proxy-1',
+      episodeNumber: 1,
+      title: 'Episode 1',
+      thumb: '/library/metadata/333/thumb/444',
+    });
+
+    const response = await request(app).get(`/api/v1/series/${series.plexId}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.seasons).toHaveLength(1);
+    expect(response.body.seasons[0].poster).toContain(
+      '/api/thumbnails/tautulli/library/metadata/111/thumb/222',
+    );
+    expect(response.body.seasons[0].episodes).toHaveLength(1);
+    expect(response.body.seasons[0].episodes[0].thumb).toContain(
+      '/api/thumbnails/tautulli/library/metadata/333/thumb/444',
+    );
   });
 });
