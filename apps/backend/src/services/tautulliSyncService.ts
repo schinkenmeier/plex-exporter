@@ -500,6 +500,9 @@ export class TautulliSyncService {
     // Get all seasons
     const seasons = await this.tautulliService.getSeasons(showRatingKey);
 
+    const reportedSeasonKeys = new Set<string>();
+    const reportedEpisodeKeys = new Set<string>();
+
     for (const seasonMetadata of seasons) {
       onProgress?.({
         phase: `Processing Season ${seasonMetadata.media_index}`,
@@ -509,6 +512,7 @@ export class TautulliSyncService {
       });
 
       try {
+        reportedSeasonKeys.add(seasonMetadata.rating_key);
         // Check if season exists
         const existingSeason = this.seasonRepo.getByTautulliId(seasonMetadata.rating_key);
 
@@ -543,6 +547,7 @@ export class TautulliSyncService {
         // Sync episodes
         for (const episodeMetadata of episodes) {
           try {
+            reportedEpisodeKeys.add(episodeMetadata.rating_key);
             const existingEpisode = this.seasonRepo.getEpisodeByTautulliId(episodeMetadata.rating_key);
 
             const episodeThumb = this.convertTautulliThumbnailUrl(episodeMetadata.thumb);
@@ -570,6 +575,22 @@ export class TautulliSyncService {
         }
       } catch (error) {
         // Skip season errors
+      }
+    }
+
+    // Delete episodes not reported by Tautulli anymore
+    const existingEpisodes = this.seasonRepo.listEpisodeIdentifiersByMediaId(mediaItemId);
+    for (const episode of existingEpisodes) {
+      if (!reportedEpisodeKeys.has(episode.tautulliId)) {
+        this.seasonRepo.deleteEpisodeById(episode.id);
+      }
+    }
+
+    // Delete seasons not reported by Tautulli anymore
+    const existingSeasons = this.seasonRepo.listSeasonIdentifiersByMediaId(mediaItemId);
+    for (const season of existingSeasons) {
+      if (!reportedSeasonKeys.has(season.tautulliId)) {
+        this.seasonRepo.deleteSeasonById(season.id);
       }
     }
   }
