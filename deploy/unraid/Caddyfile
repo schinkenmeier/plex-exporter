@@ -56,6 +56,7 @@
 		X-XSS-Protection "1; mode=block"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		-Server
+		# Hinweis: Kein Strict-Transport-Security, da TLS über Cloudflare/Tunnel handled wird.
 	}
 
 	@static {
@@ -85,4 +86,3 @@
 		level INFO
 	}
 }
-

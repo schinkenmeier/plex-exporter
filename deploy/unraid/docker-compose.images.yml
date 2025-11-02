@@ -44,8 +44,8 @@ services:
     volumes:
       - ${CADDY_DATA_PATH:-/mnt/user/appdata/plex-exporter/caddy/data}:/data
       - ${CADDY_CONFIG_PATH:-/mnt/user/appdata/plex-exporter/caddy/config}:/config
-      # Optional: überschreibe das im Image enthaltene Caddyfile
-      # - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./config/frontend.json:/srv/frontend/config/frontend.json:ro
     restart: unless-stopped
     networks:
       - plex-exporter

@@ -7,7 +7,8 @@ Kompakte Anleitung für den Betrieb über das Unraid Docker Compose Manager Plug
 - `docker-compose.images.yml` – Pullt Images aus GHCR: `ghcr.io/schinkenmeier/plex-exporter-backend` und `ghcr.io/schinkenmeier/plex-exporter-frontend`.
 - `docker-compose.yml` – Alternative für lokalen Build (nur nutzen, wenn du wirklich auf Unraid bauen willst).
 - `.env.sample` – Vorlage für Umgebungsvariablen; nach `.env` kopieren und anpassen.
-- `Caddyfile` – HTTP-Konfiguration für Cloudflare Zero Trust (TLS extern).
+- `Caddyfile` – HTTP-Konfiguration für Cloudflare Zero Trust (TLS extern, ohne HSTS).
+- `config/frontend.json` – Default-Frontend-Konfiguration, wird ins Container-Image gemountet.
 
 ## Quick Start (empfohlen: GHCR‑Images)
 
@@ -18,6 +19,7 @@ Kompakte Anleitung für den Betrieb über das Unraid Docker Compose Manager Plug
   - `BACKEND_TAUTULLI_URL=http://192.168.178.34:8181`
   - Passwörter/Token (API/Admin)
   - Appdata‑Pfade unter `/mnt/user/appdata/plex-exporter/...`
+- Optional `config/frontend.json` anpassen (Startansicht, Theme, etc.). Datei wird automatisch eingebunden.
 
 2) Projekt im Compose Manager importieren
 - Plugin → Projects → Add → Pfad: der Ordner mit dieser README (`deploy/unraid`).
@@ -28,6 +30,7 @@ Kompakte Anleitung für den Betrieb über das Unraid Docker Compose Manager Plug
 - Web: `http://<unraid-ip>:8342`
 - Health: `http://<unraid-ip>:8342/health`
 - Cloudflare Tunnel auf Host‑Port `8342` routen.
+- Hinweis: Caddy liefert nur HTTP; der Tunnel liefert später TLS. Falls dein Browser bereits per HSTS auf HTTPS umleitet, lösche den HSTS-Eintrag (Chrome: `chrome://net-internals/#hsts`) oder nutze direkt die Tunnel-URL.
 
 ## Details zur Images‑Variante
 
