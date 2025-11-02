@@ -1,6 +1,6 @@
 # Unraid Deployment Guide
 
-Deployment-Anleitung für Plex Exporter auf Unraid mit Cloudflare Zero Trust Tunnel.
+Diese Anleitung fasst die Bereitstellung auf Unraid zusammen. Für den täglichen Betrieb und die „Single Source of Truth“ nutze bitte die kompakte Anleitung unter `deploy/unraid/README.md`.
 
 ## Voraussetzungen
 
@@ -10,6 +10,15 @@ Deployment-Anleitung für Plex Exporter auf Unraid mit Cloudflare Zero Trust Tun
 - SSH-Zugriff auf Unraid
 
 ## Docker Compose Manager (Empfohlen)
+
+Schnellstart (GHCR‑Images, kein Build auf Unraid):
+
+1. `deploy/unraid/` nach Unraid kopieren und `.env` aus `.env.sample` erstellen.
+2. Im Compose Manager die Datei `docker-compose.images.yml` wählen.
+3. `IMAGE_TAG` setzen (z.B. `latest` oder `v0.1.0`) und Stack starten.
+4. Test: `http://<unraid-ip>:8342/health`.
+
+Siehe auch: `deploy/unraid/README.md` für alle Details.
 
 ### Schritt 1: Projektstruktur vorbereiten
 
@@ -143,6 +152,8 @@ docker restart cloudflared
 curl http://<unraid-ip>:8342/health
 # Sollte zurückgeben: {"status":"ok",...}
 ```
+
+Hinweis: In der Images‑Variante wartet `caddy` automatisch, bis das Backend gesund ist (`depends_on: service_healthy`).
 
 ### Alternative: Einsatz vorgefertigter Images (GHCR)
 
