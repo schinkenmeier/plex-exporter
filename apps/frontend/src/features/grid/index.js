@@ -4,11 +4,9 @@ import { humanYear, formatRating, renderChipsLimited, isNew, getGenreNames, coll
 import * as Watch from '../watchlist/index.js';
 import { openMovieDetailV3, openSeriesDetailV3 } from '../modal/modalV3/index.js';
 import { navigateToHash } from '../../main.js';
-import { VirtualList } from './virtualList.js';
+import { SimpleGrid } from './simpleGrid.js';
 import { buildFallbackPoster } from '../../js/imageHelper.js';
 import { prefixThumbValue } from '../../js/data.js';
-
-const CARD_SIGNATURE_PROP = '__gridVirtualSignature';
 
 function cardEl(item){
   const card = el('article','card');
@@ -224,26 +222,32 @@ function collectionCardEl(entry){
   return card;
 }
 
-let virtualListInstance = null;
+let gridInstance = null;
 
-function ensureVirtualList(grid){
-  if(virtualListInstance) return virtualListInstance;
-  virtualListInstance = new VirtualList({
-    container: grid,
-    overscan: 1,
-    estimatedItemHeight: 460,
-    minItemWidth: 190,
+function ensureSimpleGrid(grid){
+  if(gridInstance) return gridInstance;
+
+  gridInstance = new SimpleGrid(grid, {
     getKey: itemKey,
-    getSignature: gridItemSignature,
-    renderItem(item){
+    renderItem(item, index){
       const node = renderGridItemNode(item);
       return node;
     },
-    updateItem(node, item){
-      return refreshGridItemNode(node, item);
+    onLoadMore() {
+      // Dynamically import filter module to trigger load more
+      import('../filter/index.js').then(mod => {
+        if(typeof mod.loadMoreItems === 'function'){
+          mod.loadMoreItems().catch(err => {
+            console.warn('[grid] Failed to load more items:', err?.message || err);
+          });
+        }
+      });
     }
   });
-  return virtualListInstance;
+
+  // Store reference on grid element for easy access
+  if(grid) grid.__simpleGridInstance = gridInstance;
+  return gridInstance;
 }
 
 function itemKey(item, index){
@@ -256,68 +260,49 @@ function itemKey(item, index){
 }
 
 function renderGridItemNode(item){
-  const node = item?.isCollectionGroup ? collectionCardEl(item) : cardEl(item);
-  if(node instanceof HTMLElement){
-    node[CARD_SIGNATURE_PROP] = gridItemSignature(item);
-  }
-  return node;
+  return item?.isCollectionGroup ? collectionCardEl(item) : cardEl(item);
 }
 
-function refreshGridItemNode(current, item){
-  if(current instanceof HTMLElement){
-    const signature = gridItemSignature(item);
-    if(current[CARD_SIGNATURE_PROP] === signature){
-      current[CARD_SIGNATURE_PROP] = signature;
-      return current;
-    }
-  }
-  const replacement = renderGridItemNode(item);
-  if(!(replacement instanceof HTMLElement)) return current;
-  return replaceCardNode(current, replacement);
-}
-
-let lastRenderedView = null;
-let lastItemCount = 0;
+let lastState = { view: null, count: 0 };
 
 export function renderGrid(view){
-  const { movies, shows, filtered } = getState();
+  const { movies, shows, filtered, filteredMeta } = getState();
   const base = (view==='shows' ? shows : movies) || [];
   const list = Array.isArray(filtered) ? filtered : base;
   const items = groupCollectionsIfEnabled(list);
   const grid = document.getElementById('grid');
   if(!grid) return;
 
-  const shouldAnimate = lastRenderedView !== view;
-  const currentItemCount = items.length;
-  const isLoadingMore = currentItemCount > lastItemCount && lastItemCount > 0 && !shouldAnimate;
-  const newItemsCount = isLoadingMore ? currentItemCount - lastItemCount : 0;
-  
-  lastRenderedView = view;
-  lastItemCount = currentItemCount;
+  const isViewChange = lastState.view !== view;
+  const newItemsCount = !isViewChange && items.length > lastState.count ? items.length - lastState.count : 0;
 
-  if(shouldAnimate) beginGridTransition(grid);
-  const vlist = ensureVirtualList(grid);
-  vlist.setItems(items);
-  if(shouldAnimate) finishGridTransition(grid);
-  
+  lastState = { view, count: items.length };
+
+  if(isViewChange) beginGridTransition(grid);
+
+  // Use SimpleGrid instead of VirtualList
+  const simpleGrid = ensureSimpleGrid(grid);
+  const meta = filteredMeta || {};
+  const hasMore = Boolean(meta.hasMore);
+
+  simpleGrid.setItems(items, hasMore);
+
+  if(isViewChange) finishGridTransition(grid);
+
   // Animate newly added items for infinite scroll
-  if(isLoadingMore && newItemsCount > 0){
+  if(newItemsCount > 0){
     requestAnimationFrame(() => {
-      const itemsHost = grid.querySelector('.grid-virtual__items');
-      if(itemsHost){
-        const cards = Array.from(itemsHost.querySelectorAll('.card'));
-        // Get the last N cards (newly added ones)
-        const newCards = cards.slice(-newItemsCount);
-        newCards.forEach((card, index) => {
-          if(card && !card.classList.contains('loaded')){
-            card.classList.add('loaded');
-            card.style.animationDelay = `${index * 0.03}s`;
-          }
-        });
-      }
+      const cards = Array.from(grid.querySelectorAll('.card'));
+      const newCards = cards.slice(-newItemsCount);
+      newCards.forEach((card, index) => {
+        if(card && !card.classList.contains('loaded')){
+          card.classList.add('loaded');
+          card.style.animationDelay = `${index * 0.03}s`;
+        }
+      });
     });
   }
-  
+
   const empty = document.getElementById('empty');
   if(empty) empty.hidden = items.length > 0;
   grid.setAttribute('aria-busy', 'false');
@@ -479,67 +464,6 @@ function resolveItemId(item){
   candidates.push(item.ratingKey, item.rating_key, item.id);
   const first = candidates.find(value => value != null && String(value).trim());
   return first ? String(first).trim() : '';
-}
-
-function gridItemSignature(entry){
-  if(entry?.isCollectionGroup) return collectionSignature(entry);
-  return itemSignature(entry);
-}
-
-function itemSignature(item){
-  const genres = getGenreNames(item?.genres).slice(0, 3);
-  const badges = itemBadgeTexts(item);
-  const meta = buildMetaPieces(item);
-  return JSON.stringify({
-    id: resolveItemId(item),
-    title: item?.title || '',
-    poster: resolvePoster(item),
-    badges,
-    meta,
-    progress: progressPercent(item),
-    watch: Watch.isSaved(item),
-    genres
-  });
-}
-
-function collectionSignature(entry){
-  const baseItem = entry?.posterItem || null;
-  const genres = Array.isArray(entry?.genres) ? entry.genres.slice(0, 3).map(String) : [];
-  const badges = collectionBadgeTexts(entry);
-  const meta = collectionMetaPieces(entry);
-  const count = Number(entry?.itemCount);
-  const ratingValue = Number(entry?.rating);
-  return JSON.stringify({
-    name: entry?.collectionName || entry?.title || '',
-    title: entry?.title || '',
-    itemCount: Number.isFinite(count) ? count : null,
-    year: entry?.year || '',
-    rating: Number.isFinite(ratingValue) ? ratingValue : null,
-    poster: resolvePoster(baseItem),
-    badges,
-    meta,
-    genres
-  });
-}
-
-function replaceCardNode(current, replacement){
-  if(!(replacement instanceof HTMLElement)) return current;
-  if(!(current instanceof HTMLElement)) return replacement;
-  const parent = current.parentNode;
-  const hadFocus = document.activeElement === current;
-  if(parent){
-    parent.replaceChild(replacement, current);
-  }
-  if(hadFocus && typeof replacement.focus === 'function'){
-    requestAnimationFrame(()=>{
-      try {
-        replacement.focus({ preventScroll: true });
-      } catch (err) {
-        replacement.focus();
-      }
-    });
-  }
-  return replacement;
 }
 
 function updateHash(kind, id){

@@ -151,6 +151,7 @@ export function applyFilters(pagination = {}){
   setState({ filtered: fallback, filteredMeta: fallbackMeta });
 
   const requestId = ++activeFilterRequest;
+
   searchLibrary(view, payload, { includeFacets: false, page: desiredPage, pageSize: desiredPageSize })
     .then((response) => {
       if(requestId !== activeFilterRequest) return;
@@ -164,6 +165,7 @@ export function applyFilters(pagination = {}){
         hasMore,
         isLoadingMore: false,
       };
+
       setState({ filtered: response.items, filteredMeta: resolvedMeta });
       renderGridForCurrentView();
       notifyFiltersUpdated(response.items);
@@ -206,7 +208,7 @@ export function loadMoreItems(){
       const total = Number.isFinite(response.total) && response.total >= 0 ? response.total : currentItems.length + response.items.length;
       const hasMore = Boolean(response.hasMore || response.pagination?.hasMore);
       const newItems = [...currentItems, ...response.items];
-      
+
       const resolvedMeta = {
         page: clampPage(response.page ?? nextPage),
         pageSize: clampPageSize(response.pageSize ?? pageSize),
@@ -214,10 +216,11 @@ export function loadMoreItems(){
         hasMore,
         isLoadingMore: false,
       };
-      
+
       setState({ filtered: newItems, filteredMeta: resolvedMeta });
       updateLoadMoreIndicator(false);
       renderGridForCurrentView();
+      
       notifyFiltersUpdated(newItems);
       
       return response.items;

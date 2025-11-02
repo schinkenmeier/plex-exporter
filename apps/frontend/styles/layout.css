@@ -184,7 +184,7 @@ header.site-header {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.28);
   color: rgba(255, 255, 255, 0.98);
-  transform: translateY(-1px);
+  transform: translate3d(0, -1px, 0);
 }
 
 .header-settings-button:focus-visible {
@@ -196,7 +196,7 @@ header.site-header {
 }
 
 .header-settings-button:active {
-  transform: translateY(0);
+  transform: translate3d(0, 0, 0);
 }
 
 .scroll-progress {
@@ -319,40 +319,27 @@ header.site-header {
 .grid {
   --grid-padding-top: clamp(28px, 4vw, 40px);
   position: relative;
-  display: block;
+  display: grid;
+  gap: clamp(18px, 2vw, 28px);
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   padding: var(--grid-padding-top) 0;
   transition: opacity var(--transition-smooth),
     padding var(--transition-smooth);
   /* Ensure grid doesn't jump under sticky filterbar */
   scroll-margin-top: clamp(140px, 16vw, 200px);
-}
-
-.grid-virtual__window {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  will-change: transform;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-}
-
-.grid-virtual__items {
-  display: grid;
-  gap: clamp(18px, 2vw, 28px);
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   /* Optimize for smooth scrolling */
   transform: translateZ(0);
   contain: layout style paint;
 }
 
-.grid-virtual__spacer {
-  width: 1px;
-  pointer-events: none;
-}
-
-.grid-virtual__measure {
+/* Sentinel element for infinite scroll trigger */
+.grid__sentinel {
+  height: 1px;
   width: 100%;
+  pointer-events: none;
+  grid-column: 1 / -1;
+  opacity: 0;
+  visibility: hidden;
 }
 
 .grid.is-leaving {

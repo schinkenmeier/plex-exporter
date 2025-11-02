@@ -3,19 +3,19 @@
 /* Button hover effects – sanft und dezent */
 button:not(:disabled):hover,
 .btn:not(:disabled):hover {
-  transform: translateY(-1px);
+  transform: translate3d(0, -1px, 0);
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
 }
 
 button:not(:disabled):active,
 .btn:not(:disabled):active {
-  transform: translateY(0);
+  transform: translate3d(0, 0, 0);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 /* Card hover animations – ruhig, dezenter Lift */
 .card:hover {
-  transform: translateY(-2px);
+  transform: translate3d(0, -2px, 0);
   box-shadow: 0 12px 42px rgba(2, 6, 14, 0.45);
 }
 
@@ -36,11 +36,11 @@ button:not(:disabled):active,
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translate3d(0, 12px, 0);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
@@ -99,11 +99,11 @@ button:not(:disabled):active,
 @keyframes modalSlideIn {
   from {
     opacity: 0;
-    transform: translateY(30px) scale(0.95);
+    transform: translate3d(0, 30px, 0) scale(0.95);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 
@@ -220,11 +220,11 @@ button:not(:disabled):active,
 /* Toast slide in from right */
 @keyframes toastSlideIn {
   from {
-    transform: translateX(100%);
+    transform: translate3d(100%, 0, 0);
     opacity: 0;
   }
   to {
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
     opacity: 1;
   }
 }
@@ -261,11 +261,11 @@ html {
 @keyframes hero-fade-scroll {
   0% {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
   }
   100% {
     opacity: 0;
-    transform: translateY(-20%) scale(0.95);
+    transform: translate3d(0, -20%, 0) scale(0.95);
   }
 }
 
@@ -280,7 +280,7 @@ html {
   .hero.is-collapsing,
   .hero.is-hidden {
     opacity: 0;
-    transform: translateY(-20%) scale(0.95);
+    transform: translate3d(0, -20%, 0) scale(0.95);
   }
 }
 
@@ -298,11 +298,11 @@ html {
 @keyframes filters-fade-scroll {
   0% {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
   100% {
     opacity: 0;
-    transform: translateY(-100%);
+    transform: translate3d(0, -100%, 0);
     pointer-events: none;
   }
 }
