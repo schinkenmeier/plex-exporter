@@ -33,6 +33,13 @@ const convertThumbnailToUrl = (path: string | null, mediaType: 'movie' | 'tv', r
     return path;
   }
 
+  // If already pointing at a proxied thumbnail, return absolute path without double-wrapping
+  if (path.startsWith('/api/thumbnails/')) {
+    const protocol = req.protocol;
+    const host = req.get('host');
+    return `${protocol}://${host}${path}`;
+  }
+
   // Convert local path to thumbnail URL
   const type = mediaType === 'tv' ? 'series' : 'movies';
   const protocol = req.protocol;
