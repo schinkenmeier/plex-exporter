@@ -35,6 +35,15 @@
 		}
 	}
 
+	# Serve JSON config files directly (before SPA fallback)
+	handle /config/*.json {
+		file_server
+	}
+
+	handle /*.json {
+		file_server
+	}
+
 	# Serve SPA assets and fall back to index.html for client-side routing
 	handle {
 		try_files {path} /index.html

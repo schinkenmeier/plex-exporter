@@ -335,6 +335,7 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
         imgSrc: ["'self'", 'data:', 'https:'],
       },
     },
+    hsts: false, // TLS/HTTPS terminates via Cloudflare Tunnel; disable HSTS for direct HTTP access in LAN
     crossOriginEmbedderPolicy: false, // Allow embedding for development
     crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allow cross-origin resource sharing
   }));

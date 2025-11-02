@@ -43,6 +43,15 @@
 		}
 	}
 
+	# Serve JSON config files directly (before SPA fallback)
+	handle /config/*.json {
+		file_server
+	}
+
+	handle /*.json {
+		file_server
+	}
+
 	# Serve static files for everything else
 	handle {
 		# Try to serve the file, otherwise serve index.html for SPA routing
