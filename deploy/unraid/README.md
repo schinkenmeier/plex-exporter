@@ -1,44 +1,48 @@
 # Plex Exporter – Unraid Deployment (Docker Compose Manager)
 
-Dieser Ordner bündelt alle Dateien, die für den Betrieb über das Unraid Docker Compose Manager Plugin benötigt werden.
+Kompakte Anleitung für den Betrieb über das Unraid Docker Compose Manager Plugin. Fokus: Pull fertiger Images aus GHCR, kein lokaler Build nötig.
 
 ## Inhalte
 
-- `docker-compose.yml` – Compose Stack mit Unraid-spezifischen Pfaden und Port 8342 für Caddy.
-- `docker-compose.images.yml` – Variante, die fertige Images aus GHCR zieht (kein lokaler Build). Images: `ghcr.io/schinkenmeier/plex-exporter-backend` und `ghcr.io/schinkenmeier/plex-exporter-frontend`.
-- `.env.sample` – Vorlage für Umgebungsvariablen. Vor dem Import nach `.env` kopieren und anpassen.
-- `Caddyfile` – HTTP-Konfiguration für Cloudflare Zero Trust (TLS findet außerhalb von Unraid statt).
+- `docker-compose.images.yml` – Pullt Images aus GHCR: `ghcr.io/schinkenmeier/plex-exporter-backend` und `ghcr.io/schinkenmeier/plex-exporter-frontend`.
+- `docker-compose.yml` – Alternative für lokalen Build (nur nutzen, wenn du wirklich auf Unraid bauen willst).
+- `.env.sample` – Vorlage für Umgebungsvariablen; nach `.env` kopieren und anpassen.
+- `Caddyfile` – HTTP-Konfiguration für Cloudflare Zero Trust (TLS extern).
 
-## Vorbereitung auf Unraid
+## Quick Start (empfohlen: GHCR‑Images)
 
-1. Repository (oder zumindest den Build-relevanten Teil) nach `/boot/config/plugins/compose.manager/projects/plex-exporter/` kopieren.  
-   Hinweis: Der Stack baut seine Images lokal, deshalb müssen die Quellcodes (`apps/*`, `packages/*`, etc.) verfügbar sein.
-2. `.env.sample` in `.env` umbenennen und alle Passwörter/Token ausfüllen.
-3. Sicherstellen, dass die Verzeichnisse in `.env` unter `/mnt/user/appdata/plex-exporter/...` existieren oder vorab erstellt werden.
+1) Dateien auf Unraid bereitstellen
+- Diesen Ordner `deploy/unraid/` nach Unraid kopieren, z.B. nach `/boot/config/plugins/compose.manager/projects/plex-exporter/`.
+- `.env.sample` → `.env` kopieren und anpassen:
+  - `IMAGE_TAG=latest` (oder eine Version wie `v0.1.0`)
+  - `BACKEND_TAUTULLI_URL=http://192.168.178.34:8181`
+  - Passwörter/Token (API/Admin)
+  - Appdata‑Pfade unter `/mnt/user/appdata/plex-exporter/...`
 
-## Import in das Compose Manager Plugin
+2) Projekt im Compose Manager importieren
+- Plugin → Projects → Add → Pfad: der Ordner mit dieser README (`deploy/unraid`).
+- Compose‑Datei: `docker-compose.images.yml` auswählen (kein Build).
+- Starten.
 
-1. Plugin öffnen → **Projects** → **Add** → vorhandenes Verzeichnis wählen (`plex-exporter`).
-2. Kontrolle, dass `.env` erkannt wird und die Variablen passen (Port 8342, Tautulli-URL `http://192.168.178.34:8181`, API-Token, etc.).
-3. Projekt starten:
-   - Backend wird gebaut und als `plex-exporter-backend:local` gespeichert.
-   - Caddy wird gebaut, das lokale `Caddyfile` wird beim Start per Volume eingebunden.
-4. Logs prüfen (`Logs`-Tab im Plugin oder `docker logs plex-exporter-backend|plex-exporter-caddy` über SSH).
-5. Funktionstest:
-   - Backend-Healthcheck: `curl http://<unraid-ip>:8342/health`
-   - Web-UI: `http://<unraid-ip>:8342`
-   - Cloudflare Tunnel auf Port 8342 konfigurieren.
+3) Testen
+- Web: `http://<unraid-ip>:8342`
+- Health: `http://<unraid-ip>:8342/health`
+- Cloudflare Tunnel auf Host‑Port `8342` routen.
 
-### Alternative: Registry-Variante (kein lokaler Build)
+## Details zur Images‑Variante
 
-Wenn du vorgefertigte Images aus z.B. GHCR verwendest:
+- Tags: `latest` (Push auf main) oder versionierte Tags wie `v0.1.0` (Release‑Tag).
+- In `.env` steuerst du mit `IMAGE_TAG`, welche Version gezogen wird.
+- Service‑Order: `caddy` wartet via `depends_on: service_healthy` auf ein gesundes Backend (Healthcheck aktiv im Compose).
 
-1. In `.env` `IMAGE_TAG` setzen (z.B. `latest` oder `v1.2.3`).
-2. Im Plugin statt `docker-compose.yml` die Datei `docker-compose.images.yml` wählen.
-3. Projekt starten – es wird nur gezogen, nicht gebaut.
+## Alternative: Lokaler Build auf Unraid
 
-## Updates und Wartung
+- Nur wenn du das komplette Repo kopieren willst und auf Unraid bauen möchtest.
+- Compose‑Datei: `docker-compose.yml` (baut Backend + Frontend lokal).
+- Voraussetzung: Genug Speicher/CPU auf Unraid; Build läuft in Docker, nicht im Host.
 
-- Bei Codeänderungen das Repository erneut auf Unraid synchronisieren (z.B. per `git pull` oder `rsync`).
-- Danach im Plugin `Rebuild` ausführen, damit die Images neu gebaut werden.
-- Backups der Daten unter `/mnt/user/appdata/plex-exporter/` einplanen.
+## Updates & Wartung
+
+- Neue Version: `IMAGE_TAG` in `.env` aktualisieren und im Plugin `Pull`/`Up` ausführen.
+- Logs: `docker logs -f plex-exporter-backend` und `docker logs -f plex-exporter-caddy`.
+- Backup: `/mnt/user/appdata/plex-exporter/` in dein Appdata‑Backup einbeziehen.
