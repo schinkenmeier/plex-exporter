@@ -470,7 +470,7 @@ export class TautulliSyncService {
         }
 
         // Sync seasons and episodes
-        await this.syncSeasonsAndEpisodes(item.rating_key, mediaItemId, onProgress);
+        await this.syncSeasonsAndEpisodes(item.rating_key, mediaItemId, options, onProgress);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error(`[Tautulli Sync] Failed to sync series "${item.title}" (rating_key: ${item.rating_key}):`, errorMessage);
@@ -495,6 +495,7 @@ export class TautulliSyncService {
   private async syncSeasonsAndEpisodes(
     showRatingKey: string,
     mediaItemId: number,
+    options: SyncOptions = {},
     onProgress?: ProgressCallback,
   ): Promise<void> {
     // Get all seasons
@@ -519,7 +520,44 @@ export class TautulliSyncService {
         // Check if season exists
         const existingSeason = this.seasonRepo.getByTautulliId(seasonMetadata.rating_key);
 
-        const seasonPoster = this.convertTautulliThumbnailUrl(seasonMetadata.thumb);
+        let seasonPoster = this.convertTautulliThumbnailUrl(seasonMetadata.thumb) ?? null;
+
+        if (options.syncCovers && this.imageStorageService && seasonMetadata.thumb) {
+          const posterInfo = this.parseTautulliImageUrl(seasonMetadata.thumb);
+
+          if (posterInfo) {
+            const posterPath = this.imageStorageService.getSeasonImagePath(
+              showRatingKey,
+              seasonMetadata.rating_key,
+            );
+
+            try {
+              const downloadResult = await this.imageStorageService.downloadImage({
+                ratingKey: posterInfo.id,
+                type: posterInfo.type,
+                timestamp: posterInfo.timestamp,
+                targetPath: posterPath,
+                mediaType: 'tv',
+                category: 'season',
+                seasonRatingKey: seasonMetadata.rating_key,
+              });
+
+              if (downloadResult.success && downloadResult.localPath) {
+                seasonPoster = downloadResult.localPath;
+              } else if (!downloadResult.success && downloadResult.error) {
+                console.warn(
+                  `[Tautulli Sync] Season image download unsuccessful for "${seasonMetadata.title}" (rating_key: ${seasonMetadata.rating_key}): ${downloadResult.error}`,
+                );
+              }
+            } catch (error) {
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              console.warn(
+                `[Tautulli Sync] Season image download failed for "${seasonMetadata.title}" (rating_key: ${seasonMetadata.rating_key}):`,
+                errorMessage,
+              );
+            }
+          }
+        }
 
         const seasonData = {
           mediaItemId,
@@ -527,7 +565,7 @@ export class TautulliSyncService {
           seasonNumber: seasonMetadata.media_index ?? 0,
           title: seasonMetadata.title,
           summary: seasonMetadata.summary,
-          poster: seasonPoster ?? null,
+          poster: seasonPoster,
           episodeCount: 0, // Will be updated after episodes
         };
 
@@ -549,7 +587,46 @@ export class TautulliSyncService {
             reportedEpisodeKeys.add(episodeMetadata.rating_key);
             const existingEpisode = this.seasonRepo.getEpisodeByTautulliId(episodeMetadata.rating_key);
 
-            const episodeThumb = this.convertTautulliThumbnailUrl(episodeMetadata.thumb);
+            let episodeThumb = this.convertTautulliThumbnailUrl(episodeMetadata.thumb) ?? null;
+
+            if (options.syncCovers && this.imageStorageService && episodeMetadata.thumb) {
+              const thumbInfo = this.parseTautulliImageUrl(episodeMetadata.thumb);
+
+              if (thumbInfo) {
+                const thumbPath = this.imageStorageService.getEpisodeImagePath(
+                  showRatingKey,
+                  seasonMetadata.rating_key,
+                  episodeMetadata.rating_key,
+                );
+
+                try {
+                  const downloadResult = await this.imageStorageService.downloadImage({
+                    ratingKey: thumbInfo.id,
+                    type: thumbInfo.type,
+                    timestamp: thumbInfo.timestamp,
+                    targetPath: thumbPath,
+                    mediaType: 'tv',
+                    category: 'episode',
+                    seasonRatingKey: seasonMetadata.rating_key,
+                    episodeRatingKey: episodeMetadata.rating_key,
+                  });
+
+                  if (downloadResult.success && downloadResult.localPath) {
+                    episodeThumb = downloadResult.localPath;
+                  } else if (!downloadResult.success && downloadResult.error) {
+                    console.warn(
+                      `[Tautulli Sync] Episode image download unsuccessful for "${episodeMetadata.title}" (rating_key: ${episodeMetadata.rating_key}): ${downloadResult.error}`,
+                    );
+                  }
+                } catch (error) {
+                  const errorMessage = error instanceof Error ? error.message : String(error);
+                  console.warn(
+                    `[Tautulli Sync] Episode image download failed for "${episodeMetadata.title}" (rating_key: ${episodeMetadata.rating_key}):`,
+                    errorMessage,
+                  );
+                }
+              }
+            }
 
             const episodeData = {
               seasonId: resolvedSeasonId,
@@ -560,7 +637,7 @@ export class TautulliSyncService {
               duration: episodeMetadata.duration,
               rating: episodeMetadata.rating?.toString(),
               airDate: episodeMetadata.originally_available_at,
-              thumb: episodeThumb ?? null,
+              thumb: episodeThumb,
             };
 
             if (existingEpisode) {
