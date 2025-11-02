@@ -1,7 +1,5 @@
 # Docker Compose variant that pulls prebuilt images from a registry (no local builds)
 
-version: "3.8"
-
 services:
   backend:
     image: ghcr.io/schinkenmeier/plex-exporter-backend:${IMAGE_TAG:-latest}

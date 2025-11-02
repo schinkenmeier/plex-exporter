@@ -1,8 +1,6 @@
 # Docker Compose for Unraid Deployment
 # Optimized for Unraid with proper volume paths
 
-version: '3.8'
-
 services:
   backend:
     build:

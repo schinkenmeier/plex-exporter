@@ -1,8 +1,6 @@
 # Docker Compose configuration tailored for the Unraid Docker Compose Manager
 # Build images locally and expose Caddy on a custom HTTP port for Cloudflare Tunnel usage.
 
-version: "3.8"
-
 services:
   backend:
     build:
