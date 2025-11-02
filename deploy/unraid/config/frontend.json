@@ -1,0 +1,8 @@
+{
+  "apiBase": "",
+  "startView": "movies",
+  "theme": "plex",
+  "showHero": true,
+  "showCollections": true,
+  "showRecentlyAdded": true
+}

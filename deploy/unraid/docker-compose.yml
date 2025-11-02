@@ -52,6 +52,7 @@ services:
     volumes:
       - ${CADDY_DATA_PATH:-/mnt/user/appdata/plex-exporter/caddy/data}:/data
       - ${CADDY_CONFIG_PATH:-/mnt/user/appdata/plex-exporter/caddy/config}:/config
+      - ./config/frontend.json:/srv/frontend/config/frontend.json:ro
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
     restart: unless-stopped
     networks:
@@ -61,4 +62,3 @@ networks:
   plex-exporter:
     name: plex-exporter
     driver: bridge
-
