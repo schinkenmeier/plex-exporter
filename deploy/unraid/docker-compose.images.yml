@@ -42,8 +42,10 @@ services:
     volumes:
       - ${CADDY_DATA_PATH:-/mnt/user/appdata/plex-exporter/caddy/data}:/data
       - ${CADDY_CONFIG_PATH:-/mnt/user/appdata/plex-exporter/caddy/config}:/config
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./config/frontend.json:/srv/frontend/config/frontend.json:ro
+      # NOTE: Caddyfile and config are baked into the image, no need to mount them
+      # If you need to override, uncomment these lines and ensure the files exist:
+      # - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # - ./config/frontend.json:/srv/frontend/config/frontend.json:ro
     restart: unless-stopped
     networks:
       - plex-exporter
