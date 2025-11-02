@@ -1,0 +1,79 @@
+# Lightweight Caddy configuration for Unraid + Cloudflare Tunnel
+# Serves the built frontend over HTTP; TLS is handled externally by Cloudflare.
+
+:80 {
+	# Static assets generated during the frontend build
+	root * /srv/frontend
+
+	encode gzip zstd
+
+	# Proxy API, admin panel and health requests to the backend service
+	handle /api/* {
+		reverse_proxy backend:4000 {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	handle /health {
+		reverse_proxy backend:4000 {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	handle /admin* {
+		reverse_proxy backend:4000 {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	# Serve SPA assets and fall back to index.html for client-side routing
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		X-XSS-Protection "1; mode=block"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	@static {
+		path *.css *.js *.svg *.png *.jpg *.jpeg *.webp *.woff *.woff2 *.ttf *.eot *.ico *.map
+	}
+	header @static {
+		Cache-Control "public, max-age=31536000, immutable"
+	}
+
+	@html {
+		path *.html
+	}
+	header @html {
+		Cache-Control "public, max-age=3600, must-revalidate"
+	}
+
+	@json {
+		path *.json
+	}
+	header @json {
+		Cache-Control "public, max-age=300"
+	}
+
+	log {
+		output stdout
+		format console
+		level INFO
+	}
+}
+

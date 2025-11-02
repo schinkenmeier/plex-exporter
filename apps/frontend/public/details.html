@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Details – Plex-Katalog</title>
+  <meta name="description" content="Standalone-Detailansicht für Filme und Serien aus dem Plex-Katalog." />
+  <link rel="icon" type="image/svg+xml" href="assets/plex-katalog-favicon.svg" />
+  <link rel="stylesheet" href="dist/app.css" />
+  <link rel="stylesheet" href="../styles/modal.v3.css" />
+  <meta name="color-scheme" content="dark light" />
+</head>
+<body class="detail-page">
+  <header class="detail-header">
+    <div class="wrap detail-header__inner">
+      <a class="detail-header__brand" href="index.html">Plex-Katalog</a>
+    </div>
+  </header>
+  <main class="detail-main" id="detailMain">
+    <div class="wrap detail-main__inner">
+      <p id="detailStatus" class="detail-status" role="status" aria-live="polite">Details werden geladen …</p>
+      <div id="detailRoot" class="detail-root" aria-live="polite"></div>
+    </div>
+  </main>
+  <script type="module">
+    import { renderMediaDetail, loadMovieDetailViewModel, loadSeriesDetailViewModel } from '../src/features/modal/modalV3/index.js';
+    import { loadFrontendConfig, DEFAULT_FRONTEND_CONFIG } from '../src/core/configLoader.js';
+
+    const LOG_PREFIX = '[details]';
+
+    const statusEl = document.getElementById('detailStatus');
+    const rootEl = document.getElementById('detailRoot');
+
+    function setStatus(message, state = 'loading') {
+      if(!statusEl) return;
+      const text = message ? String(message) : '';
+      statusEl.textContent = text;
+      statusEl.dataset.state = state;
+      statusEl.hidden = !text;
+    }
+
+    function showError(message) {
+      setStatus(message, 'error');
+      if(rootEl) rootEl.innerHTML = '';
+    }
+
+    function normalizeType(raw) {
+      if(!raw) return null;
+      const value = String(raw).trim().toLowerCase();
+      if(['movie', 'film'].includes(value)) return 'movie';
+      if(['show', 'serie', 'series', 'tv'].includes(value)) return 'show';
+      return null;
+    }
+
+    function normalizeId(raw) {
+      if(raw == null) return '';
+      return String(raw).trim();
+    }
+
+    async function loadViewModel(kind, id) {
+      if(kind === 'movie') {
+        return loadMovieDetailViewModel(id);
+      }
+      return loadSeriesDetailViewModel(id);
+    }
+
+    async function loadConfig(){
+      try {
+        return await loadFrontendConfig();
+      } catch (err) {
+        console.warn(`${LOG_PREFIX} Failed to load frontend config, using defaults:`, err?.message || err);
+        setStatus('Konfiguration konnte nicht geladen werden. Verwende Standardeinstellungen.', 'warning');
+        return { ...DEFAULT_FRONTEND_CONFIG };
+      }
+    }
+
+    async function init() {
+      const params = new URLSearchParams(window.location.search);
+      const kind = normalizeType(params.get('type'));
+      const identifier = normalizeId(params.get('id'));
+
+      if(!kind) {
+        showError('Ungültiger Typ. Verwende ?type=movie oder ?type=show.');
+        return;
+      }
+      if(!identifier) {
+        showError('Es fehlt ein Parameter ?id=… für den gewünschten Titel.');
+        return;
+      }
+
+      try {
+        await loadConfig();
+        setStatus('Details werden geladen …', 'loading');
+        const viewModel = await loadViewModel(kind, identifier, params);
+        if(!viewModel) {
+          showError('Titel konnte nicht gefunden werden.');
+          return;
+        }
+        const rendered = renderMediaDetail(rootEl, viewModel, { layout: 'standalone' });
+        if(!rendered) {
+          showError('Detailansicht konnte nicht aufgebaut werden.');
+          return;
+        }
+        const title = viewModel.title || 'Details';
+        document.title = `${title} – Plex-Katalog`;
+        setStatus('', 'ready');
+      } catch (err) {
+        console.warn('[details] Detailseite fehlgeschlagen:', err?.message || err);
+        showError('Beim Laden der Detailansicht ist ein Fehler aufgetreten.');
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

@@ -1,3 +1,59 @@
+# Dependencies
 node_modules/
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs
+apps/backend/dist/
+apps/frontend/dist/
+dist/
+build/
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+apps/backend/.env
+deploy/unraid/.env
+
+# Frontend runtime config (user-specific)
+apps/frontend/config/frontend.json
+apps/frontend/public/config/frontend.json
+
+# Logs
+*.log
+logs/
+
+# Process files
+*.pid
+
+# Testing
+coverage/
+*.lcov
+.nyc_output
+.vitest/
+
+# IDE
 .DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Windows
+Thumbs.db
+nul
+
+# Data & Database (Docker bind mount volumes)
+data/
+!data/.gitkeep
+apps/*/data/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

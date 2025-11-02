@@ -1,0 +1,50 @@
+# Docker Compose variant that pulls prebuilt images from a registry (no local builds)
+
+version: "3.8"
+
+services:
+  backend:
+    image: ghcr.io/schinkenmeier/plex-exporter-backend:${IMAGE_TAG:-latest}
+    container_name: plex-exporter-backend
+    expose:
+      - "4000"
+    environment:
+      NODE_ENV: ${BACKEND_NODE_ENV:-production}
+      PORT: ${BACKEND_INTERNAL_PORT:-4000}
+      SQLITE_PATH: ${BACKEND_SQLITE_PATH:-/app/data/sqlite/plex-exporter.sqlite}
+      HERO_POLICY_PATH: ${BACKEND_HERO_POLICY_PATH:-}
+      TMDB_ACCESS_TOKEN: ${BACKEND_TMDB_ACCESS_TOKEN:-}
+      API_TOKEN: ${BACKEND_API_TOKEN:-}
+      ADMIN_USERNAME: ${BACKEND_ADMIN_USERNAME:-}
+      ADMIN_PASSWORD: ${BACKEND_ADMIN_PASSWORD:-}
+      RESEND_API_KEY: ${BACKEND_RESEND_API_KEY:-}
+      RESEND_FROM_EMAIL: ${BACKEND_RESEND_FROM_EMAIL:-}
+      TAUTULLI_URL: ${BACKEND_TAUTULLI_URL:-http://192.168.178.34:8181}
+      TAUTULLI_API_KEY: ${BACKEND_TAUTULLI_API_KEY:-}
+    volumes:
+      - ${BACKEND_DATA_PATH:-/mnt/user/appdata/plex-exporter/backend}:/app/data
+    restart: unless-stopped
+    networks:
+      - plex-exporter
+
+  caddy:
+    image: ghcr.io/schinkenmeier/plex-exporter-frontend:${IMAGE_TAG:-latest}
+    container_name: plex-exporter-caddy
+    depends_on:
+      backend:
+        condition: service_started
+    ports:
+      - "${CADDY_HTTP_PORT:-8342}:80"
+    volumes:
+      - ${CADDY_DATA_PATH:-/mnt/user/appdata/plex-exporter/caddy/data}:/data
+      - ${CADDY_CONFIG_PATH:-/mnt/user/appdata/plex-exporter/caddy/config}:/config
+      # Optional: überschreibe das im Image enthaltene Caddyfile
+      # - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    restart: unless-stopped
+    networks:
+      - plex-exporter
+
+networks:
+  plex-exporter:
+    name: plex-exporter
+    driver: bridge

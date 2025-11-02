@@ -1,0 +1,20 @@
+{
+  "name": "@plex-exporter/frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@plex-exporter/shared": "file:../../packages/shared"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:watch": "node scripts/build.mjs --watch",
+    "test": "node --test tests/__tests__/*.test.js",
+    "test:coverage": "node --test --experimental-test-coverage tests/__tests__/*.test.js",
+    "test:integration": "node --test tests/__tests__/app.integration.test.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.19.12",
+    "linkedom": "^0.18.12"
+  }
+}

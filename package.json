@@ -1,19 +1,20 @@
 {
   "name": "plex-exporter",
-  "version": "0.1.0",
-  "type": "module",
   "private": true,
+  "workspaces": [
+    "apps/frontend",
+    "apps/backend",
+    "packages/*",
+    "tools"
+  ],
   "scripts": {
-    "build": "node tools/build.mjs",
-    "build:watch": "node tools/build.mjs --watch",
-    "split:series": "node tools/split_series.mjs site/data/series/series_full.json site/data/series",
-    "test": "node --test site/js/__tests__/*.test.js",
-    "test:coverage": "node --test --experimental-test-coverage site/js/__tests__/*.test.js",
-    "test:integration": "node --test site/js/__tests__/app.integration.test.js",
-    "analyze": "node tools/analyze-bundle.mjs"
+    "prepare": "node -e \"if (process.env.CI !== 'true') { const { execSync } = require('child_process'); try { execSync('husky install', { stdio: 'inherit' }); } catch (e) { /* ignore */ } }\"",
+    "test": "npm test --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "echo 'Run linting via GitHub Actions'",
+    "type-check": "npm run type-check --workspaces --if-present"
   },
   "devDependencies": {
-    "esbuild": "^0.19.12",
-    "linkedom": "^0.18.12"
+    "husky": "^8.0.3"
   }
 }

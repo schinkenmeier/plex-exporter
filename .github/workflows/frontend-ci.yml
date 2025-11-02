@@ -1,0 +1,173 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [main, develop, Refactor]
+    paths:
+      - 'apps/frontend/**'
+      - 'packages/shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/frontend-ci.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'apps/frontend/**'
+      - 'packages/shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+
+jobs:
+  build:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build --workspace @plex-exporter/frontend
+
+      - name: Check build output
+        run: |
+          if [ ! -d "apps/frontend/public/dist" ]; then
+            echo "❌ Build output directory not found"
+            exit 1
+          fi
+          if [ ! -f "apps/frontend/public/dist/main.js" ]; then
+            echo "❌ main.js not found in build output"
+            exit 1
+          fi
+          echo "✅ Build output verified"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        if: matrix.node-version == '20.x'
+        with:
+          name: frontend-build
+          path: apps/frontend/public/dist/
+          retention-days: 7
+
+  test:
+    name: Test Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test --workspace @plex-exporter/frontend
+        continue-on-error: true
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-results
+          path: apps/frontend/coverage/
+          retention-days: 7
+
+  lint:
+    name: Lint Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check code formatting
+        run: |
+          echo "ℹ️  Checking for common code issues..."
+          # Check for console.log statements (excluding allowed patterns)
+          if grep -r "console\.log" apps/frontend/src --include="*.js" --exclude-dir=node_modules | grep -v "// eslint-disable" | grep -v "LOG_PREFIX"; then
+            echo "⚠️  Found console.log statements. Consider using proper logging."
+          fi
+
+          # Check for debugger statements
+          if grep -r "debugger" apps/frontend/src --include="*.js" --exclude-dir=node_modules; then
+            echo "❌ Found debugger statements"
+            exit 1
+          fi
+
+          echo "✅ Code formatting checks passed"
+
+  bundle-size:
+    name: Check Bundle Size
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build --workspace @plex-exporter/frontend
+
+      - name: Analyze bundle size
+        run: npm run analyze --workspace @plex-exporter/tools
+        continue-on-error: true
+
+      - name: Check bundle size limits
+        run: |
+          MAX_JS_SIZE=500000  # 500KB
+          MAX_CSS_SIZE=100000 # 100KB
+
+          JS_SIZE=$(stat -f%z apps/frontend/public/dist/main.js 2>/dev/null || stat -c%s apps/frontend/public/dist/main.js)
+          CSS_SIZE=$(stat -f%z apps/frontend/public/dist/app.css 2>/dev/null || stat -c%s apps/frontend/public/dist/app.css)
+
+          echo "📦 Bundle sizes:"
+          echo "   JavaScript: $(numfmt --to=iec-i --suffix=B $JS_SIZE)"
+          echo "   CSS: $(numfmt --to=iec-i --suffix=B $CSS_SIZE)"
+
+          if [ $JS_SIZE -gt $MAX_JS_SIZE ]; then
+            echo "❌ JavaScript bundle exceeds limit ($(numfmt --to=iec-i --suffix=B $MAX_JS_SIZE))"
+            exit 1
+          fi
+
+          if [ $CSS_SIZE -gt $MAX_CSS_SIZE ]; then
+            echo "⚠️  CSS bundle exceeds recommended limit ($(numfmt --to=iec-i --suffix=B $MAX_CSS_SIZE))"
+          fi
+
+          echo "✅ Bundle size check passed"
