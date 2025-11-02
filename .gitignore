@@ -17,6 +17,7 @@ build/
 .env.local
 .env.*.local
 apps/backend/.env
+deploy/unraid/.env
 
 # Frontend runtime config (user-specific)
 apps/frontend/config/frontend.json

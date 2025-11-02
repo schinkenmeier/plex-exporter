@@ -9,153 +9,70 @@ Deployment-Anleitung für Plex Exporter auf Unraid mit Cloudflare Zero Trust Tun
 - Cloudflare Account mit Zero Trust Tunnel konfiguriert
 - SSH-Zugriff auf Unraid
 
-## Option 1: Docker Compose (Empfohlen)
+## Docker Compose Manager (Empfohlen)
 
-### Schritt 1: Projekt auf Unraid kopieren
+### Schritt 1: Projektstruktur vorbereiten
 
 ```bash
 # Via SSH auf Unraid einloggen
 ssh root@<unraid-ip>
 
-# Appdata Verzeichnis erstellen
-mkdir -p /mnt/user/appdata/plex-exporter
+# Ablageort für Compose Manager Projekte
+mkdir -p /boot/config/plugins/compose.manager/projects/plex-exporter
 
-# Code hochladen (z.B. via git oder scp)
-cd /mnt/user/appdata/plex-exporter
+# Repository z.B. per git klonen oder via scp hochladen
+cd /boot/config/plugins/compose.manager/projects/plex-exporter
 git clone https://github.com/yourusername/plex-exporter.git .
-
-# Oder via scp von deinem PC:
-# scp -r C:\Users\nilsd\Documents\GitHub\plex-exporter root@<unraid-ip>:/mnt/user/appdata/plex-exporter/
 ```
 
-### Schritt 2: Environment Variablen konfigurieren
+> Alternativ kannst du das Repository lokal bauen und dann mit `scp -r` nach Unraid kopieren.  
+> Wichtig: Für den Image-Build müssen die Unterordner `apps/`, `packages/` etc. vorhanden sein.
+
+### Schritt 2: Environment Variablen setzen
 
 ```bash
-cd /mnt/user/appdata/plex-exporter
-
-# .env Datei erstellen
-cat > .env << 'EOF'
-# Backend Configuration
-BACKEND_NODE_ENV=production
-BACKEND_INTERNAL_PORT=4000
-
-# Database (wird automatisch erstellt)
-BACKEND_SQLITE_PATH=/app/data/sqlite/plex-exporter.sqlite
-
-# Optional: Admin Panel
-BACKEND_ADMIN_USERNAME=admin
-BACKEND_ADMIN_PASSWORD=your-secure-password
-
-# Optional: TMDB API
-BACKEND_TMDB_ACCESS_TOKEN=your-tmdb-token
-
-# Optional: Tautulli Integration
-BACKEND_TAUTULLI_URL=http://tautulli:8181
-BACKEND_TAUTULLI_API_KEY=your-tautulli-api-key
-
-# Caddy Ports
-CADDY_HTTP_PORT=8080
-# CADDY_HTTPS_PORT=8443  # Nicht nötig mit Cloudflare Tunnel
-EOF
+cd deploy/unraid
+cp .env.sample .env
+nano .env
 ```
 
-### Schritt 3: Container bauen und starten
+Relevante Werte:
+
+- `BACKEND_API_TOKEN`, `BACKEND_ADMIN_PASSWORD`, `BACKEND_TAUTULLI_API_KEY`
+- `BACKEND_TAUTULLI_URL=http://192.168.178.34:8181`
+- `CADDY_HTTP_PORT=8342`
+- Appdata-Pfade unter `/mnt/user/appdata/plex-exporter/...`
+
+### Schritt 3: Projekt im Plugin importieren
+
+1. Docker Compose Manager öffnen → **Projects** → **Add**.
+2. Pfad `.../plex-exporter/deploy/unraid` auswählen (dort liegt `docker-compose.yml`).
+3. Überprüfen, ob `.env` geladen wurde.
+4. Projekt starten (`Up`).
+
+### Schritt 4: Funktionstest
 
 ```bash
-# Unraid docker-compose verwenden
-docker-compose -f docker-compose.unraid.yml up -d --build
-
-# Oder reguläres docker-compose.yml
-docker-compose up -d --build
-```
-
-### Schritt 4: Logs prüfen
-
-```bash
-# Backend logs
+# Backend-Logs
 docker logs -f plex-exporter-backend
 
-# Frontend/Caddy logs
+# Caddy-Logs
 docker logs -f plex-exporter-caddy
 
-# Health check
-curl http://localhost:8080/health
+# Health Check (Port 8342)
+curl http://<unraid-ip>:8342/health
 ```
 
-## Option 2: Portainer Stack
+## Alternative: Portainer Stack
 
-Falls du Portainer auf Unraid nutzt:
+1. Portainer UI öffnen → **Stacks** → **Add Stack**.
+2. Inhalt aus `deploy/unraid/docker-compose.yml` kopieren.
+3. `.env`-Inhalt im **Environment Variables**-Tab pflegen.
+4. Stack deployen.
 
-1. Öffne Portainer UI
-2. Gehe zu **Stacks** → **Add Stack**
-3. Name: `plex-exporter`
-4. Kopiere den Inhalt von `docker-compose.unraid.yml`
-5. Füge Environment Variables hinzu
-6. Deploy Stack
+## Hinweis zu Community App Templates
 
-## Option 3: Unraid Community App Template
-
-### Backend Template
-
-```xml
-<?xml version="1.0"?>
-<Container version="2">
-  <Name>Plex-Exporter-Backend</Name>
-  <Repository>plex-exporter-backend:local</Repository>
-  <Registry>-</Registry>
-  <Network>bridge</Network>
-  <Privileged>false</Privileged>
-  <Support>https://github.com/yourusername/plex-exporter</Support>
-  <Project>https://github.com/yourusername/plex-exporter</Project>
-  <Overview>Backend API for Plex Exporter</Overview>
-  <Category>MediaApp:Other</Category>
-  <WebUI></WebUI>
-  <TemplateURL/>
-  <Icon>https://raw.githubusercontent.com/yourusername/plex-exporter/main/apps/frontend/public/assets/Plex-Katalog-Logo.svg</Icon>
-  <ExtraParams>--health-cmd="node -e \"require('http').get('http://localhost:4000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})\"" --health-interval=30s --health-timeout=10s --health-start-period=40s --health-retries=3</ExtraParams>
-  <PostArgs></PostArgs>
-  <CPUset/>
-  <DateInstalled></DateInstalled>
-  <DonateText/>
-  <DonateLink/>
-  <Requires/>
-  <Config Name="Data" Target="/app/data" Default="/mnt/user/appdata/plex-exporter/data" Mode="rw" Description="Database and exports" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/plex-exporter/data</Config>
-  <Config Name="PORT" Target="PORT" Default="4000" Mode="" Description="Internal port" Type="Variable" Display="advanced" Required="false" Mask="false">4000</Config>
-  <Config Name="NODE_ENV" Target="NODE_ENV" Default="production" Mode="" Description="Node environment" Type="Variable" Display="advanced" Required="false" Mask="false">production</Config>
-  <Config Name="ADMIN_USERNAME" Target="ADMIN_USERNAME" Default="" Mode="" Description="Admin username" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="ADMIN_PASSWORD" Target="ADMIN_PASSWORD" Default="" Mode="" Description="Admin password" Type="Variable" Display="always" Required="false" Mask="true"/>
-</Container>
-```
-
-### Frontend Template
-
-```xml
-<?xml version="1.0"?>
-<Container version="2">
-  <Name>Plex-Exporter-Frontend</Name>
-  <Repository>plex-exporter-frontend:local</Repository>
-  <Registry>-</Registry>
-  <Network>bridge</Network>
-  <Privileged>false</Privileged>
-  <Support>https://github.com/yourusername/plex-exporter</Support>
-  <Project>https://github.com/yourusername/plex-exporter</Project>
-  <Overview>Frontend for Plex Exporter with Caddy web server</Overview>
-  <Category>MediaApp:Other</Category>
-  <WebUI>http://[IP]:[PORT:8080]/</WebUI>
-  <TemplateURL/>
-  <Icon>https://raw.githubusercontent.com/yourusername/plex-exporter/main/apps/frontend/public/assets/Plex-Katalog-Logo.svg</Icon>
-  <ExtraParams>--link plex-exporter-backend:backend</ExtraParams>
-  <PostArgs></PostArgs>
-  <CPUset/>
-  <DateInstalled></DateInstalled>
-  <DonateText/>
-  <DonateLink/>
-  <Requires>Plex-Exporter-Backend</Requires>
-  <Config Name="HTTP Port" Target="80" Default="8080" Mode="tcp" Description="HTTP port" Type="Port" Display="always" Required="true" Mask="false">8080</Config>
-  <Config Name="Caddy Data" Target="/data" Default="/mnt/user/appdata/plex-exporter/caddy/data" Mode="rw" Description="Caddy data directory" Type="Path" Display="advanced" Required="false" Mask="false">/mnt/user/appdata/plex-exporter/caddy/data</Config>
-  <Config Name="Caddy Config" Target="/config" Default="/mnt/user/appdata/plex-exporter/caddy/config" Mode="rw" Description="Caddy config directory" Type="Path" Display="advanced" Required="false" Mask="false">/mnt/user/appdata/plex-exporter/caddy/config</Config>
-</Container>
-```
+Falls du weiterhin xml-Templates verwendest, orientiere dich an den obigen Variablen (HTTP-Port 8342, Tautulli-URL) und passe bestehende Vorlagen entsprechend an.
 
 ## Cloudflare Zero Trust Tunnel Setup
 
@@ -223,7 +140,7 @@ docker restart cloudflared
 
 ### Lokal (Unraid Netzwerk)
 ```bash
-curl http://<unraid-ip>:8080/health
+curl http://<unraid-ip>:8342/health
 # Sollte zurückgeben: {"status":"ok",...}
 ```
 
@@ -253,14 +170,14 @@ cd /mnt/user/appdata/plex-exporter
 git pull
 
 # Container neu bauen
-docker-compose -f docker-compose.unraid.yml down
-docker-compose -f docker-compose.unraid.yml up -d --build
+docker compose -f deploy/unraid/docker-compose.yml down
+docker compose -f deploy/unraid/docker-compose.yml up -d --build
 
 # Oder nur Backend
-docker-compose -f docker-compose.unraid.yml up -d --build backend
+docker compose -f deploy/unraid/docker-compose.yml up -d --build backend
 
 # Oder nur Frontend
-docker-compose -f docker-compose.unraid.yml up -d --build caddy
+docker compose -f deploy/unraid/docker-compose.yml up -d --build caddy
 ```
 
 ## Troubleshooting
@@ -272,7 +189,7 @@ docker logs plex-exporter-backend
 docker logs plex-exporter-caddy
 
 # Ports prüfen
-netstat -tulpn | grep :8080
+netstat -tulpn | grep :8342
 ```
 
 ### Datenbank Zugriff
