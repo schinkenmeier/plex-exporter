@@ -5,6 +5,7 @@ Dieser Ordner bündelt alle Dateien, die für den Betrieb über das Unraid Docke
 ## Inhalte
 
 - `docker-compose.yml` – Compose Stack mit Unraid-spezifischen Pfaden und Port 8342 für Caddy.
+- `docker-compose.images.yml` – Variante, die fertige Images aus GHCR zieht (kein lokaler Build). Images: `ghcr.io/schinkenmeier/plex-exporter-backend` und `ghcr.io/schinkenmeier/plex-exporter-frontend`.
 - `.env.sample` – Vorlage für Umgebungsvariablen. Vor dem Import nach `.env` kopieren und anpassen.
 - `Caddyfile` – HTTP-Konfiguration für Cloudflare Zero Trust (TLS findet außerhalb von Unraid statt).
 
@@ -28,9 +29,16 @@ Dieser Ordner bündelt alle Dateien, die für den Betrieb über das Unraid Docke
    - Web-UI: `http://<unraid-ip>:8342`
    - Cloudflare Tunnel auf Port 8342 konfigurieren.
 
+### Alternative: Registry-Variante (kein lokaler Build)
+
+Wenn du vorgefertigte Images aus z.B. GHCR verwendest:
+
+1. In `.env` `IMAGE_TAG` setzen (z.B. `latest` oder `v1.2.3`).
+2. Im Plugin statt `docker-compose.yml` die Datei `docker-compose.images.yml` wählen.
+3. Projekt starten – es wird nur gezogen, nicht gebaut.
+
 ## Updates und Wartung
 
 - Bei Codeänderungen das Repository erneut auf Unraid synchronisieren (z.B. per `git pull` oder `rsync`).
 - Danach im Plugin `Rebuild` ausführen, damit die Images neu gebaut werden.
 - Backups der Daten unter `/mnt/user/appdata/plex-exporter/` einplanen.
-

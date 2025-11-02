@@ -144,6 +144,16 @@ curl http://<unraid-ip>:8342/health
 # Sollte zurückgeben: {"status":"ok",...}
 ```
 
+### Alternative: Einsatz vorgefertigter Images (GHCR)
+
+Möchtest du den lokalen Build vermeiden, kannst du vorgefertigte Images aus einer Registry (z.B. GitHub Container Registry) verwenden:
+
+- Nutze die Datei `deploy/unraid/docker-compose.images.yml` anstelle von `docker-compose.yml`.
+- Setze `IMAGE_TAG` in `deploy/unraid/.env` (z.B. `latest` oder eine Version `v1.2.3`).
+- Ersetze die Platzhalter `ghcr.io/<owner>/...` durch deinen tatsächlichen Namespace (Owner/Organisation).
+
+Siehe auch die GitHub Actions Workflow-Datei `.github/workflows/docker-images.yml`, die Images für `backend` und `frontend` nach GHCR baut und pusht (Tags: `latest` auf `main`, Semver-Tags und SHA-Tags).
+
 ### Über Cloudflare Tunnel
 ```
 https://plex.yourdomain.com/health
