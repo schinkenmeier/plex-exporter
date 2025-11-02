@@ -165,6 +165,11 @@ class MockSeasonRepository {
 describe('TautulliSyncService - season cleanup', () => {
   let seasonRepo: MockSeasonRepository;
   let service: TautulliSyncService;
+  let tautulliService: {
+    getSeasons: ReturnType<typeof vi.fn>;
+    getEpisodes: ReturnType<typeof vi.fn>;
+    getBaseUrl: () => string;
+  };
 
   beforeEach(() => {
     seasonRepo = new MockSeasonRepository();
@@ -199,7 +204,7 @@ describe('TautulliSyncService - season cleanup', () => {
       title: 'Episode 2',
     });
 
-    const tautulliService = {
+    tautulliService = {
       getSeasons: vi.fn().mockResolvedValue([
         {
           rating_key: 'season-1',
@@ -237,6 +242,17 @@ describe('TautulliSyncService - season cleanup', () => {
   });
 
   it('removes seasons and episodes that are no longer reported by Tautulli', async () => {
+    await (service as any).syncSeasonsAndEpisodes('show-1', 1);
+
+    expect(Array.from(seasonRepo.seasons.values()).map((season) => season.tautulliId)).toEqual(['season-1']);
+    expect(Array.from(seasonRepo.episodes.values()).map((episode) => episode.tautulliId)).toEqual(['episode-1']);
+    expect(seasonRepo.deletedSeasonIds).toHaveLength(1);
+    expect(seasonRepo.deletedEpisodeIds).toHaveLength(1);
+  });
+
+  it('preserves episodes when a season fails to fetch episodes', async () => {
+    tautulliService.getEpisodes.mockRejectedValueOnce(new Error('Season failed'));
+
     await (service as any).syncSeasonsAndEpisodes('show-1', 1);
 
     expect(Array.from(seasonRepo.seasons.values()).map((season) => season.tautulliId)).toEqual(['season-1']);
