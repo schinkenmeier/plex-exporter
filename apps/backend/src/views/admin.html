@@ -260,6 +260,12 @@
       color: #0d0f13;
     }
 
+    .btn-compact {
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
     .metrics-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
@@ -348,6 +354,51 @@
     .info-item:last-child {
       border-bottom: none;
       padding-bottom: 0;
+    }
+
+    .history-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .history-row:last-child {
+      border-bottom: none;
+    }
+
+    .history-meta {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .history-details {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .history-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .history-status {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .history-status.sent {
+      color: var(--color-success);
+    }
+
+    .history-status.failed {
+      color: var(--color-danger);
     }
 
     .label {
@@ -1174,6 +1225,37 @@
         </article>
         <article class="card">
           <div>
+            <h3>Welcome emails</h3>
+            <p>Send onboarding emails manually and inspect recent delivery history.</p>
+          </div>
+          <div class="input-stack">
+            <label class="input-label" for="welcome-email-input">Recipient email</label>
+            <input id="welcome-email-input" type="email" autocomplete="off" placeholder="user@example.com">
+            <label class="input-label" for="welcome-name-input">Recipient name (optional)</label>
+            <input id="welcome-name-input" type="text" autocomplete="off" placeholder="Jane Doe">
+            <label class="input-label" for="welcome-url-input">Application URL (optional)</label>
+            <input id="welcome-url-input" type="url" autocomplete="off" placeholder="https://app.example.com">
+            <div class="button-row">
+              <button class="btn" id="btn-check-welcome-email">Check status</button>
+              <button class="btn btn-primary" id="btn-send-welcome-email">Send welcome email</button>
+              <button class="btn" id="btn-reload-welcome-email">Reload data</button>
+              <button class="btn btn-danger" id="btn-clear-welcome-email">Clear history</button>
+            </div>
+            <div class="muted" id="welcome-email-status">Provide a recipient to send a welcome email.</div>
+          </div>
+          <div class="info-list">
+            <div>
+              <strong>Statistics</strong>
+              <div id="welcome-email-stats" class="muted">Loading welcome email statistics…</div>
+            </div>
+            <div>
+              <strong>Recent history</strong>
+              <div id="welcome-email-history" class="muted">Loading welcome email history…</div>
+            </div>
+          </div>
+        </article>
+        <article class="card">
+          <div>
             <h3>Configuration snapshot</h3>
             <p>Current backend configuration (sensitive values are masked).</p>
           </div>
@@ -1464,6 +1546,7 @@
   <script>
     (() => {
       const API_BASE = "/admin/api";
+      const WELCOME_EMAIL_API_BASE = "/api/welcome-email";
       const DASHBOARD_INTERVAL = 30000;
       const DB_PAGE_SIZE = 25;
       const numberFormatter = new Intl.NumberFormat("de-DE");
@@ -1518,6 +1601,16 @@
         resendTestEmail: document.getElementById("resend-test-email"),
         resendTestButtonDiag: document.getElementById("btn-test-resend-diag"),
         resendDiagOutput: document.getElementById("resend-diag-output"),
+        welcomeEmailInput: document.getElementById("welcome-email-input"),
+        welcomeNameInput: document.getElementById("welcome-name-input"),
+        welcomeUrlInput: document.getElementById("welcome-url-input"),
+        welcomeStatus: document.getElementById("welcome-email-status"),
+        welcomeStats: document.getElementById("welcome-email-stats"),
+        welcomeHistory: document.getElementById("welcome-email-history"),
+        welcomeSendButton: document.getElementById("btn-send-welcome-email"),
+        welcomeCheckButton: document.getElementById("btn-check-welcome-email"),
+        welcomeReloadButton: document.getElementById("btn-reload-welcome-email"),
+        welcomeClearButton: document.getElementById("btn-clear-welcome-email"),
         logView: document.getElementById("log-view"),
         logSummary: document.getElementById("log-summary"),
         logLevel: document.getElementById("log-level"),
@@ -1562,6 +1655,12 @@
         autoTimer: null,
         tmdbStatus: null,
         resendStatus: null,
+        welcomeEmail: {
+          stats: null,
+          loadingStats: false,
+          history: [],
+          loadingHistory: false,
+        },
         database: {
           tables: [],
           tablesError: null,
@@ -1634,6 +1733,19 @@
           .replace(/>/g, "&gt;")
           .replace(/"/g, "&quot;")
           .replace(/'/g, "&#39;");
+      }
+
+      function getErrorMessage(error, fallback = "An unexpected error occurred.") {
+        if (error instanceof Error && error.message) {
+          return error.message;
+        }
+        if (typeof error === "string" && error) {
+          return error;
+        }
+        if (error && typeof error === "object" && "message" in error && error.message) {
+          return String(error.message);
+        }
+        return fallback;
       }
 
       async function fetchJson(url, options) {
@@ -3039,6 +3151,387 @@
         }
       }
 
+      function formatWelcomeTimestamp(value) {
+        if (!value) return "—";
+        const parsed = new Date(value);
+        if (Number.isNaN(parsed.getTime())) {
+          return value;
+        }
+        return parsed.toLocaleString("de-DE");
+      }
+
+      function renderWelcomeEmailStats(stats) {
+        if (!elements.welcomeStats) return;
+        state.welcomeEmail.stats = stats ?? null;
+        if (!stats) {
+          elements.welcomeStats.classList.add("muted");
+          elements.welcomeStats.textContent = "No welcome emails sent yet.";
+          return;
+        }
+        elements.welcomeStats.classList.remove("muted");
+        const total = typeof stats.total === "number" ? numberFormatter.format(stats.total) : String(stats.total ?? "0");
+        const sent = typeof stats.sent === "number" ? numberFormatter.format(stats.sent) : String(stats.sent ?? "0");
+        const failed = typeof stats.failed === "number" ? numberFormatter.format(stats.failed) : String(stats.failed ?? "0");
+        const successRate = typeof stats.successRate === "string" ? stats.successRate : String(stats.successRate ?? "0%");
+        elements.welcomeStats.innerHTML = `
+          <div>Total: ${escapeHtml(total)}</div>
+          <div>Sent: ${escapeHtml(sent)}</div>
+          <div>Failed: ${escapeHtml(failed)}</div>
+          <div>Success rate: ${escapeHtml(successRate)}</div>
+        `;
+      }
+
+      function renderWelcomeEmailHistory(emails) {
+        if (!elements.welcomeHistory) return;
+        const list = Array.isArray(emails) ? emails : [];
+        state.welcomeEmail.history = list;
+        if (list.length === 0) {
+          elements.welcomeHistory.classList.add("muted");
+          elements.welcomeHistory.textContent = "No welcome emails have been sent yet.";
+          return;
+        }
+        elements.welcomeHistory.classList.remove("muted");
+        elements.welcomeHistory.innerHTML = list
+          .map((entry) => {
+            const emailValue = typeof entry.email === "string" ? entry.email : "";
+            const escapedEmail = escapeHtml(emailValue);
+            const entryIdValue = typeof entry.id === "string" ? entry.id : "";
+            const escapedEntryId = escapeHtml(entryIdValue);
+            const statusRaw = typeof entry.status === "string" ? entry.status : "unknown";
+            const statusKey = statusRaw.toLowerCase();
+            const statusLabel = statusRaw.charAt(0).toUpperCase() + statusRaw.slice(1);
+            const statusClass =
+              statusKey === "sent" || statusKey === "failed" ? `history-status ${statusKey}` : "history-status";
+            const timestamp = escapeHtml(formatWelcomeTimestamp(entry.sentAt ?? entry.createdAt));
+            const emailId = entry.emailId ? escapeHtml(entry.emailId) : "";
+            const metaParts = [timestamp];
+            if (emailId) {
+              metaParts.push(`ID: ${emailId}`);
+            }
+            const prefillButton = emailValue
+              ? `<button type="button" class="btn btn-compact" data-action="prefill-welcome-email" data-email="${escapedEmail}">Use email</button>`
+              : "";
+            const deleteEntryButton = entryIdValue
+              ? `<button type="button" class="btn btn-danger btn-compact" data-action="delete-welcome-entry" data-entry-id="${escapedEntryId}" data-email="${escapedEmail}">Delete entry</button>`
+              : "";
+            const deleteRecipientButton = emailValue
+              ? `<button type="button" class="btn btn-danger btn-compact" data-action="delete-welcome-recipient" data-email="${escapedEmail}">Delete all for recipient</button>`
+              : "";
+            const actions = [prefillButton, deleteEntryButton, deleteRecipientButton].filter(Boolean).join("");
+
+            return `
+              <div class="history-row" data-entry-id="${escapedEntryId}" data-email="${escapedEmail}">
+                <div class="history-meta">
+                  <div class="history-details">
+                    <strong>${escapedEmail || "Unknown recipient"}</strong>
+                    <span class="muted">${metaParts.join(" · ")}</span>
+                  </div>
+                  <span class="${statusClass}">${escapeHtml(statusLabel)}</span>
+                </div>
+                <div class="history-actions">
+                  ${actions || '<span class="muted">No actions available.</span>'}
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+      }
+
+      async function loadWelcomeEmailStats() {
+        if (!elements.welcomeStats) return;
+        state.welcomeEmail.loadingStats = true;
+        elements.welcomeStats.classList.add("muted");
+        elements.welcomeStats.textContent = "Loading welcome email statistics...";
+        try {
+          const response = await fetchJson(`${WELCOME_EMAIL_API_BASE}/stats`);
+          renderWelcomeEmailStats(response?.data ?? null);
+        } catch (error) {
+          const message = getErrorMessage(error, "Failed to load welcome email statistics.");
+          elements.welcomeStats.classList.remove("muted");
+          elements.welcomeStats.innerHTML = `<span class="error-text">${escapeHtml(message)}</span>`;
+          throw new Error(message);
+        } finally {
+          state.welcomeEmail.loadingStats = false;
+        }
+      }
+
+      async function loadWelcomeEmailHistory(limit = 10) {
+        if (!elements.welcomeHistory) return;
+        state.welcomeEmail.loadingHistory = true;
+        elements.welcomeHistory.classList.add("muted");
+        elements.welcomeHistory.textContent = "Loading welcome email history...";
+        try {
+          const response = await fetchJson(`${WELCOME_EMAIL_API_BASE}/history?limit=${limit}`);
+          renderWelcomeEmailHistory(response?.data ?? []);
+        } catch (error) {
+          const message = getErrorMessage(error, "Failed to load welcome email history.");
+          elements.welcomeHistory.classList.remove("muted");
+          elements.welcomeHistory.innerHTML = `<span class="error-text">${escapeHtml(message)}</span>`;
+          throw new Error(message);
+        } finally {
+          state.welcomeEmail.loadingHistory = false;
+        }
+      }
+
+      async function handleSendWelcomeEmail(event) {
+        event?.preventDefault();
+        if (!elements.welcomeSendButton || !elements.welcomeEmailInput) return;
+        const email = elements.welcomeEmailInput.value.trim();
+        const name = elements.welcomeNameInput?.value.trim() ?? "";
+        const toolUrl = elements.welcomeUrlInput?.value.trim() ?? "";
+        if (!email) {
+          showToast("Please enter the recipient email address.", "error");
+          return;
+        }
+        if (!state.resendStatus?.enabled) {
+          showToast("Configure Resend before sending welcome emails.", "error");
+          return;
+        }
+        elements.welcomeSendButton.disabled = true;
+        if (elements.welcomeCheckButton) elements.welcomeCheckButton.disabled = true;
+        if (elements.welcomeReloadButton) elements.welcomeReloadButton.disabled = true;
+        if (elements.welcomeStatus) {
+          elements.welcomeStatus.textContent = `Sending welcome email to ${email}...`;
+        }
+        const payload = { email };
+        if (name) {
+          payload.recipientName = name;
+        }
+        if (toolUrl) {
+          payload.toolUrl = toolUrl;
+        }
+        try {
+          const data = await fetchJson(`${WELCOME_EMAIL_API_BASE}`, {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
+          if (elements.welcomeStatus) {
+            let message = `Welcome email sent to ${email}.`;
+            if (data?.emailId) {
+              message += ` Email ID: ${data.emailId}`;
+            }
+            elements.welcomeStatus.textContent = message;
+          }
+          showToast("Welcome email sent successfully.", "success");
+          try {
+            await loadWelcomeEmailStats();
+          } catch (statsError) {
+            console.error(statsError);
+          }
+          try {
+            await loadWelcomeEmailHistory();
+          } catch (historyError) {
+            console.error(historyError);
+          }
+        } catch (error) {
+          const message = getErrorMessage(error, "Failed to send welcome email.");
+          if (elements.welcomeStatus) {
+            elements.welcomeStatus.textContent = `Failed to send welcome email: ${message}`;
+          }
+          const isConflict = typeof message === "string" && message.toLowerCase().includes("already been sent");
+          showToast(message, isConflict ? "info" : "error");
+        } finally {
+          elements.welcomeSendButton.disabled = false;
+          if (elements.welcomeCheckButton) elements.welcomeCheckButton.disabled = false;
+          if (elements.welcomeReloadButton) elements.welcomeReloadButton.disabled = false;
+        }
+      }
+
+      async function handleCheckWelcomeEmail(event) {
+        event?.preventDefault();
+        if (!elements.welcomeCheckButton || !elements.welcomeEmailInput) return;
+        const email = elements.welcomeEmailInput.value.trim();
+        if (!email) {
+          showToast("Please enter the recipient email address.", "error");
+          return;
+        }
+        elements.welcomeCheckButton.disabled = true;
+        if (elements.welcomeStatus) {
+          elements.welcomeStatus.textContent = `Checking welcome email status for ${email}...`;
+        }
+        try {
+          const data = await fetchJson(`${WELCOME_EMAIL_API_BASE}/check/${encodeURIComponent(email)}`);
+          const hasReceived = Boolean(data?.hasReceived);
+          if (elements.welcomeStatus) {
+            elements.welcomeStatus.textContent = hasReceived
+              ? `A welcome email has already been sent to ${email}.`
+              : `No welcome email has been sent to ${email} yet.`;
+          }
+          showToast(
+            hasReceived ? `Welcome email already sent to ${email}.` : `No welcome email sent to ${email} yet.`,
+            hasReceived ? "info" : "success",
+          );
+        } catch (error) {
+          const message = getErrorMessage(error, "Failed to check welcome email status.");
+          if (elements.welcomeStatus) {
+            elements.welcomeStatus.textContent = `Failed to check welcome email status: ${message}`;
+          }
+          showToast(message, "error");
+        } finally {
+          elements.welcomeCheckButton.disabled = false;
+        }
+      }
+
+      async function handleReloadWelcomeEmail(event) {
+        event?.preventDefault();
+        if (!elements.welcomeReloadButton) return;
+        elements.welcomeReloadButton.disabled = true;
+        try {
+          await loadWelcomeEmailStats();
+          await loadWelcomeEmailHistory();
+          showToast("Welcome email data reloaded.", "success");
+        } catch (error) {
+          const message = getErrorMessage(error, "Failed to reload welcome email data.");
+          showToast(message, "error");
+        } finally {
+          elements.welcomeReloadButton.disabled = false;
+        }
+      }
+
+      async function handleDeleteWelcomeEmailEntry(entryId, email, triggerButton) {
+        if (!entryId) {
+          showToast("Entry identifier is missing.", "error");
+          return;
+        }
+        const button = triggerButton instanceof HTMLButtonElement ? triggerButton : null;
+        const originalLabel = button?.textContent ?? "";
+        if (button) {
+          button.disabled = true;
+          button.textContent = "Removing...";
+        }
+        try {
+          const data = await fetchJson(`${WELCOME_EMAIL_API_BASE}/history/${encodeURIComponent(entryId)}`, {
+            method: "DELETE",
+          });
+          const message =
+            data?.message ??
+            (email ? `Removed welcome email entry for ${email}.` : "Welcome email entry removed.");
+          showToast(message, "success");
+          try {
+            await loadWelcomeEmailStats();
+          } catch (statsError) {
+            console.error(statsError);
+          }
+          try {
+            await loadWelcomeEmailHistory();
+          } catch (historyError) {
+            console.error(historyError);
+          }
+        } catch (error) {
+          const message = getErrorMessage(error, "Failed to delete welcome email entry.");
+          showToast(message, "error");
+        } finally {
+          if (button) {
+            button.disabled = false;
+            button.textContent = originalLabel || "Delete entry";
+          }
+        }
+      }
+
+      async function handleDeleteWelcomeEmailsForRecipient(email, triggerButton) {
+        if (!email) {
+          showToast("No recipient email provided.", "error");
+          return;
+        }
+        const button = triggerButton instanceof HTMLButtonElement ? triggerButton : null;
+        const originalLabel = button?.textContent ?? "";
+        if (button) {
+          button.disabled = true;
+          button.textContent = "Removing...";
+        }
+        try {
+          const data = await fetchJson(`${WELCOME_EMAIL_API_BASE}/recipient/${encodeURIComponent(email)}`, {
+            method: "DELETE",
+          });
+          const message = data?.message ?? `Removed welcome email entries for ${email}.`;
+          showToast(message, "success");
+          try {
+            await loadWelcomeEmailStats();
+          } catch (statsError) {
+            console.error(statsError);
+          }
+          try {
+            await loadWelcomeEmailHistory();
+          } catch (historyError) {
+            console.error(historyError);
+          }
+        } catch (error) {
+          const message = getErrorMessage(error, "Failed to delete welcome emails for recipient.");
+          showToast(message, "error");
+        } finally {
+          if (button) {
+            button.disabled = false;
+            button.textContent = originalLabel || "Delete all for recipient";
+          }
+        }
+      }
+
+      function prefillWelcomeEmailRecipient(email) {
+        if (!email || !elements.welcomeEmailInput) {
+          showToast("No recipient email available for prefill.", "error");
+          return;
+        }
+        elements.welcomeEmailInput.value = email;
+        elements.welcomeEmailInput.focus();
+        if (elements.welcomeStatus) {
+          elements.welcomeStatus.textContent = `Recipient set to ${email}.`;
+        }
+        showToast(`Recipient set to ${email}.`, "info");
+      }
+
+      function handleWelcomeHistoryAction(event) {
+        const target = event.target instanceof HTMLElement
+          ? event.target.closest("button[data-action]")
+          : null;
+        if (!target) {
+          return;
+        }
+        const action = target.dataset.action;
+        if (action === "prefill-welcome-email") {
+          prefillWelcomeEmailRecipient(target.dataset.email ?? "");
+          return;
+        }
+        if (action === "delete-welcome-entry") {
+          const entryId = target.dataset.entryId ?? "";
+          const email = target.dataset.email ?? "";
+          void handleDeleteWelcomeEmailEntry(entryId, email, target);
+          return;
+        }
+        if (action === "delete-welcome-recipient") {
+          const email = target.dataset.email ?? "";
+          void handleDeleteWelcomeEmailsForRecipient(email, target);
+        }
+      }
+
+      async function handleClearWelcomeEmailHistory(event) {
+        event?.preventDefault();
+        if (!elements.welcomeClearButton) return;
+        elements.welcomeClearButton.disabled = true;
+        const originalLabel = elements.welcomeClearButton.textContent;
+        elements.welcomeClearButton.textContent = "Clearing...";
+        try {
+          const data = await fetchJson(`${WELCOME_EMAIL_API_BASE}/history`, { method: "DELETE" });
+          const message = data?.message ?? "Welcome email history cleared.";
+          showToast(message, data?.deleted > 0 ? "success" : "info");
+          try {
+            await loadWelcomeEmailStats();
+          } catch (statsError) {
+            console.error(statsError);
+          }
+          try {
+            await loadWelcomeEmailHistory();
+          } catch (historyError) {
+            console.error(historyError);
+          }
+        } catch (error) {
+          const message = getErrorMessage(error, "Failed to clear welcome email history.");
+          showToast(message, "error");
+        } finally {
+          elements.welcomeClearButton.disabled = false;
+          elements.welcomeClearButton.textContent = originalLabel ?? "Clear history";
+        }
+      }
+
       async function handleTestResendDiag(event) {
         event?.preventDefault();
         if (!elements.resendTestButtonDiag || !elements.resendTestEmail) return;
@@ -3078,7 +3571,13 @@
       }
 
       async function loadConfig() {
-        await Promise.all([loadTmdbStatus(), loadResendStatus(), loadConfigSnapshot()]);
+        await Promise.all([
+          loadTmdbStatus(),
+          loadResendStatus(),
+          loadWelcomeEmailStats(),
+          loadWelcomeEmailHistory(),
+          loadConfigSnapshot(),
+        ]);
         setLastUpdated("configuration");
       }
 
@@ -3299,6 +3798,21 @@
         }
         if (elements.resendTestButtonDiag) {
           elements.resendTestButtonDiag.addEventListener("click", handleTestResendDiag);
+        }
+        if (elements.welcomeSendButton) {
+          elements.welcomeSendButton.addEventListener("click", handleSendWelcomeEmail);
+        }
+        if (elements.welcomeCheckButton) {
+          elements.welcomeCheckButton.addEventListener("click", handleCheckWelcomeEmail);
+        }
+        if (elements.welcomeReloadButton) {
+          elements.welcomeReloadButton.addEventListener("click", handleReloadWelcomeEmail);
+        }
+        if (elements.welcomeClearButton) {
+          elements.welcomeClearButton.addEventListener("click", handleClearWelcomeEmailHistory);
+        }
+        if (elements.welcomeHistory) {
+          elements.welcomeHistory.addEventListener("click", handleWelcomeHistoryAction);
         }
       }
 
