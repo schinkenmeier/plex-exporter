@@ -500,6 +500,10 @@ export class TautulliSyncService {
     // Get all seasons
     const seasons = await this.tautulliService.getSeasons(showRatingKey);
 
+    const reportedSeasonKeys = new Set<string>();
+    const reportedEpisodeKeys = new Set<string>();
+    const seasonsWithEpisodeSyncFailure = new Set<number>();
+
     for (const seasonMetadata of seasons) {
       onProgress?.({
         phase: `Processing Season ${seasonMetadata.media_index}`,
@@ -508,7 +512,10 @@ export class TautulliSyncService {
         percentage: 0,
       });
 
+      let seasonId: number | undefined;
+
       try {
+        reportedSeasonKeys.add(seasonMetadata.rating_key);
         // Check if season exists
         const existingSeason = this.seasonRepo.getByTautulliId(seasonMetadata.rating_key);
 
@@ -524,31 +531,28 @@ export class TautulliSyncService {
           episodeCount: 0, // Will be updated after episodes
         };
 
-        let seasonId: number;
+        const resolvedSeasonId = existingSeason
+          ? this.seasonRepo.update(existingSeason.id, seasonData)?.id ?? existingSeason.id
+          : this.seasonRepo.create(seasonData).id;
 
-        if (existingSeason) {
-          const updated = this.seasonRepo.update(existingSeason.id, seasonData);
-          seasonId = updated?.id ?? existingSeason.id;
-        } else {
-          const newSeason = this.seasonRepo.create(seasonData);
-          seasonId = newSeason.id;
-        }
+        seasonId = resolvedSeasonId;
 
         // Get all episodes for this season
         const episodes = await this.tautulliService.getEpisodes(seasonMetadata.rating_key);
 
         // Update episode count
-        this.seasonRepo.update(seasonId, { episodeCount: episodes.length });
+        this.seasonRepo.update(resolvedSeasonId, { episodeCount: episodes.length });
 
         // Sync episodes
         for (const episodeMetadata of episodes) {
           try {
+            reportedEpisodeKeys.add(episodeMetadata.rating_key);
             const existingEpisode = this.seasonRepo.getEpisodeByTautulliId(episodeMetadata.rating_key);
 
             const episodeThumb = this.convertTautulliThumbnailUrl(episodeMetadata.thumb);
 
             const episodeData = {
-              seasonId,
+              seasonId: resolvedSeasonId,
               tautulliId: episodeMetadata.rating_key,
               episodeNumber: episodeMetadata.media_index ?? 0,
               title: episodeMetadata.title,
@@ -570,6 +574,28 @@ export class TautulliSyncService {
         }
       } catch (error) {
         // Skip season errors
+        if (seasonId !== undefined) {
+          seasonsWithEpisodeSyncFailure.add(seasonId);
+        }
+      }
+    }
+
+    // Delete episodes not reported by Tautulli anymore
+    const existingEpisodes = this.seasonRepo.listEpisodeIdentifiersByMediaId(mediaItemId);
+    for (const episode of existingEpisodes) {
+      if (seasonsWithEpisodeSyncFailure.has(episode.seasonId)) {
+        continue;
+      }
+      if (!reportedEpisodeKeys.has(episode.tautulliId)) {
+        this.seasonRepo.deleteEpisodeById(episode.id);
+      }
+    }
+
+    // Delete seasons not reported by Tautulli anymore
+    const existingSeasons = this.seasonRepo.listSeasonIdentifiersByMediaId(mediaItemId);
+    for (const season of existingSeasons) {
+      if (!reportedSeasonKeys.has(season.tautulliId)) {
+        this.seasonRepo.deleteSeasonById(season.id);
       }
     }
   }
