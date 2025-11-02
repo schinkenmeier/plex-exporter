@@ -262,3 +262,101 @@ describe('TautulliSyncService - season cleanup', () => {
   });
 });
 
+describe('TautulliSyncService - cover downloads', () => {
+  let seasonRepo: MockSeasonRepository;
+  let tautulliService: {
+    getSeasons: ReturnType<typeof vi.fn>;
+    getEpisodes: ReturnType<typeof vi.fn>;
+    getBaseUrl: () => string;
+  };
+  let imageStorageService: {
+    getSeasonImagePath: (seriesRatingKey: string, seasonRatingKey: string) => string;
+    getEpisodeImagePath: (
+      seriesRatingKey: string,
+      seasonRatingKey: string,
+      episodeRatingKey: string,
+    ) => string;
+    downloadImage: ReturnType<typeof vi.fn>;
+  };
+  let service: TautulliSyncService;
+
+  beforeEach(() => {
+    seasonRepo = new MockSeasonRepository();
+
+    tautulliService = {
+      getSeasons: vi.fn().mockResolvedValue([
+        {
+          rating_key: 'season-1',
+          media_index: 1,
+          title: 'Season 1',
+          summary: 'Season 1 summary',
+          thumb: '/library/metadata/100/thumb/200',
+        },
+      ]),
+      getEpisodes: vi.fn().mockResolvedValue([
+        {
+          rating_key: 'episode-1',
+          media_index: 1,
+          title: 'Episode 1',
+          summary: 'Episode 1 summary',
+          thumb: '/library/metadata/300/thumb/400',
+          duration: 1200,
+        },
+      ]),
+      getBaseUrl: () => 'http://localhost:8181',
+    };
+
+    imageStorageService = {
+      getSeasonImagePath: (seriesRatingKey: string, seasonRatingKey: string) =>
+        `covers/tv/${seriesRatingKey}/seasons/${seasonRatingKey}/poster.jpg`,
+      getEpisodeImagePath: (seriesRatingKey: string, seasonRatingKey: string, episodeRatingKey: string) =>
+        `covers/tv/${seriesRatingKey}/seasons/${seasonRatingKey}/episodes/${episodeRatingKey}/thumb.jpg`,
+      downloadImage: vi.fn(),
+    };
+
+    service = new TautulliSyncService(
+      tautulliService as any,
+      {} as any,
+      seasonRepo as unknown as any,
+      {} as any,
+      undefined,
+      imageStorageService as any,
+    );
+  });
+
+  it('stores local cover paths when syncCovers is enabled', async () => {
+    imageStorageService.downloadImage.mockImplementation(async (input) => ({
+      ratingKey: input.ratingKey,
+      type: input.type,
+      success: true,
+      localPath: input.targetPath,
+    }));
+
+    await (service as any).syncSeasonsAndEpisodes('show-1', 1, { syncCovers: true });
+
+    const storedSeason = Array.from(seasonRepo.seasons.values())[0];
+    expect(storedSeason.poster).toBe('covers/tv/show-1/seasons/season-1/poster.jpg');
+
+    const storedEpisode = Array.from(seasonRepo.episodes.values())[0];
+    expect(storedEpisode.thumb).toBe(
+      'covers/tv/show-1/seasons/season-1/episodes/episode-1/thumb.jpg',
+    );
+
+    expect(imageStorageService.downloadImage).toHaveBeenCalledTimes(2);
+  });
+
+  it('falls back to remote paths when downloads fail', async () => {
+    imageStorageService.downloadImage.mockRejectedValue(new Error('Download failed'));
+
+    await (service as any).syncSeasonsAndEpisodes('show-1', 1, { syncCovers: true });
+
+    const storedSeason = Array.from(seasonRepo.seasons.values())[0];
+    expect(storedSeason.poster).toBe('/api/thumbnails/tautulli/library/metadata/100/thumb/200');
+
+    const storedEpisode = Array.from(seasonRepo.episodes.values())[0];
+    expect(storedEpisode.thumb).toBe('/api/thumbnails/tautulli/library/metadata/300/thumb/400');
+
+    expect(imageStorageService.downloadImage).toHaveBeenCalledTimes(2);
+  });
+});
+
