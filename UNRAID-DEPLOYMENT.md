@@ -17,6 +17,7 @@ Schnellstart (GHCR‑Images, kein Build auf Unraid):
 2. Im Compose Manager die Datei `docker-compose.images.yml` wählen.
 3. `IMAGE_TAG` setzen (z.B. `latest` oder `v0.1.0`) und Stack starten.
 4. Test: `http://<unraid-ip>:8342/health`.
+5. Optional `config/frontend.json` anpassen; die Datei wird automatisch in den Caddy-Container gemountet.
 
 Siehe auch: `deploy/unraid/README.md` für alle Details.
 
