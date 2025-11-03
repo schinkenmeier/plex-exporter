@@ -22,29 +22,94 @@ const parseForceFlag = (value: unknown): boolean => {
   return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'force';
 };
 
+const encodeThumbnailPath = (rawPath: string): string => {
+  const normalized = rawPath.replace(/\\/g, '/');
+  const segments = normalized.split('/').filter((segment) => segment && segment !== '.');
+  return segments.map((segment) => encodeURIComponent(segment)).join('/');
+};
+
 /**
  * Convert local thumbnail paths to full backend URLs
  */
 const convertThumbnailToUrl = (path: string | null, mediaType: 'movie' | 'tv', req: Request): string | null => {
   if (!path) return null;
+  const trimmed = path.trim();
+  if (!trimmed) return null;
 
-  // If already a full URL, return as-is
-  if (path.startsWith('http://') || path.startsWith('https://')) {
-    return path;
+  const protocol = req.protocol || 'http';
+  const host = req.get('host') || 'localhost';
+  const buildAbsolute = (value: string) => {
+    const normalized = value.startsWith('/') ? value : `/${value}`;
+    return `${protocol}://${host}${normalized}`;
+  };
+
+  const normalized = trimmed.replace(/\\/g, '/');
+
+  let tautulliProbe = normalized;
+  if (/^https?:\/\//i.test(normalized)) {
+    try {
+      const parsed = new URL(normalized);
+      tautulliProbe = `${parsed.pathname || ''}${parsed.search || ''}`;
+    } catch {
+      tautulliProbe = normalized;
+    }
+  } else if (normalized.startsWith('//')) {
+    const slashIndex = normalized.indexOf('/', 2);
+    tautulliProbe = slashIndex >= 0 ? normalized.slice(slashIndex) : '';
   }
 
-  // If already pointing at a proxied thumbnail, return absolute path without double-wrapping
-  if (path.startsWith('/api/thumbnails/')) {
-    const protocol = req.protocol;
-    const host = req.get('host');
-    return `${protocol}://${host}${path}`;
+  const tautulliMatch =
+    tautulliProbe.match(/\/library\/metadata\/(\d+)\/(thumb|art)\/(\d+)/) ??
+    tautulliProbe.match(/^library\/metadata\/(\d+)\/(thumb|art)\/(\d+)/);
+  if (tautulliMatch) {
+    const [, id, type, timestamp] = tautulliMatch;
+    return buildAbsolute(`/api/thumbnails/tautulli/library/metadata/${id}/${type}/${timestamp}`);
   }
 
-  // Convert local path to thumbnail URL
+  if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('data:')) {
+    return trimmed;
+  }
+
+  if (trimmed.startsWith('//')) {
+    return `${protocol}:${trimmed}`;
+  }
+
+  let localPath = normalized.replace(/^\.\/+/, '');
+  if (localPath.startsWith('/api/thumbnails/')) {
+    return buildAbsolute(localPath);
+  }
+  if (localPath.startsWith('api/thumbnails/')) {
+    return buildAbsolute(`/${localPath}`);
+  }
+
+  const traversalPattern = /(^|\/)\.\.(\/|$)/;
+
+  if (localPath.startsWith('/covers/')) {
+    const stripped = localPath.replace(/^\/?covers\/?/, '');
+    if (traversalPattern.test(stripped)) {
+      return null;
+    }
+    const encoded = encodeThumbnailPath(stripped);
+    return buildAbsolute(`/api/thumbnails/covers${encoded ? `/${encoded}` : ''}`);
+  }
+
+  if (localPath.startsWith('covers/')) {
+    const stripped = localPath.replace(/^covers\/?/, '');
+    if (traversalPattern.test(stripped)) {
+      return null;
+    }
+    const encoded = encodeThumbnailPath(stripped);
+    return buildAbsolute(`/api/thumbnails/covers${encoded ? `/${encoded}` : ''}`);
+  }
+
+  if (traversalPattern.test(localPath)) {
+    return null;
+  }
+
   const type = mediaType === 'tv' ? 'series' : 'movies';
-  const protocol = req.protocol;
-  const host = req.get('host');
-  return `${protocol}://${host}/api/thumbnails/${type}/${encodeURIComponent(path)}`;
+  const trimmedPath = localPath.startsWith('/') ? localPath.slice(1) : localPath;
+  const encoded = encodeThumbnailPath(trimmedPath);
+  return buildAbsolute(`/api/thumbnails/${type}${encoded ? `/${encoded}` : ''}`);
 };
 
 export const createHeroRouter = ({ heroPipeline }: HeroRouterOptions): Router => {
@@ -61,7 +126,7 @@ export const createHeroRouter = ({ heroPipeline }: HeroRouterOptions): Router =>
       const items = payload.items.map(item => ({
         ...item,
         backdrops: item.backdrops.map(bd => convertThumbnailToUrl(bd, item.type, req) ?? bd),
-        poster: convertThumbnailToUrl(item.poster, item.type, req),
+        poster: convertThumbnailToUrl(item.poster, item.type, req) ?? item.poster,
       }));
 
       const now = Date.now();

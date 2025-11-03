@@ -187,6 +187,9 @@ function createDom(){
               <img id="heroBackdropImage" src="" alt="" loading="lazy" decoding="async" hidden />
             </picture>
             <div class="hero__media-overlay"></div>
+            <div class="hero__media-placeholder" id="heroMediaPlaceholder" data-state="hidden" hidden aria-hidden="true">
+              <span class="hero__media-placeholder-text" data-placeholder-text=""></span>
+            </div>
           </div>
           <div class="wrap hero__inner">
             <div class="hero__body">
@@ -257,6 +260,14 @@ function createDom(){
   window.requestIdleCallback = window.requestIdleCallback || (cb => setTimeout(() => cb(Date.now()), 0));
   window.scrollTo = () => {};
   window.matchMedia = window.matchMedia || (() => ({ matches: false }));
+  if(!window.IntersectionObserver){
+    window.IntersectionObserver = class {
+      constructor() {}
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+  }
   window.innerHeight = window.innerHeight || 900;
   window.innerWidth = window.innerWidth || 1280;
   window.scrollY = window.scrollY || 0;

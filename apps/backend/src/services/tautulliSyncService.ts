@@ -821,6 +821,7 @@ export class TautulliSyncService {
       targetPath: string;
       mediaType: 'movie' | 'tv';
     }> = [];
+    const targetToAssetType = new Map<string, 'poster' | 'backdrop'>();
 
     // Parse poster URL
     if (metadata.thumb) {
@@ -836,7 +837,7 @@ export class TautulliSyncService {
           targetPath: posterPath,
           mediaType,
         });
-        result.poster = posterPath;
+        targetToAssetType.set(posterPath, 'poster');
       } else {
         console.warn(`[Tautulli Sync] Could not parse poster URL: ${metadata.thumb}`);
       }
@@ -858,7 +859,7 @@ export class TautulliSyncService {
           targetPath: backdropPath,
           mediaType,
         });
-        result.backdrop = backdropPath;
+        targetToAssetType.set(backdropPath, 'backdrop');
       } else {
         console.warn(`[Tautulli Sync] Could not parse backdrop URL: ${metadata.art}`);
       }
@@ -870,12 +871,36 @@ export class TautulliSyncService {
     if (downloadItems.length > 0) {
       console.log(`[Tautulli Sync] Downloading ${downloadItems.length} images for ${ratingKey}`);
       try {
-        await this.imageStorageService.downloadBatch(downloadItems);
-        console.log(`[Tautulli Sync] Successfully downloaded images for ${ratingKey}`);
+        const downloadResults = await this.imageStorageService.downloadBatch(downloadItems);
+        console.log(`[Tautulli Sync] Download results for ${ratingKey}:`, downloadResults.length);
+
+        for (const downloadResult of downloadResults) {
+          const assetType = targetToAssetType.get(downloadResult.targetPath);
+          if (!assetType) {
+            continue;
+          }
+
+          if (downloadResult.success && downloadResult.localPath) {
+            if (assetType === 'poster') {
+              result.poster = downloadResult.localPath;
+            } else if (assetType === 'backdrop') {
+              result.backdrop = downloadResult.localPath;
+            }
+          } else if (!downloadResult.success) {
+            console.warn(
+              `[Tautulli Sync] Failed to download ${assetType} for ${metadata.title} (${ratingKey}):`,
+              downloadResult.error ?? 'Unknown error',
+            );
+          }
+        }
+
+        console.log(`[Tautulli Sync] Completed image download evaluation for ${ratingKey}`);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error(`[Tautulli Sync] Failed to download images for ${ratingKey}:`, errorMessage);
-        throw error;
+        console.warn(
+          `[Tautulli Sync] Falling back to Tautulli-hosted images for ${metadata.title} (${ratingKey})`,
+        );
       }
     } else {
       console.warn(`[Tautulli Sync] No images to download for ${ratingKey}`);

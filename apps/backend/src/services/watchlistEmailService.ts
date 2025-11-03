@@ -22,7 +22,14 @@ class WatchlistEmailService {
   /**
    * Send watchlist items via email
    */
-  async sendWatchlistEmail(recipientEmail: string, items: WatchlistItem[]): Promise<string> {
+  async sendWatchlistEmail(
+    recipientEmail: string,
+    items: WatchlistItem[],
+    options?: {
+      sendCopyToAdmin?: boolean;
+      adminEmail?: string;
+    }
+  ): Promise<string> {
     if (!this.mailSender) {
       throw new Error('Mail sender not configured. Email functionality is disabled.');
     }
@@ -30,6 +37,8 @@ class WatchlistEmailService {
     if (items.length === 0) {
       throw new Error('No items provided to send');
     }
+
+    const isAdminCopy = options?.sendCopyToAdmin && options?.adminEmail;
 
     // Build HTML email content
     const itemsList = items
@@ -66,6 +75,7 @@ class WatchlistEmailService {
       </html>
     `;
 
+    // Send to primary recipient
     const result = await this.mailSender.sendMail({
       to: recipientEmail,
       subject: `Deine Merkliste (${items.length} Titel)`,
@@ -73,6 +83,22 @@ class WatchlistEmailService {
     });
 
     logger.info('Watchlist email sent', { recipientEmail, itemCount: items.length, emailId: result.id });
+
+    // Send copy to admin if requested
+    if (isAdminCopy && options.adminEmail) {
+      try {
+        await this.mailSender.sendMail({
+          to: options.adminEmail,
+          subject: `[Kopie] Merkliste von ${recipientEmail} (${items.length} Titel)`,
+          html,
+        });
+        logger.info('Watchlist admin copy sent', { adminEmail: options.adminEmail, recipientEmail, itemCount: items.length });
+      } catch (error) {
+        logger.error('Failed to send admin copy', { error, adminEmail: options.adminEmail });
+        // Don't fail the main request if admin copy fails
+      }
+    }
+
     return result.id;
   }
 }

@@ -1154,6 +1154,80 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
     }
   });
 
+  /**
+   * GET /admin/api/watchlist/admin-email
+   * Get admin email for watchlist copies
+   */
+  router.get('/api/watchlist/admin-email', (_req: Request, res: Response) => {
+    try {
+      const adminEmail = settingsRepository.get('watchlist.adminEmail');
+
+      res.json({
+        success: true,
+        adminEmail: adminEmail?.value || null,
+        updatedAt: adminEmail?.updatedAt || null,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Failed to get watchlist admin email', { error: message });
+      res.status(500).json({ success: false, error: 'Failed to get watchlist admin email', details: message });
+    }
+  });
+
+  /**
+   * PUT /admin/api/watchlist/admin-email
+   * Update admin email for watchlist copies
+   */
+  router.put('/api/watchlist/admin-email', (req: Request, res: Response, next: NextFunction) => {
+    const { adminEmail } = req.body || {};
+
+    if (!adminEmail) {
+      return next(new HttpError(400, 'Admin email is required'));
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(adminEmail)) {
+      return next(new HttpError(400, 'Invalid email format for admin email'));
+    }
+
+    try {
+      settingsRepository.set('watchlist.adminEmail', adminEmail);
+
+      logger.info('Watchlist admin email updated', { adminEmail });
+
+      res.json({
+        success: true,
+        message: 'Watchlist admin email updated successfully',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Failed to update watchlist admin email', { error: message });
+      res.status(500).json({ success: false, error: 'Failed to update watchlist admin email', details: message });
+    }
+  });
+
+  /**
+   * DELETE /admin/api/watchlist/admin-email
+   * Clear admin email for watchlist copies
+   */
+  router.delete('/api/watchlist/admin-email', (_req: Request, res: Response) => {
+    try {
+      settingsRepository.delete('watchlist.adminEmail');
+
+      logger.info('Watchlist admin email cleared');
+
+      res.json({
+        success: true,
+        message: 'Watchlist admin email cleared successfully',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Failed to clear watchlist admin email', { error: message });
+      res.status(500).json({ success: false, error: 'Failed to clear watchlist admin email', details: message });
+    }
+  });
+
   return router;
 };
 

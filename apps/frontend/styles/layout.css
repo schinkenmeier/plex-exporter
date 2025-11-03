@@ -130,7 +130,8 @@ header.site-header {
   outline-offset: 4px;
 }
 
-.site-nav .watchlist-button {
+.site-nav .watchlist-button,
+.site-nav .newsletter-button {
   flex-shrink: 0;
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.16);
@@ -139,10 +140,14 @@ header.site-header {
   font-size: 13px;
   font-weight: 500;
   padding: 8px 14px;
+  border-radius: 8px;
+  transition: border-color var(--transition-base), background-color var(--transition-base), color var(--transition-base);
 }
 
 .site-nav .watchlist-button:hover,
-.site-nav .watchlist-button:focus-visible {
+.site-nav .watchlist-button:focus-visible,
+.site-nav .newsletter-button:hover,
+.site-nav .newsletter-button:focus-visible {
   background: rgba(255, 255, 255, 0.04);
   border-color: rgba(255, 255, 255, 0.28);
   box-shadow: none;
@@ -150,8 +155,19 @@ header.site-header {
   color: #fff;
 }
 
-.site-nav .watchlist-button:focus-visible {
+.site-nav .watchlist-button:focus-visible,
+.site-nav .newsletter-button:focus-visible {
   outline-offset: 4px;
+}
+
+.site-nav .newsletter-button.subscribed {
+  background: rgba(102, 126, 234, 0.1);
+  border-color: rgba(102, 126, 234, 0.4);
+}
+
+.site-nav .newsletter-button.subscribed::after {
+  content: '✓';
+  margin-left: 0.25rem;
 }
 
 .header-settings-button {

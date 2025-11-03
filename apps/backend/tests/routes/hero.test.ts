@@ -68,10 +68,32 @@ describe('hero routes', () => {
     expect(response.status).toBe(200);
     const { poster, backdrops } = response.body.items[0];
     expect(poster).toMatch(/^http:\/\/127\.0\.0\.1(?::\d+)?\/api\/thumbnails\/series\//);
-    expect(poster.endsWith('series/season%2F1%2Fposter.jpg')).toBe(true);
+    expect(poster.endsWith('series/season/1/poster.jpg')).toBe(true);
     expect(backdrops[0]).toMatch(
       /^http:\/\/127\.0\.0\.1(?::\d+)?\/api\/thumbnails\/series\//,
     );
-    expect(backdrops[0].endsWith('series/backdrops%2F1.jpg')).toBe(true);
+    expect(backdrops[0].endsWith('series/backdrops/1.jpg')).toBe(true);
+  });
+
+  it('converts cover paths via the covers endpoint', async () => {
+    const { app } = createApp([
+      {
+        id: '1',
+        type: 'movie',
+        title: 'Cover Item',
+        poster: 'covers/movie/123/poster.jpg',
+        backdrops: ['covers/movie/123/backdrop.jpg'],
+      },
+    ]);
+
+    const response = await request(app).get('/hero/movies');
+
+    expect(response.status).toBe(200);
+    const { poster, backdrops } = response.body.items[0];
+    expect(poster).toMatch(/^http:\/\/127\.0\.0\.1(?::\d+)?\/api\/thumbnails\/covers\//);
+    expect(poster.endsWith('covers/movie/123/poster.jpg')).toBe(true);
+    expect(backdrops).toHaveLength(1);
+    expect(backdrops[0]).toMatch(/^http:\/\/127\.0\.0\.1(?::\d+)?\/api\/thumbnails\/covers\//);
+    expect(backdrops[0].endsWith('covers/movie/123/backdrop.jpg')).toBe(true);
   });
 });

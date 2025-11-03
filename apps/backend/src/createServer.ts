@@ -6,7 +6,7 @@ import { type AppConfig, loadPersistedConfig } from './config/index.js';
 import { createLibrariesRouter } from './routes/libraries.js';
 import { createHealthRouter } from './routes/health.js';
 import { createV1Router } from './routes/v1.js';
-import watchlistRouter from './routes/watchlist.js';
+import { createWatchlistRouter } from './routes/watchlist.js';
 import welcomeEmailRouter from './routes/welcomeEmail.js';
 import newsletterRouter from './routes/newsletter.js';
 import {
@@ -367,7 +367,7 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
     app.use('/api/hero', createHeroRouter({ heroPipeline: heroPipelineService }));
   }
   app.use('/api/v1', createV1Router({ mediaRepository, thumbnailRepository, seasonRepository, castRepository }));
-  app.use('/api/watchlist', watchlistRouter);
+  app.use('/api/watchlist', createWatchlistRouter({ settingsRepository }));
   app.use('/api/welcome-email', welcomeEmailRouter);
   app.use('/api/newsletter', newsletterRouter);
 

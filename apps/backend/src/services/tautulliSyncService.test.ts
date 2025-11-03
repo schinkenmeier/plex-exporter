@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { TautulliSyncService } from './tautulliSyncService.js';
+import type { ImageDownloadItem, ImageDownloadResult } from './imageStorageService.js';
 
 type SeasonData = {
   id: number;
@@ -330,6 +331,7 @@ describe('TautulliSyncService - cover downloads', () => {
       type: input.type,
       success: true,
       localPath: input.targetPath,
+      targetPath: input.targetPath,
     }));
 
     await (service as any).syncSeasonsAndEpisodes('show-1', 1, { syncCovers: true });
@@ -357,6 +359,148 @@ describe('TautulliSyncService - cover downloads', () => {
     expect(storedEpisode.thumb).toBe('/api/thumbnails/tautulli/library/metadata/300/thumb/400');
 
     expect(imageStorageService.downloadImage).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('TautulliSyncService - media cover downloads', () => {
+  let service: TautulliSyncService;
+  let imageStorageService: {
+    getMediaImagePath: Mock<[mediaType: 'movie' | 'tv', ratingKey: string, kind: 'poster' | 'backdrop'], string>;
+    downloadBatch: Mock<[items: ImageDownloadItem[]], Promise<ImageDownloadResult[]>>;
+  };
+
+  beforeEach(() => {
+    const tautulliService = {
+      getLibraryMediaList: vi.fn(),
+      getMetadata: vi.fn(),
+      getSeasons: vi.fn(),
+      getEpisodes: vi.fn(),
+      getBaseUrl: () => 'http://localhost:8181',
+    };
+
+    imageStorageService = {
+      getMediaImagePath: vi.fn<[mediaType: 'movie' | 'tv', ratingKey: string, kind: 'poster' | 'backdrop'], string>((mediaType, ratingKey, kind) =>
+        `covers/${mediaType}/${ratingKey}/${kind}.jpg`,
+      ),
+      downloadBatch: vi.fn<[ImageDownloadItem[]], Promise<ImageDownloadResult[]>>(),
+    };
+
+    service = new TautulliSyncService(
+      tautulliService as any,
+      {
+        getByPlexId: vi.fn(),
+        update: vi.fn(),
+        create: vi.fn().mockReturnValue({ id: 1 }),
+      } as any,
+      {
+        getByTautulliId: vi.fn(),
+        update: vi.fn(),
+        create: vi.fn(),
+        listEpisodeIdentifiersByMediaId: vi.fn().mockReturnValue([]),
+        listSeasonIdentifiersByMediaId: vi.fn().mockReturnValue([]),
+        deleteEpisodeById: vi.fn(),
+        deleteSeasonById: vi.fn(),
+      } as any,
+      {
+        getBySectionId: vi.fn(),
+        listEnabled: vi.fn(),
+        updateLastSynced: vi.fn(),
+      } as any,
+      undefined,
+      imageStorageService as any,
+    );
+  });
+
+  it('returns local paths only when downloads succeed', async () => {
+    imageStorageService.downloadBatch.mockResolvedValue([
+      {
+        ratingKey: '10',
+        type: 'thumb',
+        success: true,
+        localPath: 'covers/tv/123/poster.jpg',
+        targetPath: 'covers/tv/123/poster.jpg',
+      },
+      {
+        ratingKey: '10',
+        type: 'art',
+        success: true,
+        localPath: 'covers/tv/123/backdrop.jpg',
+        targetPath: 'covers/tv/123/backdrop.jpg',
+      },
+    ]);
+
+    const result = await (service as any).downloadTautulliImages(
+      {
+        title: 'Sample Show',
+        rating_key: '123',
+        media_type: 'show',
+        thumb: '/library/metadata/10/thumb/20',
+        art: '/library/metadata/10/art/21',
+      },
+      'tv',
+      '123',
+      true,
+    );
+
+    expect(result).toEqual({
+      poster: 'covers/tv/123/poster.jpg',
+      backdrop: 'covers/tv/123/backdrop.jpg',
+    });
+  });
+
+  it('keeps remote paths when downloads fail', async () => {
+    imageStorageService.downloadBatch.mockResolvedValue([
+      {
+        ratingKey: '10',
+        type: 'thumb',
+        success: false,
+        targetPath: 'covers/tv/123/poster.jpg',
+        error: 'network error',
+      },
+      {
+        ratingKey: '10',
+        type: 'art',
+        success: false,
+        targetPath: 'covers/tv/123/backdrop.jpg',
+        error: 'network error',
+      },
+    ]);
+
+    const result = await (service as any).downloadTautulliImages(
+      {
+        title: 'Sample Show',
+        rating_key: '123',
+        media_type: 'show',
+        thumb: '/library/metadata/10/thumb/20',
+        art: '/library/metadata/10/art/21',
+      },
+      'tv',
+      '123',
+      true,
+    );
+
+    expect(result).toEqual({});
+  });
+
+  it('falls back to remote images when download batch rejects', async () => {
+    imageStorageService.downloadBatch.mockRejectedValue(
+      new Error('Tautulli returned non-image content for thumb 10'),
+    );
+
+    await expect(
+      (service as any).downloadTautulliImages(
+        {
+          title: 'Sample Show',
+          rating_key: '123',
+          media_type: 'show',
+          thumb: '/library/metadata/10/thumb/20',
+          art: '/library/metadata/10/art/21',
+        },
+        'tv',
+        '123',
+        true,
+      ),
+    ).resolves.toEqual({});
   });
 });
 
