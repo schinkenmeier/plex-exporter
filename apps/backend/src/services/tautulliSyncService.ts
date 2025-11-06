@@ -470,7 +470,7 @@ export class TautulliSyncService {
         }
 
         // Sync seasons and episodes
-        await this.syncSeasonsAndEpisodes(item.rating_key, mediaItemId, onProgress);
+        await this.syncSeasonsAndEpisodes(item.rating_key, mediaItemId, options, onProgress);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error(`[Tautulli Sync] Failed to sync series "${item.title}" (rating_key: ${item.rating_key}):`, errorMessage);
@@ -495,10 +495,15 @@ export class TautulliSyncService {
   private async syncSeasonsAndEpisodes(
     showRatingKey: string,
     mediaItemId: number,
+    options: SyncOptions = {},
     onProgress?: ProgressCallback,
   ): Promise<void> {
     // Get all seasons
     const seasons = await this.tautulliService.getSeasons(showRatingKey);
+
+    const reportedSeasonKeys = new Set<string>();
+    const reportedEpisodeKeys = new Set<string>();
+    const seasonsWithEpisodeSyncFailure = new Set<number>();
 
     for (const seasonMetadata of seasons) {
       onProgress?.({
@@ -508,9 +513,51 @@ export class TautulliSyncService {
         percentage: 0,
       });
 
+      let seasonId: number | undefined;
+
       try {
+        reportedSeasonKeys.add(seasonMetadata.rating_key);
         // Check if season exists
         const existingSeason = this.seasonRepo.getByTautulliId(seasonMetadata.rating_key);
+
+        let seasonPoster = this.convertTautulliThumbnailUrl(seasonMetadata.thumb) ?? null;
+
+        if (options.syncCovers && this.imageStorageService && seasonMetadata.thumb) {
+          const posterInfo = this.parseTautulliImageUrl(seasonMetadata.thumb);
+
+          if (posterInfo) {
+            const posterPath = this.imageStorageService.getSeasonImagePath(
+              showRatingKey,
+              seasonMetadata.rating_key,
+            );
+
+            try {
+              const downloadResult = await this.imageStorageService.downloadImage({
+                ratingKey: posterInfo.id,
+                type: posterInfo.type,
+                timestamp: posterInfo.timestamp,
+                targetPath: posterPath,
+                mediaType: 'tv',
+                category: 'season',
+                seasonRatingKey: seasonMetadata.rating_key,
+              });
+
+              if (downloadResult.success && downloadResult.localPath) {
+                seasonPoster = downloadResult.localPath;
+              } else if (!downloadResult.success && downloadResult.error) {
+                console.warn(
+                  `[Tautulli Sync] Season image download unsuccessful for "${seasonMetadata.title}" (rating_key: ${seasonMetadata.rating_key}): ${downloadResult.error}`,
+                );
+              }
+            } catch (error) {
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              console.warn(
+                `[Tautulli Sync] Season image download failed for "${seasonMetadata.title}" (rating_key: ${seasonMetadata.rating_key}):`,
+                errorMessage,
+              );
+            }
+          }
+        }
 
         const seasonData = {
           mediaItemId,
@@ -518,33 +565,71 @@ export class TautulliSyncService {
           seasonNumber: seasonMetadata.media_index ?? 0,
           title: seasonMetadata.title,
           summary: seasonMetadata.summary,
-          poster: seasonMetadata.thumb,
+          poster: seasonPoster,
           episodeCount: 0, // Will be updated after episodes
         };
 
-        let seasonId: number;
+        const resolvedSeasonId = existingSeason
+          ? this.seasonRepo.update(existingSeason.id, seasonData)?.id ?? existingSeason.id
+          : this.seasonRepo.create(seasonData).id;
 
-        if (existingSeason) {
-          const updated = this.seasonRepo.update(existingSeason.id, seasonData);
-          seasonId = updated?.id ?? existingSeason.id;
-        } else {
-          const newSeason = this.seasonRepo.create(seasonData);
-          seasonId = newSeason.id;
-        }
+        seasonId = resolvedSeasonId;
 
         // Get all episodes for this season
         const episodes = await this.tautulliService.getEpisodes(seasonMetadata.rating_key);
 
         // Update episode count
-        this.seasonRepo.update(seasonId, { episodeCount: episodes.length });
+        this.seasonRepo.update(resolvedSeasonId, { episodeCount: episodes.length });
 
         // Sync episodes
         for (const episodeMetadata of episodes) {
           try {
+            reportedEpisodeKeys.add(episodeMetadata.rating_key);
             const existingEpisode = this.seasonRepo.getEpisodeByTautulliId(episodeMetadata.rating_key);
 
+            let episodeThumb = this.convertTautulliThumbnailUrl(episodeMetadata.thumb) ?? null;
+
+            if (options.syncCovers && this.imageStorageService && episodeMetadata.thumb) {
+              const thumbInfo = this.parseTautulliImageUrl(episodeMetadata.thumb);
+
+              if (thumbInfo) {
+                const thumbPath = this.imageStorageService.getEpisodeImagePath(
+                  showRatingKey,
+                  seasonMetadata.rating_key,
+                  episodeMetadata.rating_key,
+                );
+
+                try {
+                  const downloadResult = await this.imageStorageService.downloadImage({
+                    ratingKey: thumbInfo.id,
+                    type: thumbInfo.type,
+                    timestamp: thumbInfo.timestamp,
+                    targetPath: thumbPath,
+                    mediaType: 'tv',
+                    category: 'episode',
+                    seasonRatingKey: seasonMetadata.rating_key,
+                    episodeRatingKey: episodeMetadata.rating_key,
+                  });
+
+                  if (downloadResult.success && downloadResult.localPath) {
+                    episodeThumb = downloadResult.localPath;
+                  } else if (!downloadResult.success && downloadResult.error) {
+                    console.warn(
+                      `[Tautulli Sync] Episode image download unsuccessful for "${episodeMetadata.title}" (rating_key: ${episodeMetadata.rating_key}): ${downloadResult.error}`,
+                    );
+                  }
+                } catch (error) {
+                  const errorMessage = error instanceof Error ? error.message : String(error);
+                  console.warn(
+                    `[Tautulli Sync] Episode image download failed for "${episodeMetadata.title}" (rating_key: ${episodeMetadata.rating_key}):`,
+                    errorMessage,
+                  );
+                }
+              }
+            }
+
             const episodeData = {
-              seasonId,
+              seasonId: resolvedSeasonId,
               tautulliId: episodeMetadata.rating_key,
               episodeNumber: episodeMetadata.media_index ?? 0,
               title: episodeMetadata.title,
@@ -552,7 +637,7 @@ export class TautulliSyncService {
               duration: episodeMetadata.duration,
               rating: episodeMetadata.rating?.toString(),
               airDate: episodeMetadata.originally_available_at,
-              thumb: episodeMetadata.thumb,
+              thumb: episodeThumb,
             };
 
             if (existingEpisode) {
@@ -566,6 +651,28 @@ export class TautulliSyncService {
         }
       } catch (error) {
         // Skip season errors
+        if (seasonId !== undefined) {
+          seasonsWithEpisodeSyncFailure.add(seasonId);
+        }
+      }
+    }
+
+    // Delete episodes not reported by Tautulli anymore
+    const existingEpisodes = this.seasonRepo.listEpisodeIdentifiersByMediaId(mediaItemId);
+    for (const episode of existingEpisodes) {
+      if (seasonsWithEpisodeSyncFailure.has(episode.seasonId)) {
+        continue;
+      }
+      if (!reportedEpisodeKeys.has(episode.tautulliId)) {
+        this.seasonRepo.deleteEpisodeById(episode.id);
+      }
+    }
+
+    // Delete seasons not reported by Tautulli anymore
+    const existingSeasons = this.seasonRepo.listSeasonIdentifiersByMediaId(mediaItemId);
+    for (const season of existingSeasons) {
+      if (!reportedSeasonKeys.has(season.tautulliId)) {
+        this.seasonRepo.deleteSeasonById(season.id);
       }
     }
   }
@@ -589,6 +696,29 @@ export class TautulliSyncService {
     }
 
     return deleted;
+  }
+
+  private convertTautulliThumbnailUrl(tautulliUrl?: string | null): string | undefined {
+    if (!tautulliUrl) return undefined;
+
+    let normalized = tautulliUrl;
+
+    if (!normalized.startsWith('/')) {
+      try {
+        const parsed = new URL(normalized, this.tautulliService.getBaseUrl());
+        normalized = parsed.pathname + (parsed.search ?? '');
+      } catch {
+        normalized = tautulliUrl;
+      }
+    }
+
+    const match = normalized.match(/\/library\/metadata\/(\d+)\/(thumb|art)\/(\d+)/);
+    if (match) {
+      const [, id, type, timestamp] = match;
+      return `/api/thumbnails/tautulli/library/metadata/${id}/${type}/${timestamp}`;
+    }
+
+    return tautulliUrl;
   }
 
   /**
@@ -629,29 +759,8 @@ export class TautulliSyncService {
     tmdbRating?: number;
     tmdbVoteCount?: number;
   } {
-    // Convert Tautulli URLs to use our backend proxy
-    // This avoids CORS and authentication issues in the frontend
-    const convertToProxyUrl = (tautulliUrl?: string): string | undefined => {
-      if (!tautulliUrl) return undefined;
-
-      // Convert relative URLs to full paths first
-      const fullUrl = tautulliUrl.startsWith('/')
-        ? `${this.tautulliService.getBaseUrl()}${tautulliUrl}`
-        : tautulliUrl;
-
-      // Check if it's a Tautulli thumbnail URL pattern
-      const match = fullUrl.match(/\/library\/metadata\/(\d+)\/(thumb|art)\/(\d+)/);
-      if (match) {
-        const [, id, type, timestamp] = match;
-        // Use our backend proxy endpoint
-        return `http://localhost:4000/api/thumbnails/tautulli/library/metadata/${id}/${type}/${timestamp}`;
-      }
-
-      return fullUrl;
-    };
-
-    const posterUrl = convertToProxyUrl(metadata.thumb);
-    const backdropUrl = convertToProxyUrl(metadata.art);
+    const posterUrl = this.convertTautulliThumbnailUrl(metadata.thumb);
+    const backdropUrl = this.convertTautulliThumbnailUrl(metadata.art);
 
     // Extract IDs from GUID
     const ids = this.extractIdsFromGuid(metadata.guid);
@@ -712,6 +821,7 @@ export class TautulliSyncService {
       targetPath: string;
       mediaType: 'movie' | 'tv';
     }> = [];
+    const targetToAssetType = new Map<string, 'poster' | 'backdrop'>();
 
     // Parse poster URL
     if (metadata.thumb) {
@@ -727,7 +837,7 @@ export class TautulliSyncService {
           targetPath: posterPath,
           mediaType,
         });
-        result.poster = posterPath;
+        targetToAssetType.set(posterPath, 'poster');
       } else {
         console.warn(`[Tautulli Sync] Could not parse poster URL: ${metadata.thumb}`);
       }
@@ -749,7 +859,7 @@ export class TautulliSyncService {
           targetPath: backdropPath,
           mediaType,
         });
-        result.backdrop = backdropPath;
+        targetToAssetType.set(backdropPath, 'backdrop');
       } else {
         console.warn(`[Tautulli Sync] Could not parse backdrop URL: ${metadata.art}`);
       }
@@ -761,12 +871,36 @@ export class TautulliSyncService {
     if (downloadItems.length > 0) {
       console.log(`[Tautulli Sync] Downloading ${downloadItems.length} images for ${ratingKey}`);
       try {
-        await this.imageStorageService.downloadBatch(downloadItems);
-        console.log(`[Tautulli Sync] Successfully downloaded images for ${ratingKey}`);
+        const downloadResults = await this.imageStorageService.downloadBatch(downloadItems);
+        console.log(`[Tautulli Sync] Download results for ${ratingKey}:`, downloadResults.length);
+
+        for (const downloadResult of downloadResults) {
+          const assetType = targetToAssetType.get(downloadResult.targetPath);
+          if (!assetType) {
+            continue;
+          }
+
+          if (downloadResult.success && downloadResult.localPath) {
+            if (assetType === 'poster') {
+              result.poster = downloadResult.localPath;
+            } else if (assetType === 'backdrop') {
+              result.backdrop = downloadResult.localPath;
+            }
+          } else if (!downloadResult.success) {
+            console.warn(
+              `[Tautulli Sync] Failed to download ${assetType} for ${metadata.title} (${ratingKey}):`,
+              downloadResult.error ?? 'Unknown error',
+            );
+          }
+        }
+
+        console.log(`[Tautulli Sync] Completed image download evaluation for ${ratingKey}`);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error(`[Tautulli Sync] Failed to download images for ${ratingKey}:`, errorMessage);
-        throw error;
+        console.warn(
+          `[Tautulli Sync] Falling back to Tautulli-hosted images for ${metadata.title} (${ratingKey})`,
+        );
       }
     } else {
       console.warn(`[Tautulli Sync] No images to download for ${ratingKey}`);

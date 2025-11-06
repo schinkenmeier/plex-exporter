@@ -491,17 +491,74 @@ const parseYearFromDetails = (details: TmdbHeroDetails | null, record: MediaReco
   return parseYear(record.year ?? null);
 };
 
-const sanitizeImageCandidate = (value: string | null | undefined): string | null => {
+const normalizeImageCandidate = (value: string | null | undefined): string | null => {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
+  if (!trimmed) return null;
+
+  let candidate = trimmed.replace(/\\/g, '/');
+
+  let tautulliProbe = candidate;
+  if (/^https?:\/\//i.test(candidate)) {
+    try {
+      const parsed = new URL(candidate);
+      tautulliProbe = `${parsed.pathname || ''}${parsed.search || ''}`;
+    } catch {
+      tautulliProbe = candidate;
+    }
+  } else if (candidate.startsWith('//')) {
+    const slashIndex = candidate.indexOf('/', 2);
+    tautulliProbe = slashIndex >= 0 ? candidate.slice(slashIndex) : '';
+  }
+
+  const tautulliMatch =
+    tautulliProbe.match(/\/library\/metadata\/(\d+)\/(thumb|art)\/(\d+)/) ??
+    tautulliProbe.match(/^library\/metadata\/(\d+)\/(thumb|art)\/(\d+)/);
+  if (tautulliMatch) {
+    const [, id, type, timestamp] = tautulliMatch;
+    return `/api/thumbnails/tautulli/library/metadata/${id}/${type}/${timestamp}`;
+  }
+
+  if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('data:')) {
+    return trimmed;
+  }
+
+  if (trimmed.startsWith('//')) {
+    return `https:${trimmed}`;
+  }
+
+  if (candidate.startsWith('/api/thumbnails/')) {
+    return candidate;
+  }
+  if (candidate.startsWith('api/thumbnails/')) {
+    return `/${candidate}`;
+  }
+
+  if (/(^|\/)\.\.(\/|$)/.test(candidate)) {
+    return null;
+  }
+
+  candidate = candidate.replace(/^\.\/+/, '');
+
+  if (candidate.startsWith('/covers/')) {
+    return candidate;
+  }
+  if (candidate.startsWith('covers/')) {
+    return candidate;
+  }
+
+  if (candidate.startsWith('/')) {
+    return candidate;
+  }
+
+  return candidate;
 };
 
 const dedupeImages = (values: Array<string | null | undefined>): string[] => {
   const seen = new Set<string>();
   const result: string[] = [];
   for (const value of values) {
-    const candidate = sanitizeImageCandidate(value);
+    const candidate = normalizeImageCandidate(value);
     if (!candidate || seen.has(candidate)) continue;
     seen.add(candidate);
     result.push(candidate);
@@ -529,12 +586,30 @@ const resolveBackdrops = (
   record: MediaRecord,
   thumbnails: string[],
 ): string[] => {
+  const logContext = {
+    namespace: 'hero',
+    recordId: record.id,
+    title: record.title,
+    tmdbBackdrops: details?.backdrops?.length ?? 0,
+    tmdbPoster: Boolean(details?.poster),
+    thumbnails: thumbnails.length,
+    hasRecordBackdrop: Boolean(record.backdrop),
+    hasRecordPoster: Boolean(record.poster),
+    tmdbSource: details ? 'tmdb' : 'plex',
+  };
+  logger.debug('Resolving hero backdrops', logContext);
+
   const primaryCandidates: Array<string | null | undefined> = [];
   if (details && Array.isArray(details.backdrops)) {
     primaryCandidates.push(...details.backdrops);
   }
   const primary = dedupeImages(primaryCandidates);
   if (primary.length > 0) {
+    logger.debug('Using TMDB backdrops for hero entry', {
+      ...logContext,
+      selection: primary.slice(0, 3),
+      selectionCount: primary.length,
+    });
     return primary;
   }
 
@@ -542,8 +617,24 @@ const resolveBackdrops = (
     record.backdrop,
     ...thumbnails,
     record.poster,
+    details?.poster ?? null,
   ];
-  return dedupeImages(fallbackCandidates);
+  const fallback = dedupeImages(fallbackCandidates);
+  if (fallback.length > 0) {
+    logger.debug('Using fallback backdrops for hero entry', {
+      ...logContext,
+      selection: fallback.slice(0, 3),
+      selectionCount: fallback.length,
+      fallbackSources: {
+        recordBackdrop: Boolean(record.backdrop),
+        thumbnails: thumbnails.length,
+        recordPoster: Boolean(record.poster),
+      },
+    });
+  } else {
+    logger.warn('No backdrops resolved for hero entry', logContext);
+  }
+  return fallback;
 };
 
 const buildNormalizedItem = (
@@ -792,46 +883,129 @@ export const createHeroPipelineService = ({
     const items: HeroPoolItem[] = [];
     let rateLimitHit = false;
     const language = policy.language || 'en-US';
-    for (const entry of selection) {
-      let details: TmdbHeroDetails | null = null;
-      const ids = extractIds(entry.raw);
-      const tmdbId = ids.tmdb;
+    const mediaKind: 'movie' | 'tv' = kind === 'series' ? 'tv' : 'movie';
+
+    const fetchDetailsForEntry = async (
+      entry: Candidate & { slot: HeroPoolItem['slot'] },
+      ids: Record<string, string>,
+      preferredLanguage: string,
+    ): Promise<{ details: TmdbHeroDetails | null; rateLimitHit: boolean }> => {
       const tmdbService = activeTmdbService;
-      if (tmdbService?.isEnabled()) {
-        if (tmdbId) {
-          try {
-            details = await tmdbService.fetchDetails(kind === 'series' ? 'tv' : 'movie', tmdbId, { language });
-          } catch (error) {
-            if ((error as TmdbRateLimitError)?.code === 'RATE_LIMIT') {
-              rateLimitHit = true;
-            } else {
-              logger.warn('Failed to enrich hero entry via TMDB', {
+      if (!tmdbService?.isEnabled()) {
+        return { details: null, rateLimitHit: false };
+      }
+      if (!ids.tmdb && !ids.imdb) {
+        return { details: null, rateLimitHit: false };
+      }
+
+      const languagesToTry = Array.from(
+        new Set(
+          [preferredLanguage, 'en-US'].filter(
+            (value): value is string => typeof value === 'string' && value.trim().length > 0,
+          ),
+        ),
+      );
+
+      let primaryDetails: TmdbHeroDetails | null = null;
+      let fallbackDetails: TmdbHeroDetails | null = null;
+      let hitLimit = false;
+
+      for (let index = 0; index < languagesToTry.length; index += 1) {
+        const lang = languagesToTry[index];
+        const isPrimaryAttempt = index === 0;
+        try {
+          let fetched: TmdbHeroDetails | null = null;
+          if (ids.tmdb) {
+            fetched = await tmdbService.fetchDetails(mediaKind, ids.tmdb, { language: lang });
+          } else if (ids.imdb) {
+            fetched = await tmdbService.fetchDetailsByImdb(mediaKind, ids.imdb, { language: lang });
+          }
+          if (!fetched) {
+            continue;
+          }
+          if (isPrimaryAttempt) {
+            primaryDetails = fetched;
+            const hasBackdrops = Array.isArray(fetched.backdrops) && fetched.backdrops.length > 0;
+            if (hasBackdrops || languagesToTry.length === 1) {
+              break;
+            }
+            const fallbackLanguage = languagesToTry[index + 1];
+            if (fallbackLanguage) {
+              logger.debug('Primary TMDB hero details missing backdrops, attempting fallback language', {
                 namespace: 'hero',
-                error: error instanceof Error ? error.message : error,
                 id: entry.id,
+                language: lang,
+                fallbackLanguage,
               });
             }
+            continue;
           }
-        } else if (ids.imdb) {
-          try {
-            details = await tmdbService.fetchDetailsByImdb(
-              kind === 'series' ? 'tv' : 'movie',
-              ids.imdb,
-              { language },
-            );
-          } catch (error) {
-            if ((error as TmdbRateLimitError)?.code === 'RATE_LIMIT') {
-              rateLimitHit = true;
-            } else {
-              logger.warn('Failed to enrich hero entry via TMDB (imdb fallback)', {
-                namespace: 'hero',
-                error: error instanceof Error ? error.message : error,
-                id: entry.id,
-                imdb: ids.imdb,
-              });
-            }
+          fallbackDetails = fetched;
+          break;
+        } catch (error) {
+          if ((error as TmdbRateLimitError)?.code === 'RATE_LIMIT') {
+            hitLimit = true;
+            logger.warn('TMDB rate limit hit while fetching hero details', {
+              namespace: 'hero',
+              id: entry.id,
+              language: lang,
+            });
+            break;
           }
+          logger.warn(
+            ids.tmdb ? 'Failed to enrich hero entry via TMDB' : 'Failed to enrich hero entry via TMDB (imdb fallback)',
+            {
+              namespace: 'hero',
+              error: error instanceof Error ? error.message : error,
+              id: entry.id,
+              language: lang,
+              ...(ids.imdb && !ids.tmdb ? { imdb: ids.imdb } : {}),
+            },
+          );
         }
+      }
+
+      if (primaryDetails && fallbackDetails) {
+        const mergedBackdrops = dedupeImages([
+          ...(Array.isArray(primaryDetails.backdrops) ? primaryDetails.backdrops : []),
+          ...(Array.isArray(fallbackDetails.backdrops) ? fallbackDetails.backdrops : []),
+        ]);
+        const poster = primaryDetails.poster ?? fallbackDetails.poster ?? null;
+        const fallbackLanguage = languagesToTry.length > 1 ? languagesToTry[1] : null;
+        if (
+          mergedBackdrops.length >
+          (Array.isArray(primaryDetails.backdrops) ? primaryDetails.backdrops.length : 0)
+        ) {
+          logger.debug('Merged TMDB hero backdrops from fallback language', {
+            namespace: 'hero',
+            id: entry.id,
+            primaryLanguage: languagesToTry[0],
+            fallbackLanguage,
+            mergedCount: mergedBackdrops.length,
+          });
+        }
+        return {
+          details: {
+            ...primaryDetails,
+            backdrops: mergedBackdrops,
+            poster,
+          },
+          rateLimitHit: hitLimit,
+        };
+      }
+
+      return {
+        details: primaryDetails ?? fallbackDetails ?? null,
+        rateLimitHit: hitLimit,
+      };
+    };
+
+    for (const entry of selection) {
+      const ids = extractIds(entry.raw);
+      const thumbnails = thumbnailMap.get(entry.raw.id) ?? [];
+      const { details, rateLimitHit: hitLimitForEntry } = await fetchDetailsForEntry(entry, ids, language);
+      if (hitLimitForEntry) {
+        rateLimitHit = true;
       }
       if (details?.id && !ids.tmdb) {
         ids.tmdb = String(details.id);
@@ -839,11 +1013,11 @@ export const createHeroPipelineService = ({
       const normalized = buildNormalizedItem(
         entry,
         entry.slot,
-        kind === 'series' ? 'tv' : 'movie',
+        mediaKind,
         entry.raw,
         ids,
         details,
-        thumbnailMap.get(entry.raw.id) ?? [],
+        thumbnails,
       );
       items.push(normalized);
     }

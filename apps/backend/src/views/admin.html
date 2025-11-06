@@ -1225,6 +1225,21 @@
         </article>
         <article class="card">
           <div>
+            <h3>Watchlist settings</h3>
+            <p>Configure admin email to receive copies of watchlist emails sent by users.</p>
+          </div>
+          <div class="input-stack">
+            <label class="input-label" for="watchlist-admin-email-input">Admin email address</label>
+            <input id="watchlist-admin-email-input" type="email" autocomplete="off" placeholder="admin@example.com">
+            <div class="muted" id="watchlist-admin-email-status">Loading watchlist settings…</div>
+            <div class="button-row">
+              <button class="btn btn-primary" id="btn-save-watchlist-admin-email">Save admin email</button>
+              <button class="btn btn-danger" id="btn-clear-watchlist-admin-email">Remove admin email</button>
+            </div>
+          </div>
+        </article>
+        <article class="card">
+          <div>
             <h3>Welcome emails</h3>
             <p>Send onboarding emails manually and inspect recent delivery history.</p>
           </div>
@@ -1601,6 +1616,10 @@
         resendTestEmail: document.getElementById("resend-test-email"),
         resendTestButtonDiag: document.getElementById("btn-test-resend-diag"),
         resendDiagOutput: document.getElementById("resend-diag-output"),
+        watchlistAdminEmailInput: document.getElementById("watchlist-admin-email-input"),
+        watchlistAdminEmailStatus: document.getElementById("watchlist-admin-email-status"),
+        watchlistAdminEmailSaveButton: document.getElementById("btn-save-watchlist-admin-email"),
+        watchlistAdminEmailClearButton: document.getElementById("btn-clear-watchlist-admin-email"),
         welcomeEmailInput: document.getElementById("welcome-email-input"),
         welcomeNameInput: document.getElementById("welcome-name-input"),
         welcomeUrlInput: document.getElementById("welcome-url-input"),
@@ -3151,6 +3170,74 @@
         }
       }
 
+      // Watchlist Admin Email Functions
+      async function loadWatchlistAdminEmail() {
+        if (!elements.watchlistAdminEmailStatus) return;
+        elements.watchlistAdminEmailStatus.textContent = "Loading watchlist settings...";
+        try {
+          const data = await fetchJson(`${API_BASE}/watchlist/admin-email`);
+          if (data.adminEmail) {
+            if (elements.watchlistAdminEmailInput) {
+              elements.watchlistAdminEmailInput.value = data.adminEmail;
+            }
+            elements.watchlistAdminEmailStatus.textContent = `Admin email configured: ${data.adminEmail}`;
+            if (elements.watchlistAdminEmailClearButton) {
+              elements.watchlistAdminEmailClearButton.disabled = false;
+            }
+          } else {
+            elements.watchlistAdminEmailStatus.textContent = "No admin email configured yet.";
+            if (elements.watchlistAdminEmailClearButton) {
+              elements.watchlistAdminEmailClearButton.disabled = true;
+            }
+          }
+        } catch (error) {
+          elements.watchlistAdminEmailStatus.textContent = `Failed to load watchlist settings: ${error.message}`;
+        }
+      }
+
+      async function handleSaveWatchlistAdminEmail(event) {
+        event?.preventDefault();
+        if (!elements.watchlistAdminEmailSaveButton || !elements.watchlistAdminEmailInput) return;
+        const adminEmail = elements.watchlistAdminEmailInput.value.trim();
+        if (!adminEmail) {
+          showToast("Please enter an admin email address.", "error");
+          return;
+        }
+        elements.watchlistAdminEmailSaveButton.disabled = true;
+        if (elements.watchlistAdminEmailClearButton) {
+          elements.watchlistAdminEmailClearButton.disabled = true;
+        }
+        try {
+          await fetchJson(`${API_BASE}/watchlist/admin-email`, {
+            method: "PUT",
+            body: JSON.stringify({ adminEmail }),
+          });
+          await loadWatchlistAdminEmail();
+          showToast("Watchlist admin email saved successfully.", "success");
+        } catch (error) {
+          showToast(error.message, "error");
+        } finally {
+          elements.watchlistAdminEmailSaveButton.disabled = false;
+        }
+      }
+
+      async function handleClearWatchlistAdminEmail(event) {
+        event?.preventDefault();
+        if (!elements.watchlistAdminEmailClearButton) return;
+        elements.watchlistAdminEmailClearButton.disabled = true;
+        try {
+          await fetchJson(`${API_BASE}/watchlist/admin-email`, { method: "DELETE" });
+          if (elements.watchlistAdminEmailInput) {
+            elements.watchlistAdminEmailInput.value = "";
+          }
+          await loadWatchlistAdminEmail();
+          showToast("Watchlist admin email removed.", "success");
+        } catch (error) {
+          showToast(error.message, "error");
+          elements.watchlistAdminEmailClearButton.disabled = false;
+        }
+      }
+
       function formatWelcomeTimestamp(value) {
         if (!value) return "—";
         const parsed = new Date(value);
@@ -3574,6 +3661,7 @@
         await Promise.all([
           loadTmdbStatus(),
           loadResendStatus(),
+          loadWatchlistAdminEmail(),
           loadWelcomeEmailStats(),
           loadWelcomeEmailHistory(),
           loadConfigSnapshot(),
@@ -3798,6 +3886,12 @@
         }
         if (elements.resendTestButtonDiag) {
           elements.resendTestButtonDiag.addEventListener("click", handleTestResendDiag);
+        }
+        if (elements.watchlistAdminEmailSaveButton) {
+          elements.watchlistAdminEmailSaveButton.addEventListener("click", handleSaveWatchlistAdminEmail);
+        }
+        if (elements.watchlistAdminEmailClearButton) {
+          elements.watchlistAdminEmailClearButton.addEventListener("click", handleClearWatchlistAdminEmail);
         }
         if (elements.welcomeSendButton) {
           elements.welcomeSendButton.addEventListener("click", handleSendWelcomeEmail);

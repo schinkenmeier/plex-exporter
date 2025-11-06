@@ -20,6 +20,7 @@ export interface ImageDownloadResult {
   type: 'thumb' | 'art';
   success: boolean;
   localPath?: string;
+  targetPath: string;
   error?: string;
 }
 
@@ -178,6 +179,7 @@ export class ImageStorageService {
         type: item.type,
         success: true,
         localPath: item.targetPath,
+        targetPath: item.targetPath,
       };
     }
 
@@ -203,12 +205,19 @@ export class ImageStorageService {
           type: item.type,
           success: true,
           localPath: item.targetPath,
+          targetPath: item.targetPath,
         };
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(`[ImageStorage] Failed to download image (attempt ${retryCount + 1}/${this.maxRetries}):`, errorMessage);
+        console.error(
+          `[ImageStorage] Failed to download image (attempt ${retryCount + 1}/${this.maxRetries}):`,
+          errorMessage,
+        );
 
-        if (retryCount < this.maxRetries - 1) {
+        const shouldRetry =
+          retryCount < this.maxRetries - 1 && !this.isNonImageContentError(errorMessage);
+
+        if (shouldRetry) {
           await new Promise((resolve) => setTimeout(resolve, this.retryDelay * (retryCount + 1)));
           return this.downloadImage(item, retryCount + 1);
         }
@@ -217,6 +226,7 @@ export class ImageStorageService {
           ratingKey: item.ratingKey,
           type: item.type,
           success: false,
+          targetPath: item.targetPath,
           error: errorMessage,
         };
       } finally {
@@ -263,5 +273,11 @@ export class ImageStorageService {
 
     return results;
   }
+
+  private isNonImageContentError(message: string): boolean {
+    return message.toLowerCase().includes('non-image content');
+  }
 }
+
+export default ImageStorageService;
 

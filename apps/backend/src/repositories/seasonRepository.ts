@@ -54,6 +54,17 @@ export interface SeasonInput {
 
 export type SeasonRecordWithEpisodes = SeasonRecord & { episodes: EpisodeRecord[] };
 
+export interface SeasonIdentifier {
+  id: number;
+  tautulliId: string;
+}
+
+export interface EpisodeIdentifier {
+  id: number;
+  seasonId: number;
+  tautulliId: string;
+}
+
 const mapEpisodeRow = (row: EpisodeRow): EpisodeRecord => ({
   id: row.id,
   seasonId: row.seasonId,
@@ -189,6 +200,33 @@ export class SeasonRepository {
     });
   }
 
+  listSeasonIdentifiersByMediaId(mediaItemId: number): SeasonIdentifier[] {
+    return this.db
+      .select({ id: seasons.id, tautulliId: seasons.tautulliId })
+      .from(seasons)
+      .where(eq(seasons.mediaItemId, mediaItemId))
+      .all();
+  }
+
+  listEpisodeIdentifiersByMediaId(mediaItemId: number): EpisodeIdentifier[] {
+    const seasonIds = this.db
+      .select({ id: seasons.id })
+      .from(seasons)
+      .where(eq(seasons.mediaItemId, mediaItemId))
+      .all()
+      .map((row) => row.id);
+
+    if (seasonIds.length === 0) {
+      return [];
+    }
+
+    return this.db
+      .select({ id: episodes.id, seasonId: episodes.seasonId, tautulliId: episodes.tautulliId })
+      .from(episodes)
+      .where(inArray(episodes.seasonId, seasonIds))
+      .all();
+  }
+
   getByTautulliId(tautulliId: string): SeasonRecord | null {
     const row = this.db
       .select()
@@ -299,6 +337,14 @@ export class SeasonRepository {
       .all();
 
     return row ? mapEpisodeRow(row) : null;
+  }
+
+  deleteSeasonById(id: number): void {
+    this.db.delete(seasons).where(eq(seasons.id, id)).run();
+  }
+
+  deleteEpisodeById(id: number): void {
+    this.db.delete(episodes).where(eq(episodes.id, id)).run();
   }
 }
 

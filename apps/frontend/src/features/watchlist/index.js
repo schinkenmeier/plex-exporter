@@ -100,9 +100,11 @@ export function exportJson(){
 
 const API_BASE = typeof window !== 'undefined' && window.PLEX_EXPORTER_API_BASE
   ? window.PLEX_EXPORTER_API_BASE
-  : 'http://localhost:4000';
+  : '';
 
-export async function sendEmail(email){
+let adminEmailAvailable = false;
+
+export async function sendEmail(email, sendCopyToAdmin = false){
   const items = listItems();
   if(items.length === 0){
     showToast('Keine Einträge in der Merkliste', 'error');
@@ -115,6 +117,7 @@ export async function sendEmail(email){
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email,
+        sendCopyToAdmin,
         items: items.map(item => ({
           title: item.title,
           type: item.type === 'tv' ? 'tv' : 'movie',
@@ -140,13 +143,162 @@ export async function sendEmail(email){
   }
 }
 
-export function showEmailDialog(){
-  const email = prompt('E-Mail-Adresse für Merkliste:');
-  if(email && email.includes('@')){
-    sendEmail(email);
-  } else if(email){
-    showToast('Ungültige E-Mail-Adresse', 'error');
+/**
+ * Check if admin email is configured
+ */
+async function checkAdminEmail(){
+  try {
+    const response = await fetch(`${API_BASE}/api/watchlist/admin-email-configured`);
+    if(response.ok){
+      const data = await response.json();
+      adminEmailAvailable = !!data.configured;
+    } else {
+      adminEmailAvailable = false;
+    }
+  } catch(err){
+    console.warn(`${LOG_PREFIX} Failed to check admin email:`, err);
+    adminEmailAvailable = false;
   }
+}
+
+/**
+ * Show email modal dialog
+ */
+export async function showEmailDialog(){
+  console.log(`${LOG_PREFIX} showEmailDialog called`);
+
+  // Check admin email availability
+  await checkAdminEmail();
+  console.log(`${LOG_PREFIX} Admin email available:`, adminEmailAvailable);
+
+  let modal = document.getElementById('watchlistEmailModal');
+  if (!modal) {
+    console.log(`${LOG_PREFIX} Creating new modal`);
+    createEmailModal();
+    modal = document.getElementById('watchlistEmailModal');
+  }
+
+  if (modal) {
+    console.log(`${LOG_PREFIX} Showing modal`);
+    modal.hidden = false;
+    modal.setAttribute('aria-hidden', 'false');
+
+    // Show/hide admin copy checkbox based on availability
+    const adminCopyGroup = modal.querySelector('.admin-copy-group');
+    if(adminCopyGroup){
+      adminCopyGroup.style.display = adminEmailAvailable ? 'block' : 'none';
+      console.log(`${LOG_PREFIX} Admin copy group display:`, adminCopyGroup.style.display);
+    }
+  } else {
+    console.error(`${LOG_PREFIX} Modal element not found after creation!`);
+  }
+}
+
+/**
+ * Hide email modal dialog
+ */
+export function hideEmailDialog(){
+  const modal = document.getElementById('watchlistEmailModal');
+  if (modal) {
+    modal.hidden = true;
+    modal.setAttribute('aria-hidden', 'true');
+
+    // Reset form
+    const form = modal.querySelector('#watchlistEmailForm');
+    if(form) form.reset();
+  }
+}
+
+/**
+ * Create email modal
+ */
+function createEmailModal() {
+  const modal = document.createElement('div');
+  modal.id = 'watchlistEmailModal';
+  modal.className = 'modal-overlay';
+  modal.hidden = true;
+  modal.setAttribute('aria-hidden', 'true');
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-labelledby', 'watchlistEmailTitle');
+
+  modal.innerHTML = `
+    <div class="modal-content watchlist-email-modal">
+      <div class="modal-header">
+        <h2 id="watchlistEmailTitle">Merkliste per E-Mail senden</h2>
+        <button id="closeWatchlistEmailModal" class="close-btn" aria-label="Schließen">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="watchlistEmailForm" class="watchlist-email-form">
+          <div class="form-group">
+            <label for="watchlistRecipientEmail">E-Mail-Adresse des Empfängers</label>
+            <input
+              type="email"
+              id="watchlistRecipientEmail"
+              name="email"
+              placeholder="empfänger@email.de"
+              required
+            />
+          </div>
+          <div class="form-group admin-copy-group" style="display: none;">
+            <label class="checkbox-label">
+              <input
+                type="checkbox"
+                id="watchlistSendAdminCopy"
+                name="sendAdminCopy"
+                checked
+              />
+              <span>Kopie an Administrator senden</span>
+            </label>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">E-Mail senden</button>
+            <button type="button" id="cancelWatchlistEmail" class="btn-secondary">Abbrechen</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  // Event listeners
+  const form = modal.querySelector('#watchlistEmailForm');
+  const closeBtn = modal.querySelector('#closeWatchlistEmailModal');
+  const cancelBtn = modal.querySelector('#cancelWatchlistEmail');
+
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(form);
+      const email = formData.get('email');
+      const sendAdminCopy = formData.get('sendAdminCopy') === 'on';
+
+      console.log(`${LOG_PREFIX} Form submitted:`, { email, sendAdminCopy });
+
+      try {
+        await sendEmail(email, sendAdminCopy);
+        hideEmailDialog();
+      } catch(err) {
+        console.error(`${LOG_PREFIX} Form submission error:`, err);
+        // Error already handled in sendEmail
+      }
+    });
+  }
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', hideEmailDialog);
+  }
+
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', hideEmailDialog);
+  }
+
+  // Click outside to close
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      hideEmailDialog();
+    }
+  });
 }
 
 function showToast(message, type = 'info'){

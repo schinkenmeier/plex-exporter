@@ -1,6 +1,7 @@
 import { getState } from '../../core/state.js';
 import { openMovieDetailV3, openSeriesDetailV3 } from '../modal/modalV3/index.js';
 import { humanYear, formatRating } from '../../js/utils.js';
+import { prefixThumbValue } from '../../js/data.js';
 import * as HeroPipeline from './pipeline.js';
 
 const NUMBER_FORMAT = typeof Intl !== 'undefined' ? new Intl.NumberFormat('en-US') : { format: (value)=>String(value) };
@@ -21,6 +22,11 @@ const HERO_FALLBACK_COPY = {
     tagline: 'Beim Aktualisieren der Highlights ist ein Fehler aufgetreten.',
     overview: 'Wir versuchen es automatisch erneut oder du startest die Aktualisierung über die Einstellungen manuell.'
   }
+};
+
+const HERO_MEDIA_PLACEHOLDER_MESSAGES = {
+  empty: 'Kein Hintergrundbild verfügbar',
+  poster: 'Poster wird als Hintergrund verwendet'
 };
 
 export function setCurrentHeroItem(item){
@@ -75,6 +81,7 @@ export function showHeroFallback(reason = 'default', overrides = {}){
   const heroImage = document.getElementById('heroBackdropImage');
   const heroSourceLarge = document.getElementById('heroBackdropLarge');
   const heroSourceMedium = document.getElementById('heroBackdropMedium');
+  const heroMediaPlaceholder = document.getElementById('heroMediaPlaceholder');
 
   if(!hero || !heroTitle || !heroTagline || !heroOverview || !heroCta || !heroMeta) return false;
 
@@ -89,6 +96,7 @@ export function showHeroFallback(reason = 'default', overrides = {}){
   hero.dataset.state = 'fallback';
   hero.classList.remove('hero--has-media');
   clearPicture(heroPicture, heroImage, heroSourceLarge, heroSourceMedium);
+  updateHeroMediaPlaceholder(heroMediaPlaceholder, 'hidden');
 
   heroTitle.textContent = copy.title || defaults.title;
 
@@ -138,6 +146,7 @@ export function refreshHero(listOverride){
   const heroImage = document.getElementById('heroBackdropImage');
   const heroSourceLarge = document.getElementById('heroBackdropLarge');
   const heroSourceMedium = document.getElementById('heroBackdropMedium');
+  const heroMediaPlaceholder = document.getElementById('heroMediaPlaceholder');
 
   if(!hero || !heroTitle || !heroTagline || !heroOverview || !heroCta || !heroMeta) return;
 
@@ -152,6 +161,7 @@ export function refreshHero(listOverride){
     hero.dataset.state = 'empty';
     hero.classList.remove('hero--has-media');
     clearPicture(heroPicture, heroImage, heroSourceLarge, heroSourceMedium);
+    updateHeroMediaPlaceholder(heroMediaPlaceholder, 'hidden');
     heroTitle.textContent = defaults.title;
     heroTagline.textContent = defaults.tagline;
     heroTagline.hidden = !defaults.tagline;
@@ -213,7 +223,7 @@ export function refreshHero(listOverride){
   heroCta.onclick = () => openHeroModal(normalized);
 
   renderMeta(metaPrimary, metaSecondary, metaTertiary, heroMeta, normalized);
-  renderMedia(hero, heroPicture, heroImage, heroSourceLarge, heroSourceMedium, normalized);
+  renderMedia(hero, heroPicture, heroImage, heroSourceLarge, heroSourceMedium, normalized, heroMediaPlaceholder);
 }
 
 function selectHeroEntry(listOverride){
@@ -303,7 +313,7 @@ function normalizeLegacyItem(raw){
   const certification = parseCertification(raw);
   const overview = parseOverview(raw);
   const tagline = parseTagline(raw);
-  const backdrops = collectLegacyBackdrops(raw);
+  const backdrops = collectLegacyBackdrops(raw, type);
 
   const cta = {
     id: targetId,
@@ -407,30 +417,65 @@ function parseTagline(raw){
   return '';
 }
 
-function collectLegacyBackdrops(raw){
+function normalizeBackdropPath(candidate, typeKey){
+  if(typeof candidate !== 'string') return '';
+  const trimmed = candidate.trim();
+  if(!trimmed) return '';
+  if(trimmed.startsWith('data:')) return trimmed;
+  if(trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+  if(trimmed.startsWith('//')) return `https:${trimmed}`;
+  try{
+    const resolved = prefixThumbValue(trimmed, typeKey);
+    if(resolved) return resolved;
+  }catch(err){
+    console.warn('[Hero] Failed to normalize backdrop path', { value: trimmed, error: err?.message || err });
+  }
+  return trimmed;
+}
+
+function normalizeBackdropList(values, type){
+  const typeKey = type === 'tv' ? 'series' : 'movies';
+  const seen = new Set();
+  const result = [];
+  values.forEach(value => {
+    if(value == null) return;
+    const normalized = normalizeBackdropPath(value, typeKey);
+    if(!normalized || seen.has(normalized)) return;
+    seen.add(normalized);
+    result.push(normalized);
+  });
+  return result;
+}
+
+function collectLegacyBackdrops(raw, type){
   const localCandidates = [
     raw?.art,
     raw?.background,
     raw?.thumbBackground,
     raw?.coverArt,
     raw?.thumb,
-    raw?.thumbFile
+    raw?.thumbFile,
+    ...(Array.isArray(raw?.backdrops) ? raw.backdrops : [])
   ];
-  const urls = [];
-  localCandidates.forEach(candidate => {
-    const url = normalizeMediaPath(candidate);
-    if(url && !urls.includes(url)) urls.push(url);
-  });
-  return urls;
+  return normalizeBackdropList(localCandidates, type);
 }
 
-function normalizeMediaPath(path){
-  if(typeof path !== 'string') return '';
-  const trimmed = path.trim();
-  if(!trimmed) return '';
-  if(trimmed.startsWith('http')) return trimmed;
-  if(trimmed.startsWith('//')) return `https:${trimmed}`;
-  return trimmed;
+function resolveEntryBackdrops(entry){
+  if(!entry || typeof entry !== 'object') return [];
+  const type = entry.type === 'tv' ? 'tv' : 'movie';
+  const candidates = [
+    ...(Array.isArray(entry.backdrops) ? entry.backdrops : []),
+    typeof entry.backdrop === 'string' ? entry.backdrop : null,
+    typeof entry?.images?.backdrop === 'string' ? entry.images.backdrop : null
+  ];
+  return normalizeBackdropList(candidates, type);
+}
+
+function resolvePosterFallback(entry){
+  if(!entry || typeof entry !== 'object') return '';
+  const type = entry.type === 'tv' ? 'tv' : 'movie';
+  const [poster] = normalizeBackdropList([entry.poster], type);
+  return poster || '';
 }
 
 function renderMeta(primaryRoot, secondaryRoot, tertiaryRoot, container, entry){
@@ -516,25 +561,72 @@ function renderMetaRow(root, items){
   root.hidden = false;
 }
 
-function renderMedia(hero, picture, image, sourceLarge, sourceMedium, entry){
-  const backdrops = Array.isArray(entry.backdrops) ? entry.backdrops.filter(Boolean) : [];
+function renderMedia(hero, picture, image, sourceLarge, sourceMedium, entry, placeholder){
+  const backdrops = resolveEntryBackdrops(entry);
   const primary = backdrops[0] || '';
+  const posterFallback = resolvePosterFallback(entry);
+
+  console.log('[Hero] renderMedia called with entry:', {
+    title: entry?.title,
+    normalizedBackdrops: backdrops,
+    primary,
+    posterFallback,
+    originalBackdrops: entry?.backdrops,
+    singleBackdrop: entry?.backdrop
+  });
+
   if(!picture || !image){
-    hero.classList.toggle('hero--has-media', Boolean(primary));
+    const hasMedia = Boolean(primary);
+    hero.classList.toggle('hero--has-media', hasMedia);
+    if(hasMedia){
+      updateHeroMediaPlaceholder(placeholder, 'hidden');
+    } else if(posterFallback){
+      updateHeroMediaPlaceholder(placeholder, 'poster');
+    } else {
+      updateHeroMediaPlaceholder(placeholder, 'empty');
+    }
     return;
   }
+
   if(!primary){
+    console.warn('[Hero] No primary backdrop found, attempting fallback sources');
+    if(posterFallback){
+      try{
+        hero.classList.add('hero--has-media');
+        updateHeroMediaPlaceholder(placeholder, 'poster');
+        setSource(sourceLarge, posterFallback);
+        setSource(sourceMedium, posterFallback);
+        image.src = posterFallback;
+        image.alt = entry?.title ? `${entry.title} Poster` : 'Poster fallback';
+        image.removeAttribute('hidden');
+        picture.hidden = false;
+        return;
+      }catch(err){
+        console.error('[Hero] Failed to apply poster fallback for hero media:', err?.message || err);
+      }
+    }
+    updateHeroMediaPlaceholder(placeholder, 'empty');
+    console.warn('[Hero] No backdrop available for:', entry?.title);
     clearPicture(picture, image, sourceLarge, sourceMedium);
     hero.classList.remove('hero--has-media');
     return;
   }
-  hero.classList.add('hero--has-media');
-  setSource(sourceLarge, primary);
-  setSource(sourceMedium, primary);
-  image.src = primary;
-  image.alt = entry.title ? `${entry.title} backdrop` : '';
-  image.removeAttribute('hidden');
-  picture.hidden = false;
+
+  try{
+    hero.classList.add('hero--has-media');
+    updateHeroMediaPlaceholder(placeholder, 'hidden');
+    setSource(sourceLarge, primary);
+    setSource(sourceMedium, primary);
+    image.src = primary;
+    image.alt = entry?.title ? `${entry.title} backdrop` : 'Hero backdrop';
+    image.removeAttribute('hidden');
+    picture.hidden = false;
+  }catch(err){
+    console.error('[Hero] Failed to render hero backdrop, clearing media', err?.message || err);
+    updateHeroMediaPlaceholder(placeholder, 'empty');
+    clearPicture(picture, image, sourceLarge, sourceMedium);
+    hero.classList.remove('hero--has-media');
+  }
 }
 
 function setSource(node, value){
@@ -554,6 +646,24 @@ function clearPicture(picture, image, sourceLarge, sourceMedium){
     image.setAttribute('hidden', '');
   }
   if(picture) picture.hidden = true;
+}
+
+function updateHeroMediaPlaceholder(placeholder, state){
+  if(!placeholder) return;
+  const nextState = state || 'hidden';
+  const label = placeholder.querySelector('[data-placeholder-text]') || placeholder;
+  if(nextState === 'hidden'){
+    placeholder.hidden = true;
+    placeholder.dataset.state = 'hidden';
+    placeholder.setAttribute('aria-hidden', 'true');
+    if(label && label !== placeholder) label.textContent = '';
+    return;
+  }
+  const message = HERO_MEDIA_PLACEHOLDER_MESSAGES[nextState] || HERO_MEDIA_PLACEHOLDER_MESSAGES.empty;
+  if(label) label.textContent = message;
+  placeholder.hidden = false;
+  placeholder.dataset.state = nextState;
+  placeholder.setAttribute('aria-hidden', 'false');
 }
 
 function formatRuntime(minutes){

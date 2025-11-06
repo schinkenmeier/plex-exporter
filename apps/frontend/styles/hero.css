@@ -51,6 +51,46 @@
   backdrop-filter: blur(0);
 }
 
+.hero__media-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  pointer-events: none;
+  background: linear-gradient(140deg, rgba(9, 14, 24, 0.72), rgba(9, 14, 24, 0.4));
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.hero__media-placeholder:not([hidden]) {
+  opacity: 1;
+}
+
+.hero__media-placeholder-text {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(18, 26, 44, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(236, 240, 255, 0.85);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.hero__media-placeholder[data-state='poster'] .hero__media-placeholder-text {
+  background: rgba(34, 42, 64, 0.7);
+  border-color: rgba(255, 214, 102, 0.3);
+  color: rgba(255, 237, 179, 0.9);
+}
+
 .hero__inner {
   position: relative;
   z-index: 2;
