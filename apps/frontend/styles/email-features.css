@@ -3,6 +3,10 @@
  * Newsletter & Watchlist Email Modal Components
  */
 
+body.modal-open {
+  overflow: hidden;
+}
+
 /* Newsletter Modal */
 .modal-overlay {
   position: fixed;
@@ -18,6 +22,11 @@
   z-index: 2000;
   opacity: 0;
   transition: opacity 0.3s ease;
+}
+
+.modal-overlay[hidden] {
+  display: none;
+  pointer-events: none;
 }
 
 .modal-overlay:not([hidden]) {
@@ -213,6 +222,28 @@
 
 .checkbox-label:hover span {
   color: rgba(255, 255, 255, 0.9);
+}
+
+/* Watchlist Modal */
+.watchlist-modal .watchlist-modal__content {
+  width: min(960px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(126, 166, 255, 0.35);
+  background: linear-gradient(165deg, rgba(11, 16, 28, 0.96), rgba(6, 10, 20, 0.94));
+  box-shadow: 0 40px 80px rgba(5, 8, 16, 0.75);
+  padding: clamp(22px, 3vw, 32px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.watchlist-modal .close-btn {
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  width: 36px;
+  height: 36px;
+  line-height: 1;
 }
 
 /* Responsive */

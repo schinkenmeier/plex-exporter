@@ -1,0 +1,131 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+env:
+  CI: true
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+      docker: ${{ steps.filter.outputs.docker }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Filter paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            frontend:
+              - 'apps/frontend/**'
+              - 'packages/shared/**'
+              - 'config/**'
+              - 'package-lock.json'
+              - 'package.json'
+              - 'tsconfig.base.json'
+            backend:
+              - 'apps/backend/**'
+              - 'packages/shared/**'
+              - 'config/**'
+              - 'package-lock.json'
+              - 'package.json'
+              - 'tsconfig.base.json'
+            docker:
+              - 'apps/backend/Dockerfile'
+              - 'apps/frontend/Dockerfile'
+              - 'docker-compose.yml'
+              - 'tools/tautulli-mock/**'
+              - 'Caddyfile'
+
+  frontend:
+    name: Frontend • test & build
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test --workspace @plex-exporter/frontend
+
+      - name: Build production bundle
+        run: npm run build --workspace @plex-exporter/frontend
+
+      - name: Upload dist artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: apps/frontend/public/dist
+          retention-days: 5
+
+  backend:
+    name: Backend • test & build
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test --workspace @plex-exporter/backend
+
+      - name: Build backend
+        run: npm run build --workspace @plex-exporter/backend
+
+  docker:
+    name: Docker Compose validation
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.docker == 'true' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Docker version
+        run: docker version
+
+      - name: Validate docker-compose config
+        run: docker compose --profile tautulli config
+
+      - name: Build backend & frontend images
+        run: docker compose build backend caddy
+
+      - name: Build tautulli mock image
+        run: docker compose --profile tautulli build tautulli-mock

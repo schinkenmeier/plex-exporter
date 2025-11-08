@@ -458,6 +458,26 @@ export function closeDetailV3(){
   closeShell();
   restoreLastFocused();
   clearActiveItem();
+  resetDetailHash();
+}
+
+function resetDetailHash(){
+  if(typeof window === 'undefined') return;
+  const currentHash = window.location.hash || '';
+  if(!/^#\/(movie|show)\//.test(currentHash)) return;
+  const state = getAppState();
+  const view = state?.view === 'shows' ? '#/shows' : '#/movies';
+  const fallbackHash = view || '#/movies';
+  if(currentHash === fallbackHash) return;
+  try{
+    if(window.history && typeof window.history.replaceState === 'function'){
+      window.history.replaceState(null, '', fallbackHash);
+    }else if(window.location.hash !== fallbackHash){
+      window.location.hash = fallbackHash;
+    }
+  }catch(err){
+    console.warn(`${LOG_PREFIX} Failed to reset hash after closing detail:`, err?.message || err);
+  }
 }
 
 export { closeDetailV3 as hideDetailV3 };

@@ -509,31 +509,6 @@ header.site-header {
   box-shadow: 0 20px 40px rgba(5, 12, 26, 0.6);
 }
 
-.watchlist-panel {
-  background: rgba(10, 14, 22, 0.88);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-
-.watchlist-panel__inner {
-  padding: clamp(24px, 4vw, 36px) 0;
-}
-
-.watchlist-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.watchlist-actions {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
 @media (max-width: 1024px) {
   .site-header__layout {
     flex-direction: column;
