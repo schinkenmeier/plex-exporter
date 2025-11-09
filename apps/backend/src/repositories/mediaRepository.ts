@@ -296,6 +296,7 @@ export class MediaRepository {
     if (input.tmdbRating !== undefined) changes.tmdbRating = input.tmdbRating ?? null;
     if (input.tmdbVoteCount !== undefined) changes.tmdbVoteCount = input.tmdbVoteCount ?? null;
     if (input.tmdbEnriched !== undefined) changes.tmdbEnriched = input.tmdbEnriched ?? false;
+    if (input.imdbId !== undefined) changes.imdbId = input.imdbId ?? null;
 
     if (Object.keys(changes).length === 0) {
       return existing;
