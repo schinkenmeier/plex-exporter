@@ -1506,6 +1506,29 @@
             </div>
           </article>
 
+          <!-- Snapshot retention panel -->
+          <article class="panel">
+            <h3>Snapshot-Aufbewahrung</h3>
+            <p>Legt fest, wie viele Bibliotheks-Snapshots zur Fehleranalyse gespeichert werden.</p>
+            <label class="input-label" for="snapshot-limit">Maximale Snapshots</label>
+            <input
+              type="number"
+              id="snapshot-limit"
+              min="0"
+              max="500"
+              step="1"
+              value="50"
+              style="width: 120px; margin-bottom: 8px;"
+            >
+            <small class="muted" id="snapshot-limit-help">
+              Werte zwischen 0 (kein Limit) und 500. Bei jedem Abruf der Bibliotheken wird höchstens diese Anzahl an Snapshots behalten.
+            </small>
+            <div style="margin-top: 12px;">
+              <button class="btn" id="btn-save-snapshot-settings">Einstellung speichern</button>
+            </div>
+            <div class="muted" id="snapshot-settings-status" style="margin-top: 12px;"></div>
+          </article>
+
           <!-- Sync Statistics Panel -->
           <article class="panel">
             <h3>Konfigurierte Bibliotheken</h3>
@@ -1739,6 +1762,7 @@
         },
         "tautulli-sync": async () => {
           await loadTautulliConfig();
+          await loadSnapshotSettings();
           await loadLibrarySections();
           await loadSchedules();
         },
@@ -4099,6 +4123,77 @@
         }
       }
 
+      async function loadSnapshotSettings() {
+        const input = document.getElementById("snapshot-limit");
+        const statusEl = document.getElementById("snapshot-settings-status");
+        const helpEl = document.getElementById("snapshot-limit-help");
+
+        if (!input || !statusEl) return;
+
+        try {
+          statusEl.textContent = "Lade Einstellungen...";
+          statusEl.classList.remove("error");
+
+          const res = await fetch("/admin/api/tautulli/snapshots/settings");
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+
+          const data = await res.json();
+          const effectiveLimit = typeof data.maxSnapshots === "number" ? data.maxSnapshots : data.defaults?.fallback ?? 50;
+          input.value = effectiveLimit;
+
+          if (helpEl && data.defaults) {
+            helpEl.textContent = `Erlaubter Bereich: ${data.defaults.min} – ${data.defaults.max}. 0 deaktiviert die Begrenzung und speichert alle Snapshots.`;
+          }
+
+          statusEl.textContent = `Es werden aktuell ${effectiveLimit} Snapshot(s) behalten.`;
+          statusEl.classList.remove("error");
+        } catch (err) {
+          statusEl.textContent = "Konnte Snapshot-Einstellung nicht laden: " + err.message;
+          statusEl.classList.add("error");
+        }
+      }
+
+      async function saveSnapshotSettings() {
+        const input = document.getElementById("snapshot-limit");
+        const statusEl = document.getElementById("snapshot-settings-status");
+        if (!input || !statusEl) return;
+
+        const parsed = Number.parseInt(input.value, 10);
+        if (!Number.isFinite(parsed)) {
+          statusEl.textContent = "Bitte eine gültige Zahl eingeben.";
+          statusEl.classList.add("error");
+          return;
+        }
+
+        try {
+          statusEl.textContent = "Speichere...";
+          statusEl.classList.remove("error");
+
+          const res = await fetch("/admin/api/tautulli/snapshots/settings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ maxSnapshots: parsed }),
+          });
+
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            throw new Error(body.message || `HTTP ${res.status}`);
+          }
+
+          const data = await res.json();
+          input.value = data.maxSnapshots;
+          statusEl.textContent = `Begrenzung gespeichert. Neue Obergrenze: ${data.maxSnapshots}.`;
+          statusEl.classList.remove("error");
+          showToast("Snapshot-Einstellung gespeichert", "success");
+        } catch (err) {
+          statusEl.textContent = "Speichern fehlgeschlagen: " + err.message;
+          statusEl.classList.add("error");
+          showToast(err.message, "error");
+        }
+      }
+
       async function saveTautulliConfig() {
         const url = document.getElementById("tautulli-url").value.trim();
         const apiKey = document.getElementById("tautulli-api-key").value.trim();
@@ -4182,6 +4277,7 @@
         const btnSaveLibs = document.getElementById("btn-save-libraries");
         const btnStartSync = document.getElementById("btn-start-sync");
         const btnSaveSchedule = document.getElementById("btn-save-schedule");
+        const btnSaveSnapshotSettings = document.getElementById("btn-save-snapshot-settings");
 
         if (btnSaveConfig) btnSaveConfig.addEventListener("click", saveTautulliConfig);
         if (btnTestConnection) btnTestConnection.addEventListener("click", testTautulliConnection);
@@ -4194,6 +4290,7 @@
         if (btnSaveLibs) btnSaveLibs.addEventListener("click", saveLibraryConfiguration);
         if (btnStartSync) btnStartSync.addEventListener("click", startManualSync);
         if (btnSaveSchedule) btnSaveSchedule.addEventListener("click", saveSchedule);
+        if (btnSaveSnapshotSettings) btnSaveSnapshotSettings.addEventListener("click", saveSnapshotSettings);
       }
 
       function init() {

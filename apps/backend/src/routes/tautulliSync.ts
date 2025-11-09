@@ -7,6 +7,34 @@ import type { SchedulerService } from '../services/schedulerService.js';
 import type { TautulliClient } from '../services/tautulliService.js';
 import type { TautulliSyncService } from '../services/tautulliSyncService.js';
 import logger from '../services/logger.js';
+import SettingsRepository from '../repositories/settingsRepository.js';
+import TautulliSnapshotRepository from '../repositories/tautulliSnapshotRepository.js';
+
+export const SNAPSHOT_LIMIT_SETTING_KEY = 'tautulli.snapshots.max';
+export const DEFAULT_SNAPSHOT_LIMIT = 50;
+export const MAX_SNAPSHOT_LIMIT = 500;
+const MIN_SNAPSHOT_LIMIT = 0;
+
+export const parseSnapshotLimit = (value: unknown): number | null => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const numeric =
+    typeof value === 'number'
+      ? value
+      : Number.parseInt(typeof value === 'string' ? value.trim() : String(value), 10);
+
+  if (!Number.isFinite(numeric)) {
+    return null;
+  }
+
+  if (numeric < MIN_SNAPSHOT_LIMIT || numeric > MAX_SNAPSHOT_LIMIT) {
+    return null;
+  }
+
+  return Math.trunc(numeric);
+};
 
 export interface TautulliSyncRouterOptions {
   getTautulliService: () => TautulliClient | null;
@@ -16,6 +44,8 @@ export interface TautulliSyncRouterOptions {
   tautulliConfigRepo: TautulliConfigRepository;
   getSchedulerService: () => SchedulerService | null;
   refreshTautulliIntegration: (input?: { baseUrl: string; apiKey: string }) => void;
+  settingsRepository: SettingsRepository;
+  tautulliSnapshotRepository: TautulliSnapshotRepository;
 }
 
 /**
@@ -31,6 +61,8 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
     tautulliConfigRepo,
     getSchedulerService,
     refreshTautulliIntegration,
+    settingsRepository,
+    tautulliSnapshotRepository,
   } = options;
 
   /**
@@ -215,6 +247,49 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
       });
 
       next(new HttpError(502, `Connection test failed: ${message}`));
+    }
+  });
+
+  router.get('/snapshots/settings', async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const stored = settingsRepository.get(SNAPSHOT_LIMIT_SETTING_KEY);
+      const storedLimit = stored ? parseSnapshotLimit(stored.value) : null;
+      const effectiveLimit = tautulliSnapshotRepository.getMaxSnapshots();
+
+      res.json({
+        maxSnapshots: effectiveLimit,
+        storedLimit,
+        defaults: {
+          min: MIN_SNAPSHOT_LIMIT,
+          max: MAX_SNAPSHOT_LIMIT,
+          fallback: DEFAULT_SNAPSHOT_LIMIT,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/snapshots/settings', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const nextLimit = parseSnapshotLimit(req.body?.maxSnapshots);
+      if (nextLimit === null) {
+        throw new HttpError(
+          400,
+          `maxSnapshots must be an integer between ${MIN_SNAPSHOT_LIMIT} and ${MAX_SNAPSHOT_LIMIT}`,
+        );
+      }
+
+      settingsRepository.set(SNAPSHOT_LIMIT_SETTING_KEY, String(nextLimit));
+      tautulliSnapshotRepository.setMaxSnapshots(nextLimit);
+      tautulliSnapshotRepository.enforceRetention();
+
+      res.json({
+        success: true,
+        maxSnapshots: nextLimit,
+      });
+    } catch (error) {
+      next(error);
     }
   });
 

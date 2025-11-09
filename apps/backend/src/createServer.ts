@@ -43,7 +43,12 @@ import { setupSwagger } from './config/swaggerSetup.js';
 import { createAdminRouter } from './routes/admin.js';
 import { createBasicAuthMiddleware } from './middleware/basicAuth.js';
 import { createThumbnailRouter } from './routes/thumbnails.js';
-import { createTautulliSyncRouter } from './routes/tautulliSync.js';
+import {
+  createTautulliSyncRouter,
+  DEFAULT_SNAPSHOT_LIMIT,
+  SNAPSHOT_LIMIT_SETTING_KEY,
+  parseSnapshotLimit,
+} from './routes/tautulliSync.js';
 import { TautulliSyncService } from './services/tautulliSyncService.js';
 import { SchedulerService } from './services/schedulerService.js';
 import { ImageStorageService } from './services/imageStorageService.js';
@@ -175,7 +180,16 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
     'tautulliSnapshotRepository' in deps
       ? deps.tautulliSnapshotRepository ?? null
       : drizzleDb
-        ? new TautulliSnapshotRepository(drizzleDb)
+        ? (() => {
+            const storedSnapshotLimitSetting = settingsRepository.get(SNAPSHOT_LIMIT_SETTING_KEY);
+            const parsedSnapshotLimit = storedSnapshotLimitSetting
+              ? parseSnapshotLimit(storedSnapshotLimitSetting.value)
+              : null;
+            const snapshotRetentionLimit = parsedSnapshotLimit ?? DEFAULT_SNAPSHOT_LIMIT;
+            return new TautulliSnapshotRepository(drizzleDb, {
+              maxSnapshots: snapshotRetentionLimit,
+            });
+          })()
         : null;
 
   const seasonRepository =
@@ -412,6 +426,8 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
       tautulliConfigRepo,
       getSchedulerService: () => tautulliState.scheduler,
       refreshTautulliIntegration,
+      settingsRepository,
+      tautulliSnapshotRepository: tautulliSnapshotRepository!,
     }),
   );
 

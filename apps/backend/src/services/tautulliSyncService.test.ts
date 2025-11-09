@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { TautulliSyncService } from './tautulliSyncService.js';
 import type { ImageDownloadItem, ImageDownloadResult } from './imageStorageService.js';
+import type { TmdbService } from './tmdbService.js';
 
 type SeasonData = {
   id: number;
@@ -359,6 +360,95 @@ describe('TautulliSyncService - cover downloads', () => {
     expect(storedEpisode.thumb).toBe('/api/thumbnails/tautulli/library/metadata/300/thumb/400');
 
     expect(imageStorageService.downloadImage).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('TautulliSyncService - TMDb enrichment', () => {
+  const baseDetails = {
+    id: 101,
+    type: 'tv' as const,
+    title: 'Sample Show',
+    originalTitle: 'Sample Show Original',
+    overview: 'Overview',
+    tagline: 'Tagline',
+    releaseDate: null,
+    firstAirDate: '2020-01-01',
+    runtimeMinutes: 45,
+    voteAverage: 7.5,
+    voteCount: 200,
+    genres: [],
+    certification: null,
+    backdrops: ['https://image.tmdb.org/t/p/original/backdrop.jpg'],
+    poster: 'https://image.tmdb.org/t/p/w780/poster.jpg',
+  };
+
+  const createService = (tmdbOverrides: Partial<TmdbService> = {}) => {
+    const tmdbService = {
+      fetchDetails: vi.fn().mockResolvedValue({ ...baseDetails }),
+      fetchDetailsByImdb: vi.fn().mockResolvedValue(null),
+      searchMovie: vi.fn().mockResolvedValue([]),
+      searchTv: vi.fn().mockResolvedValue([]),
+      ...tmdbOverrides,
+    };
+
+    const service = new TautulliSyncService(
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      tmdbService as unknown as TmdbService,
+    );
+
+    return { service, tmdbService };
+  };
+
+  it('falls back to TMDb search for shows when no IDs are present in the GUID', async () => {
+    const { service, tmdbService } = createService({
+      searchTv: vi.fn().mockResolvedValue([{ id: 2024 }]),
+    });
+
+    const result = await (service as any).enrichWithTmdb(
+      {
+        rating_key: 'show-1',
+        title: 'Search Target',
+        media_type: 'show',
+        guid: null,
+      },
+      'tv',
+    );
+
+    expect(tmdbService.searchTv).toHaveBeenCalledWith('Search Target', expect.any(Object));
+    expect(tmdbService.fetchDetails).toHaveBeenCalledWith('tv', 2024, expect.any(Object));
+    expect(result).toMatchObject({
+      tmdbId: 2024,
+      poster: baseDetails.poster,
+      backdrop: baseDetails.backdrops[0],
+      tmdbRating: baseDetails.voteAverage,
+      tmdbVoteCount: baseDetails.voteCount,
+      tmdbEnriched: true,
+    });
+  });
+
+  it('handles TMDb lookup errors gracefully and returns null', async () => {
+    const failingFetch = vi.fn().mockRejectedValue(new Error('TMDb offline'));
+    const { service } = createService({
+      fetchDetails: failingFetch,
+      searchMovie: vi.fn().mockResolvedValue([]),
+    });
+
+    await expect(
+      (service as any).enrichWithTmdb(
+        {
+          rating_key: 'movie-1',
+          title: 'Broken Movie',
+          media_type: 'movie',
+          guid: 'tmdb://555',
+        },
+        'movie',
+      ),
+    ).resolves.toBeNull();
+
+    expect(failingFetch).toHaveBeenCalled();
   });
 });
 

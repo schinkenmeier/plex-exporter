@@ -2,7 +2,7 @@ import type { TautulliService, TautulliMetadata, TautulliMediaItem } from './tau
 import type { MediaRepository } from '../repositories/mediaRepository.js';
 import type { SeasonRepository } from '../repositories/seasonRepository.js';
 import type { LibrarySectionRepository } from '../repositories/librarySectionRepository.js';
-import type { TmdbService } from './tmdbService.js';
+import type { TmdbService, TmdbHeroDetails } from './tmdbService.js';
 import type { ImageStorageService } from './imageStorageService.js';
 import { normalizeTimestamp } from '../utils/timestamps.js';
 
@@ -997,85 +997,119 @@ export class TautulliSyncService {
       return null;
     }
 
-    if (!metadata.guid) {
-      console.warn(`[TMDb Enrichment] No GUID found for "${metadata.title}"`);
+    const extractedIds = this.extractIdsFromGuid(metadata.guid);
+    const titleForSearch =
+      typeof metadata.title === 'string' && metadata.title.trim().length > 0
+        ? metadata.title.trim()
+        : null;
+    const languagesToTry = ['de', 'de-DE', 'en-US'];
+
+    const tryFetchById = async (tmdbId?: number | null) => {
+      if (!tmdbId) return null;
+      for (const language of languagesToTry) {
+        const details = await this.tmdbService!.fetchDetails(type, tmdbId, { language });
+        if (details) {
+          return this.buildTmdbEnrichment(details, tmdbId);
+        }
+      }
       return null;
-    }
+    };
+
+    const tryFetchByImdb = async (imdbId?: string) => {
+      if (!imdbId) return null;
+      for (const language of languagesToTry) {
+        const details = await this.tmdbService!.fetchDetailsByImdb(type, imdbId, { language });
+        if (details) {
+          return this.buildTmdbEnrichment(details);
+        }
+      }
+      return null;
+    };
+
+    const trySearch = async () => {
+      if (!titleForSearch) {
+        console.warn(
+          `[TMDb Enrichment] Cannot search without title for rating_key: ${metadata.rating_key}`,
+        );
+        return null;
+      }
+
+      const releaseYear = this.resolveReleaseYear(metadata);
+
+      for (const language of languagesToTry) {
+        const results =
+          type === 'movie'
+            ? await this.tmdbService!.searchMovie(titleForSearch, { year: releaseYear, language })
+            : await this.tmdbService!.searchTv(titleForSearch, { year: releaseYear, language });
+
+        if (!results?.length) {
+          continue;
+        }
+
+        for (const candidate of results.slice(0, 3)) {
+          const details = await this.tmdbService!.fetchDetails(type, candidate.id, { language });
+          if (details) {
+            return this.buildTmdbEnrichment(details, candidate.id);
+          }
+        }
+      }
+
+      return null;
+    };
 
     try {
-      // Try to extract TMDB ID from guid (e.g., "tmdb://12345")
-      const guidMatch = metadata.guid.match(/tmdb:\/\/(\d+)/);
-      let tmdbId: number | null = null;
-
-      if (guidMatch) {
-        tmdbId = parseInt(guidMatch[1], 10);
-        console.log(`[TMDb Enrichment] Found TMDb ID in GUID for "${metadata.title}": ${tmdbId}`);
-      } else {
-        // Fallback: Search by title + year if no TMDb ID in GUID
-        console.log(`[TMDb Enrichment] No TMDb ID in GUID for "${metadata.title}", searching by title...`);
-
-        if (!metadata.title) {
-          console.warn(`[TMDb Enrichment] Cannot search without title for rating_key: ${metadata.rating_key}`);
-          return null;
-        }
-
-        try {
-          const searchResults = await this.tmdbService.searchMovie(metadata.title, {
-            year: metadata.year,
-            language: 'de',
-          });
-          if (searchResults && searchResults.length > 0) {
-            tmdbId = searchResults[0].id;
-            console.log(`[TMDb Enrichment] Found TMDb ID via search for "${metadata.title}": ${tmdbId}`);
-          } else {
-            console.warn(`[TMDb Enrichment] No TMDb search results for "${metadata.title}" (${metadata.year})`);
-            return null;
-          }
-        } catch (searchError) {
-          console.warn(`[TMDb Enrichment] Search failed for "${metadata.title}":`, searchError);
-          return null;
-        }
+      const fromTmdbId = await tryFetchById(extractedIds.tmdbId);
+      if (fromTmdbId) {
+        return fromTmdbId;
       }
 
-      if (!tmdbId) {
-        return null;
+      const fromImdb = await tryFetchByImdb(extractedIds.imdbId);
+      if (fromImdb) {
+        return fromImdb;
       }
 
-      console.log(`[TMDb Enrichment] Fetching TMDb details for "${metadata.title}" (TMDb ID: ${tmdbId}, type: ${type})`);
-      const tmdbData = await this.tmdbService.fetchDetails(type, tmdbId, { language: 'de' });
-
-      if (!tmdbData) {
-        console.warn(`[TMDb Enrichment] No TMDb data returned for "${metadata.title}" (TMDb ID: ${tmdbId})`);
-        return null;
-      }
-
-      const result = {
-        tmdbId,
-        // tmdbData.poster is already a full URL from getPosterUrl(), don't add prefix
-        poster: tmdbData.poster ?? undefined,
-        // backdrops come as paths, need full URL
-        backdrop: tmdbData.backdrops?.[0]
-          ? (tmdbData.backdrops[0].startsWith('http')
-            ? tmdbData.backdrops[0]
-            : `https://image.tmdb.org/t/p/w1280${tmdbData.backdrops[0]}`)
-          : undefined,
-        tmdbRating: tmdbData.voteAverage ?? undefined,
-        tmdbVoteCount: tmdbData.voteCount ?? undefined,
-        tmdbEnriched: true,
-      };
-
-      console.log(`[TMDb Enrichment] Successfully enriched "${metadata.title}":`, {
-        tmdbId,
-        hasPoster: !!result.poster,
-        hasBackdrop: !!result.backdrop,
-        rating: result.tmdbRating,
-      });
-
-      return result;
+      return await trySearch();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error(`[TMDb Enrichment] Error enriching "${metadata.title}":`, errorMessage);
-      throw error; // Re-throw to be caught by caller
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(
+        `[TMDb Enrichment] Failed for "${metadata.title ?? metadata.rating_key}": ${message}`,
+      );
+      return null;
     }
+  }
+
+  private buildTmdbEnrichment(details: TmdbHeroDetails, forcedId?: number) {
+    const primaryBackdrop =
+      Array.isArray(details.backdrops) && details.backdrops.length > 0
+        ? details.backdrops[0]
+        : undefined;
+
+    return {
+      tmdbId: forcedId ?? details.id ?? undefined,
+      poster: details.poster ?? undefined,
+      backdrop: primaryBackdrop,
+      tmdbRating: details.voteAverage ?? undefined,
+      tmdbVoteCount: details.voteCount ?? undefined,
+      tmdbEnriched: true,
+    };
+  }
+
+  private resolveReleaseYear(metadata: TautulliMetadata): number | undefined {
+    if (typeof metadata.year === 'number' && Number.isFinite(metadata.year)) {
+      return metadata.year;
+    }
+
+    const candidate = metadata.originally_available_at ?? metadata.added_at?.toString() ?? null;
+    if (!candidate) {
+      return undefined;
+    }
+
+    const match = candidate.match(/^(\d{4})/);
+    if (match) {
+      const parsed = Number.parseInt(match[1], 10);
+      return Number.isFinite(parsed) ? parsed : undefined;
+    }
+
+    return undefined;
   }
 }
