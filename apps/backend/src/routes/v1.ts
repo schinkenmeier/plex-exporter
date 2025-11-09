@@ -10,6 +10,7 @@ import { HttpError } from '../middleware/errorHandler.js';
 import { apiLimiter, searchLimiter } from '../middleware/rateLimiter.js';
 import { createShortCache, createMediumCache, createLongCache } from '../services/cacheService.js';
 import { cacheMiddleware } from '../middleware/cacheMiddleware.js';
+import { normalizeTimestamp } from '../utils/timestamps.js';
 
 export interface V1RouterOptions {
   mediaRepository: MediaRepository;
@@ -116,6 +117,8 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
     return items.map(item => {
       const thumbnails = thumbnailsMap.get(item.id) || [];
       const thumbnailPath = thumbnails[0]?.path || null;
+      const normalizedAddedAt = normalizeTimestamp(item.plexAddedAt ?? item.addedAt ?? null);
+      const normalizedUpdatedAt = normalizeTimestamp(item.plexUpdatedAt ?? item.updatedAt ?? null);
       const base = {
         ratingKey: item.plexId,
         title: item.title,
@@ -123,8 +126,8 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
         guid: item.guid,
         summary: item.summary,
         mediaType: item.mediaType,
-        addedAt: item.plexAddedAt,
-        updatedAt: item.plexUpdatedAt,
+        addedAt: normalizedAddedAt ?? null,
+        updatedAt: normalizedUpdatedAt ?? null,
         thumbFile: buildThumbnailUrl(thumbnailPath, item.mediaType, req),
         poster: convertTautulliUrlToProxy(item.poster, req),
         backdrop: convertTautulliUrlToProxy(item.backdrop, req),

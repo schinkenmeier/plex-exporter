@@ -4,6 +4,7 @@ import type { SeasonRepository } from '../repositories/seasonRepository.js';
 import type { LibrarySectionRepository } from '../repositories/librarySectionRepository.js';
 import type { TmdbService } from './tmdbService.js';
 import type { ImageStorageService } from './imageStorageService.js';
+import { normalizeTimestamp } from '../utils/timestamps.js';
 
 export interface SyncOptions {
   incremental?: boolean;
@@ -758,12 +759,15 @@ export class TautulliSyncService {
     imdbId?: string;
     tmdbRating?: number;
     tmdbVoteCount?: number;
+    addedAt?: string;
   } {
     const posterUrl = this.convertTautulliThumbnailUrl(metadata.thumb);
     const backdropUrl = this.convertTautulliThumbnailUrl(metadata.art);
 
     // Extract IDs from GUID
     const ids = this.extractIdsFromGuid(metadata.guid);
+    const normalizedAddedAt = normalizeTimestamp(metadata.added_at);
+    const normalizedUpdatedAt = normalizeTimestamp(metadata.updated_at);
 
     return {
       plexId: ratingKey || metadata.rating_key,
@@ -788,8 +792,9 @@ export class TautulliSyncService {
       audienceRating: metadata.audience_rating,
       originallyAvailableAt: metadata.originally_available_at,
       guid: metadata.guid,
-      plexAddedAt: metadata.added_at?.toString(),
-      plexUpdatedAt: metadata.updated_at?.toString(),
+      plexAddedAt: normalizedAddedAt ?? metadata.added_at?.toString(),
+      plexUpdatedAt: normalizedUpdatedAt ?? metadata.updated_at?.toString(),
+      addedAt: normalizedAddedAt ?? metadata.added_at?.toString(),
       tmdbId: ids.tmdbId,
       imdbId: ids.imdbId,
     };

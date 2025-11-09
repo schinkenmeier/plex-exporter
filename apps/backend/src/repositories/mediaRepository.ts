@@ -7,6 +7,25 @@ type MediaInsert = typeof mediaItems.$inferInsert;
 
 const escapeJsonLike = (value: string) => value.replace(/"/g, '""');
 
+const normalizeTimestampColumn = (
+  column: typeof mediaItems.plexAddedAt | typeof mediaItems.addedAt,
+) => sql`
+  CASE
+    WHEN ${column} IS NULL THEN NULL
+    WHEN trim(${column}) = '' THEN NULL
+    WHEN ${column} GLOB '[0-9]*' THEN
+      CASE
+        WHEN length(${column}) > 10 THEN datetime(${column} / 1000, 'unixepoch')
+        ELSE datetime(${column}, 'unixepoch')
+      END
+    ELSE ${column}
+  END
+`;
+
+const normalizedPlexAddedAt = normalizeTimestampColumn(mediaItems.plexAddedAt);
+const normalizedLegacyAddedAt = normalizeTimestampColumn(mediaItems.addedAt);
+const normalizedAddedAtExpression = sql`coalesce(${normalizedPlexAddedAt}, ${normalizedLegacyAddedAt}, ${mediaItems.createdAt})`;
+
 const normalizeMediaType = (value?: string | null): 'movie' | 'tv' => {
   if (value === 'tv' || value === 'show') {
     return 'tv';
@@ -354,7 +373,9 @@ export class MediaRepository {
         options.newDays != null && Number.isFinite(options.newDays) && options.newDays > 0
           ? Math.floor(options.newDays)
           : 30;
-      conditions.push(sql`julianday(${mediaItems.addedAt}) >= julianday('now') - ${windowDays}`);
+      conditions.push(
+        sql`julianday(${normalizedAddedAtExpression}) >= julianday('now') - ${windowDays}`,
+      );
     }
 
     const condition =
@@ -419,7 +440,9 @@ export class MediaRepository {
         options.newDays != null && Number.isFinite(options.newDays) && options.newDays > 0
           ? Math.floor(options.newDays)
           : 30;
-      conditions.push(sql`julianday(${mediaItems.addedAt}) >= julianday('now') - ${windowDays}`);
+      conditions.push(
+        sql`julianday(${normalizedAddedAtExpression}) >= julianday('now') - ${windowDays}`,
+      );
     }
 
     const condition =
