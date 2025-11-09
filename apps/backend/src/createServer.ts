@@ -1,6 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import path from 'node:path';
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 import { type AppConfig, loadPersistedConfig } from './config/index.js';
 import { createLibrariesRouter } from './routes/libraries.js';
@@ -54,6 +57,8 @@ import { SchedulerService } from './services/schedulerService.js';
 import { ImageStorageService } from './services/imageStorageService.js';
 import logger from './services/logger.js';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 export interface ServerDependencies {
   resendService?: MailSender | null;
   tautulliService?: TautulliClient | null;
@@ -70,6 +75,12 @@ export interface ServerDependencies {
 
 export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}) => {
   const app = express();
+  const adminUiDir = path.resolve(__dirname, '..', '..', 'frontend', 'public');
+  if (!fs.existsSync(adminUiDir)) {
+    throw new Error(
+      `Admin UI Build fehlt unter ${adminUiDir}. Bitte 'npm run build --workspace @plex-exporter/frontend' ausführen.`,
+    );
+  }
 
   const databaseResult =
     'database' in deps || 'drizzleDatabase' in deps
@@ -372,6 +383,19 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
   // Setup API documentation
   setupSwagger(app);
 
+  const adminDistDir = path.join(adminUiDir, 'dist');
+  if (!fs.existsSync(adminDistDir)) {
+    throw new Error(
+      `Admin UI Assets (${adminDistDir}) nicht gefunden. Bitte 'npm run build --workspace @plex-exporter/frontend' ausführen.`,
+    );
+  }
+  app.use(
+    '/dist',
+    express.static(adminDistDir, {
+      maxAge: appConfig.runtime.env === 'production' ? '1d' : 0,
+    }),
+  );
+
   // Public routes (no auth required)
   app.use('/health', createHealthRouter(appConfig));
   app.use('/api/thumbnails', createThumbnailRouter({
@@ -411,6 +435,7 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
       settingsRepository,
       tmdbManager,
       heroPipeline: heroPipelineService,
+      adminUiDir,
     }),
   );
 
