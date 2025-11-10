@@ -21,6 +21,14 @@ console.log('[main] Imports loaded, Modal V3 functions:', { openMovieDetailV3, o
 
 let taglineTicker = null;
 const heroFallbackNotice = { reason: null };
+const SITE_NAV_OPEN_CLASS = 'nav-open';
+const SITE_NAV_TOGGLE_ID = 'siteNavToggle';
+const SITE_NAV_ID = 'siteNav';
+const SITE_NAV_BREAKPOINT = '(max-width: 960px)';
+const FILTER_OVERLAY_CLASS = 'filters-overlay-open';
+const FILTER_OVERLAY_BREAKPOINT = '(max-width: 640px)';
+const FILTER_OVERLAY_BACKDROP_ID = 'filtersOverlayBackdrop';
+const FILTER_CLOSE_ID = 'advancedCloseBtn';
 
 const HERO_FALLBACK_MESSAGES = {
   error: detail => showError('Highlights vorübergehend nicht verfügbar', detail?.status?.lastError || 'Die Highlights werden bald erneut geladen.'),
@@ -185,6 +193,7 @@ function setFooterStatus(message, busy=true){
 export async function boot(){
   const isTestEnv = !!globalThis.__PLEX_TEST_MODE__;
   initErrorHandler();
+  initSiteNavigation();
   applyReduceMotionPref();
   showLoader();
   setFooterStatus('Initialisiere …', true);
@@ -287,6 +296,53 @@ export async function boot(){
     showRetryableError('Fehler beim Laden der Daten', () => window.location.reload());
     throw error;
   }
+}
+
+function initSiteNavigation(){
+  const toggle = document.getElementById(SITE_NAV_TOGGLE_ID);
+  const nav = document.getElementById(SITE_NAV_ID);
+  if(!toggle || !nav) return;
+  const shell = document.body;
+  const mediaQuery = window.matchMedia?.(SITE_NAV_BREAKPOINT) ?? null;
+
+  const setOpen = open=>{
+    const isMobile = mediaQuery ? mediaQuery.matches : true;
+    if(!isMobile){
+      shell.classList.remove(SITE_NAV_OPEN_CLASS);
+      nav.dataset.state = 'desktop';
+      toggle.setAttribute('aria-expanded','false');
+      return;
+    }
+    nav.dataset.state = open ? 'open' : 'closed';
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    shell.classList.toggle(SITE_NAV_OPEN_CLASS, open);
+  };
+
+  toggle.addEventListener('click', ()=>{
+    const isOpen = shell.classList.contains(SITE_NAV_OPEN_CLASS);
+    setOpen(!isOpen);
+  });
+
+  document.addEventListener('keyup', evt=>{
+    if(evt.key === 'Escape'){
+      setOpen(false);
+    }
+  });
+
+  const handleChange = ()=>{
+    if(!mediaQuery) return;
+    if(!mediaQuery.matches){
+      setOpen(false);
+    }
+  };
+
+  if(mediaQuery?.addEventListener){
+    mediaQuery.addEventListener('change', handleChange);
+  }else if(mediaQuery?.addListener){
+    mediaQuery.addListener(handleChange);
+  }
+
+  setOpen(false);
 }
 
 // Debounced hashchange handler to prevent race conditions
@@ -517,8 +573,15 @@ function initAdvancedToggle(){
   const btn = document.getElementById('toggleAdvanced');
   const panel = document.getElementById('advancedFilters');
   if(!btn || !panel) return;
+  const closeBtn = document.getElementById(FILTER_CLOSE_ID);
+  const backdrop = document.getElementById(FILTER_OVERLAY_BACKDROP_ID);
+  const body = document.body;
+  const mediaQuery = window.matchMedia?.(FILTER_OVERLAY_BREAKPOINT) ?? null;
   let animating = false;
   let fallbackTimer = 0;
+  let overlayActive = false;
+
+  const prefersOverlay = () => !!mediaQuery?.matches;
 
   const finishAnimation = ()=>{
     animating = false;
@@ -551,6 +614,15 @@ function initAdvancedToggle(){
   });
 
   const openPanel = ()=>{
+    if(prefersOverlay()){
+      overlayActive = true;
+      panel.hidden = false;
+      panel.dataset.state = 'overlay';
+      panel.setAttribute('aria-hidden', 'false');
+      body.classList.add(FILTER_OVERLAY_CLASS);
+      btn.setAttribute('aria-expanded', 'true');
+      return;
+    }
     if(animating) return;
     animating = true;
     panel.hidden = false;
@@ -561,11 +633,22 @@ function initAdvancedToggle(){
       const height = panel.scrollHeight;
       panel.style.setProperty('--advanced-max', height + 'px');
       panel.dataset.state = 'open';
+      btn.setAttribute('aria-expanded', 'true');
       queueFinish();
     });
   };
 
   const closePanel = ()=>{
+    if(overlayActive || (prefersOverlay() && btn.getAttribute('aria-expanded') === 'true')){
+      overlayActive = false;
+      body.classList.remove(FILTER_OVERLAY_CLASS);
+      panel.dataset.state = 'closed';
+      panel.setAttribute('aria-hidden', 'true');
+      panel.hidden = true;
+      panel.style.removeProperty('--advanced-max');
+      btn.setAttribute('aria-expanded', 'false');
+      return;
+    }
     if(animating) return;
     animating = true;
     const height = panel.scrollHeight;
@@ -576,18 +659,63 @@ function initAdvancedToggle(){
       panel.style.setProperty('--advanced-max', '0px');
       queueFinish();
     });
+    btn.setAttribute('aria-expanded', 'false');
   };
 
   btn.addEventListener('click', ()=>{
     const expanded = btn.getAttribute('aria-expanded') === 'true';
     if(expanded){
-      btn.setAttribute('aria-expanded', 'false');
       closePanel();
     }else{
-      btn.setAttribute('aria-expanded', 'true');
       openPanel();
     }
   });
+
+  closeBtn?.addEventListener('click', closePanel);
+  backdrop?.addEventListener('click', closePanel);
+
+  document.addEventListener('keyup', event=>{
+    if(event.key === 'Escape' && (btn.getAttribute('aria-expanded') === 'true' || overlayActive)){
+      closePanel();
+    }
+  });
+
+  const handleMediaChange = ()=>{
+    if(!mediaQuery) return;
+    if(mediaQuery.matches){
+      if(btn.getAttribute('aria-expanded') === 'true'){
+        overlayActive = true;
+        body.classList.add(FILTER_OVERLAY_CLASS);
+        panel.hidden = false;
+        panel.dataset.state = 'overlay';
+        panel.setAttribute('aria-hidden','false');
+      }else{
+        overlayActive = false;
+        body.classList.remove(FILTER_OVERLAY_CLASS);
+        panel.hidden = true;
+        panel.dataset.state = 'closed';
+      }
+      panel.style.removeProperty('--advanced-max');
+      animating = false;
+    }else if(overlayActive){
+      overlayActive = false;
+      body.classList.remove(FILTER_OVERLAY_CLASS);
+      if(btn.getAttribute('aria-expanded') === 'true'){
+        panel.hidden = false;
+        panel.dataset.state = 'open';
+        panel.setAttribute('aria-hidden','false');
+      }else{
+        panel.hidden = true;
+        panel.dataset.state = 'closed';
+      }
+    }
+  };
+
+  if(mediaQuery?.addEventListener){
+    mediaQuery.addEventListener('change', handleMediaChange);
+  }else if(mediaQuery?.addListener){
+    mediaQuery.addListener(handleMediaChange);
+  }
 }
 
 function initHeaderInteractions(){

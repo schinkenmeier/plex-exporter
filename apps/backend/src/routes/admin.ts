@@ -1,6 +1,5 @@
-import { Router, type Request, type Response, type NextFunction } from 'express';
+import express, { Router, type Request, type Response, type NextFunction } from 'express';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
 import os from 'node:os';
 import { sql } from 'drizzle-orm';
@@ -32,6 +31,7 @@ export interface AdminRouterOptions {
   settingsRepository: SettingsRepository;
   tmdbManager: TmdbManager;
   heroPipeline: HeroPipelineService;
+  adminUiDir?: string | null;
 }
 
 const startTime = Date.now();
@@ -219,7 +219,21 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
     settingsRepository,
     tmdbManager,
     heroPipeline,
+    adminUiDir = null,
   } = options;
+
+  if (!adminUiDir) {
+    throw new Error('Admin UI directory is not configured. Please run the frontend build and pass adminUiDir.');
+  }
+
+  const adminIndexPath = path.join(adminUiDir, 'admin.html');
+  if (!fs.existsSync(adminIndexPath)) {
+    throw new Error(
+      `Admin UI entry (${adminIndexPath}) nicht gefunden. Bitte das Frontend bauen (npm run build --workspace @plex-exporter/frontend).`,
+    );
+  }
+
+  router.use(express.static(adminUiDir, { index: false, redirect: false, fallthrough: true }));
   const seasonRepository =
     suppliedSeasonRepository ??
     (drizzleDatabase ? new SeasonRepository(drizzleDatabase) : null);
@@ -231,19 +245,7 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
    * Serve admin dashboard HTML
    */
   router.get('/', (_req: Request, res: Response) => {
-    const __dirname = path.dirname(fileURLToPath(import.meta.url));
-    // Try production path first (dist/routes -> src/views), then development path
-    const productionPath = path.join(__dirname, '..', '..', 'src', 'views', 'admin.html');
-    const devPath = path.join(__dirname, '..', 'views', 'admin.html');
-
-    const htmlPath = fs.existsSync(productionPath) ? productionPath : devPath;
-
-    if (!fs.existsSync(htmlPath)) {
-      logger.error('Admin dashboard HTML not found', { productionPath, devPath, __dirname });
-      return res.status(500).send('Admin dashboard HTML not found');
-    }
-
-    res.sendFile(htmlPath);
+    res.sendFile(adminIndexPath);
   });
 
   /**

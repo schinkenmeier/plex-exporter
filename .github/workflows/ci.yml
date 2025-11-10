@@ -104,6 +104,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build admin UI bundle
+        run: npm run build --workspace @plex-exporter/frontend
+
       - name: Run tests
         run: npm test --workspace @plex-exporter/backend
 

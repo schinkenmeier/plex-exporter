@@ -84,22 +84,33 @@ const maxCssKb = getLimit('MAX_CSS_KB', 150);
 await mkdir(distDir, { recursive: true });
 await prepareStaticArtifacts();
 
-const jsOptions = {
+const makeJsOptions = (entryFile, outfile) => ({
   bundle: true,
   minify: true,
   sourcemap: !watch,
   logLevel: 'info',
-  entryPoints: [path.join(frontendDir, 'src', 'main.js')],
+  entryPoints: [entryFile],
   format: 'esm',
   target: ['es2019'],
-  outfile: path.join(distDir, 'main.js'),
+  outfile,
   treeShaking: true,
   splitting: false, // Enable for code splitting if needed
   metafile: true, // Generate bundle analysis
   legalComments: 'none',
   drop: watch ? [] : ['console', 'debugger'],
   pure: ['console.log', 'console.debug']
-};
+});
+
+const jsTargets = [
+  {
+    name: 'main',
+    options: makeJsOptions(path.join(frontendDir, 'src', 'main.js'), path.join(distDir, 'main.js'))
+  },
+  {
+    name: 'admin',
+    options: makeJsOptions(path.join(frontendDir, 'src', 'admin', 'main.ts'), path.join(distDir, 'admin.js'))
+  }
+];
 
 const cssOptions = {
   bundle: true,
@@ -109,7 +120,8 @@ const cssOptions = {
   entryPoints: [
     path.join(frontendDir, 'styles', 'app.css'),
     path.join(frontendDir, 'styles', 'hero.css'),
-    path.join(frontendDir, 'styles', 'email-features.css')
+    path.join(frontendDir, 'styles', 'email-features.css'),
+    path.join(frontendDir, 'styles', 'admin.css')
   ],
   outdir: distDir,
   entryNames: '[name]',
@@ -117,31 +129,34 @@ const cssOptions = {
 };
 
 if(watch){
-  const [jsCtx, cssCtx] = await Promise.all([
-    context(jsOptions),
-    context(cssOptions)
+  const jsContexts = await Promise.all(jsTargets.map(target => context(target.options)));
+  const cssCtx = await context(cssOptions);
+  await Promise.all([
+    ...jsContexts.map(ctx => ctx.watch()),
+    cssCtx.watch()
   ]);
-  await Promise.all([jsCtx.watch(), cssCtx.watch()]);
   console.log('Watching for changes...');
 }else{
-  const [jsResult, cssResult] = await Promise.all([
-    build(jsOptions),
+  const [jsResults, cssResult] = await Promise.all([
+    Promise.all(jsTargets.map(target => build(target.options))),
     build(cssOptions)
   ]);
 
   let limitExceeded = false;
 
-  if(jsResult.metafile){
-    const jsSize = Object.entries(jsResult.metafile.outputs)
+  jsResults.forEach((result, index) => {
+    if(!result.metafile) return;
+    const jsSize = Object.entries(result.metafile.outputs)
       .filter(([file]) => file.endsWith('.js'))
       .reduce((total, [, output]) => total + (output.bytes || 0), 0);
     const jsSizeKb = jsSize / 1024;
-    console.log(`JS Bundle: ${jsSizeKb.toFixed(2)} KB`);
+    const label = jsTargets[index]?.name ?? `bundle-${index}`;
+    console.log(`JS Bundle (${label}): ${jsSizeKb.toFixed(2)} KB`);
     if(jsSizeKb > maxJsKb){
-      console.error(`JS Bundle überschreitet Limit (${jsSizeKb.toFixed(2)} KB > ${maxJsKb} KB). Passe MAX_JS_KB an, um das Limit zu ändern.`);
+      console.error(`JS Bundle (${label}) überschreitet Limit (${jsSizeKb.toFixed(2)} KB > ${maxJsKb} KB). Passe MAX_JS_KB an, um das Limit zu ändern.`);
       limitExceeded = true;
     }
-  }
+  });
 
   if(cssResult.metafile){
     const cssSize = Object.entries(cssResult.metafile.outputs)

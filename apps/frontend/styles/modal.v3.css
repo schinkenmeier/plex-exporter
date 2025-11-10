@@ -95,11 +95,16 @@ body.modalv3-open {
 @media (max-width: 640px) {
   .modalv3-overlay {
     padding: clamp(12px, 4vw, 24px);
+    align-items: stretch;
+    justify-content: stretch;
   }
 
   .modalv3-dialog {
     border-radius: var(--radius-lg);
-    max-height: 100vh;
+    width: 100vw;
+    max-height: none;
+    height: 100vh;
+    border-radius: 0;
   }
 
   .v3-head__actions {
@@ -112,6 +117,23 @@ body.modalv3-open {
     height: 38px;
     border-radius: 14px;
     font-size: 1.2rem;
+  }
+
+  .modalv3-scroll {
+    height: 100%;
+  }
+
+  .v3-shell {
+    padding: clamp(16px, 6vw, 24px);
+  }
+
+  .v3-shell-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .v3-shell-aside {
+    flex-direction: row;
+    flex-wrap: wrap;
   }
 }
 

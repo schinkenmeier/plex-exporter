@@ -5,17 +5,19 @@ FROM node:lts-bookworm AS builder
 
 WORKDIR /app
 
-# Install backend workspace dependencies first to leverage Docker layer caching
+# Install workspace dependencies (backend + frontend) for deterministic builds
 COPY package.json package-lock.json ./
 COPY apps/backend/package.json apps/backend/
+COPY apps/frontend/package.json apps/frontend/
 COPY packages/shared/package.json packages/shared/
 
-RUN CI=true npm install --workspace @plex-exporter/backend
+RUN CI=true npm install
 
-# Copy the remaining project files and build the production bundle
+# Copy remaining files and build frontend + backend bundles
 COPY . .
 
-RUN npm run build --workspace @plex-exporter/backend
+RUN npm run build --workspace @plex-exporter/frontend && \
+    npm run build --workspace @plex-exporter/backend
 
 # Production stage
 FROM node:lts-bookworm-slim AS production
@@ -31,9 +33,9 @@ COPY packages/shared/package.json packages/shared/
 RUN CI=true npm install --workspace @plex-exporter/backend --omit=dev && \
     npm cache clean --force
 
-# Copy built application from builder stage
+# Copy built application and frontend assets from builder stage
 COPY --from=builder /app/apps/backend/dist ./apps/backend/dist
-COPY --from=builder /app/apps/backend/src/views ./apps/backend/src/views
+COPY --from=builder /app/apps/frontend/public ./apps/frontend/public
 COPY --from=builder /app/packages/shared/src ./packages/shared/src
 
 # Create directories for data volumes
