@@ -6,6 +6,9 @@ import { createLoaderService } from './services/loader.ts';
 const APP_CLASS = 'admin-app-shell';
 const VIEW_CONTAINER_ID = 'admin-view-root';
 const NAV_BUTTON_CLASS = 'admin-nav-button';
+const NAV_TOGGLE_CLASS = 'admin-nav-toggle';
+const NAV_OPEN_CLASS = 'nav-open';
+const MOBILE_BREAKPOINT = '(max-width: 960px)';
 
 export async function bootstrapAdminApp(): Promise<void> {
   const root = document.getElementById('admin-root');
@@ -35,6 +38,7 @@ export async function bootstrapAdminApp(): Promise<void> {
     }
 
     layout.updateActiveNav(targetId);
+    layout.setNavOpen(false);
     if (typeof activeTeardown === 'function') {
       await Promise.resolve(activeTeardown());
     }
@@ -56,6 +60,18 @@ export async function bootstrapAdminApp(): Promise<void> {
     button.addEventListener('click', () => switchView(button.dataset.view || ''));
   });
 
+  layout.navToggle?.addEventListener('click', () => {
+    const isOpen = layout.shell.classList.contains(NAV_OPEN_CLASS);
+    layout.setNavOpen(!isOpen);
+  });
+
+  const handleEscape = (event: KeyboardEvent): void => {
+    if (event.key === 'Escape') {
+      layout.setNavOpen(false);
+    }
+  };
+  document.addEventListener('keyup', handleEscape);
+
   await switchView(state.currentView);
 }
 
@@ -69,7 +85,7 @@ function createBaseLayout() {
         <h1>Plex Exporter</h1>
         <p>Admin Console</p>
       </div>
-      <nav class="admin-nav" data-role="navigation"></nav>
+      <nav id="admin-nav" class="admin-nav" data-role="navigation"></nav>
     </aside>
     <main class="admin-main">
       <header class="admin-header">
@@ -77,6 +93,9 @@ function createBaseLayout() {
           <h2 id="admin-view-title">Admin Dashboard</h2>
           <p id="admin-view-description">Systemübersicht & Werkzeuge</p>
         </div>
+        <button type="button" class="${NAV_TOGGLE_CLASS}" aria-controls="admin-nav" aria-expanded="false">
+          Navigation
+        </button>
       </header>
       <section id="${VIEW_CONTAINER_ID}" class="admin-view-container"></section>
     </main>
@@ -102,6 +121,40 @@ function createBaseLayout() {
     throw new Error('view container missing');
   }
 
+  const navToggle = shell.querySelector(`.${NAV_TOGGLE_CLASS}`) as HTMLButtonElement | null;
+  if (navToggle) {
+    navToggle.setAttribute('aria-expanded', 'false');
+  }
+
+  const mediaQuery = window.matchMedia?.(MOBILE_BREAKPOINT) ?? null;
+  shell.dataset.navReady = 'true';
+  const setNavOpen = (open: boolean): void => {
+    const isMobile = mediaQuery ? mediaQuery.matches : true;
+    if (!isMobile) {
+      shell.classList.remove(NAV_OPEN_CLASS);
+      navToggle?.setAttribute('aria-expanded', 'false');
+      return;
+    }
+    if (open) {
+      shell.classList.add(NAV_OPEN_CLASS);
+    } else {
+      shell.classList.remove(NAV_OPEN_CLASS);
+    }
+    navToggle?.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+
+  const handleMediaChange = (): void => {
+    if (!mediaQuery) return;
+    if (!mediaQuery.matches) {
+      setNavOpen(false);
+    }
+  };
+  if (mediaQuery?.addEventListener) {
+    mediaQuery.addEventListener('change', handleMediaChange);
+  } else if (mediaQuery?.addListener) {
+    mediaQuery.addListener(handleMediaChange);
+  }
+
   const updateActiveNav = (viewId: string): void => {
     navButtons.forEach(button => {
       const isActive = button.dataset.view === viewId;
@@ -114,5 +167,5 @@ function createBaseLayout() {
     if (descriptionEl && meta) descriptionEl.textContent = meta.description;
   };
 
-  return { shell, viewContainer, navButtons, updateActiveNav };
+  return { shell, viewContainer, navButtons, updateActiveNav, navToggle, setNavOpen };
 }

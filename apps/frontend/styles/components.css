@@ -152,6 +152,8 @@
   transition: transform var(--transition-smooth), background-color var(--transition-smooth), opacity var(--transition-smooth), border-color var(--transition-smooth), color var(--transition-smooth), box-shadow var(--transition-smooth);
   background-color: rgba(16, 22, 34, 0.88);
   color: var(--fg);
+  min-height: 44px;
+  touch-action: manipulation;
 }
 
 .btn.primary,
@@ -490,6 +492,24 @@
   gap: 6px;
 }
 
+@media (max-width: 640px) {
+  .chip-group {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .chip-group::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chip-group .chip {
+    scroll-snap-align: start;
+  }
+}
+
 .chip {
   display: inline-flex;
   align-items: center;
@@ -582,6 +602,8 @@
   transform: translateZ(0);
   backface-visibility: hidden;
   -webkit-font-smoothing: antialiased;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .card::before {
@@ -753,6 +775,8 @@
   transition: background var(--transition-base), border-color var(--transition-base), color var(--transition-base), box-shadow var(--transition-base);
   cursor: pointer;
   width: 100%;
+  min-height: 42px;
+  touch-action: manipulation;
 }
 
 .card__primary:hover,
@@ -818,6 +842,8 @@
   border: 1px solid var(--border);
   background: rgba(14, 22, 38, 0.9);
   color: var(--fg);
+  min-height: 42px;
+  touch-action: manipulation;
   padding: 8px 14px;
   font-size: 13px;
   font-weight: 600;

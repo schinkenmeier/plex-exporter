@@ -81,7 +81,11 @@
           <h1 class="site-header__label">Plex-Katalog</h1>
         </div>
       </div>
-      <nav class="site-nav" aria-label="Libraries">
+      <button type="button" class="site-nav__toggle" id="siteNavToggle" aria-expanded="false" aria-controls="siteNav">
+        Menü
+        <span class="site-nav__toggle-icon" aria-hidden="true"></span>
+      </button>
+      <nav id="siteNav" class="site-nav" aria-label="Libraries" data-state="closed">
         <div class="site-nav__tabs" id="libraryTabs">
           <button type="button" class="site-nav__tab" data-lib="movies" aria-pressed="true">Movies</button>
           <button type="button" class="site-nav__tab" data-lib="series" aria-pressed="false">Shows</button>
@@ -147,6 +151,12 @@
       </div>
 
       <div class="filters-advanced" id="advancedFilters" hidden data-state="closed" aria-hidden="true">
+        <div class="filters-advanced__header">
+          <h3>Erweiterte Filter</h3>
+          <button type="button" class="filters-advanced__close" id="advancedCloseBtn" aria-label="Erweiterte Filter schließen">
+            Schließen
+          </button>
+        </div>
         <div class="advanced-quick">
           <div class="quick-filter" id="quickFilterGenres">
             <div id="genreFilters" class="chip-group" data-empty="Alle Genres" data-state="empty"></div>
@@ -176,6 +186,7 @@
       </div>
     </div>
   </section>
+  <div id="filtersOverlayBackdrop" class="filters-overlay-backdrop" aria-hidden="true"></div>
 
   <div id="watchlistModal" class="modal-overlay watchlist-modal" role="dialog" aria-modal="true" aria-labelledby="watchlistTitle" hidden>
     <div class="modal-content watchlist-modal__content" tabindex="-1">
