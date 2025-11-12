@@ -26,6 +26,8 @@ apps/frontend/public/config/frontend.json
 # Logs
 *.log
 logs/
+!apps/frontend/src/admin/views/logs
+!apps/frontend/src/admin/views/logs/**
 
 # Process files
 *.pid
