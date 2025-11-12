@@ -40,6 +40,8 @@ storage/
 # Logs
 logs
 *.log
+!apps/frontend/src/admin/views/logs
+!apps/frontend/src/admin/views/logs/**
 
 # Git
 .git
