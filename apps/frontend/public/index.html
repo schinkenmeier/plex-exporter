@@ -81,9 +81,9 @@
           <h1 class="site-header__label">Plex-Katalog</h1>
         </div>
       </div>
-      <button type="button" class="site-nav__toggle" id="siteNavToggle" aria-expanded="false" aria-controls="siteNav">
-        Menü
+      <button type="button" class="site-nav__toggle" id="siteNavToggle" aria-expanded="false" aria-controls="siteNav" hidden>
         <span class="site-nav__toggle-icon" aria-hidden="true"></span>
+        <span class="site-nav__toggle-label">Menü</span>
       </button>
       <nav id="siteNav" class="site-nav" aria-label="Libraries" data-state="closed">
         <div class="site-nav__tabs" id="libraryTabs">
@@ -96,6 +96,7 @@
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-settings"></use></svg>
         </button>
       </nav>
+      <div id="siteNavBackdrop" class="site-nav-backdrop" hidden aria-hidden="true"></div>
     </div>
   </header>
 
