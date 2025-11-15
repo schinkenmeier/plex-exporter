@@ -46,6 +46,8 @@ import { setupSwagger } from './config/swaggerSetup.js';
 import { createAdminRouter } from './routes/admin.js';
 import { createBasicAuthMiddleware } from './middleware/basicAuth.js';
 import { createThumbnailRouter } from './routes/thumbnails.js';
+import { createRateLimiters } from './middleware/rateLimiter.js';
+import { createSQLiteRateLimitStore } from './middleware/sqliteRateLimitStore.js';
 import {
   createTautulliSyncRouter,
   DEFAULT_SNAPSHOT_LIMIT,
@@ -99,6 +101,25 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
 
   // Set global database for email services
   setGlobalDb(drizzleDb);
+
+  const resolvedDatabaseDir =
+    appConfig.database.sqlitePath === ':memory:'
+      ? null
+      : path.dirname(path.resolve(appConfig.database.sqlitePath));
+  const rateLimitDatabasePath = resolvedDatabaseDir
+    ? path.join(resolvedDatabaseDir, 'rate-limit.sqlite')
+    : null;
+
+  const rateLimiters = createRateLimiters({
+    createStore: rateLimitDatabasePath
+      ? ({ limiterName, windowMs }) =>
+          createSQLiteRateLimitStore({
+            databasePath: rateLimitDatabasePath,
+            windowMs,
+            keyPrefix: limiterName,
+          })
+      : undefined,
+  });
 
   const settingsRepository =
     'settingsRepository' in deps
@@ -399,12 +420,21 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
   // Public routes (no auth required)
   app.use('/health', createHealthRouter(appConfig));
   app.use('/api/thumbnails', createThumbnailRouter({
-    tautulliService: tautulliState.service as any
+    getTautulliService: () => tautulliState.service as any
   }));
   if (heroPipelineService) {
-    app.use('/api/hero', createHeroRouter({ heroPipeline: heroPipelineService }));
+    app.use('/api/hero', createHeroRouter({ heroPipeline: heroPipelineService, heroLimiter: rateLimiters.heroLimiter }));
   }
-  app.use('/api/v1', createV1Router({ mediaRepository, thumbnailRepository, seasonRepository, castRepository }));
+  app.use('/api/v1', createV1Router({
+    mediaRepository,
+    thumbnailRepository,
+    seasonRepository,
+    castRepository,
+    rateLimiters: {
+      apiLimiter: rateLimiters.apiLimiter,
+      searchLimiter: rateLimiters.searchLimiter,
+    },
+  }));
   app.use('/api/watchlist', createWatchlistRouter({ settingsRepository }));
   app.use('/api/welcome-email', welcomeEmailRouter);
   app.use('/api/newsletter', newsletterRouter);
@@ -417,7 +447,7 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
     authMiddleware,
     createLibrariesRouter({ tautulliService: tautulliState.service, snapshotRepository: tautulliSnapshotRepository }),
   );
-  app.use('/media', createMediaRouter({ mediaRepository, thumbnailRepository }));
+  app.use('/media', basicAuthMiddleware, createMediaRouter({ mediaRepository, thumbnailRepository }));
 
   // Admin panel (protected with Basic Auth)
   app.use(

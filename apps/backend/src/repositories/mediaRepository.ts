@@ -256,6 +256,47 @@ export class MediaRepository {
     return rows.map(mapRowToRecord);
   }
 
+  listByType(mediaType: 'movie' | 'tv'): MediaRecord[] {
+    const rows = this.db
+      .select()
+      .from(mediaItems)
+      .where(eq(mediaItems.type, mediaType))
+      .orderBy(asc(mediaItems.title))
+      .all();
+
+    return rows.map(mapRowToRecord);
+  }
+
+  getCountsByType(): { totalMovies: number; totalSeries: number; totalItems: number } {
+    const rows = this.db
+      .select({
+        type: mediaItems.type,
+        count: sql<number>`count(*)`,
+      })
+      .from(mediaItems)
+      .groupBy(mediaItems.type)
+      .all();
+
+    let totalMovies = 0;
+    let totalSeries = 0;
+    let totalItems = 0;
+
+    for (const row of rows) {
+      totalItems += row.count;
+      if (row.type === 'movie') {
+        totalMovies = row.count;
+      } else if (row.type === 'tv') {
+        totalSeries = row.count;
+      }
+    }
+
+    return {
+      totalMovies,
+      totalSeries,
+      totalItems,
+    };
+  }
+
   update(id: number, input: MediaUpdateInput): MediaRecord | null {
     const existing = this.getById(id);
     if (!existing) {

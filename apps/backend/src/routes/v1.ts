@@ -7,7 +7,7 @@ import CastRepository from '../repositories/castRepository.js';
 import type { EpisodeRecord, SeasonRecordWithEpisodes } from '../repositories/seasonRepository.js';
 import type { CastAppearance } from '../repositories/castRepository.js';
 import { HttpError } from '../middleware/errorHandler.js';
-import { apiLimiter, searchLimiter } from '../middleware/rateLimiter.js';
+import { createRateLimiters, type RateLimiterSet } from '../middleware/rateLimiter.js';
 import { createShortCache, createMediumCache, createLongCache } from '../services/cacheService.js';
 import { cacheMiddleware } from '../middleware/cacheMiddleware.js';
 import { normalizeTimestamp } from '../utils/timestamps.js';
@@ -17,10 +17,21 @@ export interface V1RouterOptions {
   thumbnailRepository: ThumbnailRepository;
   seasonRepository: SeasonRepository;
   castRepository: CastRepository;
+  rateLimiters?: Pick<RateLimiterSet, 'apiLimiter' | 'searchLimiter'>;
 }
 
-export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRepository, castRepository }: V1RouterOptions): Router => {
+const defaultRateLimiters = createRateLimiters();
+
+export const createV1Router = ({
+  mediaRepository,
+  thumbnailRepository,
+  seasonRepository,
+  castRepository,
+  rateLimiters,
+}: V1RouterOptions): Router => {
   const router = Router();
+  const apiLimiterMiddleware = rateLimiters?.apiLimiter ?? defaultRateLimiters.apiLimiter;
+  const searchLimiterMiddleware = rateLimiters?.searchLimiter ?? defaultRateLimiters.searchLimiter;
 
   // Create cache instances for different data types
   const statsCache = createShortCache(); // 1 minute for stats
@@ -202,10 +213,9 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
    * GET /api/v1/movies
    * List all movies from database (includes extended metadata)
   */
-  router.get('/movies', apiLimiter, cacheMiddleware({ cache: listCache }), (req: Request, res: Response, next: NextFunction) => {
+  router.get('/movies', apiLimiterMiddleware, cacheMiddleware({ cache: listCache }), (req: Request, res: Response, next: NextFunction) => {
     try {
-      const allMedia = mediaRepository.listAll();
-      const movies = allMedia.filter(m => m.mediaType === 'movie');
+      const movies = mediaRepository.listByType('movie');
 
       // Map to frontend-compatible format with extended metadata (bulk thumbnail loading)
       const response = mapMediaListToResponse(movies, true, req);
@@ -221,7 +231,7 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
    * GET /api/v1/movies/:id
    * Get movie details by plexId (includes extended metadata)
    */
-  router.get('/movies/:id', apiLimiter, cacheMiddleware({ cache: detailCache }), (req: Request, res: Response, next: NextFunction) => {
+  router.get('/movies/:id', apiLimiterMiddleware, cacheMiddleware({ cache: detailCache }), (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
       const movie = mediaRepository.getByPlexId(id);
@@ -253,10 +263,9 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
    * GET /api/v1/series
    * List all series from database (includes extended metadata)
    */
-  router.get('/series', apiLimiter, cacheMiddleware({ cache: listCache }), (req: Request, res: Response, next: NextFunction) => {
+  router.get('/series', apiLimiterMiddleware, cacheMiddleware({ cache: listCache }), (req: Request, res: Response, next: NextFunction) => {
     try {
-      const allMedia = mediaRepository.listAll();
-      const series = allMedia.filter(m => m.mediaType === 'tv');
+      const series = mediaRepository.listByType('tv');
 
       // Map to frontend-compatible format with extended metadata (bulk thumbnail loading)
       const response = mapMediaListToResponse(series, true, req);
@@ -272,7 +281,7 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
    * GET /api/v1/series/:id
    * Get series details by plexId (includes extended metadata)
    */
-  router.get('/series/:id', apiLimiter, cacheMiddleware({ cache: detailCache }), (req: Request, res: Response, next: NextFunction) => {
+  router.get('/series/:id', apiLimiterMiddleware, cacheMiddleware({ cache: detailCache }), (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
       const series = mediaRepository.getByPlexId(id);
@@ -306,16 +315,14 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
    * GET /api/v1/stats
    * Get database statistics
    */
-  router.get('/stats', apiLimiter, cacheMiddleware({ cache: statsCache }), (req: Request, res: Response, next: NextFunction) => {
+  router.get('/stats', apiLimiterMiddleware, cacheMiddleware({ cache: statsCache }), (req: Request, res: Response, next: NextFunction) => {
     try {
-      const allMedia = mediaRepository.listAll();
-      const movies = allMedia.filter(m => m.mediaType === 'movie');
-      const series = allMedia.filter(m => m.mediaType === 'tv');
+      const stats = mediaRepository.getCountsByType();
 
       const response = {
-        totalMovies: movies.length,
-        totalSeries: series.length,
-        totalItems: allMedia.length,
+        totalMovies: stats.totalMovies,
+        totalSeries: stats.totalSeries,
+        totalItems: stats.totalItems,
       };
 
       res.setHeader('Cache-Control', 'public, max-age=60'); // 1 min cache
@@ -330,7 +337,7 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
    * Filter media with query parameters
    * Query params: type, year, yearFrom, yearTo, search, limit, offset, sortBy, sortOrder
    */
-  router.get('/filter', apiLimiter, cacheMiddleware({ cache: listCache }), (req: Request, res: Response, next: NextFunction) => {
+  router.get('/filter', apiLimiterMiddleware, cacheMiddleware({ cache: listCache }), (req: Request, res: Response, next: NextFunction) => {
     try {
       // Validate query parameters
       const validatedQuery = filterQuerySchema.parse(req.query);
@@ -416,7 +423,7 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
    * Search media by title or summary
    * Query param: q (search query), type (optional), limit (optional)
    */
-  router.get('/search', searchLimiter, cacheMiddleware({ cache: listCache }), (req: Request, res: Response, next: NextFunction) => {
+  router.get('/search', searchLimiterMiddleware, cacheMiddleware({ cache: listCache }), (req: Request, res: Response, next: NextFunction) => {
     try {
       // Validate query parameters
       const validatedQuery = searchQuerySchema.parse(req.query);
@@ -451,7 +458,7 @@ export const createV1Router = ({ mediaRepository, thumbnailRepository, seasonRep
    * Get recently added media
    * Query params: limit (default: 20), type (optional: 'movie' or 'tv')
    */
-  router.get('/recent', apiLimiter, cacheMiddleware({ cache: statsCache }), (req: Request, res: Response, next: NextFunction) => {
+  router.get('/recent', apiLimiterMiddleware, cacheMiddleware({ cache: statsCache }), (req: Request, res: Response, next: NextFunction) => {
     try {
       // Validate query parameters
       const validatedQuery = recentQuerySchema.parse(req.query);

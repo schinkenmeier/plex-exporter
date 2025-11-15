@@ -1,12 +1,15 @@
-import { Router, type Request, type Response, type NextFunction } from 'express';
+import { Router, type Request, type Response, type NextFunction, type RequestHandler } from 'express';
 
 import { HttpError } from '../middleware/errorHandler.js';
 import type { HeroPipelineService } from '../services/heroPipeline.js';
-import { heroLimiter } from '../middleware/rateLimiter.js';
+import { createRateLimiters } from '../middleware/rateLimiter.js';
 
 export interface HeroRouterOptions {
   heroPipeline: HeroPipelineService;
+  heroLimiter?: RequestHandler;
 }
+
+const defaultLimiters = createRateLimiters();
 
 const normalizeKind = (kind: string | undefined): 'movies' | 'series' => {
   if (!kind) return 'movies';
@@ -112,10 +115,11 @@ const convertThumbnailToUrl = (path: string | null, mediaType: 'movie' | 'tv', r
   return buildAbsolute(`/api/thumbnails/${type}${encoded ? `/${encoded}` : ''}`);
 };
 
-export const createHeroRouter = ({ heroPipeline }: HeroRouterOptions): Router => {
+export const createHeroRouter = ({ heroPipeline, heroLimiter }: HeroRouterOptions): Router => {
   const router = Router();
+  const limiter = heroLimiter ?? defaultLimiters.heroLimiter;
 
-  router.get('/:kind', heroLimiter, async (req: Request, res: Response, next: NextFunction) => {
+  router.get('/:kind', limiter, async (req: Request, res: Response, next: NextFunction) => {
     const kind = normalizeKind(req.params.kind);
     const force = parseForceFlag(req.query.force ?? req.query.refresh);
 

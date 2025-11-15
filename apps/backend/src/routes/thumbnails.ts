@@ -6,6 +6,7 @@ import type TautulliService from '../services/tautulliService.js';
 export interface ThumbnailRouterOptions {
   exportsBasePath?: string;
   tautulliService?: TautulliService;
+  getTautulliService?: () => TautulliService | null;
 }
 
 /**
@@ -159,8 +160,20 @@ export const createThumbnailRouter = (options: ThumbnailRouterOptions = {}): Rou
    * where :type is either 'thumb' or 'art'
    * Proxies image requests to Tautulli with authentication
    */
-  if (options.tautulliService) {
+  const resolveTautulliService = () => {
+    if (typeof options.getTautulliService === 'function') {
+      return options.getTautulliService();
+    }
+    return options.tautulliService ?? null;
+  };
+
+  if (options.tautulliService || options.getTautulliService) {
     router.get('/tautulli/library/metadata/:id/:type/:timestamp', async (req, res) => {
+      const tautulliService = resolveTautulliService();
+      if (!tautulliService) {
+        return res.status(503).json({ error: 'Tautulli integration is not configured' });
+      }
+
       const { id, type, timestamp } = req.params;
 
       if (!id || !timestamp || !type || (type !== 'thumb' && type !== 'art')) {
@@ -168,11 +181,11 @@ export const createThumbnailRouter = (options: ThumbnailRouterOptions = {}): Rou
       }
 
       try {
-        const tautulliBaseUrl = options.tautulliService!.getBaseUrl();
+        const tautulliBaseUrl = tautulliService.getBaseUrl();
         const imageUrl = `${tautulliBaseUrl}/library/metadata/${id}/${type}/${timestamp}`;
 
         // Fetch image from Tautulli using the service's http client (which has API key)
-        const response = await (options.tautulliService! as any).httpClient.get(imageUrl, {
+        const response = await (tautulliService as any).httpClient.get(imageUrl, {
           responseType: 'arraybuffer',
           timeout: 10000,
         });
