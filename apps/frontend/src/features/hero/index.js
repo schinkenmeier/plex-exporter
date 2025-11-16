@@ -94,6 +94,7 @@ export function showHeroFallback(reason = 'default', overrides = {}){
   hero.dataset.heroKind = 'fallback';
   hero.dataset.heroId = '';
   hero.dataset.state = 'fallback';
+  hero.dataset.heroFocus = 'center';
   hero.classList.remove('hero--has-media');
   clearPicture(heroPicture, heroImage, heroSourceLarge, heroSourceMedium);
   updateHeroMediaPlaceholder(heroMediaPlaceholder, 'hidden');
@@ -156,9 +157,10 @@ export function refreshHero(listOverride){
   if(!candidate){
     setCurrentHeroItem(null);
     lastFallbackReason = null;
-    hero.dataset.heroKind = '';
-    hero.dataset.heroId = '';
-    hero.dataset.state = 'empty';
+  hero.dataset.heroKind = '';
+  hero.dataset.heroId = '';
+  hero.dataset.state = 'empty';
+  hero.dataset.heroFocus = 'center';
     hero.classList.remove('hero--has-media');
     clearPicture(heroPicture, heroImage, heroSourceLarge, heroSourceMedium);
     updateHeroMediaPlaceholder(heroMediaPlaceholder, 'hidden');
@@ -196,6 +198,7 @@ export function refreshHero(listOverride){
   hero.dataset.heroKind = kind;
   hero.dataset.heroId = targetId;
   hero.dataset.state = 'ready';
+  hero.dataset.heroFocus = 'center';
 
   heroTitle.textContent = normalized.title || defaults.title;
 
@@ -593,6 +596,7 @@ function renderMedia(hero, picture, image, sourceLarge, sourceMedium, entry, pla
     if(posterFallback){
       try{
         hero.classList.add('hero--has-media');
+        applyHeroFocus(hero, 'center');
         updateHeroMediaPlaceholder(placeholder, 'poster');
         setSource(sourceLarge, posterFallback);
         setSource(sourceMedium, posterFallback);
@@ -606,6 +610,7 @@ function renderMedia(hero, picture, image, sourceLarge, sourceMedium, entry, pla
       }
     }
     updateHeroMediaPlaceholder(placeholder, 'empty');
+    applyHeroFocus(hero, 'center');
     console.warn('[Hero] No backdrop available for:', entry?.title);
     clearPicture(picture, image, sourceLarge, sourceMedium);
     hero.classList.remove('hero--has-media');
@@ -614,6 +619,7 @@ function renderMedia(hero, picture, image, sourceLarge, sourceMedium, entry, pla
 
   try{
     hero.classList.add('hero--has-media');
+    applyHeroFocus(hero, resolveFocusFromSource(primary));
     updateHeroMediaPlaceholder(placeholder, 'hidden');
     setSource(sourceLarge, primary);
     setSource(sourceMedium, primary);
@@ -664,6 +670,19 @@ function updateHeroMediaPlaceholder(placeholder, state){
   placeholder.hidden = false;
   placeholder.dataset.state = nextState;
   placeholder.setAttribute('aria-hidden', 'false');
+}
+
+function applyHeroFocus(hero, focus){
+  if(!hero) return;
+  hero.dataset.heroFocus = focus || 'center';
+}
+
+function resolveFocusFromSource(url){
+  if(!url) return 'center';
+  if(/image\.tmdb\.org/i.test(url)){
+    return 'right';
+  }
+  return 'center';
 }
 
 function formatRuntime(minutes){
