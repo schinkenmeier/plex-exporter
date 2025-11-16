@@ -81,7 +81,8 @@ export function initHeroAutoplay({ onRefresh = refreshHero } = {}){
     const items = Array.isArray(plan.items) ? plan.items : [];
     const snapshot = plan.snapshot || HeroPipeline.getSnapshot();
     const status = snapshot.status?.[rotationKind];
-    const busy = !HeroPipeline.isReady() || status?.regenerating;
+    const kindReady = status && (status.state === 'ready' || status.state === 'stale' || status.state === 'error');
+    const busy = !kindReady || status?.regenerating;
     const signature = `${rotationKind}:${status?.updatedAt || 0}:${items.length}`;
     const hadItems = rotationItems.length > 0;
     const previouslyPaused = pipelinePaused;

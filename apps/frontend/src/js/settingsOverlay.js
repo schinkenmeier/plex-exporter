@@ -277,6 +277,15 @@ export function initSettingsOverlay(cfg){
     catch(err){ console.warn('[settingsOverlay] Failed to store reduce-motion preference:', err?.message || err); }
     notifyReduceMotion(reduce.checked);
   });
+  heroRefreshMovies && heroRefreshMovies.addEventListener('click', ()=>{
+    void runHeroRegeneration('movies', 'Highlights Filme aktualisieren …');
+  });
+  heroRefreshShows && heroRefreshShows.addEventListener('click', ()=>{
+    void runHeroRegeneration('series', 'Highlights Serien aktualisieren …');
+  });
+  heroRefreshAll && heroRefreshAll.addEventListener('click', ()=>{
+    void runHeroRegeneration('all', 'Alle Highlights aktualisieren …');
+  });
   resetFilters && resetFilters.addEventListener('click', ()=>{
     const search = document.getElementById('search'); if(search) search.value='';
     const q = document.getElementById('q'); if(q) q.value='';

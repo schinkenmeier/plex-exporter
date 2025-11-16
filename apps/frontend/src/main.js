@@ -148,7 +148,7 @@ function refreshHeroWithPipeline(listOverride){
     const currentView = getState().view === 'shows' ? 'series' : 'movies';
     const plan = HeroPipeline.getRotationPlan(currentView);
     const status = plan?.snapshot?.status?.[currentView];
-    const ready = HeroPipeline.isReady();
+    const kindReady = status && (status.state === 'ready' || status.state === 'stale' || status.state === 'error');
     const busy = status?.regenerating;
     const items = Array.isArray(plan?.items) ? plan.items : [];
     const pipelineError = status?.state === 'error';
@@ -160,7 +160,7 @@ function refreshHeroWithPipeline(listOverride){
       }
       return;
     }
-    if(ready && !busy && items.length){
+    if(kindReady && !busy && items.length){
       const index = plan.startIndex % items.length;
       const entry = items[index];
       if(entry){
@@ -280,12 +280,12 @@ export async function boot(){
       initScrollTop();
       initFilterBarAutoHideFallback();
       initInfiniteScroll();
-      refreshHeroWithPipeline(filtered);
+      refreshHeroWithPipeline();
       initHeroAutoplay({ onRefresh: refreshHeroWithPipeline });
       Debug.initDebugUi();
     }else{
       try{
-        refreshHeroWithPipeline(filtered);
+        refreshHeroWithPipeline();
       }catch(err){
         console.warn('[main] Test env hero refresh skipped:', err?.message || err);
       }
@@ -546,7 +546,11 @@ function renderFooterMeta(){
 
 Filter.setFiltersUpdatedHandler((items, _view, _meta) => {
   try{
-    refreshHeroWithPipeline(items);
+    if(HeroPipeline.isEnabled()){
+      refreshHeroWithPipeline();
+    }else{
+      refreshHeroWithPipeline(items);
+    }
     renderFooterMeta();
   }catch(err){
     console.warn('[main] Failed to refresh hero from filters handler:', err?.message);

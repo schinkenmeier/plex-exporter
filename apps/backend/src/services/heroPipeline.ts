@@ -76,6 +76,7 @@ export interface HeroPoolPayload {
   items: HeroPoolItem[];
   updatedAt: number;
   expiresAt: number;
+  cacheVersion?: number;
   policyHash: string;
   slotSummary: Record<string, number>;
   matchesPolicy: boolean;
@@ -119,6 +120,7 @@ const DEFAULT_POLICY: HeroPolicy = {
   language: 'en-US',
 };
 
+const HERO_CACHE_VERSION = 2;
 const HISTORY_LIMIT = 60;
 const HISTORY_WINDOW_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
 const NEW_WINDOW_MS = 1000 * 60 * 60 * 24 * 90; // 90 days
@@ -469,6 +471,15 @@ const extractIds = (record: MediaRecord): Record<string, string> => {
   const ids: Record<string, string> = {};
   if (record.plexId) ids.ratingKey = record.plexId;
   parseGuid(record.guid, ids);
+  if (!ids.tmdb && record.tmdbId != null) {
+    ids.tmdb = String(record.tmdbId);
+  }
+  if (!ids.imdb && record.imdbId) {
+    const normalized = String(record.imdbId).trim();
+    if (normalized) {
+      ids.imdb = normalized.startsWith('tt') ? normalized : `tt${normalized}`;
+    }
+  }
   return ids;
 };
 
@@ -1030,8 +1041,23 @@ export const createHeroPipelineService = ({
     const stored = loadStored(normalizedKind);
     const nowTs = Date.now();
 
-    if (!options.force && stored?.payload && stored.row.expiresAt > nowTs && stored.row.policyHash === policyHash) {
-      const payload = stored.payload;
+    const tmdbEnabledNow = Boolean(activeTmdbService?.isEnabled());
+    const cachedTmdbEnabled = Boolean(stored?.payload?.meta?.tmdb?.enabled);
+    const shouldInvalidateTmdbCache = tmdbEnabledNow && !cachedTmdbEnabled;
+    const storedRow = stored?.row ?? null;
+    const storedPayload = stored?.payload ?? null;
+    const cacheVersionMatches = storedPayload?.cacheVersion === HERO_CACHE_VERSION;
+
+    if (
+      !options.force &&
+      storedPayload &&
+      storedRow &&
+      storedRow.expiresAt > nowTs &&
+      storedRow.policyHash === policyHash &&
+      cacheVersionMatches &&
+      !shouldInvalidateTmdbCache
+    ) {
+      const payload = storedPayload;
       return {
         ...payload,
         fromCache: true,
@@ -1104,6 +1130,7 @@ export const createHeroPipelineService = ({
       items,
       updatedAt,
       expiresAt,
+      cacheVersion: HERO_CACHE_VERSION,
       policyHash,
       slotSummary: context.summary,
       matchesPolicy: true,
