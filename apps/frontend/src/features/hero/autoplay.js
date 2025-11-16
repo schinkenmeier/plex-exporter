@@ -130,9 +130,6 @@ export function initHeroAutoplay({ onRefresh = refreshHero } = {}){
   }
 
   function start(){ if(!raf) raf = requestAnimationFrame(step); }
-  // Pause on hover (without affecting layout)
-  hero.addEventListener('mouseenter', () => { setPaused('hover', true); });
-  hero.addEventListener('mouseleave', () => { setPaused('hover', false); });
   document.addEventListener('visibilitychange', () => {
     setPaused('hidden', document.hidden);
   });
