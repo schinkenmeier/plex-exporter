@@ -2,9 +2,10 @@
   display: inline-flex;
   border-radius: var(--radius-pill);
   padding: 4px;
-  background: rgba(10, 18, 32, 0.78);
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border);
   gap: 6px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
 .library-switch button {
@@ -149,8 +150,8 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: transform var(--transition-smooth), background-color var(--transition-smooth), opacity var(--transition-smooth), border-color var(--transition-smooth), color var(--transition-smooth), box-shadow var(--transition-smooth);
-  background-color: rgba(16, 22, 34, 0.88);
+  transition: transform var(--motion-medium), background-color var(--transition-smooth), opacity var(--transition-smooth), border-color var(--transition-smooth), color var(--transition-smooth), box-shadow var(--transition-smooth);
+  background-color: rgba(16, 22, 34, 0.9);
   color: var(--fg);
   min-height: 44px;
   touch-action: manipulation;
@@ -310,10 +311,10 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: rgba(12, 16, 24, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-md);
-  padding: 7px 10px;
+  background: linear-gradient(135deg, rgba(16, 24, 40, 0.9), rgba(12, 18, 32, 0.82));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-lg);
+  padding: 8px 12px;
   min-height: 36px;
   opacity: 0.92;
   transition: background-color var(--transition-smooth), border-color var(--transition-smooth), opacity var(--transition-smooth);
@@ -334,9 +335,9 @@
   flex-shrink: 0;
   width: 24px;
   height: 24px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   color: rgba(201, 216, 248, 0.7);
   transition: inherit;
 }
@@ -389,6 +390,11 @@
   vertical-align: middle;
 }
 
+.field input::placeholder,
+.field select::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
 .field select {
   border-radius: var(--radius-sm);
   padding: 4px 8px;
@@ -419,24 +425,24 @@
 }
 
 .toggle-advanced {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.18);
   color: var(--fg-secondary);
-  opacity: 0.88;
-  box-shadow: none;
+  opacity: 0.92;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.24);
   font-size: 13px;
-  padding: 8px 14px;
-  min-height: 36px;
+  padding: 10px 16px;
+  min-height: 40px;
   transition: background-color var(--transition-smooth), border-color var(--transition-smooth), opacity var(--transition-smooth), color var(--transition-smooth);
 }
 
 .toggle-advanced:hover,
 .toggle-advanced:focus-visible {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.22);
   opacity: 1;
   color: var(--fg);
-  box-shadow: none;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.28);
 }
 
 .toggle-advanced:focus-visible {
@@ -586,8 +592,10 @@
   flex-direction: column;
   border-radius: var(--radius-lg);
   overflow: hidden;
-  background: linear-gradient(180deg, rgba(14, 19, 28, 0.92) 0%, rgba(12, 16, 24, 0.94) 60%, rgba(10, 14, 20, 0.96) 100%);
-  border: 1px solid rgba(100, 130, 180, 0.06);
+  background: linear-gradient(180deg, rgba(14, 19, 28, 0.92) 0%, rgba(12, 16, 24, 0.94) 60%, rgba(10, 14, 20, 0.96) 100%),
+    radial-gradient(circle at 14% 10%, rgba(122, 167, 255, 0.08), transparent 35%),
+    radial-gradient(circle at 86% 12%, rgba(249, 183, 103, 0.06), transparent 40%);
+  border: 1px solid rgba(100, 130, 180, 0.1);
   box-shadow: var(--shadow-card);
   transition: transform var(--transition-smooth), box-shadow var(--transition-smooth), border-color var(--transition-smooth), opacity var(--transition-smooth);
   /* Fixed height to ensure all cards align at bottom */
@@ -611,6 +619,18 @@
   position: absolute;
   inset: 0;
   background: linear-gradient(180deg, rgba(107, 148, 224, 0.12), rgba(10, 15, 22, 0.08));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-smooth);
+  z-index: 0;
+}
+
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: calc(var(--radius-lg) - 2px);
+  background: linear-gradient(120deg, rgba(122, 167, 255, 0.16), rgba(249, 183, 103, 0.08));
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--transition-smooth);
@@ -643,7 +663,7 @@
 .card__media-gradient {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(6, 10, 18, 0.1) 0%, rgba(6, 10, 18, 0.78) 70%, rgba(4, 6, 12, 0.92) 100%);
+  background: linear-gradient(180deg, rgba(6, 10, 18, 0.15) 0%, rgba(6, 10, 18, 0.8) 70%, rgba(4, 6, 12, 0.94) 100%);
   opacity: 0.78;
   pointer-events: none;
   transition: opacity var(--transition-base);
@@ -679,7 +699,7 @@
 .card__progress > span {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, var(--accent), #f9b233);
+  background: linear-gradient(90deg, var(--accent), var(--accent-warm));
 }
 
 /* ─────────────────────────────────────────────────────────────────────
@@ -766,8 +786,8 @@
   justify-content: center;
   gap: 6px;
   border-radius: var(--radius-pill);
-  border: 1px solid var(--border);
-  background: rgba(14, 22, 38, 0.9);
+  border: 1px solid color-mix(in srgb, var(--border-strong) 60%, transparent);
+  background: linear-gradient(135deg, rgba(14, 22, 38, 0.95), rgba(14, 22, 38, 0.82));
   color: var(--fg);
   padding: 10px 18px;
   font-size: 13px;
@@ -782,14 +802,14 @@
 .card__primary:hover,
 .card__primary:focus-visible {
   border-color: var(--border-strong);
-  box-shadow: var(--shadow-ring);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
 }
 
 .card__primary.active {
-  background: var(--accent-soft);
-  color: var(--accent);
-  border-color: var(--border-strong);
-  box-shadow: 0 12px 26px rgba(94, 142, 255, 0.32);
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+  color: var(--accent-contrast);
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--border-strong) 30%);
+  box-shadow: 0 14px 30px rgba(94, 142, 255, 0.4);
 }
 
 /* ─────────────────────────────────────────────────────────────────────
@@ -807,6 +827,11 @@
 .card:hover::before,
 .card:focus-within::before {
   opacity: 0.75;
+}
+
+.card:hover::after,
+.card:focus-within::after {
+  opacity: 1;
 }
 
 .card:hover .card__img {

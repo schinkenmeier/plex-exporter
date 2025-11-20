@@ -11,12 +11,15 @@ import { createRateLimiters, type RateLimiterSet } from '../middleware/rateLimit
 import { createShortCache, createMediumCache, createLongCache } from '../services/cacheService.js';
 import { cacheMiddleware } from '../middleware/cacheMiddleware.js';
 import { normalizeTimestamp } from '../utils/timestamps.js';
+import type { TmdbService } from '../services/tmdbService.js';
+import { TmdbRateLimitError } from '../services/tmdbService.js';
 
 export interface V1RouterOptions {
   mediaRepository: MediaRepository;
   thumbnailRepository: ThumbnailRepository;
   seasonRepository: SeasonRepository;
   castRepository: CastRepository;
+  tmdbService?: TmdbService | null;
   rateLimiters?: Pick<RateLimiterSet, 'apiLimiter' | 'searchLimiter'>;
 }
 
@@ -27,6 +30,7 @@ export const createV1Router = ({
   thumbnailRepository,
   seasonRepository,
   castRepository,
+  tmdbService,
   rateLimiters,
 }: V1RouterOptions): Router => {
   const router = Router();
@@ -37,6 +41,7 @@ export const createV1Router = ({
   const statsCache = createShortCache(); // 1 minute for stats
   const listCache = createMediumCache(); // 5 minutes for lists
   const detailCache = createLongCache(); // 15 minutes for details
+  const tmdbCache = createMediumCache(); // 5 minutes for tmdb proxy responses
 
   // Zod schemas for query parameter validation
   const filterQuerySchema = z.object({
@@ -208,6 +213,46 @@ export const createV1Router = ({
       order: appearance.order,
       photo: appearance.photo,
     }));
+
+  /**
+   * GET /api/v1/tmdb/:type/:id
+   * Proxy TMDB details (requires TMDB token); used as primary source for modal
+   */
+  router.get('/tmdb/:type/:id', apiLimiterMiddleware, cacheMiddleware({ cache: tmdbCache }), async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!tmdbService || !tmdbService.isEnabled()) {
+        return res.status(503).json({ error: 'TMDB integration not configured' });
+      }
+
+      const rawType = req.params.type;
+      const type = rawType === 'tv' || rawType === 'movie' ? rawType : rawType === 'show' ? 'tv' : null;
+      if (!type) {
+        return next(new HttpError(400, 'Invalid TMDB media type'));
+      }
+
+      const id = req.params.id;
+      if (!id) {
+        return next(new HttpError(400, 'TMDB id is required'));
+      }
+
+      const language = typeof req.query.language === 'string' && req.query.language.trim()
+        ? req.query.language.trim()
+        : 'en-US';
+
+      const details = await tmdbService.fetchDetails(type as 'movie' | 'tv', id, { language });
+      if (!details) {
+        return next(new HttpError(404, 'TMDB title not found'));
+      }
+
+      res.setHeader('Cache-Control', 'public, max-age=300');
+      res.json(details);
+    } catch (error) {
+      if (error instanceof TmdbRateLimitError) {
+        return res.status(429).json({ error: 'TMDB rate limit reached', retryAfterMs: error.retryAfterMs, until: error.until });
+      }
+      next(new HttpError(500, 'Failed to fetch TMDB details', { cause: error instanceof Error ? error : undefined }));
+    }
+  });
 
   /**
    * GET /api/v1/movies

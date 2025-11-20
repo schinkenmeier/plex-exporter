@@ -38,6 +38,15 @@ export interface TmdbHeroDetails {
   certification: string | null;
   backdrops: string[];
   poster: string | null;
+  seasons?: Array<{
+    id: number | null;
+    seasonNumber: number | null;
+    title: string;
+    overview: string;
+    airDate: string | null;
+    episodeCount: number | null;
+    poster: string | null;
+  }>;
 }
 
 export interface FetchDetailsOptions {
@@ -170,6 +179,30 @@ const collectBackdrops = (payload: any): string[] => {
   return urls;
 };
 
+const collectSeasons = (payload: any): Array<{
+  id: number | null;
+  seasonNumber: number | null;
+  title: string;
+  overview: string;
+  airDate: string | null;
+  episodeCount: number | null;
+  poster: string | null;
+}> => {
+  const seasons = Array.isArray(payload?.seasons) ? payload.seasons : [];
+  return seasons.map((season: any) => {
+    const posterPath = typeof season?.poster_path === 'string' ? season.poster_path : null;
+    return {
+      id: typeof season?.id === 'number' ? season.id : null,
+      seasonNumber: Number.isFinite(season?.season_number) ? Number(season.season_number) : null,
+      title: typeof season?.name === 'string' ? season.name : '',
+      overview: typeof season?.overview === 'string' ? season.overview : '',
+      airDate: typeof season?.air_date === 'string' ? season.air_date : null,
+      episodeCount: Number.isFinite(season?.episode_count) ? Number(season.episode_count) : null,
+      poster: buildImageUrl(posterPath, 'w342'),
+    };
+  });
+};
+
 const resolvePoster = (payload: any): string | null => {
   const posterPath = typeof payload?.poster_path === 'string' ? payload.poster_path : null;
   if (!posterPath) {
@@ -214,6 +247,7 @@ const mapDetails = (
     certification: selectCertification(payload, type, language),
     backdrops: collectBackdrops(payload),
     poster: resolvePoster(payload),
+    seasons: type === 'tv' ? collectSeasons(payload) : undefined,
   };
   return details;
 };

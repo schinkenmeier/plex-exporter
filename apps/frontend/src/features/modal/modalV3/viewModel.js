@@ -1,5 +1,5 @@
 import { runtimeText, ratingText, studioText } from './formatting.js';
-import { mapMovie, mapShow, mergeShowDetail, normalizeGenresList } from './mapping.js';
+import { mapMovie, mapShow, mergeShowDetail, normalizeGenresList, mapTmdbShow, mergeShowSources, mapTmdbMovie, mergeMovieSources } from './mapping.js';
 import { buildCastList } from './castData.js';
 import {
   buildFallbackPoster,
@@ -7,7 +7,7 @@ import {
   buildFallbackProfile,
   makeInitials,
 } from '../../../js/imageHelper.js';
-import { prefixThumbValue } from '../../../js/data.js';
+import { prefixThumbValue, loadTmdbDetail } from '../../../js/data.js';
 
 const DEFAULT_TABS = {
   overview: 'Überblick',
@@ -15,6 +15,15 @@ const DEFAULT_TABS = {
   cast: 'Besetzung',
   seasons: 'Staffeln',
 };
+
+function getPreferredLanguage(){
+  try{
+    if(typeof navigator !== 'undefined' && navigator.language){
+      return navigator.language;
+    }
+  }catch(err){ /* ignore */ }
+  return 'de-DE';
+}
 
 function firstString(...values){
   for(const value of values){
@@ -44,19 +53,23 @@ function parseYear(value){
 
 function normalizeAbsoluteThumbnailUrl(str, type){
   try{
-    const base =
-      typeof window !== 'undefined' && window.location ? window.location.origin : 'http://localhost';
-    const url = new URL(str, base);
+    const currentOrigin = typeof window !== 'undefined' && window.location?.origin
+      ? window.location.origin
+      : 'http://localhost';
+    const url = new URL(str, currentOrigin);
     if(!url.pathname.startsWith('/api/thumbnails/')) return null;
     const rest = url.pathname.replace(/^\/api\/thumbnails\/?/, '');
     const normalized = prefixThumbValue(rest, type);
     if(normalized){
-      // prefixThumbValue may already return a fully-qualified URL
+      // If we got an absolute URL back, normalize it onto the current origin to avoid stale localhost/ports
       if(/^https?:\/\//i.test(normalized)){
+        const absolute = new URL(normalized, currentOrigin);
+        if(absolute.pathname.startsWith('/api/thumbnails/')){
+          return new URL(absolute.pathname + absolute.search, currentOrigin).toString();
+        }
         return normalized;
       }
-      url.pathname = normalized;
-      return url.toString();
+      return new URL(normalized, currentOrigin).toString();
     }
   }catch(err){
     console.warn('[modal] Failed to normalize absolute thumbnail URL:', err?.message || err);
@@ -395,7 +408,22 @@ export async function buildMovieViewModel(payload = {}, options = {}){
   const mapped = mapMovie(source);
   if(!mapped) return null;
   mapped.genres = normalizeGenresList(mapped.genres);
-  return buildBaseViewModel('movie', mapped, options);
+
+  let merged = mapped;
+  const tmdbId = mapped?.ids?.tmdb || mapped?.tmdbId;
+  if(tmdbId){
+    try{
+      const tmdbDetail = await loadTmdbDetail('movie', tmdbId, getPreferredLanguage());
+      const tmdbMovie = mapTmdbMovie(tmdbDetail);
+      if(tmdbMovie){
+        merged = mergeMovieSources(tmdbMovie, mapped);
+      }
+    }catch(err){
+      console.warn('[modalV3] Failed to enrich movie from TMDB:', err?.message || err);
+    }
+  }
+
+  return buildBaseViewModel('movie', merged, options);
 }
 
 export async function buildSeriesViewModel(payload = {}, options = {}){
@@ -407,7 +435,22 @@ export async function buildSeriesViewModel(payload = {}, options = {}){
     mergeShowDetail(mapped, detail);
   }
   mapped.genres = normalizeGenresList(mapped.genres);
-  return buildBaseViewModel('show', mapped, options);
+
+  let merged = mapped;
+  const tmdbId = mapped?.ids?.tmdb || mapped?.tmdbId;
+  if(tmdbId){
+    try{
+      const tmdbDetail = await loadTmdbDetail('tv', tmdbId, getPreferredLanguage());
+      const tmdbShow = mapTmdbShow(tmdbDetail);
+      if(tmdbShow){
+        merged = mergeShowSources(tmdbShow, mapped);
+      }
+    }catch(err){
+      console.warn('[modalV3] Failed to enrich show from TMDB:', err?.message || err);
+    }
+  }
+
+  return buildBaseViewModel('show', merged, options);
 }
 
 export default {

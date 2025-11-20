@@ -20,8 +20,8 @@ button:not(:disabled):active,
 }
 
 .card {
-  transition: transform var(--transition-smooth),
-              box-shadow var(--transition-smooth);
+  transition: transform var(--motion-medium),
+              box-shadow var(--motion-medium);
 }
 
 /* Focus visible for keyboard navigation – cineastisch */
@@ -29,7 +29,7 @@ button:not(:disabled):active,
   outline: 2px solid var(--accent, #6b94e0);
   outline-offset: 3px;
   border-radius: var(--radius-sm);
-  transition: outline-color var(--transition-base);
+  transition: outline-color var(--transition-base), box-shadow var(--motion-fast);
 }
 
 /* Stagger animation for grid items – sanft und cineastisch */

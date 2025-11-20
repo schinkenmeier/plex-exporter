@@ -8,6 +8,7 @@ const MAX_PAGE = 1000;
 let lastSources = { movies: null, shows: null };
 const showDetailCache = new Map();
 const DATA_CACHE_TTL = 1000 * 60 * 30; // 30 minutes for data files
+const tmdbDetailCache = new Map();
 
 const SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i;
 
@@ -193,6 +194,7 @@ export function prefixThumbValue(value, type){
   }
 
   const firstSegment = normalizedSegments[0];
+  const coversIndex = normalizedSegments.findIndex(seg => String(seg).toLowerCase() === 'covers');
   if(firstSegment){
     let decodedFirst = firstSegment;
     try{
@@ -207,9 +209,12 @@ export function prefixThumbValue(value, type){
     if(normalizedSegments.length > 1 && firstToken === type){
       normalizedSegments.shift();
     }
-    if(firstToken === 'covers'){
-      return buildThumbnailUrl('covers', normalizedSegments.slice(1));
-    }
+  }
+
+  // Support absolute host paths that still contain a /covers/... segment (e.g. Windows export paths)
+  if(coversIndex >= 0){
+    const afterCovers = normalizedSegments.slice(coversIndex + 1);
+    return buildThumbnailUrl('covers', afterCovers);
   }
 
   if(!normalizedSegments.length){
@@ -349,6 +354,28 @@ export async function loadShows(){
     notifyUiError('Serien konnten nicht geladen werden', error?.message || 'Unbekannter Fehler');
     markSource('shows', 'error');
     return [];
+  }
+}
+
+export async function loadTmdbDetail(kind, id, language='en-US'){
+  const type = kind === 'movie' ? 'movie' : 'tv';
+  const identifier = id == null ? '' : String(id).trim();
+  if(!identifier) return null;
+  const cacheKey = `${type}:${identifier}:${language}`;
+  const cached = tmdbDetailCache.get(cacheKey);
+  if(cached) return cached;
+
+  const params = new URLSearchParams();
+  if(language) params.set('language', language);
+  const url = buildApiPath(`/api/v1/tmdb/${type}/${encodeURIComponent(identifier)}`, params);
+  try{
+    const data = await fetchJson(url, 1, false);
+    tmdbDetailCache.set(cacheKey, data);
+    return data;
+  }catch(err){
+    console.warn('[data] Failed to load TMDB detail', { type, identifier, message: err?.message });
+    tmdbDetailCache.set(cacheKey, null);
+    return null;
   }
 }
 

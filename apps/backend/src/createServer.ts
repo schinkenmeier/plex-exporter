@@ -430,6 +430,7 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
     thumbnailRepository,
     seasonRepository,
     castRepository,
+    tmdbService,
     rateLimiters: {
       apiLimiter: rateLimiters.apiLimiter,
       searchLimiter: rateLimiters.searchLimiter,

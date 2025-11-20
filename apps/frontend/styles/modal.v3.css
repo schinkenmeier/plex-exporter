@@ -78,10 +78,10 @@ body.modalv3-open {
   max-height: min(94vh, 940px);
   display: flex;
   flex-direction: column;
-  border-radius: calc(var(--radius-lg) + 6px);
-  border: 1px solid var(--modalv3-border);
+  border-radius: calc(var(--radius-xl));
+  border: 1px solid color-mix(in srgb, var(--modalv3-border) 80%, var(--accent-muted) 20%);
   background: var(--modalv3-surface);
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-soft), 0 28px 80px rgba(0, 0, 0, 0.55);
   overflow: hidden;
 }
 
@@ -698,10 +698,10 @@ body.modalv3-open {
   display: flex;
   align-items: center;
   gap: var(--modalv3-tabs-gap);
-  padding: 10px;
-  margin: -6px 0 6px;
+  padding: 12px;
+  margin: -4px 0 10px;
   border-radius: var(--modalv3-tabs-radius);
-  background: color-mix(in srgb, var(--bg-translucent) 88%, transparent);
+  background: linear-gradient(135deg, rgba(12, 18, 30, 0.9), rgba(10, 16, 28, 0.82));
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   box-shadow: 0 18px 42px rgba(5, 8, 15, 0.45);
@@ -717,6 +717,8 @@ body.modalv3-open {
   inset: 0;
   border-radius: inherit;
   border: 1px solid var(--border-strong);
+  background: radial-gradient(circle at 16% 10%, rgba(122, 167, 255, 0.12), transparent 40%),
+    radial-gradient(circle at 82% 14%, rgba(249, 183, 103, 0.1), transparent 42%);
   pointer-events: none;
 }
 
@@ -732,7 +734,7 @@ body.modalv3-open {
   border-radius: var(--radius-pill);
   padding: 10px 18px;
   cursor: pointer;
-  transition: background var(--transition-base), border-color var(--transition-base), color var(--transition-base), box-shadow var(--transition-base);
+  transition: background var(--transition-base), border-color var(--transition-base), color var(--transition-base), box-shadow var(--transition-base), transform var(--motion-medium);
   font-size: 0.92rem;
   font-weight: 500;
 }
@@ -740,13 +742,15 @@ body.modalv3-open {
 .v3-tabs button:hover:not(.active) {
   border-color: color-mix(in srgb, var(--accent) 48%, var(--border) 52%);
   color: var(--fg);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.24);
+  transform: translate3d(0, -1px, 0);
 }
 
 .v3-tabs button.active {
-  color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 70%, var(--border-strong) 30%);
-  background: color-mix(in srgb, var(--accent-soft) 70%, var(--bg-elevated) 30%);
-  box-shadow: 0 8px 22px rgba(12, 18, 28, 0.6);
+  color: var(--accent-contrast);
+  border-color: color-mix(in srgb, var(--accent) 78%, var(--border-strong) 22%);
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+  box-shadow: 0 12px 28px rgba(12, 18, 28, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
 .v3-tabs button:focus-visible {
@@ -1145,10 +1149,12 @@ body.modalv3-open {
   background: color-mix(in srgb, var(--card) 82%, transparent);
   padding: 14px;
   box-shadow: 0 12px 28px rgba(10, 16, 28, 0.22);
+  align-items: flex-start;
 }
 
 .v3-episode__still {
   width: 100%;
+  aspect-ratio: 16 / 9;
   border-radius: var(--radius-md);
   overflow: hidden;
   background: color-mix(in srgb, var(--bg-translucent) 72%, transparent);
@@ -1168,6 +1174,7 @@ body.modalv3-open {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   display: block;
 }
 

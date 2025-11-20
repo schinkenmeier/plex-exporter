@@ -9,6 +9,11 @@ const GUID_PATTERNS = {
     'tvdb://',
     'thetvdb://',
     'com.plexapp.agents.thetvdb://'
+  ],
+  tmdb: [
+    'tmdb://',
+    'themoviedb://',
+    'com.plexapp.agents.themoviedb://'
   ]
 };
 
@@ -58,6 +63,7 @@ function ensureIds(target){
 
   assign('imdb', target.imdbId);
   assign('tvdb', target.tvdbId);
+  assign('tmdb', target.tmdbId);
 
   const guidSources = [];
   if(Array.isArray(target?.guids)) guidSources.push(...target.guids);
@@ -210,6 +216,198 @@ export function normalizeGenresList(list){
     }
   });
   return result;
+}
+
+export function mapTmdbShow(detail){
+  if(!detail || typeof detail !== 'object') return null;
+  const yearFromDate = (value)=>{
+    if(!value || typeof value !== 'string') return '';
+    const match = value.match(/(\d{4})/);
+    return match ? match[1] : '';
+  };
+  const seasons = Array.isArray(detail.seasons) ? detail.seasons.map(season => ({
+    id: season?.id ?? null,
+    seasonNumber: Number.isFinite(season?.seasonNumber) ? Number(season.seasonNumber) : Number.isFinite(season?.season_number) ? Number(season.season_number) : null,
+    title: season?.title || season?.name || '',
+    summary: season?.overview || '',
+    overview: season?.overview || '',
+    airDate: season?.airDate || season?.air_date || null,
+    episodeCount: season?.episodeCount ?? season?.episode_count ?? null,
+    poster: season?.poster ?? season?.posterPath ?? null,
+  })) : [];
+
+  return {
+    type: 'tv',
+    title: detail.title || detail.originalTitle || '',
+    originalTitle: detail.originalTitle || '',
+    summary: detail.overview || '',
+    overview: detail.overview || '',
+    tagline: detail.tagline || '',
+    releaseDate: detail.firstAirDate || detail.releaseDate || null,
+    firstAirDate: detail.firstAirDate || null,
+    year: yearFromDate(detail.firstAirDate || detail.releaseDate),
+    runtimeMin: detail.runtimeMinutes ?? null,
+    tmdbId: detail.id ?? null,
+    ids: detail.id ? { tmdb: String(detail.id) } : undefined,
+    genres: Array.isArray(detail.genres) ? detail.genres : [],
+    contentRating: detail.certification || '',
+    rating: detail.voteAverage ?? null,
+    tmdbRating: detail.voteAverage ?? null,
+    tmdbVoteCount: detail.voteCount ?? null,
+    poster: detail.poster || null,
+    backdrop: Array.isArray(detail.backdrops) ? (detail.backdrops[0] || null) : null,
+    backdrops: Array.isArray(detail.backdrops) ? detail.backdrops : [],
+    seasons,
+  };
+}
+
+export function mapTmdbMovie(detail){
+  if(!detail || typeof detail !== 'object') return null;
+  const yearFromDate = (value)=>{
+    if(!value || typeof value !== 'string') return '';
+    const match = value.match(/(\d{4})/);
+    return match ? match[1] : '';
+  };
+  return {
+    type: 'movie',
+    title: detail.title || detail.originalTitle || '',
+    originalTitle: detail.originalTitle || '',
+    summary: detail.overview || '',
+    overview: detail.overview || '',
+    tagline: detail.tagline || '',
+    releaseDate: detail.releaseDate || null,
+    year: yearFromDate(detail.releaseDate),
+    runtimeMin: detail.runtimeMinutes ?? null,
+    tmdbId: detail.id ?? null,
+    ids: detail.id ? { tmdb: String(detail.id) } : undefined,
+    genres: Array.isArray(detail.genres) ? detail.genres : [],
+    contentRating: detail.certification || '',
+    rating: detail.voteAverage ?? null,
+    tmdbRating: detail.voteAverage ?? null,
+    tmdbVoteCount: detail.voteCount ?? null,
+    poster: detail.poster || null,
+    backdrop: Array.isArray(detail.backdrops) ? (detail.backdrops[0] || null) : null,
+    backdrops: Array.isArray(detail.backdrops) ? detail.backdrops : [],
+  };
+}
+
+export function mergeShowSources(tmdbShow, localShow){
+  const prefer = (primary, fallback) => {
+    if(primary === undefined || primary === null || primary === '') return fallback ?? null;
+    return primary;
+  };
+
+  const merged = { ...(tmdbShow || {}), ...(tmdbShow ? {} : (localShow || {})) };
+
+  merged.type = 'tv';
+  merged.ids = { ...(localShow?.ids || {}), ...(tmdbShow?.ids || {}) };
+  merged.tmdbId = prefer(tmdbShow?.tmdbId, localShow?.tmdbId);
+
+  merged.title = prefer(tmdbShow?.title, localShow?.title);
+  merged.originalTitle = prefer(tmdbShow?.originalTitle, localShow?.originalTitle);
+  merged.tagline = prefer(tmdbShow?.tagline, localShow?.tagline);
+  merged.summary = prefer(tmdbShow?.summary, localShow?.summary);
+  merged.overview = prefer(tmdbShow?.overview, localShow?.overview);
+  merged.releaseDate = prefer(tmdbShow?.releaseDate, localShow?.releaseDate);
+  merged.firstAirDate = prefer(tmdbShow?.firstAirDate, localShow?.firstAirDate);
+  merged.year = prefer(tmdbShow?.year, localShow?.year);
+  merged.contentRating = prefer(tmdbShow?.contentRating, localShow?.contentRating);
+
+  merged.runtimeMin = prefer(tmdbShow?.runtimeMin, localShow?.runtimeMin ?? localShow?.durationMin);
+  merged.duration = prefer(localShow?.duration, null);
+  merged.rating = prefer(tmdbShow?.rating, localShow?.rating ?? localShow?.audienceRating);
+  merged.tmdbRating = prefer(tmdbShow?.tmdbRating, localShow?.tmdbRating);
+  merged.tmdbVoteCount = prefer(tmdbShow?.tmdbVoteCount, localShow?.tmdbVoteCount);
+
+  merged.backdrops = tmdbShow?.backdrops || localShow?.backdrops || [];
+  merged.backdrop = prefer(tmdbShow?.backdrop, localShow?.backdrop ?? localShow?.art);
+  merged.poster = prefer(tmdbShow?.poster, localShow?.poster ?? localShow?.thumbFile ?? localShow?.thumb);
+
+  merged.genres = (tmdbShow?.genres && tmdbShow.genres.length) ? tmdbShow.genres : (localShow?.genres || []);
+  merged.studio = prefer(localShow?.studio, localShow?.network);
+
+  merged.cast = Array.isArray(localShow?.cast) ? localShow.cast : Array.isArray(localShow?.roles) ? localShow.roles : [];
+
+  merged.seasons = mergeSeasons(tmdbShow?.seasons || [], localShow?.seasons || []);
+
+  normalizeShow(merged);
+  return merged;
+}
+
+export function mergeMovieSources(tmdbMovie, localMovie){
+  const prefer = (primary, fallback) => {
+    if(primary === undefined || primary === null || primary === '') return fallback ?? null;
+    return primary;
+  };
+
+  const merged = { ...(tmdbMovie || {}), ...(tmdbMovie ? {} : (localMovie || {})) };
+  merged.type = 'movie';
+  merged.ids = { ...(localMovie?.ids || {}), ...(tmdbMovie?.ids || {}) };
+  merged.tmdbId = prefer(tmdbMovie?.tmdbId, localMovie?.tmdbId);
+
+  merged.title = prefer(tmdbMovie?.title, localMovie?.title);
+  merged.originalTitle = prefer(tmdbMovie?.originalTitle, localMovie?.originalTitle);
+  merged.tagline = prefer(tmdbMovie?.tagline, localMovie?.tagline);
+  merged.summary = prefer(tmdbMovie?.summary, localMovie?.summary);
+  merged.overview = prefer(tmdbMovie?.overview, localMovie?.overview);
+  merged.releaseDate = prefer(tmdbMovie?.releaseDate, localMovie?.releaseDate);
+  merged.year = prefer(tmdbMovie?.year, localMovie?.year);
+  merged.contentRating = prefer(tmdbMovie?.contentRating, localMovie?.contentRating);
+
+  merged.runtimeMin = prefer(tmdbMovie?.runtimeMin, localMovie?.runtimeMin ?? localMovie?.durationMin);
+  merged.duration = prefer(localMovie?.duration, null);
+  merged.rating = prefer(tmdbMovie?.rating, localMovie?.rating ?? localMovie?.audienceRating);
+  merged.tmdbRating = prefer(tmdbMovie?.tmdbRating, localMovie?.tmdbRating);
+  merged.tmdbVoteCount = prefer(tmdbMovie?.tmdbVoteCount, localMovie?.tmdbVoteCount);
+
+  merged.backdrops = tmdbMovie?.backdrops || localMovie?.backdrops || [];
+  merged.backdrop = prefer(tmdbMovie?.backdrop, localMovie?.backdrop ?? localMovie?.art);
+  merged.poster = prefer(tmdbMovie?.poster, localMovie?.poster ?? localMovie?.thumbFile ?? localMovie?.thumb);
+
+  merged.genres = normalizeGenresList((tmdbMovie?.genres && tmdbMovie.genres.length) ? tmdbMovie.genres : (localMovie?.genres || []));
+  merged.studio = prefer(localMovie?.studio, localMovie?.network);
+
+  return merged;
+}
+
+function mergeSeasons(tmdbSeasons, localSeasons){
+  const byNumber = new Map();
+
+  localSeasons.forEach(season => {
+    const key = season?.seasonNumber ?? season?.number ?? season?.index ?? null;
+    if(key == null) return;
+    byNumber.set(Number(key), { ...season });
+  });
+
+  const result = [];
+
+  tmdbSeasons.forEach(season => {
+    const num = season?.seasonNumber ?? season?.number ?? null;
+    const existing = num != null ? byNumber.get(Number(num)) : null;
+    const merged = existing ? { ...existing } : {};
+    merged.seasonNumber = num != null ? Number(num) : merged.seasonNumber ?? null;
+    merged.title = season?.title || merged.title || '';
+    merged.summary = season?.summary || merged.summary || '';
+    merged.overview = merged.summary;
+    merged.airDate = season?.airDate || merged.airDate || null;
+    merged.episodeCount = season?.episodeCount ?? merged.episodeCount ?? null;
+    merged.poster = season?.poster || merged.poster || null;
+    if(existing && Array.isArray(existing.episodes)){
+      merged.episodes = existing.episodes;
+    }
+    result.push(merged);
+    if(num != null) byNumber.delete(Number(num));
+  });
+
+  for(const [,season] of byNumber.entries()){
+    result.push({ ...season });
+  }
+
+  return result.sort((a,b)=>{
+    const an = Number(a?.seasonNumber ?? 0);
+    const bn = Number(b?.seasonNumber ?? 0);
+    return an - bn;
+  });
 }
 
 export { normalizePeopleList };
