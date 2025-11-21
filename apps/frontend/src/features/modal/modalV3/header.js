@@ -209,11 +209,12 @@ function createHeadStructure(){
   overlayMeta.dataset.v3HeadOverlayMeta = '1';
   overlayMeta.hidden = true;
   hero.append(backdrop, overlayLogo, overlayMeta);
-  const logoSlot = ensureElement('div', 'v3-head__logo');
-  logoSlot.dataset.v3HeadLogo = '1';
-  logoSlot.hidden = true;
-  visual.append(hero, logoSlot);
 
+  const layout = ensureElement('div', 'v3-head__layout');
+  const posterSlot = ensureElement('div', 'v3-head__poster-slot');
+  posterSlot.dataset.v3HeadPosterSlot = '1';
+
+  const content = ensureElement('div', 'v3-head__content');
   const status = ensureElement('p', 'v3-head__status');
   status.dataset.v3HeadStatus = '1';
   status.hidden = true;
@@ -236,8 +237,16 @@ function createHeadStructure(){
   titlewrap.append(badges, title, subtitle, meta);
   titlebar.append(titlewrap);
 
+  const logoSlot = ensureElement('div', 'v3-head__logo');
+  logoSlot.dataset.v3HeadLogo = '1';
+  logoSlot.hidden = true;
+
+  content.append(status, titlebar, logoSlot);
+  layout.append(posterSlot, content);
+  visual.append(hero, layout);
+
   if(actions && actions.childElementCount) root.append(actions);
-  root.append(visual, status, titlebar);
+  root.append(visual);
   return root;
 }
 
@@ -257,18 +266,7 @@ function createPosterStructure(){
   img.decoding = 'async';
   img.referrerPolicy = 'no-referrer';
   media.append(skeleton, img);
-
-  const quickfacts = ensureElement('section', 'v3-quickfacts');
-  quickfacts.dataset.v3Quickfacts = '1';
-  quickfacts.hidden = true;
-  quickfacts.setAttribute('aria-label', 'Schnellinfos');
-  const qTitle = ensureElement('h3', 'v3-quickfacts-title');
-  qTitle.textContent = 'Schnellinfos';
-  const qList = ensureElement('dl', 'v3-quickfacts-list');
-  qList.dataset.v3QuickfactsList = '1';
-  quickfacts.append(qTitle, qList);
-
-  root.append(media, quickfacts);
+  root.append(media);
   return root;
 }
 
@@ -280,6 +278,7 @@ function createHeadRefs(root){
       heroBackdrop: root.querySelector('[data-v3-head-backdrop]'),
       overlayLogo: root.querySelector('[data-v3-head-overlay-logo]'),
       overlayMeta: root.querySelector('[data-v3-head-overlay-meta]'),
+      posterSlot: root.querySelector('[data-v3-head-poster-slot]'),
       logo: root.querySelector('[data-v3-head-logo]'),
       status: root.querySelector('[data-v3-head-status]'),
       badges: root.querySelector('[data-v3-head-badges]'),
@@ -294,14 +293,11 @@ function createHeadRefs(root){
 function createPosterRefs(root){
   if(!root) return null;
   const media = root.querySelector('[data-v3-poster-media]');
-  const quickfactsRoot = root.querySelector('[data-v3-quickfacts]');
   return {
     root,
     media,
     img: media?.querySelector('[data-v3-poster-image]') || media?.querySelector('img'),
     skeleton: media?.querySelector('[data-v3-poster-skeleton]') || null,
-    quickfactsRoot,
-    quickfactsList: quickfactsRoot?.querySelector('[data-v3-quickfacts-list]') || quickfactsRoot?.querySelector('dl'),
   };
 }
 
@@ -581,46 +577,8 @@ function renderPoster(target, viewModel){
   poster.img = newImg;
 }
 
-function formatSeasonCount(value){
-  if(!Number.isFinite(Number(value))) return '';
-  const num = Number(value);
-  if(num <= 0) return '';
-  return num === 1 ? '1 Staffel' : `${num} Staffeln`;
-}
-
 function renderQuickfactsSection(target, viewModel){
-  const poster = coercePosterTarget(target);
-  if(!poster) return;
-  const { quickfactsRoot, quickfactsList } = poster;
-  if(!quickfactsRoot || !quickfactsList) return;
-  clearElement(quickfactsList);
-  const derivedMeta = deriveMeta(viewModel);
-  const entries = [];
-  if(viewModel?.year) entries.push(['Jahr', viewModel.year]);
-  if(viewModel?.releaseDate) entries.push(['Veröffentlichung', viewModel.releaseDate]);
-  if(derivedMeta.contentRating) entries.push(['Freigabe', derivedMeta.contentRating]);
-  if(derivedMeta.runtime) entries.push(['Laufzeit', derivedMeta.runtime]);
-  if(derivedMeta.rating) entries.push(['Bewertung', derivedMeta.rating]);
-  if(derivedMeta.studio) entries.push([viewModel?.kind === 'show' ? 'Netzwerk' : 'Studio', derivedMeta.studio]);
-  const seasonCount = formatSeasonCount(derivedMeta.seasonCount);
-  if(seasonCount) entries.push(['Staffeln', seasonCount]);
-  const originalTitle = viewModel?.originalTitle;
-  if(originalTitle && originalTitle !== viewModel?.title){
-    entries.push(['Original', originalTitle]);
-  }
-  if(Array.isArray(viewModel?.genres) && viewModel.genres.length){
-    entries.push(['Genres', viewModel.genres.join(', ')]);
-  }
-  entries.forEach(([label, value]) => {
-    const dt = ensureElement('dt', '');
-    dt.textContent = label;
-    const dd = ensureElement('dd', '');
-    dd.textContent = value;
-    quickfactsList.append(dt, dd);
-  });
-  const hasEntries = entries.length > 0;
-  quickfactsRoot.hidden = !hasEntries;
-  quickfactsRoot.setAttribute('aria-hidden', hasEntries ? 'false' : 'true');
+  // Quickfacts intentionally removed from modal header.
 }
 
 export function createHead(viewModel = null){
@@ -637,7 +595,6 @@ export function createPosterCard(viewModel = null){
   const refs = createPosterRefs(root);
   if(viewModel){
     renderPoster(refs, viewModel);
-    renderQuickfacts(refs, viewModel);
   }
   return refs;
 }
@@ -654,7 +611,6 @@ export function renderHead(target, viewModel){
 
 export function renderPosterCard(target, viewModel){
   renderPoster(target, viewModel);
-  renderQuickfactsSection(target, viewModel);
 }
 
 export function renderBackdropHero(target, viewModel){

@@ -255,6 +255,36 @@ export const createV1Router = ({
   });
 
   /**
+   * GET /api/v1/tmdb/tv/:id/season/:seasonNumber
+   * Fetch TMDB season episodes (for still images)
+   */
+  router.get('/tmdb/tv/:id/season/:seasonNumber', apiLimiterMiddleware, cacheMiddleware({ cache: tmdbCache }), async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!tmdbService || !tmdbService.isEnabled()) {
+        return res.status(503).json({ error: 'TMDB integration not configured' });
+      }
+
+      const { id, seasonNumber } = req.params;
+      if (!id || !seasonNumber) {
+        return next(new HttpError(400, 'TV id and season number are required'));
+      }
+
+      const language = typeof req.query.language === 'string' && req.query.language.trim()
+        ? req.query.language.trim()
+        : 'en-US';
+
+      const episodes = await tmdbService.fetchSeasonEpisodes(id, seasonNumber, { language });
+      res.setHeader('Cache-Control', 'public, max-age=300');
+      res.json({ episodes });
+    } catch (error) {
+      if (error instanceof TmdbRateLimitError) {
+        return res.status(429).json({ error: 'TMDB rate limit reached', retryAfterMs: error.retryAfterMs, until: error.until });
+      }
+      next(new HttpError(500, 'Failed to fetch TMDB season', { cause: error instanceof Error ? error : undefined }));
+    }
+  });
+
+  /**
    * GET /api/v1/movies
    * List all movies from database (includes extended metadata)
   */

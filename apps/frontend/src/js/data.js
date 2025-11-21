@@ -9,6 +9,7 @@ let lastSources = { movies: null, shows: null };
 const showDetailCache = new Map();
 const DATA_CACHE_TTL = 1000 * 60 * 30; // 30 minutes for data files
 const tmdbDetailCache = new Map();
+const tmdbSeasonCache = new Map();
 
 const SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i;
 
@@ -375,6 +376,28 @@ export async function loadTmdbDetail(kind, id, language='en-US'){
   }catch(err){
     console.warn('[data] Failed to load TMDB detail', { type, identifier, message: err?.message });
     tmdbDetailCache.set(cacheKey, null);
+    return null;
+  }
+}
+
+export async function loadTmdbSeason(tvId, seasonNumber, language='en-US'){
+  const id = tvId == null ? '' : String(tvId).trim();
+  const season = seasonNumber == null ? '' : String(seasonNumber).trim();
+  if(!id || !season) return null;
+  const cacheKey = `${id}:season:${season}:${language}`;
+  const cached = tmdbSeasonCache.get(cacheKey);
+  if(cached) return cached;
+
+  const params = new URLSearchParams();
+  if(language) params.set('language', language);
+  const url = buildApiPath(`/api/v1/tmdb/tv/${encodeURIComponent(id)}/season/${encodeURIComponent(season)}`, params);
+  try{
+    const data = await fetchJson(url, 1, false);
+    tmdbSeasonCache.set(cacheKey, data);
+    return data;
+  }catch(err){
+    console.warn('[data] Failed to load TMDB season', { id, season, message: err?.message });
+    tmdbSeasonCache.set(cacheKey, null);
     return null;
   }
 }

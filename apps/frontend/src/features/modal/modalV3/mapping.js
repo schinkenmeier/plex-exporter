@@ -403,7 +403,13 @@ function mergeSeasons(tmdbSeasons, localSeasons){
     result.push({ ...season });
   }
 
-  return result.sort((a,b)=>{
+  const filtered = result.filter(season => {
+    const num = Number(season?.seasonNumber ?? 0);
+    if(Number.isFinite(num) && num <= 0) return false; // drop specials (Season 0) by default
+    return true;
+  });
+
+  return filtered.sort((a,b)=>{
     const an = Number(a?.seasonNumber ?? 0);
     const bn = Number(b?.seasonNumber ?? 0);
     return an - bn;

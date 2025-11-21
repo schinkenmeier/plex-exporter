@@ -1,5 +1,6 @@
 import { makeInitials } from '../../../js/imageHelper.js';
 import { runtimeText } from './formatting.js';
+import { loadTmdbSeason } from '../../../js/data.js';
 
 const LOG_PREFIX = '[modalV3/seasons]';
 let seasonInstanceCounter = 0;
@@ -163,7 +164,13 @@ function combineEpisodeData(ep){
     stillSource = stillSource || candidate.source;
     break;
   }
-  if(stillUrl && !stillSource) stillSource = 'local';
+  if(stillUrl && !stillSource){
+    if(/image\.tmdb\.org/i.test(stillUrl)) stillSource = 'tmdb';
+    else stillSource = 'local';
+  }
+  if(stillUrl && stillSource === 'local' && /image\.tmdb\.org/i.test(stillUrl)){
+    stillSource = 'tmdb';
+  }
   const title = sanitizeText(ep?.title || ep?.name);
   return {
     title,
@@ -200,7 +207,10 @@ export function createEpisodeStill(data, context = {}){
     placeholder.textContent = makeInitials(alt, 2) || '∅';
     wrapper.append(placeholder);
   }
-  const sourceLabel = data.stillSource === 'local' ? 'Lokal' : '';
+  if(data.stillSource === 'tmdb'){
+    wrapper.dataset.source = 'tmdb';
+  }
+  const sourceLabel = data.stillSource === 'local' ? 'Lokal' : data.stillSource === 'tmdb' ? 'TMDB' : '';
   if(sourceLabel){
     const badge = document.createElement('span');
     badge.className = 'v3-episode__still-badge';
@@ -377,12 +387,51 @@ function createSeasonCard(season, index, context){
     renderEpisodeList(episodesRoot, initialEpisodes, { showTitle: context.showTitle });
   }
 
-  let loaded = Boolean(initialEpisodes.length);
+  let loaded = false;
+
+  async function enrichWithTmdb(episodes){
+    const seasonNumber = resolveSeasonNumber(season, index + 1);
+    if(!context?.tmdbId || !Number.isFinite(seasonNumber)) return episodes;
+    const language = typeof navigator !== 'undefined' && navigator.language ? navigator.language : 'de-DE';
+    try{
+      const tmdbSeason = await loadTmdbSeason(context.tmdbId, seasonNumber, language);
+      const epOverrides = new Map();
+      const list = Array.isArray(tmdbSeason?.episodes) ? tmdbSeason.episodes : [];
+      list.forEach(entry => {
+        const num = Number(entry?.episodeNumber);
+        if(Number.isFinite(num) && entry?.stillPath){
+          epOverrides.set(num, entry.stillPath);
+        }
+      });
+      if(!epOverrides.size) return episodes;
+      return episodes.map(ep => {
+        const num = Number(ep?.episodeNumber ?? ep?.episode ?? ep?.index ?? ep?.number);
+        const override = Number.isFinite(num) ? epOverrides.get(num) : null;
+        if(override){
+          return {
+            ...ep,
+            stillUrl: override,
+            still: override,
+            stillSource: 'tmdb',
+            imageSource: 'tmdb',
+            originSource: 'tmdb',
+          };
+        }
+        return ep;
+      });
+    }catch(err){
+      console.warn('[seasons] Failed to enrich season stills via TMDB:', err?.message || err);
+      return episodes;
+    }
+  }
 
   function fetchEpisodes(){
     if(loaded) return;
-    renderEpisodeList(episodesRoot, initialEpisodes, { showTitle: context.showTitle });
-    loaded = true;
+    const render = (list)=>{
+      renderEpisodeList(episodesRoot, list, { showTitle: context.showTitle });
+      loaded = true;
+    };
+    enrichWithTmdb(initialEpisodes).then(render).catch(()=>render(initialEpisodes));
   }
 
   function toggle(){
@@ -428,6 +477,7 @@ export function renderSeasons(target, viewModel){
 
   const context = {
     showTitle: sanitizeText(viewModel?.title) || sanitizeText(viewModel?.item?.title),
+    tmdbId: viewModel?.tmdbId || viewModel?.ids?.tmdb || null,
   };
 
   const cards = seasons.map((season, index) => createSeasonCard(season, index, context));

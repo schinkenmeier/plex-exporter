@@ -279,6 +279,7 @@ export interface TmdbService {
   getPosterUrl(path: string | null | undefined, size?: string): string | null;
   searchMovie(query: string, options?: { year?: number | null; language?: string }): Promise<TmdbSearchResult[]>;
   searchTv(query: string, options?: { year?: number | null; language?: string }): Promise<TmdbSearchResult[]>;
+  fetchSeasonEpisodes(tvId: string | number, seasonNumber: string | number, options?: FetchDetailsOptions): Promise<Array<{ episodeNumber: number; stillPath: string | null }>>;
 }
 
 export const createTmdbService = ({ accessToken, cacheTtlMs, maxCacheEntries }: TmdbServiceOptions): TmdbService => {
@@ -664,6 +665,80 @@ export const createTmdbService = ({ accessToken, cacheTtlMs, maxCacheEntries }: 
     }
   };
 
+  const fetchSeasonEpisodes = async (
+    tvId: string | number,
+    seasonNumber: string | number,
+    options: FetchDetailsOptions = {},
+  ): Promise<Array<{ episodeNumber: number; stillPath: string | null }>> => {
+    if (!enabled) return [];
+    const id = String(tvId ?? '').trim();
+    const season = String(seasonNumber ?? '').trim();
+    if (!id || !season) return [];
+    const language = normalizeLanguage(options.language);
+    const cacheKey = `tv:season:${id}:${season}:${language}`;
+    const cached = cache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      const data: any = (cached as any).data;
+      if (Array.isArray(data?.episodes)) return data.episodes;
+    }
+
+    relaxRateLimit();
+    if (rateLimit.active && rateLimit.until > Date.now()) {
+      throw new TmdbRateLimitError('TMDB rate limit active', {
+        retryAfterMs: rateLimit.retryAfterMs,
+        until: rateLimit.until,
+      });
+    }
+
+    try {
+      const response = await axios.get(`${API_BASE_URL}/tv/${id}/season/${season}`, {
+        params: { language },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json;charset=utf-8',
+        },
+        signal: options.signal,
+      });
+
+      const episodes = Array.isArray(response.data?.episodes)
+        ? response.data.episodes
+            .map((ep: any) => ({
+              episodeNumber: Number.isFinite(ep?.episode_number) ? Number(ep.episode_number) : null,
+              stillPath: typeof ep?.still_path === 'string' ? buildImageUrl(ep.still_path, 'w780') : null,
+            }))
+            .filter((entry: any) => entry.episodeNumber !== null)
+        : [];
+
+      cache.set(cacheKey, { data: { episodes } as any, expiresAt: Date.now() + ttl });
+      pruneCache(cache, maxEntries);
+      rateLimit = { ...rateLimit, active: false, retryAfterMs: 0, until: 0, lastStatus: null };
+      return episodes;
+    } catch (error) {
+      if (isAxiosError(error)) {
+        const status = error.response?.status ?? null;
+        if (status === 401 || status === 403) {
+          enabled = false;
+          logger.error('TMDB token rejected (season)', { namespace: 'tmdb', status });
+          return [];
+        }
+        if (status === 429) {
+          const retryAfterHeader = error.response?.headers?.['retry-after'];
+          const retryAfterMs = parseRetryAfter(retryAfterHeader);
+          registerRateLimit(status, retryAfterMs);
+          throw new TmdbRateLimitError('TMDB rate limit exceeded', {
+            retryAfterMs: rateLimit.retryAfterMs,
+            until: rateLimit.until,
+          });
+        }
+      }
+      logger.warn('TMDB season request failed', {
+        namespace: 'tmdb',
+        error: error instanceof Error ? error.message : error,
+      });
+      return [];
+    }
+  };
+
   return {
     isEnabled: () => enabled,
     fetchDetails,
@@ -672,6 +747,7 @@ export const createTmdbService = ({ accessToken, cacheTtlMs, maxCacheEntries }: 
     getPosterUrl,
     searchMovie,
     searchTv,
+    fetchSeasonEpisodes,
   };
 };
 

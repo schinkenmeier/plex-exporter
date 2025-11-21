@@ -161,18 +161,19 @@ function createPaneStack(viewModel){
     closeButton.removeAttribute('hidden');
     closeButton.addEventListener('click', closeDetailV3);
   }
+  const poster = createPosterCard(viewModel);
+  const posterRoot = poster?.root || null;
+  const posterSlot = headRoot?.querySelector('[data-v3-head-poster-slot]');
+  if(posterSlot && posterRoot){
+    posterSlot.appendChild(posterRoot);
+  }else if(headRoot && posterRoot){
+    headRoot.appendChild(posterRoot);
+  }
+
   if(headRoot) article.appendChild(headRoot);
 
   const body = document.createElement('div');
   body.className = 'v3-shell__body';
-  const columns = document.createElement('div');
-  columns.className = 'v3-shell-columns';
-
-  const aside = document.createElement('aside');
-  aside.className = 'v3-shell-aside';
-  const poster = createPosterCard(viewModel);
-  const posterRoot = poster?.root || null;
-  if(posterRoot) aside.appendChild(posterRoot);
 
   const main = document.createElement('div');
   main.className = 'v3-shell-main';
@@ -185,8 +186,7 @@ function createPaneStack(viewModel){
   stack.className = 'v3-pane-stack';
   main.append(tabs, stack);
 
-  columns.append(aside, main);
-  body.append(columns);
+  body.append(main);
   article.appendChild(body);
 
   const tabEntries = Array.isArray(viewModel?.tabs) && viewModel.tabs.length ? viewModel.tabs : [{ id: 'overview', label: 'Überblick' }];
