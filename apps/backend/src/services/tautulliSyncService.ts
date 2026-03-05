@@ -1,5 +1,5 @@
 import type { TautulliService, TautulliMetadata, TautulliMediaItem } from './tautulliService.js';
-import type { MediaRepository } from '../repositories/mediaRepository.js';
+import type { MediaRecord, MediaRepository } from '../repositories/mediaRepository.js';
 import type { SeasonRepository } from '../repositories/seasonRepository.js';
 import type { LibrarySectionRepository } from '../repositories/librarySectionRepository.js';
 import type { TmdbService, TmdbHeroDetails } from './tmdbService.js';
@@ -10,6 +10,7 @@ export interface SyncOptions {
   incremental?: boolean;
   enrichWithTmdb?: boolean;
   syncCovers?: boolean;
+  refreshMediaInfo?: boolean;
 }
 
 export interface SyncProgress {
@@ -141,7 +142,7 @@ export class TautulliSyncService {
 
     try {
       // Fetch all media from Tautulli for this library
-      const mediaItems = await this.fetchAllMediaFromLibrary(sectionId, onProgress);
+      const mediaItems = await this.fetchAllMediaFromLibrary(sectionId, options, onProgress);
 
       onProgress?.({
         phase: `Processing ${mediaItems.length} items from ${section.sectionName}`,
@@ -166,10 +167,8 @@ export class TautulliSyncService {
       }
 
       // Delete removed media (hard delete)
-      if (!options.incremental) {
-        const tautulliIds = mediaItems.map((item) => item.rating_key);
-        deleted = await this.deleteRemovedMedia(sectionId, tautulliIds);
-      }
+      const tautulliIds = mediaItems.map((item) => item.rating_key);
+      deleted = await this.deleteRemovedMedia(sectionId, tautulliIds);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       errors.push(errorMessage);
@@ -193,12 +192,16 @@ export class TautulliSyncService {
    */
   private async fetchAllMediaFromLibrary(
     sectionId: number,
+    options: SyncOptions = {},
     onProgress?: ProgressCallback,
   ): Promise<TautulliMediaItem[]> {
     const allMedia: TautulliMediaItem[] = [];
+    const seenRatingKeys = new Set<string>();
     let start = 0;
     const length = 1000; // Fetch in batches of 1000 (more efficient)
     let hasMore = true;
+    const shouldRefresh = options.refreshMediaInfo ?? true;
+    let expectedTotal: number | null = null;
 
     console.log(`[Tautulli Sync] Starting to fetch media from library section ${sectionId}`);
 
@@ -210,17 +213,43 @@ export class TautulliSyncService {
         percentage: 0,
       });
 
-      const batch = await this.tautulliService.getLibraryMediaList(sectionId, start, length);
-      console.log(`[Tautulli Sync] Batch fetched: start=${start}, length=${length}, received=${batch.length} items`);
+      const page = await this.tautulliService.getLibraryMediaPage(
+        sectionId,
+        start,
+        length,
+        shouldRefresh && start === 0,
+      );
+      const batch = page.items;
+      expectedTotal = Number.isFinite(page.recordsFiltered) ? page.recordsFiltered : expectedTotal;
+
+      console.log(
+        `[Tautulli Sync] Batch fetched: start=${start}, length=${length}, received=${batch.length} items, expectedTotal=${expectedTotal ?? 'unknown'}`,
+      );
 
       if (batch.length === 0) {
         console.log(`[Tautulli Sync] No more items to fetch (empty batch)`);
         hasMore = false;
       } else {
-        allMedia.push(...batch);
-        start += length;
+        for (const item of batch) {
+          const key = String(item.rating_key || '');
+          if (!key || seenRatingKeys.has(key)) {
+            continue;
+          }
+          seenRatingKeys.add(key);
+          allMedia.push(item);
+        }
 
-        if (batch.length < length) {
+        // Advance by the amount actually returned to avoid gaps when the API caps page size.
+        start += batch.length;
+
+        if (expectedTotal !== null) {
+          hasMore = allMedia.length < expectedTotal;
+          if (!hasMore) {
+            console.log(
+              `[Tautulli Sync] Reached expected total (${allMedia.length}/${expectedTotal})`,
+            );
+          }
+        } else if (batch.length < length) {
           console.log(`[Tautulli Sync] Last batch received (${batch.length} < ${length})`);
           hasMore = false;
         }
@@ -691,12 +720,29 @@ export class TautulliSyncService {
 
     for (const media of existingMedia) {
       if (!currentTautulliIds.includes(media.plexId)) {
+        await this.removeMediaAssets(media);
         this.mediaRepo.delete(media.id);
         deleted++;
       }
     }
 
     return deleted;
+  }
+
+  private async removeMediaAssets(media: MediaRecord): Promise<void> {
+    if (!this.imageStorageService) {
+      return;
+    }
+
+    try {
+      await this.imageStorageService.removeMediaAssets(media.mediaType, media.plexId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(
+        `[Tautulli Sync] Failed to delete stored images for ${media.title} (${media.plexId}):`,
+        message,
+      );
+    }
   }
 
   private convertTautulliThumbnailUrl(tautulliUrl?: string | null): string | undefined {

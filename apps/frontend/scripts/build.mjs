@@ -10,28 +10,29 @@ const publicDir = path.join(frontendDir, 'public');
 const repoRoot = path.resolve(frontendDir, '..', '..');
 
 async function ensureConfigSample(){
-  const sampleSource = path.join(repoRoot, 'config', 'frontend', 'frontend.json.sample');
-  const realSource = path.join(repoRoot, 'config', 'frontend', 'frontend.json');
-
-  const [sampleAvailable, realAvailable] = await Promise.all([
-    pathIsFile(sampleSource),
-    pathIsFile(realSource)
+  const sampleSource = await findFirstFile([
+    path.join(repoRoot, 'config', 'frontend', 'frontend.json.sample'),
+    path.join(frontendDir, 'config', 'frontend.json.sample')
+  ]);
+  const realSource = await findFirstFile([
+    path.join(repoRoot, 'config', 'frontend', 'frontend.json'),
+    path.join(frontendDir, 'config', 'frontend.json')
   ]);
 
-  if(!sampleAvailable && !realAvailable){
+  if(!sampleSource && !realSource){
     return;
   }
 
   const targetDir = path.join(publicDir, 'config');
   await mkdir(targetDir, { recursive: true });
 
-  if(sampleAvailable){
+  if(sampleSource){
     const sampleTarget = path.join(targetDir, 'frontend.json.sample');
     await cp(sampleSource, sampleTarget, { force: true });
   }
 
   const target = path.join(targetDir, 'frontend.json');
-  const sourceForTarget = realAvailable ? realSource : sampleSource;
+  const sourceForTarget = realSource || sampleSource;
   if(sourceForTarget){
     await cp(sourceForTarget, target, { force: true });
   }
@@ -44,6 +45,15 @@ async function pathIsFile(filePath){
   }catch{
     return false;
   }
+}
+
+async function findFirstFile(candidates){
+  for(const candidate of candidates){
+    if(await pathIsFile(candidate)){
+      return candidate;
+    }
+  }
+  return null;
 }
 
 async function copyFallbackScript(){

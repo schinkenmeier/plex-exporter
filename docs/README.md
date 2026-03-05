@@ -8,10 +8,10 @@ This directory contains project documentation, architecture decisions, and devel
 
 | Document | Description | Audience |
 |----------|-------------|----------|
-| [architecture.md](./architecture.md) | System architecture, component design, and technical decisions | Developers, Architects |
-| [structure.md](./structure.md) | Project structure, codebase organization, and conventions | All Contributors |
+| [development/architecture.md](./development/architecture.md) | System architecture, component design, and technical decisions | Developers, Architects |
+| [development/structure.md](./development/structure.md) | Project structure, codebase organization, and conventions | All Contributors |
 | [db-migration-plan.md](./db-migration-plan.md) | Database migration strategy and plan | Backend Developers |
-| [manual-tests.md](./manual-tests.md) | Manual testing procedures and checklists | QA, Developers |
+| [development/manual-tests.md](./development/manual-tests.md) | Manual testing procedures and checklists | QA, Developers |
 
 ### Developer Tools
 
@@ -23,7 +23,7 @@ This directory contains project documentation, architecture decisions, and devel
 
 ## Documentation Categories
 
-### 1. Architecture (`architecture.md`)
+### 1. Architecture (`development/architecture.md`)
 
 **Purpose:** High-level system design and component architecture
 
@@ -48,7 +48,7 @@ This directory contains project documentation, architecture decisions, and devel
 
 ---
 
-### 2. Project Structure (`structure.md`)
+### 2. Project Structure (`development/structure.md`)
 
 **Purpose:** Detailed explanation of codebase organization
 
@@ -99,7 +99,7 @@ This directory contains project documentation, architecture decisions, and devel
 
 ---
 
-### 4. Manual Testing (`manual-tests.md`)
+### 4. Manual Testing (`development/manual-tests.md`)
 
 **Purpose:** Procedures for manual QA testing
 
@@ -315,9 +315,9 @@ Brief description of the feature.
 
 ### By Topic
 
-- **Architecture & Design:** `architecture.md`, `structure.md`
+- **Architecture & Design:** `development/architecture.md`, `development/structure.md`
 - **Database:** `db-migration-plan.md`
-- **Testing:** `manual-tests.md`
+- **Testing:** `development/manual-tests.md`
 - **Development:** `dev-tools/`
 
 ### By File Type
@@ -363,6 +363,6 @@ If you can't find what you're looking for:
 
 ## Meta
 
-- **Last Updated:** 2025-11-01
+- **Last Updated:** 2026-03-05
 - **Maintained By:** Project contributors
 - **Feedback:** Submit issues or PRs to improve documentation

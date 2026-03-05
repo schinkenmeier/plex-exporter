@@ -11,15 +11,14 @@ plex-exporter/
 ├── apps/                 # Anwendungen
 │   ├── backend/          # Express Backend-API
 │   └── frontend/         # Frontend-Webanwendung mit API-Anbindung
-├── config/               # Runtime-Konfigurationen
-│   └── frontend/         # Frontend-spezifische Konfiguration
+├── config/               # Optionale Runtime-Konfigurationen (nicht in jedem Setup vorhanden)
+│   └── frontend/         # Bevorzugter Pfad fuer Frontend-Konfiguration
 ├── data/                 # Anwendungsdaten (Single Source of Truth)
 │   ├── exports/          # Plex-Exportdateien (JSON, Bilder)
 │   └── sqlite/           # SQLite-Datenbanken
 ├── docs/                 # Dokumentation
 ├── packages/             # Gemeinsam genutzte Packages
 │   └── shared/           # Geteilte TypeScript Types & Interfaces
-├── scripts/              # Development & Maintenance Scripts
 ├── tools/                # User-facing Tools & Utilities
 │   └── tautulli-mock/    # Mock-Server für Tautulli-Entwicklung
 ├── .dockerignore         # Docker Build-Kontext Ausschlüsse
@@ -90,7 +89,7 @@ backend/
 - `API_TOKEN` - API-Authentifizierung
 - `TAUTULLI_URL`, `TAUTULLI_API_KEY` - Tautulli-Integration
 
-**Siehe auch:** [apps/backend/.env.example](../apps/backend/.env.example)
+**Siehe auch:** [apps/backend/.env.example](../../apps/backend/.env.example)
 
 #### `apps/frontend/`
 Vanilla JavaScript Frontend mit ESBuild, das seine Daten zur Laufzeit vom Backend lädt.
@@ -131,12 +130,13 @@ Enthält Konfigurationsdateien, die zur Laufzeit von den Anwendungen geladen wer
 
 **Wichtig:** Dies ist **nicht** die Code-Level-Konfiguration (siehe `apps/backend/src/config/`).
 
-#### `config/frontend/`
+#### `config/frontend/` (bevorzugt) und `apps/frontend/config/` (Fallback)
 Frontend Runtime-Konfiguration.
 
 **Dateien:**
-- `frontend.json` - Aktive Konfiguration (nicht im Git)
-- `frontend.json.sample` - Template mit Standardwerten
+- `config/frontend/frontend.json` - Aktive Konfiguration (optional, nicht im Git)
+- `config/frontend/frontend.json.sample` - Bevorzugtes Template
+- `apps/frontend/config/frontend.json(.sample)` - Projektinterner Fallback-Pfad
 
 **Konfigurationsoptionen:**
 ```json
@@ -150,7 +150,7 @@ Frontend Runtime-Konfiguration.
 ```
 
 **Build-Prozess:**
-Das Frontend-Build-Skript kopiert diese Datei nach `apps/frontend/public/config/frontend.json`, sodass sie vom Browser geladen werden kann.
+Das Frontend-Build-Skript kopiert die gefundene Konfiguration nach `apps/frontend/public/config/frontend.json`, sodass sie vom Browser geladen werden kann.
 
 ---
 
@@ -220,16 +220,6 @@ Gemeinsame TypeScript Types und Interfaces.
 ```typescript
 import type { MediaItem } from '@plex-exporter/shared';
 ```
-
----
-
-### `scripts/` - Development Scripts
-
-Scripts für Wartung und Entwicklung.
-
-Derzeit keine aktiven Hilfsskripte.
-
-**Hinweis:** Diese Scripts sind für Entwickler gedacht, nicht für Endanwender (siehe `tools/`).
 
 ---
 
@@ -370,11 +360,11 @@ data/exports/              # Verschiebe Daten hierhin
 
 ### Konfiguration
 ```bash
-# Alte Struktur
-config/frontend.json       # Root-Level
-
-# Neue Struktur
+# Bevorzugt
 config/frontend/frontend.json
+
+# Fallback
+apps/frontend/config/frontend.json
 ```
 
 ### Environment Files
@@ -391,7 +381,7 @@ apps/backend/.env.example  # Backend-spezifisch
 
 ## Weitere Ressourcen
 
-- [README.md](../README.md) - Projektübersicht und Quick-Start
-- [architecture.md](architecture.md) - Detaillierte Architektur
-- [apps/backend/README.md](../apps/backend/README.md) - Backend-Dokumentation
-- [apps/backend/SECURITY.md](../apps/backend/SECURITY.md) - Sicherheitsrichtlinien
+- [README.md](../../README.md) - Projektübersicht und Quick-Start
+- [architecture.md](./architecture.md) - Detaillierte Architektur
+- [apps/backend/README.md](../../apps/backend/README.md) - Backend-Dokumentation
+- [apps/backend/SECURITY.md](../../apps/backend/SECURITY.md) - Sicherheitsrichtlinien

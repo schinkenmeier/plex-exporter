@@ -4,10 +4,11 @@ Dieser Leitfaden skizziert den Aufbau der Plex-Exporter-Weboberfläche, das neue
 
 ## Backend-Grundlagen (`apps/backend`)
 
-* **Server (`src/server.ts`):** Startet einen Express-Server, hängt gemeinsame Middleware ein und bindet Routen (zunächst `/health`). Der Standard-Port beträgt `4000`; `npm run start --workspace @plex-exporter/backend` bootet den Server ohne Watch-Mode, `npm run dev --workspace @plex-exporter/backend` aktiviert Hot-Reload über `tsx`.
-* **Health-Route (`src/routes/health.ts`):** Liefert einen minimalen JSON-Status (`{ status: 'ok', timestamp }`). Diese Route eignet sich für Container-Liveness-Checks sowie Monitoring.
-* **Tests (`tests/`):** Enthält Platzhalter für künftige Unit-, Integrations- oder Contract-Tests.
-* **Shared Models:** Das Backend greift perspektivisch auf Interfaces aus `packages/shared` zu, um API-Antworten und Exportdaten konsistent zum Frontend zu halten.
+* **Server (`src/server.ts`, `src/createServer.ts`):** Startet den Express-Server, bindet Middleware, Swagger und API-Router. Standard-Port: `4000`; `npm run start --workspace @plex-exporter/backend` startet ohne Watch-Mode, `npm run dev --workspace @plex-exporter/backend` mit `tsx watch`.
+* **Primäre API-Routen:** `GET /health`, `GET /api/v1/*` (u. a. `movies`, `series`, `filter`, `search`, `recent`, `stats`), `GET /api/hero/*`, `GET /api/thumbnails/*`.
+* **Geschützte Routen:** `/libraries` (Token-basiert, falls `API_TOKEN` gesetzt), `/media`, `/admin`, `/admin/api/tautulli` (Basic Auth).
+* **Tests:** Integrationstests liegen primär in `src/routes/*.test.ts`, ergänzende Service-Tests in `src/services/*.test.ts` und `tests/services/`.
+* **Shared Models:** Das Backend nutzt Interfaces aus `packages/shared`, um API-Antworten und Health-Status konsistent zu halten.
 
 ## State-Management (`apps/frontend/src/core/state.js`)
 

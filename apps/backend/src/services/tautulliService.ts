@@ -88,6 +88,12 @@ export interface TautulliClient {
   getEpisodes(ratingKey: string): Promise<TautulliMetadata[]>;
 }
 
+export interface TautulliLibraryMediaPage {
+  items: TautulliMediaItem[];
+  recordsFiltered: number;
+  recordsTotal: number;
+}
+
 interface TautulliLibrariesPayload {
   response: {
     result: 'success' | 'error';
@@ -192,6 +198,16 @@ export class TautulliService implements TautulliClient {
     start = 0,
     length = 1000,
   ): Promise<TautulliMediaItem[]> {
+    const page = await this.getLibraryMediaPage(sectionId, start, length, false);
+    return page.items;
+  }
+
+  async getLibraryMediaPage(
+    sectionId: number,
+    start = 0,
+    length = 1000,
+    refresh = false,
+  ): Promise<TautulliLibraryMediaPage> {
     return this.executeWithRateLimit(async () => {
       const response = await this.httpClient.get<TautulliLibraryMediaPayload>('/api/v2', {
         params: {
@@ -200,6 +216,7 @@ export class TautulliService implements TautulliClient {
           section_id: sectionId,
           start,
           length,
+          refresh: refresh ? 'true' : undefined,
         },
       });
 
@@ -211,18 +228,25 @@ export class TautulliService implements TautulliClient {
 
       const data = response.data.response.data;
       const items = data?.data ?? [];
+      const recordsFiltered = data?.recordsFiltered ?? items.length;
+      const recordsTotal = data?.recordsTotal ?? items.length;
 
       // Log Tautulli's response metadata to help debug pagination issues
       console.log(`[Tautulli API] get_library_media_info response:`, {
         sectionId,
         start,
         length,
-        recordsTotal: data?.recordsTotal,
-        recordsFiltered: data?.recordsFiltered,
+        refresh,
+        recordsTotal,
+        recordsFiltered,
         itemsReturned: items.length,
       });
 
-      return items;
+      return {
+        items,
+        recordsFiltered,
+        recordsTotal,
+      };
     });
   }
 

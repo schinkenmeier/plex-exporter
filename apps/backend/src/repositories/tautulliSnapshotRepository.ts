@@ -71,7 +71,7 @@ export class TautulliSnapshotRepository {
     return this.db
       .select()
       .from(tautulliSnapshots)
-      .orderBy(desc(tautulliSnapshots.capturedAt))
+      .orderBy(desc(tautulliSnapshots.capturedAt), desc(tautulliSnapshots.id))
       .limit(safeLimit)
       .all()
       .map((row) => this.mapRow<TPayload>(row));
@@ -92,17 +92,17 @@ export class TautulliSnapshotRepository {
   }
 
   private pruneSnapshots(): void {
-    const excessRows = this.db
+    const rows = this.db
       .select({ id: tautulliSnapshots.id })
       .from(tautulliSnapshots)
       .orderBy(desc(tautulliSnapshots.capturedAt), desc(tautulliSnapshots.id))
-      .offset(this.maxSnapshots)
       .all();
 
-    if (!excessRows.length) {
+    if (!rows.length || rows.length <= this.maxSnapshots) {
       return;
     }
 
+    const excessRows = rows.slice(this.maxSnapshots);
     const idsToDelete = excessRows.map((row) => row.id);
     this.db
       .delete(tautulliSnapshots)

@@ -7,6 +7,9 @@
     "packages/*",
     "tools"
   ],
+  "engines": {
+    "node": ">=20 <21"
+  },
   "scripts": {
     "prepare": "node -e \"if (process.env.CI !== 'true') { const { execSync } = require('child_process'); try { execSync('husky install', { stdio: 'inherit' }); } catch (e) { /* ignore */ } }\"",
     "test": "npm test --workspaces --if-present",

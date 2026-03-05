@@ -109,6 +109,33 @@ export class ImageStorageService {
   }
 
   /**
+   * Remove all locally stored images for a media item
+   */
+  async removeMediaAssets(mediaType: 'movie' | 'tv', ratingKey: string): Promise<void> {
+    const coverDir = path.join(this.basePath, 'covers', mediaType, ratingKey);
+    await this.removePathSafe(coverDir);
+  }
+
+  private async removePathSafe(targetPath: string): Promise<void> {
+    const resolvedTarget = path.resolve(targetPath);
+    const allowedBase = path.resolve(this.basePath);
+
+    if (!resolvedTarget.startsWith(allowedBase)) {
+      console.warn(`[ImageStorage] Refusing to delete path outside base directory: ${targetPath}`);
+      return;
+    }
+
+    try {
+      await fs.rm(resolvedTarget, { recursive: true, force: true });
+    } catch (error) {
+      console.warn(
+        `[ImageStorage] Failed to delete path ${resolvedTarget}:`,
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }
+
+  /**
    * Get relative path for a media item image
    */
   getMediaImagePath(

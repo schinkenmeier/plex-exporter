@@ -264,6 +264,77 @@ describe('TautulliSyncService - season cleanup', () => {
   });
 });
 
+describe('TautulliSyncService - removed media cleanup', () => {
+  it('deletes missing items even during incremental sync and removes covers', async () => {
+    const mediaRepo = {
+      filter: vi.fn().mockReturnValue([
+        { id: 1, plexId: 'keep-me', mediaType: 'tv', title: 'Keep' },
+        { id: 2, plexId: 'drop-me', mediaType: 'movie', title: 'Drop' },
+      ]),
+      delete: vi.fn(),
+    };
+
+    const imageStorageService = {
+      removeMediaAssets: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const service = new TautulliSyncService(
+      { getBaseUrl: () => 'http://localhost:8181' } as any,
+      mediaRepo as any,
+      {} as any,
+      {} as any,
+      undefined,
+      imageStorageService as any,
+    );
+
+    const deletedCount = await (service as any).deleteRemovedMedia(1, ['keep-me']);
+
+    expect(deletedCount).toBe(1);
+    expect(mediaRepo.delete).toHaveBeenCalledWith(2);
+    expect(imageStorageService.removeMediaAssets).toHaveBeenCalledWith('movie', 'drop-me');
+  });
+});
+
+describe('TautulliSyncService - library pagination refresh', () => {
+  it('refreshes media info on first page and paginates without skipping capped batches', async () => {
+    const getLibraryMediaPage = vi
+      .fn()
+      .mockResolvedValueOnce({
+        items: Array.from({ length: 500 }, (_, i) => ({
+          rating_key: `rk-${i + 1}`,
+          title: `Item ${i + 1}`,
+        })),
+        recordsFiltered: 797,
+        recordsTotal: 797,
+      })
+      .mockResolvedValueOnce({
+        items: Array.from({ length: 297 }, (_, i) => ({
+          rating_key: `rk-${i + 501}`,
+          title: `Item ${i + 501}`,
+        })),
+        recordsFiltered: 797,
+        recordsTotal: 797,
+      });
+
+    const service = new TautulliSyncService(
+      {
+        getLibraryMediaPage,
+      } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    );
+
+    const items = await (service as any).fetchAllMediaFromLibrary(123, {
+      refreshMediaInfo: true,
+    });
+
+    expect(items).toHaveLength(797);
+    expect(getLibraryMediaPage).toHaveBeenNthCalledWith(1, 123, 0, 1000, true);
+    expect(getLibraryMediaPage).toHaveBeenNthCalledWith(2, 123, 500, 1000, false);
+  });
+});
+
 describe('TautulliSyncService - cover downloads', () => {
   let seasonRepo: MockSeasonRepository;
   let tautulliService: {

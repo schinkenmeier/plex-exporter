@@ -3,7 +3,7 @@ import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createTautulliSyncRouter } from '../../src/routes/tautulliSync.js';
-import LibrarySectionRepository from '../../src/repositories/librarySectionRepository.js';
+import { LibrarySectionRepository } from '../../src/repositories/librarySectionRepository.js';
 import { SyncScheduleRepository } from '../../src/repositories/syncScheduleRepository.js';
 import { TautulliConfigRepository } from '../../src/repositories/tautulliConfigRepository.js';
 import SettingsRepository from '../../src/repositories/settingsRepository.js';

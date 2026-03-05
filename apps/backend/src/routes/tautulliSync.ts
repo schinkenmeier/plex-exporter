@@ -468,12 +468,13 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
         );
       }
 
-      const { incremental, enrichWithTmdb, syncCovers } = req.body;
+      const { incremental, enrichWithTmdb, syncCovers, refreshMediaInfo } = req.body;
 
       const options = {
         incremental: incremental ?? false,
         enrichWithTmdb: enrichWithTmdb ?? true,
         syncCovers: syncCovers ?? true, // Default to true for manual syncs
+        refreshMediaInfo: refreshMediaInfo ?? true,
       };
 
       // Start sync in background (don't await)

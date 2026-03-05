@@ -1,181 +1,85 @@
 # Plex Exporter Backend
 
-Dieses Paket stellt das Fundament für eine künftige API bereit, die Plex-Exports über HTTP verfügbar macht. Ziel ist es, vorbereitete JSON-Dumps aus `data/exports/` strukturiert auszuliefern, sie optional aufzubereiten und zukünftige Verwaltungsaufgaben (z. B. Re-Exports, Validierungen, Authentifizierung) zu übernehmen.
+Express/TypeScript-Backend fuer den Plex Exporter. Die API liefert Katalogdaten aus SQLite und stellt zusaetzliche Endpunkte (Hero, Thumbnails, Watchlist, Admin) bereit.
 
-## Aktueller Stand
-- Ein Express-Server (`src/server.ts`) mit vorbereiteten Routen, CORS-Konfiguration und gemeinsamer Middleware.
-- **Neue Export-API** (`src/routes/exports.ts`) mit folgenden Endpunkten:
-  - `GET /api/exports/movies` - Liefert vollständige Filmdaten aus `data/exports/movies/movies.json`
-  - `GET /api/exports/series` - Liefert Serien-Index aus `data/exports/series/series_index.json`
-  - `GET /api/exports/series/:id/details` - Liefert detaillierte Serieninformationen
-  - `GET /api/exports/stats` - Liefert Statistiken über verfügbare Exporte
-- Health-Endpunkt unter `/health` für Betriebsprüfungen
-- SQLite-Datenbank mit Migrations-System und Repositories für Media, Thumbnails und Tautulli-Snapshots
-- Platzhalter für automatisierte Tests (`tests/`)
+## Voraussetzungen
 
-## Konfiguration
-Die Anwendung liest ihre Konfiguration beim Start aus Umgebungsvariablen und validiert sie per [Zod](https://github.com/colinhacks/zod). Erstelle für lokale Entwicklungen eine `.env`-Datei auf Basis der bereitgestellten `.env.sample` und passe die Werte an deine Umgebung an.
+- Node.js `20.x` (gleich wie CI)
+- npm `10+`
+- Gebautes Frontend-Bundle (`npm run build --workspace @plex-exporter/frontend`), da das Backend die Admin-UI ausliefert
 
-| Variable | Beschreibung | Pflicht? | Standardwert |
-| --- | --- | --- | --- |
-| `NODE_ENV` | Node.js-Laufzeitmodus. | Nein | `development` |
-| `PORT` | HTTP-Port, auf dem der Server lauscht. | Nein | `4000` |
-| `SQLITE_PATH` | Pfad zur SQLite-Datenbank mit den Exportinformationen. | Nein | `./data/exports/plex-exporter.sqlite` |
-| `TAUTULLI_URL` | Basis-URL der Tautulli-Instanz. | Bedingt¹ | – |
-| `TAUTULLI_API_KEY` | API-Key für Zugriffe auf Tautulli. | Bedingt¹ | – |
-| `API_TOKEN` | Geheimer Token für geschützte Routen (`Bearer`- oder `X-API-Key`-Header). | Nein | – |
-| `ADMIN_USERNAME` | Benutzername für das Admin-Panel (Basic Auth). | Bedingt² | – |
-| `ADMIN_PASSWORD` | Passwort für das Admin-Panel (Basic Auth). | Bedingt² | – |
+## Schnellstart (lokal)
 
-¹ `TAUTULLI_URL` und `TAUTULLI_API_KEY` müssen gemeinsam gesetzt werden, sobald eine Integration aktiv ist.
-
-² `ADMIN_USERNAME` und `ADMIN_PASSWORD` müssen gemeinsam gesetzt werden, um das Admin-Panel zu aktivieren.
-
-## Build & Betrieb mit Docker
-
-### Produktionsbuild erstellen
-- Lokaler Build ohne Container: `npm run build --workspace @plex-exporter/backend`
-- Der Build erzeugt ein transpiliertes Bundle unter `apps/backend/dist/` und nutzt das neue Skript `start:prod`, um den Server via `node dist/server.js` zu starten.
-
-### Lokale Umgebung mit Docker Compose
-- Docker-Image bauen: `docker compose build backend`
-- Backend starten: `docker compose up -d backend`
-- Optionales Tautulli-Mock aktivieren: `docker compose --profile tautulli up -d backend tautulli-mock`
-  (liefert eine kleine statische Antwort aus `tools/tautulli-mock/server.cjs`).
-- Logs einsehen: `docker compose logs -f backend`
-- Umgebung stoppen: `docker compose down`
-
-### Persistente Daten & Volumes
-- Exporte (`data/exports/`) werden als Bind-Mount in den Container eingebunden und bleiben auf dem Host erhalten.
-- Die SQLite-Datenbank liegt standardmäßig unter `data/sqlite/plex-exporter.sqlite`. Lege den Ordner einmalig an (`mkdir -p data/sqlite`), damit Docker Compose die Datei persistent ablegen kann.
-- In `.gitignore` sind sowohl `data/sqlite/` als auch `*.sqlite` im Export-Verzeichnis ausgeschlossen, damit keine Laufzeitdaten eingecheckt werden.
-
-### Migrationen & Initialisierung
-- Beim Containerstart wird `npm run start:prod` ausgeführt, wodurch der Server automatisch alle hinterlegten SQLite-Migrationen anwendet (`apps/backend/src/db/migrations/`). Manuelle Eingriffe sind nicht notwendig.
-
-### Environment-Variablen in Docker Compose
-- Die Compose-Datei akzeptiert über `.env` im Projektwurzelverzeichnis verschiedene Parameter (`BACKEND_PORT`, `BACKEND_INTERNAL_PORT`, `BACKEND_SQLITE_PATH`, `BACKEND_TAUTULLI_*`).
-- Standardmäßig lauscht das Backend auf Port `4000`.
-- Für die Nutzung des Tautulli-Mocks setze `BACKEND_TAUTULLI_URL=http://tautulli-mock:8181/api/v2` sowie einen beliebigen `BACKEND_TAUTULLI_API_KEY`, damit die Validierung greift.
-
-## Nächste Schritte
-- Anbindung an reale Exportdaten aus `data/exports/`.
-- Ergänzung weiterer Routen (z. B. `/movies`, `/shows`).
-- Konfiguration von Logging, Fehlerbehandlung und Authentifizierung.
-- Erweiterung der Test-Suite (Unit-, Integrations- und Contract-Tests).
-
-## Schnellstart (Lokale Entwicklung)
-
-1. **Dependencies installieren**:
+1. Abhaengigkeiten installieren:
    ```bash
-   npm install --workspace @plex-exporter/backend
+   npm ci
    ```
-
-2. **Umgebungsvariablen konfigurieren**:
+2. Backend-ENV anlegen:
    ```bash
-   cd apps/backend
-   cp .env.example .env
-   # Passe .env nach Bedarf an (PORT=4001 für lokale Entwicklung)
+   cp apps/backend/.env.example apps/backend/.env
    ```
-
-3. **TypeScript kompilieren**:
+3. Frontend-Bundle bauen (erforderlich fuer Backend-Start):
    ```bash
-   npm run build --workspace @plex-exporter/backend
+   npm run build --workspace @plex-exporter/frontend
    ```
-
-4. **Server starten**:
+4. Backend starten:
    ```bash
-   npm run start --workspace @plex-exporter/backend
-   # Oder für Development mit Auto-Reload:
    npm run dev --workspace @plex-exporter/backend
    ```
 
-5. **API testen**:
-   ```bash
-   curl http://localhost:4001/health
-   curl http://localhost:4001/api/exports/stats
-   curl http://localhost:4001/api/exports/movies
-   ```
+## API-Uebersicht
 
-## API-Endpunkte
+### Public
 
-### Export-Daten (Public, mit CORS)
+- `GET /health`
+- `GET /api/v1/stats`
+- `GET /api/v1/movies`
+- `GET /api/v1/movies/:id`
+- `GET /api/v1/series`
+- `GET /api/v1/series/:id`
+- `GET /api/v1/filter`
+- `GET /api/v1/search?q=...`
+- `GET /api/v1/recent`
+- `GET /api/v1/tmdb/:type/:id` (nur mit TMDB-Token nutzbar)
+- `GET /api/v1/tmdb/tv/:id/season/:seasonNumber`
+- `GET /api/hero/:kind`
+- `GET /api/thumbnails/*`
+- `POST/GET /api/watchlist/*`
+- `POST/GET /api/welcome-email/*`
+- `POST/GET /api/newsletter/*`
 
-- **`GET /api/exports/stats`**
-  Liefert Statistiken über verfügbare Exporte
+### Geschuetzt
 
-- **`GET /api/exports/movies`**
-  Liefert vollständige Filmdaten aus `data/exports/movies/movies.json`
+- `GET /libraries` (Bearer/X-API-Key, wenn `API_TOKEN` gesetzt ist)
+- `GET /media/*` (Basic Auth)
+- `GET /admin/*` (Basic Auth)
+- `GET/POST /admin/api/tautulli/*` (Basic Auth)
 
-- **`GET /api/exports/series`**
-  Liefert Serien-Index aus `data/exports/series/series_index.json`
+## Wichtige Umgebungsvariablen
 
-- **`GET /api/exports/series/:id/details`**
-  Liefert detaillierte Serieninformationen (inklusive Staffeln & Episoden)
+Siehe `apps/backend/.env.example`.
 
-### System
+- `PORT` (Default `4000`)
+- `SQLITE_PATH` (Default relativ zu `apps/backend`: `../../data/sqlite/plex-exporter.sqlite`)
+- `API_TOKEN` (optional)
+- `ADMIN_USERNAME` + `ADMIN_PASSWORD` (optional, aber gemeinsam)
+- `TAUTULLI_URL` + `TAUTULLI_API_KEY` (optional, aber gemeinsam)
+- `TMDB_ACCESS_TOKEN` (optional)
+- `RESEND_API_KEY` + `RESEND_FROM_EMAIL` (optional, aber gemeinsam)
 
-- **`GET /health`**
-  Health-Check mit Status, Timestamp und Environment
+## Node-/Native-Module-Hinweis
 
-### Authentifizierung für geschützte Routen
+`better-sqlite3` ist ein natives Modul und muss zur aktiven Node-Version passen.
 
-- **`POST /notifications/*`** und **`GET /libraries`** erwarten, dass du entweder einen `Authorization: Bearer <TOKEN>`-Header
-  oder alternativ `X-API-Key: <TOKEN>` mitsendest. Der Token-Wert wird über die Umgebungsvariable `API_TOKEN` konfiguriert.
-- Ist kein `API_TOKEN` gesetzt, bleiben die Routen weiterhin ohne Authentifizierung erreichbar (z. B. für lokale Tests).
+- Empfohlen: Node `20.x` verwenden (`.nvmrc` im Repo-Root)
+- Nach Node-Wechsel immer neu installieren/rebuilden:
+  ```bash
+  npm ci
+  npm rebuild better-sqlite3 --workspace @plex-exporter/backend
+  ```
 
-## Admin-Panel
+Wenn Tests mit einem Binary-Mismatch fehlschlagen, ist das fast immer ein Umgebungsproblem (Node-Version vs. kompiliertes Native-Binary), kein Codefehler.
 
-Das Backend verfügt über ein integriertes Admin-Panel zur Verwaltung und Überwachung.
+## Docker Compose
 
-### Zugriff
-
-- **URL**: `http://localhost:4000/admin` (bzw. der konfigurierte Port)
-- **Authentifizierung**: HTTP Basic Auth mit `ADMIN_USERNAME` und `ADMIN_PASSWORD`
-- **Voraussetzung**: Beide Umgebungsvariablen müssen gesetzt sein, sonst ist das Panel nicht verfügbar
-
-### Features
-
-Das Admin-Panel bietet folgende Funktionen:
-
-#### Dashboard
-- System-Status (Uptime, Memory, Node.js-Version)
-- Datenbank-Statistiken (Anzahl Filme, Serien, Thumbnails)
-- Service-Übersicht (Tautulli, TMDB, API Auth)
-
-#### Konfiguration
-- Anzeige aller Umgebungsvariablen (sensible Werte maskiert)
-- Übersicht über aktivierte Services
-- Validierung der Konfiguration
-
-#### Tautulli Sync
-- Verwaltung von URL und API-Key der Tautulli-Instanz
-- Auswahl synchronisierter Bibliotheken und geplanter Sync-Zeiten
-- Manuelles Anstoßen einer Synchronisation mit Statusausgabe
-
-#### System-Logs
-- Anzeige der letzten 500 Log-Einträge
-- Filterung nach Log-Level (Debug, Info, Warning, Error)
-- Logs leeren
-
-#### Service-Tests
-- **Tautulli-Test**: Verbindung und Libraries abrufen
-- **Datenbank-Test**: Verbindung und Datenzugriff prüfen
-
-### Beispiel-Konfiguration
-
-```bash
-# In .env oder als Umgebungsvariablen
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=secure-password-123
-
-# Für Docker Compose
-BACKEND_ADMIN_USERNAME=admin
-BACKEND_ADMIN_PASSWORD=secure-password-123
-```
-
-### Sicherheitshinweise
-
-- **Verwende ein starkes Passwort**, insbesondere wenn das Backend öffentlich erreichbar ist
-- Das Admin-Panel sollte idealerweise nur über localhost oder ein privates Netzwerk erreichbar sein
-- Für Produktivumgebungen empfiehlt sich zusätzlich ein Reverse-Proxy mit IP-Whitelist oder VPN
+Fuer Container-Setups werden Variablen ueber die Root-Datei `.env` (Vorlage: `.env.example`) gesetzt und in `docker-compose.yml` auf Backend-ENV gemappt.

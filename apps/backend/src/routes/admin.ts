@@ -745,7 +745,7 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
         const likeValue = `%${escapeLikePattern(searchTerm)}%`;
         whereClauses.push(
           `(${searchColumns
-            .map(column => `${escapeIdentifier(column)} LIKE ? ESCAPE '\\\\'`)
+            .map(column => `${escapeIdentifier(column)} LIKE ? ESCAPE '\\'`)
             .join(' OR ')})`,
         );
         for (let index = 0; index < searchColumns.length; index += 1) {
