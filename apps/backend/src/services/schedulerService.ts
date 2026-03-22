@@ -1,12 +1,14 @@
 import cron, { type ScheduledTask } from 'node-cron';
 import type { SyncScheduleRepository } from '../repositories/syncScheduleRepository.js';
 import type { TautulliSyncService } from './tautulliSyncService.js';
+import type { SyncLiveMonitor } from './syncLiveMonitor.js';
+import logger from './logger.js';
 
 export interface SchedulerConfig {
   enabled?: boolean;
 }
 
-type JobHandler = () => Promise<void>;
+type JobHandler = () => Promise<boolean>;
 
 export class SchedulerService {
   private tasks: Map<string, ScheduledTask> = new Map();
@@ -16,6 +18,7 @@ export class SchedulerService {
     private readonly config: SchedulerConfig,
     private readonly syncScheduleRepo: SyncScheduleRepository,
     private readonly tautulliSyncService: TautulliSyncService,
+    private readonly syncLiveMonitor?: SyncLiveMonitor,
   ) {}
 
   /**
@@ -105,7 +108,12 @@ export class SchedulerService {
         const startTime = Date.now();
 
         try {
-          await handler();
+          const didRun = await handler();
+
+          if (!didRun) {
+            console.log(`Skipped scheduled job: ${jobType} (${id}) because another sync is active`);
+            return;
+          }
 
           // Update last run and next run times
           const lastRunAt = new Date().toISOString();
@@ -136,24 +144,72 @@ export class SchedulerService {
     switch (jobType) {
       case 'tautulli_sync':
         return async () => {
-          await this.tautulliSyncService.syncAll(
-            {
-              incremental: true,
-              enrichWithTmdb: true,
-              syncCovers: false, // Don't sync covers during automatic sync
-            },
-            (progress) => {
-              console.log(
-                `[Sync] ${progress.phase}: ${progress.current}/${progress.total} (${progress.percentage}%)`,
-              );
-            },
-          );
+          const options = {
+            incremental: true,
+            enrichWithTmdb: true,
+            syncCovers: false, // Don't sync covers during automatic sync
+            refreshMediaInfo: true,
+          };
+
+          const run = this.syncLiveMonitor?.tryStartRun('scheduler', options);
+          if (this.syncLiveMonitor && !run) {
+            const activeRun = this.syncLiveMonitor.getActiveRun();
+            const message = 'Scheduled sync skipped because another sync is currently running';
+            this.syncLiveMonitor.onLog(
+              activeRun?.runId ?? null,
+              'warn',
+              message,
+              activeRun ? { activeRunId: activeRun.runId, source: activeRun.source } : undefined,
+            );
+            logger.warn(message, activeRun ? { activeRunId: activeRun.runId, source: activeRun.source } : undefined);
+            return false;
+          }
+
+          const runId = run?.runId ?? null;
+          if (runId && this.syncLiveMonitor) {
+            this.syncLiveMonitor.onLog(runId, 'info', 'Scheduled sync started');
+          }
+
+          try {
+            const stats = await this.tautulliSyncService.syncAll(
+              options,
+              (progress) => {
+                const progressMessage =
+                  `[Sync] ${progress.phase}: ${progress.current}/${progress.total} (${progress.percentage}%)`;
+                console.log(progressMessage);
+                if (runId && this.syncLiveMonitor) {
+                  this.syncLiveMonitor.onProgress(runId, progress);
+                  this.syncLiveMonitor.onLog(runId, 'debug', progressMessage);
+                }
+              },
+            );
+
+            if (runId && this.syncLiveMonitor) {
+              this.syncLiveMonitor.completeRun(runId, stats);
+              this.syncLiveMonitor.onLog(runId, 'info', 'Scheduled sync completed', {
+                totalCreated: stats.totalCreated,
+                totalUpdated: stats.totalUpdated,
+                totalDeleted: stats.totalDeleted,
+                totalErrors: stats.totalErrors,
+              });
+            }
+
+            return true;
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            if (runId && this.syncLiveMonitor) {
+              this.syncLiveMonitor.onLog(runId, 'error', 'Scheduled sync failed', { error: errorMessage });
+              this.syncLiveMonitor.failRun(runId, errorMessage);
+            }
+            throw error;
+          }
         };
 
       case 'cover_update':
         return async () => {
           // This will be implemented later for batch cover updates
           console.log('Cover update job not yet implemented');
+          return false;
         };
 
       default:

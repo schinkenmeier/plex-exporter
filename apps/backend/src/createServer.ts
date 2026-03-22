@@ -58,6 +58,7 @@ import { TautulliSyncService } from './services/tautulliSyncService.js';
 import { SchedulerService } from './services/schedulerService.js';
 import { ImageStorageService } from './services/imageStorageService.js';
 import logger from './services/logger.js';
+import { SyncLiveMonitor } from './services/syncLiveMonitor.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -258,6 +259,7 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
     syncService: null,
     scheduler: null,
   };
+  const syncLiveMonitor = new SyncLiveMonitor();
 
   const buildSyncService = (service: TautulliClient | null): TautulliSyncService | null => {
     if (!service) {
@@ -304,6 +306,7 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
       { enabled: true },
       syncScheduleRepo,
       syncService,
+      syncLiveMonitor,
     );
     tautulliState.scheduler.start();
     logger.info('Scheduler service started');
@@ -484,6 +487,7 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
       refreshTautulliIntegration,
       settingsRepository,
       tautulliSnapshotRepository: tautulliSnapshotRepository!,
+      syncLiveMonitor,
     }),
   );
 

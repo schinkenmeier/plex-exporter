@@ -15,7 +15,9 @@
     "test": "npm test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "lint": "echo 'Run linting via GitHub Actions'",
-    "type-check": "npm run type-check --workspaces --if-present"
+    "type-check": "npm run type-check --workspaces --if-present",
+    "docs:check": "npm run docs:check --workspace @plex-exporter/tools",
+    "text:check": "npm run text:check --workspace @plex-exporter/tools"
   },
   "devDependencies": {
     "husky": "^8.0.3"

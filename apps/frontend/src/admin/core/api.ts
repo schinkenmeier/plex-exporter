@@ -270,6 +270,69 @@ export interface ManualSyncOptions {
   incremental: boolean;
   enrichWithTmdb: boolean;
   syncCovers: boolean;
+  refreshMediaInfo?: boolean;
+}
+
+export type SyncRunSource = 'manual' | 'scheduler';
+export type SyncRunStatus = 'running' | 'completed' | 'failed';
+export type SyncLiveEventType = 'run_started' | 'progress' | 'log' | 'run_completed' | 'run_failed';
+
+export interface SyncRunOptions {
+  incremental: boolean;
+  enrichWithTmdb: boolean;
+  syncCovers: boolean;
+  refreshMediaInfo: boolean;
+}
+
+export interface SyncProgressPayload {
+  phase: string;
+  current: number;
+  total: number;
+  percentage: number;
+}
+
+export interface SyncLiveActiveRun {
+  runId: string;
+  source: SyncRunSource;
+  status: 'running';
+  startedAt: string;
+  options: SyncRunOptions;
+}
+
+export interface SyncLiveCompletedRun {
+  runId: string;
+  source: SyncRunSource;
+  status: 'completed' | 'failed';
+  startedAt: string;
+  finishedAt: string;
+  durationMs: number;
+  options: SyncRunOptions;
+  stats: {
+    totalCreated: number;
+    totalUpdated: number;
+    totalDeleted: number;
+    totalSkipped: number;
+    totalErrors: number;
+  } | null;
+  error: string | null;
+}
+
+export interface SyncLiveEvent {
+  id: string;
+  timestamp: string;
+  type: SyncLiveEventType;
+  runId: string | null;
+  payload:
+    | { run: SyncLiveActiveRun }
+    | { run: SyncLiveCompletedRun }
+    | { progress: SyncProgressPayload }
+    | { level: LogLevel; message: string; context?: Record<string, unknown> };
+}
+
+export interface SyncLiveStateResponse {
+  activeRun: SyncLiveActiveRun | null;
+  lastRun: SyncLiveCompletedRun | null;
+  events: SyncLiveEvent[];
 }
 
 export interface TestResponse {
@@ -293,6 +356,16 @@ export interface WelcomeEmailHistoryEntry {
   status: 'sent' | 'failed';
   sentAt?: string | null;
   errorMessage?: string | null;
+}
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
 }
 
 export class AdminApiClient {
@@ -325,7 +398,7 @@ export class AdminApiClient {
 
     if (!response.ok) {
       const message = (data as { message?: string } | null)?.message ?? response.statusText;
-      throw new Error(message || 'Request failed');
+      throw new ApiError(message || 'Request failed', response.status);
     }
 
     return data;
@@ -446,6 +519,14 @@ export class AdminApiClient {
 
   startManualSync(options: ManualSyncOptions): Promise<{ message: string; options: ManualSyncOptions }> {
     return this.request('/tautulli/sync/manual', 'POST', options);
+  }
+
+  getSyncLiveState(): Promise<SyncLiveStateResponse> {
+    return this.request('/tautulli/sync/live/state', 'GET');
+  }
+
+  createSyncLiveEventSource(): EventSource {
+    return new EventSource(`${this.baseUrl}/tautulli/sync/live/stream`);
   }
 
   getSyncSchedules(): Promise<SyncSchedulesResponse> {

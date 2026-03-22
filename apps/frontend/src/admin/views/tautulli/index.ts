@@ -1,12 +1,22 @@
 import type { AdminViewModule } from '../index.ts';
 import {
   adminApiClient,
+  ApiError,
   type LibrarySection,
   type SnapshotSettingsResponse,
+  type SyncLiveActiveRun,
+  type SyncLiveCompletedRun,
+  type SyncLiveEvent,
+  type SyncLiveStateResponse,
+  type SyncProgressPayload,
   type SyncSchedule,
   type TautulliConfigStatus,
   type TautulliLibrary,
 } from '../../core/api.ts';
+
+const MAX_LIVE_EVENTS = 300;
+const LIVE_RECONNECT_BASE_MS = 1000;
+const LIVE_RECONNECT_MAX_MS = 15000;
 
 interface TautulliState {
   libraries: TautulliLibrary[];
@@ -14,6 +24,16 @@ interface TautulliState {
   schedules: SyncSchedule[];
   snapshotSettings: SnapshotSettingsResponse | null;
   configuredSections: LibrarySection[];
+  live: {
+    eventSource: EventSource | null;
+    reconnectTimer: number | null;
+    reconnectAttempts: number;
+    connectionState: 'connecting' | 'connected' | 'disconnected';
+    events: SyncLiveEvent[];
+    activeRun: SyncLiveActiveRun | null;
+    lastRun: SyncLiveCompletedRun | null;
+    activeProgress: SyncProgressPayload | null;
+  };
 }
 
 export const tautulliView: AdminViewModule = {
@@ -28,12 +48,23 @@ export const tautulliView: AdminViewModule = {
       schedules: [],
       snapshotSettings: null,
       configuredSections: [],
+      live: {
+        eventSource: null,
+        reconnectTimer: null,
+        reconnectAttempts: 0,
+        connectionState: 'connecting',
+        events: [],
+        activeRun: null,
+        lastRun: null,
+        activeProgress: null,
+      },
     };
 
     const layout = document.createElement('div');
     layout.className = 'tautulli-grid';
     layout.innerHTML = createMarkup();
     container.appendChild(layout);
+    let liveMonitorDisposed = false;
 
     const refs = resolveRefs(layout);
 
@@ -56,6 +87,223 @@ export const tautulliView: AdminViewModule = {
       } else {
         refs.configStatus.textContent = 'Keine Konfiguration vorhanden.';
       }
+    };
+
+    const updateConnectionBadge = () => {
+      refs.liveConnection.className = 'admin-chip';
+      if (state.live.connectionState === 'connected') {
+        refs.liveConnection.classList.add('admin-chip-success');
+        refs.liveConnection.textContent = 'Verbunden';
+      } else if (state.live.connectionState === 'connecting') {
+        refs.liveConnection.classList.add('admin-chip');
+        refs.liveConnection.textContent = 'Verbinde...';
+      } else {
+        refs.liveConnection.classList.add('admin-chip-danger');
+        refs.liveConnection.textContent = 'Getrennt';
+      }
+    };
+
+    const renderActiveRun = () => {
+      const run = state.live.activeRun;
+      if (!run) {
+        refs.liveActive.innerHTML = '<div class="admin-muted-text">Kein aktiver Sync.</div>';
+        return;
+      }
+
+      const progress = state.live.activeProgress;
+      const progressText = progress
+        ? `${progress.phase} (${progress.current}/${progress.total}, ${progress.percentage}%)`
+        : 'Warte auf Fortschrittsdaten...';
+
+      refs.liveActive.innerHTML = `
+        <div><strong>Run ID:</strong> ${run.runId}</div>
+        <div><strong>Quelle:</strong> ${run.source}</div>
+        <div><strong>Gestartet:</strong> ${formatDate(run.startedAt)}</div>
+        <div><strong>Status:</strong> ${run.status}</div>
+        <div><strong>Fortschritt:</strong> ${progressText}</div>
+      `;
+    };
+
+    const renderLastRun = () => {
+      const run = state.live.lastRun;
+      if (!run) {
+        refs.liveLast.innerHTML = '<div class="admin-muted-text">Noch kein abgeschlossener Lauf.</div>';
+        return;
+      }
+
+      const stats = run.stats;
+      const statsText = stats
+        ? `Created ${stats.totalCreated}, Updated ${stats.totalUpdated}, Deleted ${stats.totalDeleted}, Errors ${stats.totalErrors}`
+        : 'Keine Statistik vorhanden';
+      const errorText = run.error ? `<div><strong>Fehler:</strong> ${run.error}</div>` : '';
+
+      refs.liveLast.innerHTML = `
+        <div><strong>Run ID:</strong> ${run.runId}</div>
+        <div><strong>Quelle:</strong> ${run.source}</div>
+        <div><strong>Status:</strong> ${run.status}</div>
+        <div><strong>Dauer:</strong> ${formatDuration(run.durationMs)}</div>
+        <div><strong>Beendet:</strong> ${formatDate(run.finishedAt)}</div>
+        <div><strong>Summary:</strong> ${statsText}</div>
+        ${errorText}
+      `;
+    };
+
+    const renderLiveEvents = () => {
+      if (!state.live.events.length) {
+        refs.liveLog.textContent = 'Noch keine Live-Events.';
+        return;
+      }
+
+      refs.liveLog.textContent = state.live.events.map(formatSyncEvent).join('\n');
+      refs.liveLog.scrollTop = refs.liveLog.scrollHeight;
+    };
+
+    const renderLiveMonitor = () => {
+      updateConnectionBadge();
+      renderActiveRun();
+      renderLastRun();
+      renderLiveEvents();
+    };
+
+    const setConnectionState = (nextState: 'connecting' | 'connected' | 'disconnected') => {
+      state.live.connectionState = nextState;
+      updateConnectionBadge();
+    };
+
+    const appendLiveEvent = (event: SyncLiveEvent) => {
+      state.live.events.push(event);
+      if (state.live.events.length > MAX_LIVE_EVENTS) {
+        state.live.events = state.live.events.slice(-MAX_LIVE_EVENTS);
+      }
+    };
+
+    const applySnapshot = (snapshot: SyncLiveStateResponse) => {
+      state.live.activeRun = snapshot.activeRun;
+      state.live.lastRun = snapshot.lastRun;
+      state.live.events = snapshot.events.slice(-MAX_LIVE_EVENTS);
+      state.live.activeProgress = null;
+
+      for (let i = state.live.events.length - 1; i >= 0; i--) {
+        const event = state.live.events[i];
+        if (event.type === 'progress' && event.payload && 'progress' in event.payload) {
+          state.live.activeProgress = event.payload.progress;
+          break;
+        }
+      }
+
+      renderLiveMonitor();
+    };
+
+    const loadLiveSnapshot = async () => {
+      const snapshot = await adminApiClient.getSyncLiveState();
+      applySnapshot(snapshot);
+    };
+
+    const clearReconnectTimer = () => {
+      if (state.live.reconnectTimer !== null) {
+        window.clearTimeout(state.live.reconnectTimer);
+        state.live.reconnectTimer = null;
+      }
+    };
+
+    const scheduleReconnect = () => {
+      if (liveMonitorDisposed) return;
+      clearReconnectTimer();
+      state.live.reconnectAttempts += 1;
+      const delay = Math.min(
+        LIVE_RECONNECT_BASE_MS * 2 ** (state.live.reconnectAttempts - 1),
+        LIVE_RECONNECT_MAX_MS,
+      );
+      state.live.reconnectTimer = window.setTimeout(() => {
+        void connectLiveStream();
+      }, delay);
+    };
+
+    const handleLiveEvent = (event: SyncLiveEvent) => {
+      appendLiveEvent(event);
+      if (event.type === 'run_started' && event.payload && 'run' in event.payload) {
+        state.live.activeRun = event.payload.run as SyncLiveActiveRun;
+        state.live.activeProgress = null;
+      } else if (event.type === 'progress' && event.payload && 'progress' in event.payload) {
+        state.live.activeProgress = event.payload.progress as SyncProgressPayload;
+      } else if (
+        (event.type === 'run_completed' || event.type === 'run_failed') &&
+        event.payload &&
+        'run' in event.payload
+      ) {
+        state.live.lastRun = event.payload.run as SyncLiveCompletedRun;
+        state.live.activeRun = null;
+      }
+      renderLiveMonitor();
+    };
+
+    const disconnectLiveStream = () => {
+      clearReconnectTimer();
+      if (state.live.eventSource) {
+        state.live.eventSource.close();
+        state.live.eventSource = null;
+      }
+    };
+
+    const connectLiveStream = async () => {
+      if (liveMonitorDisposed) return;
+      disconnectLiveStream();
+      setConnectionState('connecting');
+
+      try {
+        await loadLiveSnapshot();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Live-Snapshot konnte nicht geladen werden.';
+        refs.manualSyncStatus.textContent = message;
+      }
+
+      const eventSource = adminApiClient.createSyncLiveEventSource();
+      state.live.eventSource = eventSource;
+
+      eventSource.addEventListener('open', () => {
+        setConnectionState('connected');
+        state.live.reconnectAttempts = 0;
+      });
+
+      eventSource.addEventListener('snapshot', (rawEvent) => {
+        const messageEvent = rawEvent as MessageEvent<string>;
+        try {
+          const data = JSON.parse(messageEvent.data) as SyncLiveStateResponse;
+          applySnapshot(data);
+        } catch {
+          // ignore malformed snapshots
+        }
+      });
+
+      const syncEventTypes: Array<SyncLiveEvent['type']> = [
+        'run_started',
+        'progress',
+        'log',
+        'run_completed',
+        'run_failed',
+      ];
+
+      syncEventTypes.forEach((type) => {
+        eventSource.addEventListener(type, (rawEvent) => {
+          const messageEvent = rawEvent as MessageEvent<string>;
+          try {
+            const data = JSON.parse(messageEvent.data) as SyncLiveEvent;
+            handleLiveEvent(data);
+          } catch {
+            // ignore malformed events
+          }
+        });
+      });
+
+      eventSource.onerror = () => {
+        if (liveMonitorDisposed) return;
+        setConnectionState('disconnected');
+        if (state.live.eventSource) {
+          state.live.eventSource.close();
+          state.live.eventSource = null;
+        }
+        scheduleReconnect();
+      };
     };
 
     const loadLibrarySections = async () => {
@@ -260,12 +508,16 @@ export const tautulliView: AdminViewModule = {
           incremental: refs.incrementalToggle.checked,
           syncCovers: refs.coversToggle.checked,
           enrichWithTmdb: refs.tmdbToggle.checked,
+          refreshMediaInfo: true,
         };
         await adminApiClient.startManualSync(options);
-        refs.manualSyncStatus.textContent = 'Sync im Hintergrund gestartet. Fortschritt siehe Logs.';
+        refs.manualSyncStatus.textContent = 'Sync im Hintergrund gestartet. Fortschritt im Live Monitor.';
         toast.show('Sync gestartet', 'success');
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Sync konnte nicht gestartet werden.';
+        let message = error instanceof Error ? error.message : 'Sync konnte nicht gestartet werden.';
+        if (error instanceof ApiError && error.status === 409) {
+          message = 'Ein Sync läuft bereits. Bitte warten, bis der aktuelle Lauf abgeschlossen ist.';
+        }
         refs.manualSyncStatus.textContent = message;
         toast.show(message, 'error');
       } finally {
@@ -316,12 +568,17 @@ export const tautulliView: AdminViewModule = {
 
     refs.loadLibrariesButton.addEventListener('click', () => void loadAvailableLibraries());
 
+    renderLiveMonitor();
     void loadConfig();
     void loadLibrarySections();
     void loadSchedules();
     void loadSnapshotSettings();
+    void connectLiveStream();
 
-    return () => {};
+    return () => {
+      liveMonitorDisposed = true;
+      disconnectLiveStream();
+    };
   },
 };
 
@@ -380,6 +637,25 @@ function createMarkup(): string {
       <p class="admin-muted-text" id="sync-status"></p>
     </div>
     <div class="admin-panel">
+      <h3>Live Sync Monitor</h3>
+      <p>Live-Status und Debug-Logs für den aktuellen Synchronisationslauf.</p>
+      <div class="admin-button-row">
+        <span class="admin-chip" id="sync-live-connection">Verbinde...</span>
+      </div>
+      <div class="admin-input-stack">
+        <h4>Aktiver Lauf</h4>
+        <div id="sync-live-active" class="admin-muted-text">Keine Daten.</div>
+      </div>
+      <div class="admin-input-stack">
+        <h4>Letzter Lauf</h4>
+        <div id="sync-live-last" class="admin-muted-text">Keine Daten.</div>
+      </div>
+      <div class="admin-input-stack">
+        <h4>Live-Events</h4>
+        <pre id="sync-live-log" class="admin-log-view">Noch keine Events.</pre>
+      </div>
+    </div>
+    <div class="admin-panel">
       <h3>Automatischer Sync</h3>
       <p>Cron-Zeitplan konfigurieren.</p>
       <label class="admin-label">Job-Typ</label>
@@ -430,6 +706,10 @@ function resolveRefs(root: HTMLElement) {
     libraryList: byId('tautulli-configured-libraries'),
     manualSyncButton: byId('btn-start-sync') as HTMLButtonElement,
     manualSyncStatus: byId('sync-status'),
+    liveConnection: byId('sync-live-connection'),
+    liveActive: byId('sync-live-active'),
+    liveLast: byId('sync-live-last'),
+    liveLog: byId('sync-live-log') as HTMLPreElement,
     incrementalToggle: byId('sync-incremental') as HTMLInputElement,
     coversToggle: byId('sync-covers') as HTMLInputElement,
     tmdbToggle: byId('sync-tmdb') as HTMLInputElement,
@@ -443,4 +723,42 @@ function resolveRefs(root: HTMLElement) {
     snapshotStatus: byId('snapshot-status'),
     snapshotSaveButton: byId('btn-save-snapshot-settings') as HTMLButtonElement,
   };
+}
+
+function formatSyncEvent(event: SyncLiveEvent): string {
+  const timestamp = formatDate(event.timestamp);
+  if (event.type === 'progress' && 'progress' in event.payload) {
+    const { phase, current, total, percentage } = event.payload.progress;
+    return `[${timestamp}] [PROGRESS] ${phase} (${current}/${total}, ${percentage}%)`;
+  }
+
+  if (event.type === 'log' && 'message' in event.payload) {
+    const level = event.payload.level.toUpperCase().padEnd(5);
+    const context = event.payload.context ? ` ${JSON.stringify(event.payload.context)}` : '';
+    return `[${timestamp}] [${level}] ${event.payload.message}${context}`;
+  }
+
+  if ((event.type === 'run_started' || event.type === 'run_completed' || event.type === 'run_failed') && 'run' in event.payload) {
+    const run = event.payload.run;
+    return `[${timestamp}] [${event.type.toUpperCase()}] runId=${run.runId} source=${run.source} status=${run.status}`;
+  }
+
+  return `[${timestamp}] [EVENT] ${event.type}`;
+}
+
+function formatDate(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleString('de-DE');
+}
+
+function formatDuration(durationMs: number): string {
+  if (!Number.isFinite(durationMs) || durationMs < 0) return '-';
+  const seconds = Math.round(durationMs / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const restSeconds = seconds % 60;
+  if (minutes === 0) {
+    return `${restSeconds}s`;
+  }
+  return `${minutes}m ${restSeconds}s`;
 }

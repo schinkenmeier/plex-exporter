@@ -5,10 +5,11 @@ import type { SyncScheduleRepository } from '../repositories/syncScheduleReposit
 import type { TautulliConfigRepository } from '../repositories/tautulliConfigRepository.js';
 import type { SchedulerService } from '../services/schedulerService.js';
 import type { TautulliClient } from '../services/tautulliService.js';
-import type { TautulliSyncService } from '../services/tautulliSyncService.js';
+import type { SyncOptions, SyncStats, TautulliSyncService } from '../services/tautulliSyncService.js';
 import logger from '../services/logger.js';
 import SettingsRepository from '../repositories/settingsRepository.js';
 import TautulliSnapshotRepository from '../repositories/tautulliSnapshotRepository.js';
+import type { SyncLiveEvent, SyncLiveMonitor } from '../services/syncLiveMonitor.js';
 
 export const SNAPSHOT_LIMIT_SETTING_KEY = 'tautulli.snapshots.max';
 export const DEFAULT_SNAPSHOT_LIMIT = 50;
@@ -46,6 +47,7 @@ export interface TautulliSyncRouterOptions {
   refreshTautulliIntegration: (input?: { baseUrl: string; apiKey: string }) => void;
   settingsRepository: SettingsRepository;
   tautulliSnapshotRepository: TautulliSnapshotRepository;
+  syncLiveMonitor: SyncLiveMonitor;
 }
 
 /**
@@ -63,7 +65,13 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
     refreshTautulliIntegration,
     settingsRepository,
     tautulliSnapshotRepository,
+    syncLiveMonitor,
   } = options;
+
+  const writeSseEvent = (res: Response, eventName: string, payload: unknown): void => {
+    res.write(`event: ${eventName}\n`);
+    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+  };
 
   /**
    * GET /admin/api/tautulli/config
@@ -441,6 +449,42 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
   });
 
   /**
+   * GET /admin/api/tautulli/sync/live/state
+   * Get live sync monitor snapshot
+   */
+  router.get('/sync/live/state', (_req: Request, res: Response) => {
+    res.json(syncLiveMonitor.getStateSnapshot());
+  });
+
+  /**
+   * GET /admin/api/tautulli/sync/live/stream
+   * Stream live sync events via SSE
+   */
+  router.get('/sync/live/stream', (_req: Request, res: Response) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders?.();
+
+    writeSseEvent(res, 'snapshot', syncLiveMonitor.getStateSnapshot());
+
+    const unsubscribe = syncLiveMonitor.subscribe((event: SyncLiveEvent) => {
+      writeSseEvent(res, event.type, event);
+    });
+
+    const heartbeatInterval = setInterval(() => {
+      writeSseEvent(res, 'heartbeat', { timestamp: new Date().toISOString() });
+    }, 15000);
+
+    res.on('close', () => {
+      clearInterval(heartbeatInterval);
+      unsubscribe();
+      res.end();
+    });
+  });
+
+  /**
    * POST /admin/api/tautulli/sync/manual
    * Manually trigger a sync
    */
@@ -470,30 +514,51 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
 
       const { incremental, enrichWithTmdb, syncCovers, refreshMediaInfo } = req.body;
 
-      const options = {
+      const options: SyncOptions = {
         incremental: incremental ?? false,
         enrichWithTmdb: enrichWithTmdb ?? true,
         syncCovers: syncCovers ?? true, // Default to true for manual syncs
         refreshMediaInfo: refreshMediaInfo ?? true,
       };
+      const run = syncLiveMonitor.tryStartRun('manual', options);
+      if (!run) {
+        const activeRun = syncLiveMonitor.getActiveRun();
+        throw new HttpError(
+          409,
+          `A sync is already running (${activeRun?.source ?? 'unknown'}). Please wait until it finishes.`,
+        );
+      }
+      syncLiveMonitor.onLog(run.runId, 'info', 'Manual sync requested', { options });
 
       // Start sync in background (don't await)
       syncService
         .syncAll(options, (progress) => {
-          console.log(
-            `[Manual Sync] ${progress.phase}: ${progress.current}/${progress.total} (${progress.percentage}%)`,
-          );
+          const message = `[Manual Sync] ${progress.phase}: ${progress.current}/${progress.total} (${progress.percentage}%)`;
+          console.log(message);
+          syncLiveMonitor.onProgress(run.runId, progress);
+          syncLiveMonitor.onLog(run.runId, 'debug', message);
         })
-        .then((stats) => {
+        .then((stats: SyncStats) => {
           console.log('Manual sync completed:', stats);
+          syncLiveMonitor.completeRun(run.runId, stats);
+          syncLiveMonitor.onLog(run.runId, 'info', 'Manual sync completed', {
+            totalCreated: stats.totalCreated,
+            totalUpdated: stats.totalUpdated,
+            totalDeleted: stats.totalDeleted,
+            totalErrors: stats.totalErrors,
+          });
         })
         .catch((error) => {
           console.error('Manual sync failed:', error);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          syncLiveMonitor.onLog(run.runId, 'error', 'Manual sync failed', { error: errorMessage });
+          syncLiveMonitor.failRun(run.runId, errorMessage);
         });
 
       res.json({
         message: 'Sync started',
         options,
+        runId: run.runId,
       });
     } catch (error) {
       if (error instanceof HttpError) {

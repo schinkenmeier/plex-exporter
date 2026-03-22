@@ -1,24 +1,17 @@
-# Plex Exporter Backend
+# Backend Workspace
 
-Express/TypeScript-Backend fuer den Plex Exporter. Die API liefert Katalogdaten aus SQLite und stellt zusaetzliche Endpunkte (Hero, Thumbnails, Watchlist, Admin) bereit.
+Dieses Paket enthält das Express-/TypeScript-Backend für API, Admin-Oberfläche, Tautulli-Synchronisation, Scheduler und SQLite-Zugriff.
 
-## Voraussetzungen
-
-- Node.js `20.x` (gleich wie CI)
-- npm `10+`
-- Gebautes Frontend-Bundle (`npm run build --workspace @plex-exporter/frontend`), da das Backend die Admin-UI ausliefert
-
-## Schnellstart (lokal)
-
-1. Abhaengigkeiten installieren:
+## Lokaler Start
+1. Abhängigkeiten installieren:
    ```bash
    npm ci
    ```
-2. Backend-ENV anlegen:
+2. Backend-Umgebung anlegen:
    ```bash
    cp apps/backend/.env.example apps/backend/.env
    ```
-3. Frontend-Bundle bauen (erforderlich fuer Backend-Start):
+3. Frontend bauen, damit Admin-Assets verfügbar sind:
    ```bash
    npm run build --workspace @plex-exporter/frontend
    ```
@@ -27,59 +20,25 @@ Express/TypeScript-Backend fuer den Plex Exporter. Die API liefert Katalogdaten 
    npm run dev --workspace @plex-exporter/backend
    ```
 
-## API-Uebersicht
+## Wichtige Befehle
+- `npm run dev --workspace @plex-exporter/backend`
+- `npm run start --workspace @plex-exporter/backend`
+- `npm run build --workspace @plex-exporter/backend`
+- `npm run test --workspace @plex-exporter/backend`
+- `npm run test:coverage --workspace @plex-exporter/backend`
 
-### Public
+## Lokale Dateien
+- `src/server.ts`: Prozess-Entry.
+- `src/createServer.ts`: Server-Zusammenbau, Middleware, Router und Admin-UI-Einbindung.
+- `src/config/index.ts`: ENV-Parsing und Konfigurationsobjekt.
+- `src/routes/`: Public-, Protected- und Admin-Routen.
+- `tests/`: aktive Backend-Test-Suite.
 
-- `GET /health`
-- `GET /api/v1/stats`
-- `GET /api/v1/movies`
-- `GET /api/v1/movies/:id`
-- `GET /api/v1/series`
-- `GET /api/v1/series/:id`
-- `GET /api/v1/filter`
-- `GET /api/v1/search?q=...`
-- `GET /api/v1/recent`
-- `GET /api/v1/tmdb/:type/:id` (nur mit TMDB-Token nutzbar)
-- `GET /api/v1/tmdb/tv/:id/season/:seasonNumber`
-- `GET /api/hero/:kind`
-- `GET /api/thumbnails/*`
-- `POST/GET /api/watchlist/*`
-- `POST/GET /api/welcome-email/*`
-- `POST/GET /api/newsletter/*`
+## Doku
+- Zentrale Entwicklerdoku: `../../docs/development/backend.md`
+- Architektur und Datenfluss: `../../docs/development/architecture.md`
+- ENV- und Pfadreferenz: `../../docs/reference/`
 
-### Geschuetzt
-
-- `GET /libraries` (Bearer/X-API-Key, wenn `API_TOKEN` gesetzt ist)
-- `GET /media/*` (Basic Auth)
-- `GET /admin/*` (Basic Auth)
-- `GET/POST /admin/api/tautulli/*` (Basic Auth)
-
-## Wichtige Umgebungsvariablen
-
-Siehe `apps/backend/.env.example`.
-
-- `PORT` (Default `4000`)
-- `SQLITE_PATH` (Default relativ zu `apps/backend`: `../../data/sqlite/plex-exporter.sqlite`)
-- `API_TOKEN` (optional)
-- `ADMIN_USERNAME` + `ADMIN_PASSWORD` (optional, aber gemeinsam)
-- `TAUTULLI_URL` + `TAUTULLI_API_KEY` (optional, aber gemeinsam)
-- `TMDB_ACCESS_TOKEN` (optional)
-- `RESEND_API_KEY` + `RESEND_FROM_EMAIL` (optional, aber gemeinsam)
-
-## Node-/Native-Module-Hinweis
-
-`better-sqlite3` ist ein natives Modul und muss zur aktiven Node-Version passen.
-
-- Empfohlen: Node `20.x` verwenden (`.nvmrc` im Repo-Root)
-- Nach Node-Wechsel immer neu installieren/rebuilden:
-  ```bash
-  npm ci
-  npm rebuild better-sqlite3 --workspace @plex-exporter/backend
-  ```
-
-Wenn Tests mit einem Binary-Mismatch fehlschlagen, ist das fast immer ein Umgebungsproblem (Node-Version vs. kompiliertes Native-Binary), kein Codefehler.
-
-## Docker Compose
-
-Fuer Container-Setups werden Variablen ueber die Root-Datei `.env` (Vorlage: `.env.example`) gesetzt und in `docker-compose.yml` auf Backend-ENV gemappt.
+## Hinweise
+- Das Backend liefert die gebauten Frontend-Assets aus `apps/frontend/public` aus.
+- Die lokale `.env` ist für Source-Runs gedacht; Docker Compose nutzt stattdessen die Root-`.env`.

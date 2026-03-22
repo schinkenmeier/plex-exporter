@@ -8,12 +8,14 @@ import { SyncScheduleRepository } from '../../src/repositories/syncScheduleRepos
 import { TautulliConfigRepository } from '../../src/repositories/tautulliConfigRepository.js';
 import SettingsRepository from '../../src/repositories/settingsRepository.js';
 import TautulliSnapshotRepository from '../../src/repositories/tautulliSnapshotRepository.js';
+import { SyncLiveMonitor } from '../../src/services/syncLiveMonitor.js';
 import { createTestDatabase, type TestDatabaseHandle } from '../helpers/testDatabase.js';
 
 describe('Tautulli sync integration', () => {
   let dbHandle: TestDatabaseHandle;
   let app: express.Express;
   let syncService: { syncAll: ReturnType<typeof vi.fn> };
+  let syncLiveMonitor: SyncLiveMonitor;
 
   beforeEach(() => {
     dbHandle = createTestDatabase();
@@ -22,6 +24,7 @@ describe('Tautulli sync integration', () => {
     const tautulliConfigRepo = new TautulliConfigRepository(dbHandle.drizzle);
     const settingsRepository = new SettingsRepository(dbHandle.drizzle);
     const snapshotRepository = new TautulliSnapshotRepository(dbHandle.drizzle);
+    syncLiveMonitor = new SyncLiveMonitor();
 
     syncService = {
       syncAll: vi.fn().mockResolvedValue({}),
@@ -46,6 +49,7 @@ describe('Tautulli sync integration', () => {
         refreshTautulliIntegration: () => {},
         settingsRepository,
         tautulliSnapshotRepository: snapshotRepository,
+        syncLiveMonitor,
       }),
     );
   });
@@ -65,6 +69,52 @@ describe('Tautulli sync integration', () => {
       expect.objectContaining({ incremental: true, syncCovers: false, enrichWithTmdb: false }),
       expect.any(Function),
     );
+  });
+
+  it('blocks a second manual sync while one run is active and exposes live state', async () => {
+    let resolveSync: ((value: unknown) => void) | null = null;
+    syncService.syncAll.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveSync = resolve;
+        }),
+    );
+
+    const firstResponse = await request(app)
+      .post('/admin/api/tautulli/sync/manual')
+      .send({ incremental: false, syncCovers: true, enrichWithTmdb: true });
+
+    expect(firstResponse.status).toBe(200);
+
+    const secondResponse = await request(app)
+      .post('/admin/api/tautulli/sync/manual')
+      .send({ incremental: false, syncCovers: true, enrichWithTmdb: true });
+
+    expect(secondResponse.status).toBe(409);
+
+    const liveStateWhileRunning = await request(app).get('/admin/api/tautulli/sync/live/state');
+    expect(liveStateWhileRunning.status).toBe(200);
+    expect(liveStateWhileRunning.body.activeRun).toBeTruthy();
+    expect(Array.isArray(liveStateWhileRunning.body.events)).toBe(true);
+
+    resolveSync?.({
+      totalCreated: 1,
+      totalUpdated: 2,
+      totalDeleted: 0,
+      totalSkipped: 0,
+      totalErrors: 0,
+      results: [],
+      startTime: Date.now() - 1000,
+      endTime: Date.now(),
+      duration: 1000,
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const liveStateAfterRun = await request(app).get('/admin/api/tautulli/sync/live/state');
+    expect(liveStateAfterRun.status).toBe(200);
+    expect(liveStateAfterRun.body.activeRun).toBeNull();
+    expect(liveStateAfterRun.body.lastRun?.status).toBe('completed');
   });
 
   it('creates and lists sync schedules', async () => {

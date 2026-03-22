@@ -1,7 +1,11 @@
-# Tests
+# Backend Tests
 
-Hier ist Platz für Unit- und Integrations-Tests des Plex Exporter Backends. Erste Kandidaten:
+Die aktive Backend-Test-Suite liegt in diesem Verzeichnis.
 
-- Health-Route (`GET /health`)
-- Validierung der Exportquellen
-- Fehler- und Logging-Handling
+## Start
+- `npm run test --workspace @plex-exporter/backend`
+- `npm run test:coverage --workspace @plex-exporter/backend`
+
+## Doku
+- Zentrale Testdoku: `../../../docs/development/testing.md`
+- Backend-Kontext: `../../../docs/development/backend.md`

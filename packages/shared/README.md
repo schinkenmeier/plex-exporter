@@ -1,20 +1,19 @@
-# Shared Models
+# Shared Package
 
-Dieses Paket bündelt Schnittstellen, die zwischen Frontend und Backend geteilt werden können. Ziel ist eine einheitliche Sprache für Exporte, API-Responses und Konfigurationswerte.
+Dieses Workspace-Paket kapselt gemeinsam genutzte Modelle, Filter- und Paging-Helfer für Frontend und Backend.
 
-## Enthaltene Typen
-- `MediaItem`: Basismodell für Filme und Serien aus Plex-Exports.
-- `MediaLibrary`: Sammlungsmetadaten für UI-Filter und Backend-Endpunkte.
-- `TmdbCredentials`: Gemeinsame Struktur zur Beschreibung von TMDB-Zugangsdaten.
+## Enthalten
+- gemeinsame Typdefinitionen aus `src/index.d.ts`
+- Laufzeit-Helfer aus `src/filter.js` und `src/media.js`
+- Konstanten wie Paging-Grenzen und Sortierwerte
 
-Die Implementierungen finden sich in `src/index.ts` und lassen sich später von Build-Systemen (`tsc`, `tsup`, `esbuild`) nach JavaScript/Typdefinitionen ausgeben.
-
-## Verwendung
+## Beispiel
 ```ts
-import type { MediaItem, TmdbCredentials } from '@plex-exporter/shared';
+import type { MediaItem } from '@plex-exporter/shared';
+import { filterMediaItemsPaged } from '@plex-exporter/shared';
 ```
 
-## Nächste Schritte
-- Erweiterung um API-spezifische Antwortformate.
-- Ableitung von Schemas (z. B. Zod) auf Basis derselben Interfaces.
-- Veröffentlichung als separates Paket, sobald Versionierung nötig wird.
+## Doku
+- Architektur und Datenfluss: `../../docs/development/architecture.md`
+- Paketrollen im Monorepo: `../../docs/development/monorepo.md`
+- Daten- und Schnittstellenreferenz: `../../docs/reference/interfaces.md`

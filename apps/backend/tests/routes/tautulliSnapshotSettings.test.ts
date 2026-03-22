@@ -10,6 +10,7 @@ import {
 import { createTestDatabase, type TestDatabaseHandle } from '../helpers/testDatabase.js';
 import SettingsRepository from '../../src/repositories/settingsRepository.js';
 import TautulliSnapshotRepository from '../../src/repositories/tautulliSnapshotRepository.js';
+import { SyncLiveMonitor } from '../../src/services/syncLiveMonitor.js';
 
 describe('Tautulli snapshot settings routes', () => {
   let dbHandle: TestDatabaseHandle;
@@ -36,6 +37,7 @@ describe('Tautulli snapshot settings routes', () => {
         refreshTautulliIntegration: () => {},
         settingsRepository,
         tautulliSnapshotRepository: snapshotRepository,
+        syncLiveMonitor: new SyncLiveMonitor(),
       }),
     );
   });

@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "split:series": "node split_series.mjs ../data/exports/series/series_full.json ../data/exports/series",
-    "analyze": "node analyze-bundle.mjs"
+    "analyze": "node analyze-bundle.mjs",
+    "docs:check": "node check-doc-links.mjs",
+    "text:check": "node check-german-transliterations.mjs"
   }
 }
