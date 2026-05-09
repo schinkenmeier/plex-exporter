@@ -5,7 +5,7 @@
 # ============================================
 # Stage 1: Build Frontend
 # ============================================
-FROM node:lts-bookworm AS builder
+FROM node:24-bookworm AS builder
 
 WORKDIR /app
 
@@ -15,7 +15,7 @@ COPY apps/frontend/package.json apps/frontend/
 COPY packages/shared/package.json packages/shared/
 
 # Install dependencies for frontend workspace
-RUN CI=true npm install --workspace @plex-exporter/frontend
+RUN CI=true npm ci --workspace @plex-exporter/frontend
 
 # Copy source code
 COPY apps/frontend/ apps/frontend/

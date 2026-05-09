@@ -20,6 +20,8 @@
 3. Stack neu starten.
 4. Healthcheck und Admin-Zugang prüfen.
 
+Die GHCR-Images enthalten die im Container gebauten Node-24-Abhängigkeiten. Der lokale `better-sqlite3`-Rebuild-Hinweis aus der Entwicklungsdoku betrifft diesen Betriebsmodus nicht.
+
 ## Vor jedem Update prüfen
 - sind Host-Mounts vorhanden?
 - ist die SQLite-Datei gesichert?

@@ -526,8 +526,8 @@ describe('TautulliSyncService - TMDb enrichment', () => {
 describe('TautulliSyncService - media cover downloads', () => {
   let service: TautulliSyncService;
   let imageStorageService: {
-    getMediaImagePath: Mock<[mediaType: 'movie' | 'tv', ratingKey: string, kind: 'poster' | 'backdrop'], string>;
-    downloadBatch: Mock<[items: ImageDownloadItem[]], Promise<ImageDownloadResult[]>>;
+    getMediaImagePath: Mock<(mediaType: 'movie' | 'tv', ratingKey: string, kind: 'poster' | 'backdrop') => string>;
+    downloadBatch: Mock<(items: ImageDownloadItem[]) => Promise<ImageDownloadResult[]>>;
   };
 
   beforeEach(() => {
@@ -540,10 +540,10 @@ describe('TautulliSyncService - media cover downloads', () => {
     };
 
     imageStorageService = {
-      getMediaImagePath: vi.fn<[mediaType: 'movie' | 'tv', ratingKey: string, kind: 'poster' | 'backdrop'], string>((mediaType, ratingKey, kind) =>
+      getMediaImagePath: vi.fn((mediaType: 'movie' | 'tv', ratingKey: string, kind: 'poster' | 'backdrop') =>
         `covers/${mediaType}/${ratingKey}/${kind}.jpg`,
       ),
-      downloadBatch: vi.fn<[ImageDownloadItem[]], Promise<ImageDownloadResult[]>>(),
+      downloadBatch: vi.fn<(items: ImageDownloadItem[]) => Promise<ImageDownloadResult[]>>(),
     };
 
     service = new TautulliSyncService(

@@ -5,6 +5,7 @@ import type MediaRepository from '../repositories/mediaRepository.js';
 import type { MediaCreateInput, MediaRecord, MediaUpdateInput } from '../repositories/mediaRepository.js';
 import type ThumbnailRepository from '../repositories/thumbnailRepository.js';
 import { HttpError } from '../middleware/errorHandler.js';
+import { getRouteParam } from './params.js';
 
 export interface MediaRouterOptions {
   mediaRepository: MediaRepository;
@@ -62,7 +63,11 @@ const mapToResponse = (media: MediaRecord, thumbnailPaths: string[]) => ({
   thumbnails: thumbnailPaths,
 });
 
-const parseId = (value: string) => {
+const parseId = (value: string | undefined) => {
+  if (!value) {
+    return null;
+  }
+
   const id = Number.parseInt(value, 10);
 
   if (Number.isNaN(id) || id <= 0) {
@@ -115,7 +120,7 @@ export const createMediaRouter = ({ mediaRepository, thumbnailRepository }: Medi
   });
 
   router.get('/:id', (req: Request, res: Response, next: NextFunction) => {
-    const id = parseId(req.params.id);
+    const id = parseId(getRouteParam(req.params.id));
 
     if (!id) {
       return next(new HttpError(400, 'Invalid media identifier.'));
@@ -168,7 +173,7 @@ export const createMediaRouter = ({ mediaRepository, thumbnailRepository }: Medi
   });
 
   router.put('/:id', (req: Request, res: Response, next: NextFunction) => {
-    const id = parseId(req.params.id);
+    const id = parseId(getRouteParam(req.params.id));
 
     if (!id) {
       return next(new HttpError(400, 'Invalid media identifier.'));
@@ -200,7 +205,7 @@ export const createMediaRouter = ({ mediaRepository, thumbnailRepository }: Medi
   });
 
   router.delete('/:id', (req: Request, res: Response, next: NextFunction) => {
-    const id = parseId(req.params.id);
+    const id = parseId(getRouteParam(req.params.id));
 
     if (!id) {
       return next(new HttpError(400, 'Invalid media identifier.'));

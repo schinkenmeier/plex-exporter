@@ -13,6 +13,7 @@ import { cacheMiddleware } from '../middleware/cacheMiddleware.js';
 import { normalizeTimestamp } from '../utils/timestamps.js';
 import type { TmdbService } from '../services/tmdbService.js';
 import { TmdbRateLimitError } from '../services/tmdbService.js';
+import { getRouteParam } from './params.js';
 
 export interface V1RouterOptions {
   mediaRepository: MediaRepository;
@@ -230,7 +231,7 @@ export const createV1Router = ({
         return next(new HttpError(400, 'Invalid TMDB media type'));
       }
 
-      const id = req.params.id;
+      const id = getRouteParam(req.params.id);
       if (!id) {
         return next(new HttpError(400, 'TMDB id is required'));
       }
@@ -264,7 +265,8 @@ export const createV1Router = ({
         return res.status(503).json({ error: 'TMDB integration not configured' });
       }
 
-      const { id, seasonNumber } = req.params;
+      const id = getRouteParam(req.params.id);
+      const seasonNumber = getRouteParam(req.params.seasonNumber);
       if (!id || !seasonNumber) {
         return next(new HttpError(400, 'TV id and season number are required'));
       }
@@ -308,7 +310,11 @@ export const createV1Router = ({
    */
   router.get('/movies/:id', apiLimiterMiddleware, cacheMiddleware({ cache: detailCache }), (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params;
+      const id = getRouteParam(req.params.id);
+      if (!id) {
+        return next(new HttpError(400, 'Movie id is required'));
+      }
+
       const movie = mediaRepository.getByPlexId(id);
 
       if (!movie || movie.mediaType !== 'movie') {
@@ -358,7 +364,11 @@ export const createV1Router = ({
    */
   router.get('/series/:id', apiLimiterMiddleware, cacheMiddleware({ cache: detailCache }), (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params;
+      const id = getRouteParam(req.params.id);
+      if (!id) {
+        return next(new HttpError(400, 'Series id is required'));
+      }
+
       const series = mediaRepository.getByPlexId(id);
 
       if (!series || series.mediaType !== 'tv') {

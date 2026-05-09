@@ -49,7 +49,7 @@ If hooks aren't working:
 npm install --save-dev husky
 
 # Initialize Husky
-npx husky install
+npm run prepare
 
 # Make hooks executable (Unix/Mac)
 chmod +x .husky/*
@@ -130,7 +130,7 @@ nano .husky/commit-msg
 
 ```bash
 # Create a new hook (e.g., pre-push)
-npx husky add .husky/pre-push "npm test"
+echo "npm test" > .husky/pre-push
 chmod +x .husky/pre-push
 ```
 

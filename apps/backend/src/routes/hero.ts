@@ -3,6 +3,7 @@ import { Router, type Request, type Response, type NextFunction, type RequestHan
 import { HttpError } from '../middleware/errorHandler.js';
 import type { HeroPipelineService } from '../services/heroPipeline.js';
 import { createRateLimiters } from '../middleware/rateLimiter.js';
+import { getRouteParam } from './params.js';
 
 export interface HeroRouterOptions {
   heroPipeline: HeroPipelineService;
@@ -120,7 +121,7 @@ export const createHeroRouter = ({ heroPipeline, heroLimiter }: HeroRouterOption
   const limiter = heroLimiter ?? defaultLimiters.heroLimiter;
 
   router.get('/:kind', limiter, async (req: Request, res: Response, next: NextFunction) => {
-    const kind = normalizeKind(req.params.kind);
+    const kind = normalizeKind(getRouteParam(req.params.kind));
     const force = parseForceFlag(req.query.force ?? req.query.refresh);
 
     try {

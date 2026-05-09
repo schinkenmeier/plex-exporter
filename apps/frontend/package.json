@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=20 <21"
+    "node": ">=24 <25"
   },
   "dependencies": {
     "@plex-exporter/shared": "file:../../packages/shared"
@@ -17,7 +17,7 @@
     "test:integration": "node --test tests/__tests__/app.integration.test.js"
   },
   "devDependencies": {
-    "esbuild": "^0.19.12",
+    "esbuild": "^0.28.0",
     "linkedom": "^0.18.12"
   }
 }

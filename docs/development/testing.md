@@ -16,4 +16,5 @@
 
 ## Wichtiger Kontext
 - Backend-Tests und lokaler Backend-Start können an nativen `better-sqlite3`-Binaries scheitern, wenn Node-Version und Build-Artefakt nicht zusammenpassen.
+- Lokal Node `24.x` verwenden; `.nvmrc`, `package.json`, CI und Dockerfiles sind darauf ausgerichtet.
 - Frontend und Backend haben unterschiedliche Test-Runner; die Doku soll das klar benennen, statt vereinheitlichende Annahmen zu treffen.

@@ -7,7 +7,7 @@
 - Lege temporäre Reviews und Arbeitsnotizen nur unter `work/` ab.
 
 ## Lokales Setup
-1. Node `20.x` verwenden.
+1. Node `24.x` verwenden.
 2. `npm ci` ausführen.
 3. Frontend bauen, bevor das Backend lokal gestartet wird:
    ```bash

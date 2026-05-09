@@ -15,6 +15,8 @@ Dieser Ordner ist für den praktischen Einsatz auf Unraid gedacht. Die ausführl
 3. Im Compose Manager `docker-compose.images.yml` verwenden.
 4. Stack starten und `http://<unraid-ip>:8342/health` prüfen.
 
+Die GHCR-Images bauen Node-Abhängigkeiten im Container auf Node 24. Lokale `node_modules` oder eine lokale Node-Version auf Unraid spielen beim Image-Pull-Betrieb keine Rolle.
+
 ## Siehe auch
 - `../../docs/operations/unraid.md`
 - `../../docs/operations/cloudflare.md`

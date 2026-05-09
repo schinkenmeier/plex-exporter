@@ -11,7 +11,7 @@ Plex Exporter ist ein mehrteiliges Repository für einen webbasierten Plex-Katal
 
 ## Schnellstart
 ### Lokale Entwicklung
-1. Node `20.x` verwenden (`.nvmrc` und `package.json` sind darauf ausgelegt).
+1. Node `24.x` verwenden (`.nvmrc` und `package.json` sind darauf ausgelegt).
 2. Abhängigkeiten installieren:
    ```bash
    npm ci

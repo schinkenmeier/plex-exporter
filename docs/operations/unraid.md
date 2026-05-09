@@ -8,6 +8,11 @@ Dies ist die kanonische Unraid-Doku. `deploy/unraid/README.md` bleibt ein kompak
 - `.env.sample` nach `.env` kopieren
 - im Compose Manager den Ordner `deploy/unraid/` importieren
 
+## Runtime und Updates
+Die GHCR-Images werden mit den Dockerfiles aus diesem Repository gebaut und pinnen Node 24 im Container. Lokale Node-Versionen und lokale `node_modules` auf dem Entwicklungsrechner oder Unraid-Host werden dabei nicht verwendet.
+
+Bei einem normalen Update im GHCR-Betrieb reicht es, die neuen Images zu pullen und den Stack neu zu starten. Datenbank, Exporte und Caddy-Daten bleiben über die Appdata-Mounts erhalten.
+
 ## Wichtige Dateien
 - `docker-compose.images.yml`: Pull aus GHCR
 - `docker-compose.yml`: lokaler Build auf Unraid
@@ -29,6 +34,7 @@ Dies ist die kanonische Unraid-Doku. `deploy/unraid/README.md` bleibt ein kompak
 ## Typische Stolperstellen
 - falsche Appdata-Pfade
 - fehlende GHCR-Berechtigung
+- versehentlich `docker-compose.yml` statt `docker-compose.images.yml` genutzt; ersteres baut lokal auf Unraid, letzteres pullt fertige Images
 - Cloudflare/Zero-Trust blockiert API-/Config-Pfade
 - Verwechslung von Bundle-Quickstart und kanonischer Betriebsdoku
 

@@ -1,7 +1,7 @@
 # Entwicklung: Lokales Setup
 
 ## Voraussetzungen
-- Node `20.x`
+- Node `24.x`
 - `npm ci`
 - funktionierender Build von `better-sqlite3` für die aktive Node-Version
 
@@ -15,8 +15,10 @@
 Das Backend liefert sowohl das öffentliche Frontend als auch die Admin-Assets aus `apps/frontend/public` aus. Ohne gebaute Dateien bricht der Backend-Start bewusst ab.
 
 ## Native Modul-Hinweis
-Nach Node-Wechsel:
+Das native Paket `better-sqlite3` wird gegen die aktive Node-Version gebaut. Nach einem Node-Wechsel oder wenn Tests mit einer ABI-Meldung zu `better_sqlite3.node` abbrechen:
 ```bash
 npm ci
 npm rebuild better-sqlite3 --workspace @plex-exporter/backend
 ```
+
+Dieser Hinweis betrifft lokale Source-Runs. Docker-Images bauen ihre Abhängigkeiten im Container selbst und übernehmen keine lokalen `node_modules`.

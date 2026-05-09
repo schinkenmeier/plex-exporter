@@ -10,6 +10,7 @@ import logger from '../services/logger.js';
 import SettingsRepository from '../repositories/settingsRepository.js';
 import TautulliSnapshotRepository from '../repositories/tautulliSnapshotRepository.js';
 import type { SyncLiveEvent, SyncLiveMonitor } from '../services/syncLiveMonitor.js';
+import { getRouteParam } from './params.js';
 
 export const SNAPSHOT_LIMIT_SETTING_KEY = 'tautulli.snapshots.max';
 export const DEFAULT_SNAPSHOT_LIMIT = 50;
@@ -420,7 +421,7 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
    */
   router.put('/library-sections/:id/enabled', (req: Request, res: Response, next: NextFunction) => {
     try {
-      const id = parseInt(req.params.id, 10);
+      const id = parseInt(getRouteParam(req.params.id) ?? '', 10);
       const { enabled } = req.body;
 
       if (typeof enabled !== 'boolean') {
@@ -627,8 +628,12 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
    */
   router.put('/sync/schedules/:id/enabled', (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params;
+      const id = getRouteParam(req.params.id);
       const { enabled } = req.body;
+
+      if (!id) {
+        throw new HttpError(400, 'Schedule id is required');
+      }
 
       if (typeof enabled !== 'boolean') {
         throw new HttpError(400, 'enabled must be a boolean');
@@ -667,7 +672,11 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
    */
   router.delete('/sync/schedules/:id', (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params;
+      const id = getRouteParam(req.params.id);
+
+      if (!id) {
+        throw new HttpError(400, 'Schedule id is required');
+      }
 
       const schedule = syncScheduleRepo.getById(id);
       if (!schedule) {

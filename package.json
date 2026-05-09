@@ -8,10 +8,10 @@
     "tools"
   ],
   "engines": {
-    "node": ">=20 <21"
+    "node": ">=24 <25"
   },
   "scripts": {
-    "prepare": "node -e \"if (process.env.CI !== 'true') { const { execSync } = require('child_process'); try { execSync('husky install', { stdio: 'inherit' }); } catch (e) { /* ignore */ } }\"",
+    "prepare": "node -e \"if (process.env.CI !== 'true') { const { execSync } = require('node:child_process'); try { execSync('husky', { stdio: 'inherit' }); } catch (e) { /* ignore */ } }\"",
     "test": "npm test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "lint": "echo 'Run linting via GitHub Actions'",
@@ -20,6 +20,6 @@
     "text:check": "npm run text:check --workspace @plex-exporter/tools"
   },
   "devDependencies": {
-    "husky": "^8.0.3"
+    "husky": "^9.1.7"
   }
 }

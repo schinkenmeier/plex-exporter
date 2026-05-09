@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # Build stage
-FROM node:lts-bookworm AS builder
+FROM node:24-bookworm AS builder
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ COPY apps/backend/package.json apps/backend/
 COPY apps/frontend/package.json apps/frontend/
 COPY packages/shared/package.json packages/shared/
 
-RUN CI=true npm install
+RUN CI=true npm ci
 
 # Copy remaining files and build frontend + backend bundles
 COPY . .
@@ -20,7 +20,7 @@ RUN npm run build --workspace @plex-exporter/frontend && \
     npm run build --workspace @plex-exporter/backend
 
 # Production stage
-FROM node:lts-bookworm-slim AS production
+FROM node:24-bookworm-slim AS production
 
 WORKDIR /app
 
@@ -30,7 +30,7 @@ COPY apps/backend/package.json apps/backend/
 COPY packages/shared/package.json packages/shared/
 
 # Install only production dependencies
-RUN CI=true npm install --workspace @plex-exporter/backend --omit=dev && \
+RUN CI=true npm ci --workspace @plex-exporter/backend --omit=dev && \
     npm cache clean --force
 
 # Copy built application and frontend assets from builder stage
