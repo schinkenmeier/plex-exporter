@@ -116,11 +116,11 @@ export const tautulliView: AdminViewModule = {
         : 'Warte auf Fortschrittsdaten...';
 
       refs.liveActive.innerHTML = `
-        <div><strong>Run ID:</strong> ${run.runId}</div>
-        <div><strong>Quelle:</strong> ${run.source}</div>
-        <div><strong>Gestartet:</strong> ${formatDate(run.startedAt)}</div>
-        <div><strong>Status:</strong> ${run.status}</div>
-        <div><strong>Fortschritt:</strong> ${progressText}</div>
+        <div><strong>Run ID:</strong> ${escapeHtml(run.runId)}</div>
+        <div><strong>Quelle:</strong> ${escapeHtml(run.source)}</div>
+        <div><strong>Gestartet:</strong> ${escapeHtml(formatDate(run.startedAt))}</div>
+        <div><strong>Status:</strong> ${escapeHtml(run.status)}</div>
+        <div><strong>Fortschritt:</strong> ${escapeHtml(progressText)}</div>
       `;
     };
 
@@ -135,15 +135,15 @@ export const tautulliView: AdminViewModule = {
       const statsText = stats
         ? `Created ${stats.totalCreated}, Updated ${stats.totalUpdated}, Deleted ${stats.totalDeleted}, Errors ${stats.totalErrors}`
         : 'Keine Statistik vorhanden';
-      const errorText = run.error ? `<div><strong>Fehler:</strong> ${run.error}</div>` : '';
+      const errorText = run.error ? `<div><strong>Fehler:</strong> ${escapeHtml(run.error)}</div>` : '';
 
       refs.liveLast.innerHTML = `
-        <div><strong>Run ID:</strong> ${run.runId}</div>
-        <div><strong>Quelle:</strong> ${run.source}</div>
-        <div><strong>Status:</strong> ${run.status}</div>
-        <div><strong>Dauer:</strong> ${formatDuration(run.durationMs)}</div>
-        <div><strong>Beendet:</strong> ${formatDate(run.finishedAt)}</div>
-        <div><strong>Summary:</strong> ${statsText}</div>
+        <div><strong>Run ID:</strong> ${escapeHtml(run.runId)}</div>
+        <div><strong>Quelle:</strong> ${escapeHtml(run.source)}</div>
+        <div><strong>Status:</strong> ${escapeHtml(run.status)}</div>
+        <div><strong>Dauer:</strong> ${escapeHtml(formatDuration(run.durationMs))}</div>
+        <div><strong>Beendet:</strong> ${escapeHtml(formatDate(run.finishedAt))}</div>
+        <div><strong>Summary:</strong> ${escapeHtml(statsText)}</div>
         ${errorText}
       `;
     };
@@ -348,7 +348,7 @@ export const tautulliView: AdminViewModule = {
           lib => `
           <label class="admin-checkbox">
             <input type="checkbox" data-section-id="${lib.sectionId}" ${state.selectedIds.has(lib.sectionId) ? 'checked' : ''}>
-            <span>${lib.friendlyName ?? lib.sectionName} (${lib.sectionType})</span>
+            <span>${escapeHtml(lib.friendlyName ?? lib.sectionName)} (${escapeHtml(lib.sectionType)})</span>
           </label>
         `,
         )
@@ -364,7 +364,7 @@ export const tautulliView: AdminViewModule = {
         return;
       }
       refs.selectedLibraries.innerHTML = selected
-        .map(lib => `<div>${formatLibraryLabel(lib)}</div>`)
+        .map(lib => `<div>${escapeHtml(formatLibraryLabel(lib))}</div>`)
         .join('');
     };
 
@@ -374,10 +374,10 @@ export const tautulliView: AdminViewModule = {
         return;
       }
       refs.libraryList.innerHTML = sections
-        .map(section => `<div class="admin-chip">${section.sectionName} (${section.sectionType})</div>`)
+        .map(section => `<div class="admin-chip">${escapeHtml(section.sectionName)} (${escapeHtml(section.sectionType)})</div>`)
         .join('');
       refs.selectedLibraries.innerHTML = sections
-        .map(section => `<div>${section.sectionName} (${section.sectionType})</div>`)
+        .map(section => `<div>${escapeHtml(section.sectionName)} (${escapeHtml(section.sectionType)})</div>`)
         .join('');
     };
 
@@ -389,14 +389,14 @@ export const tautulliView: AdminViewModule = {
         refs.scheduleList.innerHTML = data.schedules.length
           ? data.schedules
               .map(
-                schedule => `
+              schedule => `
             <div class="admin-history-item">
               <header>
-                <strong>${schedule.jobType}</strong>
+                <strong>${escapeHtml(schedule.jobType)}</strong>
                 <span class="admin-chip ${schedule.enabled ? 'admin-chip-success' : 'admin-chip-danger'}">${schedule.enabled ? 'aktiv' : 'inaktiv'}</span>
               </header>
-              <p class="admin-muted-text">Cron: ${schedule.cronExpression}</p>
-              ${schedule.lastRunAt ? `<p class="admin-muted-text">Letzter Lauf: ${new Date(schedule.lastRunAt).toLocaleString('de-DE')}</p>` : ''}
+              <p class="admin-muted-text">Cron: ${escapeHtml(schedule.cronExpression)}</p>
+              ${schedule.lastRunAt ? `<p class="admin-muted-text">Letzter Lauf: ${escapeHtml(new Date(schedule.lastRunAt).toLocaleString('de-DE'))}</p>` : ''}
             </div>
           `,
               )
@@ -586,6 +586,15 @@ function formatLibraryLabel(entry: TautulliLibrary | LibrarySection): string {
   const friendly = 'friendlyName' in entry ? entry.friendlyName : undefined;
   const name = friendly && friendly.length ? friendly : entry.sectionName;
   return `${name} (${entry.sectionType})`;
+}
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function createMarkup(): string {

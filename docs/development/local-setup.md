@@ -15,9 +15,13 @@
 Das Backend liefert sowohl das öffentliche Frontend als auch die Admin-Assets aus `apps/frontend/public` aus. Ohne gebaute Dateien bricht der Backend-Start bewusst ab.
 
 ## Native Modul-Hinweis
-Das native Paket `better-sqlite3` wird gegen die aktive Node-Version gebaut. Nach einem Node-Wechsel oder wenn Tests mit einer ABI-Meldung zu `better_sqlite3.node` abbrechen:
+Das native Paket `better-sqlite3` wird gegen die aktive Node-Version gebaut. Das Repository ist per `.npmrc` auf die Engine `24.x` festgelegt; neuere lokale Node-Versionen brechen bewusst früh ab. Nach einem Node-Wechsel zuerst:
 ```bash
 npm ci
+```
+
+Wenn Tests danach weiterhin mit einer ABI-Meldung zu `better_sqlite3.node` abbrechen, ist dies der Reparaturpfad:
+```bash
 npm rebuild better-sqlite3 --workspace @plex-exporter/backend
 ```
 

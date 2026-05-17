@@ -1,5 +1,6 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios';
 import { createTautulliRateLimiter, type TautulliRateLimiter } from './tautulliRateLimiter.js';
+import logger from './logger.js';
 
 export interface TautulliConfig {
   baseUrl: string;
@@ -167,7 +168,7 @@ export class TautulliService implements TautulliClient {
         },
       });
 
-      console.log('Tautulli getLibraries response:', JSON.stringify(response.data, null, 2));
+      logger.debug('Tautulli getLibraries response received', { namespace: 'tautulli' });
 
       if (response.data.response.result !== 'success') {
         const errorMessage =
@@ -187,7 +188,7 @@ export class TautulliService implements TautulliClient {
         }
       }
 
-      console.log('Parsed libraries count:', libraries.length);
+      logger.debug('Parsed Tautulli libraries', { namespace: 'tautulli', count: libraries.length });
 
       return libraries;
     });
@@ -231,8 +232,8 @@ export class TautulliService implements TautulliClient {
       const recordsFiltered = data?.recordsFiltered ?? items.length;
       const recordsTotal = data?.recordsTotal ?? items.length;
 
-      // Log Tautulli's response metadata to help debug pagination issues
-      console.log(`[Tautulli API] get_library_media_info response:`, {
+      logger.debug('Tautulli library media page received', {
+        namespace: 'tautulli',
         sectionId,
         start,
         length,

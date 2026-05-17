@@ -43,6 +43,27 @@ describe('SyncLiveMonitor', () => {
     expect(snapshot.events.length).toBeGreaterThan(0);
   });
 
+  it('marks completed runs with errors as degraded', () => {
+    const monitor = new SyncLiveMonitor(10);
+    const run = monitor.tryStartRun('manual', { incremental: false });
+
+    const completed = monitor.completeRun(run!.runId, {
+      totalCreated: 0,
+      totalUpdated: 1,
+      totalDeleted: 0,
+      totalSkipped: 0,
+      totalErrors: 2,
+      results: [],
+      startTime: Date.now() - 100,
+      endTime: Date.now(),
+      duration: 100,
+    });
+
+    expect(completed?.status).toBe('completed_with_errors');
+    expect(completed?.degraded).toBe(true);
+    expect(monitor.getStateSnapshot().lastRun?.status).toBe('completed_with_errors');
+  });
+
   it('blocks concurrent start attempts', () => {
     const monitor = new SyncLiveMonitor();
     const first = monitor.tryStartRun('manual', { incremental: false });
@@ -52,4 +73,3 @@ describe('SyncLiveMonitor', () => {
     expect(second).toBeNull();
   });
 });
-

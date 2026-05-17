@@ -1,6 +1,7 @@
 {
   "name": "plex-exporter",
   "private": true,
+  "packageManager": "npm@11.14.1",
   "workspaces": [
     "apps/frontend",
     "apps/backend",
@@ -14,7 +15,7 @@
     "prepare": "node -e \"if (process.env.CI !== 'true') { const { execSync } = require('node:child_process'); try { execSync('husky', { stdio: 'inherit' }); } catch (e) { /* ignore */ } }\"",
     "test": "npm test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
-    "lint": "echo 'Run linting via GitHub Actions'",
+    "lint": "node tools/lint.mjs",
     "type-check": "npm run type-check --workspaces --if-present",
     "docs:check": "npm run docs:check --workspace @plex-exporter/tools",
     "text:check": "npm run text:check --workspace @plex-exporter/tools"

@@ -61,11 +61,15 @@ export class SimpleGrid {
 
     this.hasMore = hasMore;
 
-    // Detect if this is a filter change (fewer items than before)
-    const isFilterChange = newItems.length < this.items.length;
+    const previousItems = this.items;
+    const previousKeys = previousItems.map((item, index) => this.getKey(item, index));
+    const nextKeys = newItems.map((item, index) => this.getKey(item, index));
+    const isAppendOnly =
+      previousKeys.length <= nextKeys.length &&
+      previousKeys.every((key, index) => key === nextKeys[index]);
+    const shouldReplace = previousItems.length > 0 && !isAppendOnly;
 
-    if (isFilterChange) {
-      // Clear everything on filter change
+    if (shouldReplace) {
       this.clear();
     }
 
@@ -73,8 +77,10 @@ export class SimpleGrid {
     const startIndex = this.items.length;
     const itemsToAdd = newItems.slice(startIndex);
 
-    if (itemsToAdd.length === 0 && !isFilterChange) {
-      return; // No new items to add
+    if (itemsToAdd.length === 0 && !shouldReplace) {
+      this.items = newItems;
+      this.updateSentinel();
+      return;
     }
 
     // Update items array

@@ -11,6 +11,7 @@ import SettingsRepository from '../repositories/settingsRepository.js';
 import TautulliSnapshotRepository from '../repositories/tautulliSnapshotRepository.js';
 import type { SyncLiveEvent, SyncLiveMonitor } from '../services/syncLiveMonitor.js';
 import { getRouteParam } from './params.js';
+import type { TautulliConfigStatus } from './admin.js';
 
 export const SNAPSHOT_LIMIT_SETTING_KEY = 'tautulli.snapshots.max';
 export const DEFAULT_SNAPSHOT_LIMIT = 50;
@@ -46,6 +47,7 @@ export interface TautulliSyncRouterOptions {
   tautulliConfigRepo: TautulliConfigRepository;
   getSchedulerService: () => SchedulerService | null;
   refreshTautulliIntegration: (input?: { baseUrl: string; apiKey: string }) => void;
+  getTautulliConfigStatus?: () => TautulliConfigStatus;
   settingsRepository: SettingsRepository;
   tautulliSnapshotRepository: TautulliSnapshotRepository;
   syncLiveMonitor: SyncLiveMonitor;
@@ -64,6 +66,7 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
     tautulliConfigRepo,
     getSchedulerService,
     refreshTautulliIntegration,
+    getTautulliConfigStatus,
     settingsRepository,
     tautulliSnapshotRepository,
     syncLiveMonitor,
@@ -80,6 +83,11 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
    */
   router.get('/config', async (_req: Request, res: Response, next: NextFunction) => {
     try {
+      if (getTautulliConfigStatus) {
+        res.json(getTautulliConfigStatus());
+        return;
+      }
+
       const config = tautulliConfigRepo.get();
       if (!config) {
         res.json({ configured: false });
@@ -142,7 +150,10 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
 
       res.json({
         success: true,
-        message: 'Configuration saved successfully',
+        message: getTautulliConfigStatus?.().envOverride
+          ? 'Configuration saved. Environment configuration remains active.'
+          : 'Configuration saved successfully',
+        status: getTautulliConfigStatus?.(),
         config: {
           tautulliUrl: config.tautulliUrl,
           hasApiKey: true,
@@ -535,23 +546,33 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
       syncService
         .syncAll(options, (progress) => {
           const message = `[Manual Sync] ${progress.phase}: ${progress.current}/${progress.total} (${progress.percentage}%)`;
-          console.log(message);
+          logger.debug('Manual sync progress', { progress });
           syncLiveMonitor.onProgress(run.runId, progress);
           syncLiveMonitor.onLog(run.runId, 'debug', message);
         })
         .then((stats: SyncStats) => {
-          console.log('Manual sync completed:', stats);
-          syncLiveMonitor.completeRun(run.runId, stats);
-          syncLiveMonitor.onLog(run.runId, 'info', 'Manual sync completed', {
-            totalCreated: stats.totalCreated,
-            totalUpdated: stats.totalUpdated,
-            totalDeleted: stats.totalDeleted,
-            totalErrors: stats.totalErrors,
+          const completedRun = syncLiveMonitor.completeRun(run.runId, stats);
+          const completedWithErrors = stats.totalErrors > 0;
+          logger.info(completedWithErrors ? 'Manual sync completed with errors' : 'Manual sync completed', {
+            stats,
+            status: completedRun?.status,
           });
+          syncLiveMonitor.onLog(
+            run.runId,
+            completedWithErrors ? 'warn' : 'info',
+            completedWithErrors ? 'Manual sync completed with errors' : 'Manual sync completed',
+            {
+              totalCreated: stats.totalCreated,
+              totalUpdated: stats.totalUpdated,
+              totalDeleted: stats.totalDeleted,
+              totalErrors: stats.totalErrors,
+              status: completedRun?.status,
+            },
+          );
         })
         .catch((error) => {
-          console.error('Manual sync failed:', error);
           const errorMessage = error instanceof Error ? error.message : String(error);
+          logger.error('Manual sync failed', { error: errorMessage });
           syncLiveMonitor.onLog(run.runId, 'error', 'Manual sync failed', { error: errorMessage });
           syncLiveMonitor.failRun(run.runId, errorMessage);
         });

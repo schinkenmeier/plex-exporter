@@ -687,7 +687,7 @@ function createSnapshotHtml(snapshot: AdminConfigSnapshot): string {
       const pretty = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
       return `
         <details open>
-          <summary>${section}</summary>
+          <summary>${escapeHtml(section)}</summary>
           <pre>${escapeHtml(pretty)}</pre>
         </details>
       `;

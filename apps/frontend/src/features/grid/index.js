@@ -3,7 +3,7 @@ import { el } from '../../core/dom.js';
 import { humanYear, formatRating, renderChipsLimited, isNew, getGenreNames, collectionTags } from '../../js/utils.js';
 import * as Watch from '../watchlist/index.js';
 import { openMovieDetailV3, openSeriesDetailV3 } from '../modal/modalV3/index.js';
-import { navigateToHash } from '../../main.js';
+import { navigateToHash } from '../../core/navigation.js';
 import { SimpleGrid } from './simpleGrid.js';
 import { buildFallbackPoster } from '../../js/imageHelper.js';
 import { prefixThumbValue } from '../../js/data.js';
@@ -266,7 +266,7 @@ function renderGridItemNode(item){
 let lastState = { view: null, count: 0 };
 
 export function renderGrid(view){
-  const { movies, shows, filtered, filteredMeta } = getState();
+  const { movies, shows, filtered, filteredMeta, libraryStatus } = getState();
   const base = (view==='shows' ? shows : movies) || [];
   const list = Array.isArray(filtered) ? filtered : base;
   const items = groupCollectionsIfEnabled(list);
@@ -304,7 +304,20 @@ export function renderGrid(view){
   }
 
   const empty = document.getElementById('empty');
-  if(empty) empty.hidden = items.length > 0;
+  if(empty){
+    const status = view === 'shows' ? libraryStatus?.shows : libraryStatus?.movies;
+    if(items.length > 0){
+      empty.hidden = true;
+    }else if(status?.error){
+      empty.textContent = `Bibliothek konnte nicht geladen werden: ${status.error}`;
+      empty.dataset.state = 'error';
+      empty.hidden = false;
+    }else{
+      empty.textContent = 'Kein Treffer. Filter lockern?';
+      empty.dataset.state = 'empty';
+      empty.hidden = false;
+    }
+  }
   grid.setAttribute('aria-busy', 'false');
 }
 

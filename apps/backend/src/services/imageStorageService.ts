@@ -3,6 +3,7 @@ import path from 'node:path';
 import { existsSync } from 'node:fs';
 import type TautulliService from './tautulliService.js';
 import { createTautulliRateLimiter, type TautulliRateLimiter } from './tautulliRateLimiter.js';
+import logger from './logger.js';
 
 export interface ImageDownloadItem {
   ratingKey: string;
@@ -95,7 +96,7 @@ export class ImageStorageService {
   ensureDirectoryExists(dirPath: string): void {
     if (!existsSync(dirPath)) {
       fs.mkdir(dirPath, { recursive: true }).catch((err) => {
-        console.error(`[ImageStorage] Failed to create directory ${dirPath}:`, err);
+        logger.error('Failed to create image storage directory', { namespace: 'image-storage', dirPath, error: err });
       });
     }
   }
@@ -121,17 +122,18 @@ export class ImageStorageService {
     const allowedBase = path.resolve(this.basePath);
 
     if (!resolvedTarget.startsWith(allowedBase)) {
-      console.warn(`[ImageStorage] Refusing to delete path outside base directory: ${targetPath}`);
+      logger.warn('Refusing to delete path outside base directory', { namespace: 'image-storage', targetPath });
       return;
     }
 
     try {
       await fs.rm(resolvedTarget, { recursive: true, force: true });
     } catch (error) {
-      console.warn(
-        `[ImageStorage] Failed to delete path ${resolvedTarget}:`,
-        error instanceof Error ? error.message : error,
-      );
+      logger.warn('Failed to delete path', {
+        namespace: 'image-storage',
+        targetPath: resolvedTarget,
+        error: error instanceof Error ? error.message : error,
+      });
     }
   }
 
@@ -216,17 +218,26 @@ export class ImageStorageService {
         const targetDir = path.dirname(fullTargetPath);
         this.ensureDirectoryExists(targetDir);
 
-        console.log(`[ImageStorage] Downloading ${item.type} for metadata ID ${item.ratingKey}, timestamp ${item.timestamp}`);
-        console.log(`[ImageStorage] Target path: ${fullTargetPath}`);
+        logger.debug('Downloading image', {
+          namespace: 'image-storage',
+          type: item.type,
+          ratingKey: item.ratingKey,
+          timestamp: item.timestamp,
+          targetPath: fullTargetPath,
+        });
 
         const response = await this.tautulliService.fetchLibraryImage(
           item.ratingKey,
           item.type,
           item.timestamp,
         );
-        console.log(`[ImageStorage] Received ${response.data.length} bytes from Tautulli`);
+        logger.debug('Received image bytes from Tautulli', {
+          namespace: 'image-storage',
+          ratingKey: item.ratingKey,
+          bytes: response.data.length,
+        });
         await fs.writeFile(fullTargetPath, response.data);
-        console.log(`[ImageStorage] Successfully wrote image to ${fullTargetPath}`);
+        logger.debug('Wrote image to disk', { namespace: 'image-storage', targetPath: fullTargetPath });
         return {
           ratingKey: item.ratingKey,
           type: item.type,
@@ -236,10 +247,14 @@ export class ImageStorageService {
         };
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(
-          `[ImageStorage] Failed to download image (attempt ${retryCount + 1}/${this.maxRetries}):`,
-          errorMessage,
-        );
+        logger.warn('Image download attempt failed', {
+          namespace: 'image-storage',
+          ratingKey: item.ratingKey,
+          type: item.type,
+          attempt: retryCount + 1,
+          maxRetries: this.maxRetries,
+          error: errorMessage,
+        });
 
         const shouldRetry =
           retryCount < this.maxRetries - 1 && !this.isNonImageContentError(errorMessage);
@@ -273,7 +288,7 @@ export class ImageStorageService {
       return [];
     }
 
-    console.log(`[ImageStorage] Starting batch download of ${items.length} images`);
+    logger.info('Starting batch image download', { namespace: 'image-storage', count: items.length });
 
     const results: ImageDownloadResult[] = [];
     const queue = [...items];
@@ -296,7 +311,11 @@ export class ImageStorageService {
     await Promise.all(downloadWorkers);
 
     const successCount = results.filter((r) => r.success).length;
-    console.log(`[ImageStorage] Batch download completed: ${successCount}/${items.length} successful`);
+    logger.info('Batch image download completed', {
+      namespace: 'image-storage',
+      successCount,
+      total: items.length,
+    });
 
     return results;
   }

@@ -45,6 +45,23 @@ jobs:
             type=ref,event=tag
             type=sha
 
+      - name: Backend smoke test
+        if: matrix.service == 'backend'
+        run: |
+          docker build --target production --load -t plex-exporter-backend:smoke -f apps/backend/Dockerfile .
+          docker run --rm --entrypoint node plex-exporter-backend:smoke -e "const Database=require('better-sqlite3'); const db=new Database(':memory:'); db.close();"
+          docker run -d --name plex-exporter-backend-smoke -e NODE_ENV=production -e SQLITE_PATH=/app/data/sqlite/smoke.sqlite plex-exporter-backend:smoke
+          for i in $(seq 1 30); do
+            if docker exec plex-exporter-backend-smoke node -e "require('http').get('http://localhost:4000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"; then
+              docker rm -f plex-exporter-backend-smoke
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs plex-exporter-backend-smoke
+          docker rm -f plex-exporter-backend-smoke
+          exit 1
+
       - name: Build and push ${{ matrix.service }}
         uses: docker/build-push-action@v6
         with:

@@ -1,4 +1,3 @@
-console.log('[main] Loading main.js - Modal V3 debugging enabled');
 import { setState, getState } from './core/state.js';
 import { showLoader, setLoader, hideLoader, showSkeleton, clearSkeleton } from './core/loader.js';
 import * as Data from './js/data.js';
@@ -10,6 +9,9 @@ import * as Watch from './features/watchlist/index.js';
 import * as Newsletter from './features/newsletter/index.js';
 import * as Debug from './js/debug.js';
 import { initErrorHandler, showError, showRetryableError } from './core/errorHandler.js';
+import { debugLog } from './core/debugLogger.js';
+import { setHashNavigator, navigateToHash as dispatchHashNavigation, createHashNavigation } from './core/navigation.js';
+import { setFooterStatus } from './core/footerStatus.js';
 import { initSettingsOverlay, setHeroRefreshHandler, setReduceMotionHandler } from './js/settingsOverlay.js';
 import { refreshHero, setHeroNavigation, showHeroFallback } from './features/hero/index.js';
 import { initHeroAutoplay } from './features/hero/autoplay.js';
@@ -17,7 +19,8 @@ import * as HeroPolicy from './features/hero/policy.js';
 import * as HeroPipeline from './features/hero/pipeline.js';
 import { loadFrontendConfig, DEFAULT_FRONTEND_CONFIG } from './core/configLoader.js';
 import { DEFAULT_PAGE_SIZE } from '@plex-exporter/shared';
-console.log('[main] Imports loaded, Modal V3 functions:', { openMovieDetailV3, openSeriesDetailV3 });
+debugLog('[main] Loading main.js - Modal V3 debugging enabled');
+debugLog('[main] Imports loaded, Modal V3 functions:', { openMovieDetailV3, openSeriesDetailV3 });
 
 let taglineTicker = null;
 const heroFallbackNotice = { reason: null };
@@ -48,93 +51,10 @@ function announceHeroFallback(reason, detail){
   }
 }
 
-const hashNavigation = (() => {
-  let lastHash = window.location.hash || '';
-  let suppressedHash = null;
+const hashNavigation = createHashNavigation({ onWarning: console.warn.bind(console) });
 
-  function normalizeHash(raw){
-    if(typeof raw !== 'string') return '';
-    const trimmed = raw.trim();
-    if(!trimmed) return '';
-    return trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
-  }
-
-  function updateHash(targetHash, options={}){
-    const { replace=false, silent=false } = options;
-    const hash = normalizeHash(targetHash);
-    if(!hash) return;
-
-    const current = window.location.hash || '';
-    if(hash === current){
-      if(replace && history && typeof history.replaceState === 'function'){
-        try{
-          history.replaceState(null, '', hash);
-        }catch(err){
-          console.warn('[main] Failed to replace hash via history:', err.message);
-        }
-      }
-      if(silent){
-        suppressedHash = hash;
-        lastHash = hash;
-      }
-      return;
-    }
-
-    const method = replace ? 'replaceState' : 'pushState';
-    let usedHistory = false;
-    try{
-      if(history && typeof history[method] === 'function'){
-        history[method](null, '', hash);
-        usedHistory = true;
-      }
-    }catch(err){
-      console.warn(`[main] Failed to ${replace ? 'replace' : 'push'} hash via history:`, err.message);
-    }
-
-    if(!usedHistory){
-      window.location.hash = hash;
-      if(silent){
-        suppressedHash = hash;
-        lastHash = hash;
-      }
-      return;
-    }
-
-    if(silent){
-      suppressedHash = hash;
-      lastHash = hash;
-      return;
-    }
-
-    try{
-      const event = typeof HashChangeEvent === 'function' ? new HashChangeEvent('hashchange') : new Event('hashchange');
-      window.dispatchEvent(event);
-    }catch(err){
-      console.warn('[main] Failed to dispatch hashchange event:', err.message);
-    }
-  }
-
-  function shouldHandle(hash){
-    const current = typeof hash === 'string' ? hash : '';
-    if(suppressedHash && current === suppressedHash){
-      suppressedHash = null;
-      return false;
-    }
-    suppressedHash = null;
-    if(current === lastHash) return false;
-    lastHash = current;
-    return true;
-  }
-
-  function markProcessed(hash){
-    lastHash = typeof hash === 'string' ? hash : '';
-    suppressedHash = null;
-  }
-
-  return { navigate: updateHash, shouldHandle, markProcessed };
-})();
-
-export const navigateToHash = (hash, options) => hashNavigation.navigate(hash, options);
+setHashNavigator(hashNavigation.navigate);
+export const navigateToHash = (hash, options) => dispatchHashNavigation(hash, options);
 
 setHeroNavigation(navigateToHash);
 
@@ -174,24 +94,6 @@ function refreshHeroWithPipeline(listOverride){
   refreshHero(listOverride);
 }
 
-function setFooterStatus(message, busy=true){
-  const footer = document.getElementById('footerMeta');
-  if(footer){
-    const status = footer.querySelector('#footerStatus');
-    if(status) status.textContent = message;
-    else footer.textContent = message;
-    footer.dataset.state = busy ? 'loading' : 'ready';
-  }
-  const grid = document.getElementById('grid');
-  if(grid){
-    grid.setAttribute('aria-busy', busy ? 'true' : 'false');
-  }
-  const results = document.getElementById('footerResults');
-  if(results){
-    results.hidden = busy;
-  }
-}
-
 export async function boot(){
   const isTestEnv = !!globalThis.__PLEX_TEST_MODE__;
   initErrorHandler();
@@ -226,10 +128,36 @@ export async function boot(){
   try {
     setFooterStatus('Filme laden …', true);
     setLoader('Filme laden …', 25);
-    const movies = await Data.loadMovies();
+    setState({
+      libraryStatus: {
+        ...getState().libraryStatus,
+        movies: { items: [], source: 'api', error: null, loading: true, partial: false },
+      },
+    });
+    const moviesResult = await Data.loadMoviesStatus();
+    const movies = moviesResult.items;
+    setState({
+      libraryStatus: {
+        ...getState().libraryStatus,
+        movies: moviesResult,
+      },
+    });
     setFooterStatus('Serien laden …', true);
     setLoader('Serien laden …', 45);
-    const shows  = await Data.loadShows();
+    setState({
+      libraryStatus: {
+        ...getState().libraryStatus,
+        shows: { items: [], source: 'api', error: null, loading: true, partial: Boolean(moviesResult.error) },
+      },
+    });
+    const showsResult  = await Data.loadShowsStatus();
+    const shows = showsResult.items;
+    setState({
+      libraryStatus: {
+        ...getState().libraryStatus,
+        shows: showsResult,
+      },
+    });
 
     setFooterStatus('Filter vorbereiten …', true);
     setLoader('Filter vorbereiten …', 60);

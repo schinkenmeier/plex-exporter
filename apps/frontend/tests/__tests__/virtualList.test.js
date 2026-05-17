@@ -176,6 +176,45 @@ describe('SimpleGrid', () => {
     grid.destroy();
   });
 
+  it('replaces cards when the key sequence changes with the same item count', () => {
+    const container = document.createElement('section');
+    const grid = new SimpleGrid(container, {
+      getKey: item => item.id,
+      renderItem(item){
+        const card = document.createElement('article');
+        card.dataset.id = item.id;
+        return card;
+      }
+    });
+
+    grid.setItems([{ id: '1' }, { id: '2' }], false);
+    assert.deepStrictEqual(container.children.map(child => child.dataset.id), ['1', '2']);
+
+    grid.setItems([{ id: '3' }, { id: '4' }], false);
+    assert.deepStrictEqual(container.children.map(child => child.dataset.id), ['3', '4']);
+
+    grid.destroy();
+  });
+
+  it('reorders cards when the same items are supplied in a new order', () => {
+    const container = document.createElement('section');
+    const grid = new SimpleGrid(container, {
+      getKey: item => item.id,
+      renderItem(item){
+        const card = document.createElement('article');
+        card.dataset.id = item.id;
+        return card;
+      }
+    });
+
+    grid.setItems([{ id: 'a' }, { id: 'b' }], false);
+    grid.setItems([{ id: 'b' }, { id: 'a' }], false);
+
+    assert.deepStrictEqual(container.children.map(child => child.dataset.id), ['b', 'a']);
+
+    grid.destroy();
+  });
+
   it('triggers load more only when sentinel intersects and hasMore is true', () => {
     const container = document.createElement('section');
     let loadMoreCalls = 0;

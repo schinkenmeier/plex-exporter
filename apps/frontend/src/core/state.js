@@ -4,6 +4,10 @@ const S = {
   view: 'movies',
   movies: [],
   shows: [],
+  libraryStatus: {
+    movies: { items: [], source: 'initial', error: null, loading: false, partial: false },
+    shows: { items: [], source: 'initial', error: null, loading: false, partial: false },
+  },
   facets: {},
   filtered: [],
   filteredMeta: { page: 1, pageSize: DEFAULT_PAGE_SIZE, total: 0, hasMore: false, isLoadingMore: false },

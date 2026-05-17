@@ -10,6 +10,7 @@ import ThumbnailRepository from '../../src/repositories/thumbnailRepository.js';
 import SeasonRepository from '../../src/repositories/seasonRepository.js';
 import CastRepository from '../../src/repositories/castRepository.js';
 import SettingsRepository from '../../src/repositories/settingsRepository.js';
+import { TautulliConfigRepository } from '../../src/repositories/tautulliConfigRepository.js';
 import type { AppConfig } from '../../src/config/index.js';
 import type { TmdbManager } from '../../src/services/tmdbManager.js';
 import type { HeroPipelineService } from '../../src/services/heroPipeline.js';
@@ -21,12 +22,16 @@ const adminUiFixture = path.resolve(__dirname, '..', '..', '..', 'frontend', 'pu
 describe('Admin router integration', () => {
   let dbHandle: TestDatabaseHandle;
   let settingsRepository: SettingsRepository;
+  let tautulliConfigRepository: TautulliConfigRepository;
+  let refreshTautulliIntegration: ReturnType<typeof vi.fn>;
   let app: express.Express;
   let tmdbManager: TmdbManager;
 
   beforeEach(() => {
     dbHandle = createTestDatabase();
     settingsRepository = new SettingsRepository(dbHandle.drizzle);
+    tautulliConfigRepository = new TautulliConfigRepository(dbHandle.drizzle);
+    refreshTautulliIntegration = vi.fn();
 
     const testConfig: AppConfig = {
       runtime: { env: 'test' },
@@ -106,8 +111,10 @@ describe('Admin router integration', () => {
         castRepository,
         drizzleDatabase: dbHandle.drizzle,
         settingsRepository,
+        tautulliConfigRepository,
         tmdbManager,
         heroPipeline,
+        refreshTautulliIntegration,
         adminUiDir: adminUiFixture,
       }),
     );
@@ -185,5 +192,102 @@ describe('Admin router integration', () => {
     const configResponse = await request(app).get('/admin/api/config');
     expect(configResponse.status).toBe(200);
     expect(configResponse.body).toHaveProperty('runtime');
+  });
+
+  it('delegates legacy Tautulli settings endpoint to canonical config table', async () => {
+    const saveResponse = await request(app)
+      .put('/admin/api/tautulli/settings')
+      .send({
+        url: 'https://tautulli.example.test/api/v2',
+        apiKey: 'tautulli-secret',
+      });
+
+    expect(saveResponse.status).toBe(200);
+    expect(saveResponse.body.message).not.toMatch(/restart/i);
+    expect(refreshTautulliIntegration).toHaveBeenCalledWith({
+      baseUrl: 'https://tautulli.example.test',
+      apiKey: 'tautulli-secret',
+    });
+
+    expect(settingsRepository.get('tautulli.url')).toBeNull();
+    expect(settingsRepository.get('tautulli.apiKey')).toBeNull();
+
+    const stored = tautulliConfigRepository.get();
+    expect(stored?.tautulliUrl).toBe('https://tautulli.example.test');
+    expect(stored?.apiKey).toBe('tautulli-secret');
+
+    const getResponse = await request(app).get('/admin/api/tautulli/settings');
+    expect(getResponse.status).toBe(200);
+    expect(getResponse.body.source).toBe('tautulli_config');
+    expect(getResponse.body.settings.url).toBe('https://tautulli.example.test');
+
+    const deleteResponse = await request(app).delete('/admin/api/tautulli/settings');
+    expect(deleteResponse.status).toBe(200);
+    expect(tautulliConfigRepository.get()).toBeUndefined();
+    expect(refreshTautulliIntegration).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports environment Tautulli configuration as the active source when DB settings are saved', async () => {
+    const envConfig: AppConfig = {
+      runtime: { env: 'test' },
+      server: { port: 0 },
+      auth: null,
+      database: { sqlitePath: dbHandle.filePath },
+      hero: { policyPath: null },
+      tautulli: {
+        url: 'https://env-tautulli.example.test',
+        apiKey: 'env-secret',
+      },
+      tmdb: null,
+      admin: null,
+      resend: null,
+    };
+    const mediaRepository = new MediaRepository(dbHandle.drizzle);
+    const thumbnailRepository = new ThumbnailRepository(dbHandle.drizzle);
+    const seasonRepository = new SeasonRepository(dbHandle.drizzle);
+    const castRepository = new CastRepository(dbHandle.drizzle);
+    const heroPipeline: HeroPipelineService = {
+      getPool: vi.fn(),
+      setTmdbService: vi.fn(),
+    };
+    const envApp = express();
+    envApp.use(express.json());
+    envApp.use(
+      '/admin',
+      createAdminRouter({
+        config: envConfig,
+        mediaRepository,
+        thumbnailRepository,
+        resendService: null,
+        tautulliService: null,
+        seasonRepository,
+        castRepository,
+        drizzleDatabase: dbHandle.drizzle,
+        settingsRepository,
+        tautulliConfigRepository,
+        tmdbManager,
+        heroPipeline,
+        refreshTautulliIntegration,
+        adminUiDir: adminUiFixture,
+      }),
+    );
+
+    const saveResponse = await request(envApp)
+      .put('/admin/api/tautulli/settings')
+      .send({
+        url: 'https://db-tautulli.example.test',
+        apiKey: 'db-secret',
+      });
+
+    expect(saveResponse.status).toBe(200);
+    expect(saveResponse.body.activeSource).toBe('env');
+    expect(saveResponse.body.envOverride).toBe(true);
+    expect(saveResponse.body.message).toMatch(/Environment configuration remains active/);
+
+    const configResponse = await request(envApp).get('/admin/api/config');
+    expect(configResponse.status).toBe(200);
+    expect(configResponse.body.tautulli.activeSource).toBe('env');
+    expect(configResponse.body.tautulli.envOverride).toBe(true);
+    expect(configResponse.body.tautulli.saved.source).toBe('tautulli_config');
   });
 });

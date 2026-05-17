@@ -118,7 +118,7 @@ export const databaseView: AdminViewModule = {
       }
       elements.reloadTables.disabled = false;
       if (state.tablesError) {
-        elements.tableList.innerHTML = `<div class="admin-error-text">${state.tablesError}</div>`;
+        elements.tableList.innerHTML = `<div class="admin-error-text">${escapeHtml(state.tablesError)}</div>`;
         return;
       }
       if (!state.tables.length) {
@@ -129,9 +129,9 @@ export const databaseView: AdminViewModule = {
       elements.tableList.innerHTML = state.tables
         .map(
           table => `
-            <button class="db-table-button${table.name === state.activeTable ? ' active' : ''}" data-table="${table.name}">
-              <span>${table.name}</span>
-              <span class="db-table-count">${table.rowCount ?? '–'}</span>
+            <button class="db-table-button${table.name === state.activeTable ? ' active' : ''}" data-table="${escapeHtml(table.name)}">
+              <span>${escapeHtml(table.name)}</span>
+              <span class="db-table-count">${escapeHtml(String(table.rowCount ?? '–'))}</span>
             </button>
           `,
         )
@@ -231,8 +231,8 @@ export const databaseView: AdminViewModule = {
           const checked = allSelected || state.selectedColumns.includes(column.name);
           return `
             <label class="db-column-item">
-              <input type="checkbox" value="${column.name}" ${checked ? 'checked' : ''}>
-              <span>${column.name}</span>
+              <input type="checkbox" value="${escapeHtml(column.name)}" ${checked ? 'checked' : ''}>
+              <span>${escapeHtml(column.name)}</span>
             </label>
           `;
         })
@@ -248,7 +248,7 @@ export const databaseView: AdminViewModule = {
       elements.pkHint.textContent = hasPk ? `Primärschlüssel: ${pk}` : 'Kein Primärschlüssel erkannt.';
 
       elements.dateColumnSelect.innerHTML = state.filterOptions.dateColumns
-        .map(column => `<option value="${column}">${column}</option>`)
+        .map(column => `<option value="${escapeHtml(column)}">${escapeHtml(column)}</option>`)
         .join('');
       const hasDateColumns = state.filterOptions.dateColumns.length > 0;
       elements.dateColumnSelect.disabled = !hasDateColumns;
@@ -268,12 +268,12 @@ export const databaseView: AdminViewModule = {
               const buttons = values
                 .map(
                   value => `
-              <button class="db-pill${state.filters.equals?.some(filter => filter.column === column && String(filter.value) === String(value.value)) ? ' active' : ''}" data-column="${column}" data-value="${value.value}">
-                ${value.value} (${value.count})
+              <button class="db-pill${state.filters.equals?.some(filter => filter.column === column && String(filter.value) === String(value.value)) ? ' active' : ''}" data-column="${escapeHtml(column)}" data-value="${escapeHtml(String(value.value))}">
+                ${escapeHtml(String(value.value))} (${escapeHtml(String(value.count))})
               </button>`,
                 )
                 .join('');
-              return `<div><strong>${column}</strong><div class="db-pill-list">${buttons}</div></div>`;
+              return `<div><strong>${escapeHtml(column)}</strong><div class="db-pill-list">${buttons}</div></div>`;
             })
             .join('')
         : '<div class="admin-muted-text">Keine Schnellfilter.</div>';
@@ -284,8 +284,8 @@ export const databaseView: AdminViewModule = {
             .map(
               column => `
             <div class="db-pill-list">
-              <button class="db-pill${state.filters.nulls?.some(filter => filter.column === column && filter.mode === 'null') ? ' active' : ''}" data-null-mode="null" data-column="${column}">${column} IS NULL</button>
-              <button class="db-pill${state.filters.nulls?.some(filter => filter.column === column && filter.mode === 'notNull') ? ' active' : ''}" data-null-mode="notNull" data-column="${column}">${column} IS NOT NULL</button>
+              <button class="db-pill${state.filters.nulls?.some(filter => filter.column === column && filter.mode === 'null') ? ' active' : ''}" data-null-mode="null" data-column="${escapeHtml(column)}">${escapeHtml(column)} IS NULL</button>
+              <button class="db-pill${state.filters.nulls?.some(filter => filter.column === column && filter.mode === 'notNull') ? ' active' : ''}" data-null-mode="notNull" data-column="${escapeHtml(column)}">${escapeHtml(column)} IS NOT NULL</button>
             </div>`,
             )
             .join('')
@@ -302,7 +302,7 @@ export const databaseView: AdminViewModule = {
         .map(column => {
           const isActive = state.orderBy === column.name;
           const indicator = isActive ? (state.direction === 'DESC' ? '▼' : '▲') : '';
-          return `<th><button class="db-sort-button${isActive ? ' active' : ''}" data-column="${column.name}">${column.name} ${indicator}</button></th>`;
+          return `<th><button class="db-sort-button${isActive ? ' active' : ''}" data-column="${escapeHtml(column.name)}">${escapeHtml(column.name)} ${indicator}</button></th>`;
         })
         .join('');
 
@@ -311,7 +311,7 @@ export const databaseView: AdminViewModule = {
         return;
       }
       if (state.rowsError) {
-        elements.tableBody.innerHTML = `<tr><td colspan="${state.columns.length}" class="admin-error-text">${state.rowsError}</td></tr>`;
+        elements.tableBody.innerHTML = `<tr><td colspan="${state.columns.length}" class="admin-error-text">${escapeHtml(state.rowsError)}</td></tr>`;
         return;
       }
       if (!state.rows.length) {

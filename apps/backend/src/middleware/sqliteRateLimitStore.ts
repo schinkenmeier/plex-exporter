@@ -36,6 +36,14 @@ const resolveDatabase = (filePath: string): Database.Database => {
   return connections.get(resolvedPath)!;
 };
 
+export const closeSQLiteRateLimitStore = (filePath: string): void => {
+  const resolvedPath = path.resolve(filePath);
+  const db = connections.get(resolvedPath);
+  if (!db) return;
+  db.close();
+  connections.delete(resolvedPath);
+};
+
 const sanitizeTableName = (input?: string) => {
   if (!input) return DEFAULT_TABLE;
   return /^[A-Za-z0-9_]+$/.test(input) ? input : DEFAULT_TABLE;

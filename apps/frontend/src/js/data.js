@@ -305,6 +305,11 @@ function normalizeShowThumbs(list){
 }
 
 export async function loadMovies(){
+  const result = await loadMoviesStatus();
+  return result.items;
+}
+
+export async function loadMoviesStatus(){
   const url = buildApiPath('/api/v1/movies');
   try {
     const payload = await fetchJson(url);
@@ -322,16 +327,33 @@ export async function loadMovies(){
       throw error;
     }
     markSource('movies', `api:${url}`);
-    return normalizeMovieThumbs(movies);
+    return {
+      items: normalizeMovieThumbs(movies),
+      source: `api:${url}`,
+      error: null,
+      loading: false,
+      partial: false,
+    };
   } catch (error) {
     console.error(`${LOG_PREFIX} loadMovies failed:`, error);
     notifyUiError('Filme konnten nicht geladen werden', error?.message || 'Unbekannter Fehler');
     markSource('movies', 'error');
-    return [];
+    return {
+      items: [],
+      source: 'error',
+      error: error instanceof Error ? error.message : String(error || 'Unbekannter Fehler'),
+      loading: false,
+      partial: false,
+    };
   }
 }
 
 export async function loadShows(){
+  const result = await loadShowsStatus();
+  return result.items;
+}
+
+export async function loadShowsStatus(){
   const url = buildApiPath('/api/v1/series');
   try {
     const payload = await fetchJson(url);
@@ -349,12 +371,24 @@ export async function loadShows(){
       throw error;
     }
     markSource('shows', `api:${url}`);
-    return normalizeShowThumbs(shows);
+    return {
+      items: normalizeShowThumbs(shows),
+      source: `api:${url}`,
+      error: null,
+      loading: false,
+      partial: false,
+    };
   } catch (error) {
     console.error(`${LOG_PREFIX} loadShows failed:`, error);
     notifyUiError('Serien konnten nicht geladen werden', error?.message || 'Unbekannter Fehler');
     markSource('shows', 'error');
-    return [];
+    return {
+      items: [],
+      source: 'error',
+      error: error instanceof Error ? error.message : String(error || 'Unbekannter Fehler'),
+      loading: false,
+      partial: false,
+    };
   }
 }
 

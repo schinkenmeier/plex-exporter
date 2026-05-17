@@ -5,6 +5,7 @@ import type { LibrarySectionRepository } from '../repositories/librarySectionRep
 import type { TmdbService, TmdbHeroDetails } from './tmdbService.js';
 import type { ImageStorageService } from './imageStorageService.js';
 import { normalizeTimestamp } from '../utils/timestamps.js';
+import logger from './logger.js';
 
 export interface SyncOptions {
   incremental?: boolean;
@@ -86,8 +87,9 @@ export class TautulliSyncService {
         const result = await this.syncLibrarySection(section.sectionId, options, onProgress);
         results.push(result);
 
-        // Update last synced timestamp
-        this.librarySectionRepo.updateLastSynced(section.id, new Date().toISOString());
+        if (result.errors.length === 0) {
+          this.librarySectionRepo.updateLastSynced(section.id, new Date().toISOString());
+        }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         results.push({
@@ -166,9 +168,16 @@ export class TautulliSyncService {
         errors.push(...result.errors);
       }
 
-      // Delete removed media (hard delete)
-      const tautulliIds = mediaItems.map((item) => item.rating_key);
-      deleted = await this.deleteRemovedMedia(sectionId, tautulliIds);
+      if (errors.length === 0) {
+        const tautulliIds = mediaItems.map((item) => item.rating_key);
+        deleted = await this.deleteRemovedMedia(sectionId, tautulliIds);
+      } else {
+        logger.warn('Skipping deletion because sync reported errors', {
+          namespace: 'tautulli-sync',
+          sectionId,
+          errorCount: errors.length,
+        });
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       errors.push(errorMessage);
@@ -203,7 +212,7 @@ export class TautulliSyncService {
     const shouldRefresh = options.refreshMediaInfo ?? true;
     let expectedTotal: number | null = null;
 
-    console.log(`[Tautulli Sync] Starting to fetch media from library section ${sectionId}`);
+    logger.info('Starting to fetch media from library section', { namespace: 'tautulli-sync', sectionId });
 
     while (hasMore) {
       onProgress?.({
@@ -222,12 +231,17 @@ export class TautulliSyncService {
       const batch = page.items;
       expectedTotal = Number.isFinite(page.recordsFiltered) ? page.recordsFiltered : expectedTotal;
 
-      console.log(
-        `[Tautulli Sync] Batch fetched: start=${start}, length=${length}, received=${batch.length} items, expectedTotal=${expectedTotal ?? 'unknown'}`,
-      );
+      logger.debug('Fetched Tautulli media batch', {
+        namespace: 'tautulli-sync',
+        sectionId,
+        start,
+        length,
+        received: batch.length,
+        expectedTotal,
+      });
 
       if (batch.length === 0) {
-        console.log(`[Tautulli Sync] No more items to fetch (empty batch)`);
+        logger.debug('No more items to fetch', { namespace: 'tautulli-sync', sectionId });
         hasMore = false;
       } else {
         for (const item of batch) {
@@ -245,18 +259,30 @@ export class TautulliSyncService {
         if (expectedTotal !== null) {
           hasMore = allMedia.length < expectedTotal;
           if (!hasMore) {
-            console.log(
-              `[Tautulli Sync] Reached expected total (${allMedia.length}/${expectedTotal})`,
-            );
+            logger.debug('Reached expected media total', {
+              namespace: 'tautulli-sync',
+              sectionId,
+              total: allMedia.length,
+              expectedTotal,
+            });
           }
         } else if (batch.length < length) {
-          console.log(`[Tautulli Sync] Last batch received (${batch.length} < ${length})`);
+          logger.debug('Last media batch received', {
+            namespace: 'tautulli-sync',
+            sectionId,
+            batchLength: batch.length,
+            requestedLength: length,
+          });
           hasMore = false;
         }
       }
     }
 
-    console.log(`[Tautulli Sync] Finished fetching. Total items retrieved: ${allMedia.length}`);
+    logger.info('Finished fetching media from Tautulli', {
+      namespace: 'tautulli-sync',
+      sectionId,
+      count: allMedia.length,
+    });
     return allMedia;
   }
 
@@ -274,7 +300,7 @@ export class TautulliSyncService {
     let skipped = 0;
     const errors: string[] = [];
 
-    console.log(`[Tautulli Sync] Starting to sync ${mediaItems.length} movies`);
+    logger.info('Starting movie sync', { namespace: 'tautulli-sync', count: mediaItems.length });
 
     for (let i = 0; i < mediaItems.length; i++) {
       const item = mediaItems[i];
@@ -292,7 +318,11 @@ export class TautulliSyncService {
 
         // Fallback: If metadata is incomplete, use data from the list item
         if (!metadata.title || !metadata.rating_key) {
-          console.warn(`[Tautulli Sync] Incomplete metadata for "${item.title}" (rating_key: ${item.rating_key}), using list data as fallback`);
+          logger.warn('Incomplete movie metadata, using list data fallback', {
+            namespace: 'tautulli-sync',
+            title: item.title,
+            ratingKey: item.rating_key,
+          });
           metadata = item as unknown as TautulliMetadata;
         }
 
@@ -325,7 +355,11 @@ export class TautulliSyncService {
             }
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            console.warn(`[Tautulli Sync] Image download failed for movie "${item.title}":`, errorMessage);
+            logger.warn('Image download failed for movie', {
+              namespace: 'tautulli-sync',
+              title: item.title,
+              error: errorMessage,
+            });
             // Continue without images
           }
         }
@@ -349,7 +383,12 @@ export class TautulliSyncService {
             }
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            console.warn(`[Tautulli Sync] TMDb enrichment failed for movie "${item.title}" (rating_key: ${item.rating_key}):`, errorMessage);
+            logger.warn('TMDb enrichment failed for movie', {
+              namespace: 'tautulli-sync',
+              title: item.title,
+              ratingKey: item.rating_key,
+              error: errorMessage,
+            });
             errors.push(`TMDb enrichment failed for ${item.title}: ${errorMessage}`);
             // Continue with Tautulli data
           }
@@ -370,12 +409,18 @@ export class TautulliSyncService {
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(`[Tautulli Sync] Failed to sync movie "${item.title}" (rating_key: ${item.rating_key}):`, errorMessage);
+        logger.error('Failed to sync movie', {
+          namespace: 'tautulli-sync',
+          title: item.title,
+          ratingKey: item.rating_key,
+          error: errorMessage,
+        });
         errors.push(`Failed to sync movie ${item.title}: ${errorMessage}`);
       }
     }
 
-    console.log(`[Tautulli Sync] Movies sync completed:`, {
+    logger.info('Movie sync completed', {
+      namespace: 'tautulli-sync',
       total: mediaItems.length,
       created,
       updated,
@@ -400,7 +445,7 @@ export class TautulliSyncService {
     let skipped = 0;
     const errors: string[] = [];
 
-    console.log(`[Tautulli Sync] Starting to sync ${mediaItems.length} TV series`);
+    logger.info('Starting TV series sync', { namespace: 'tautulli-sync', count: mediaItems.length });
 
     for (let i = 0; i < mediaItems.length; i++) {
       const item = mediaItems[i];
@@ -418,7 +463,11 @@ export class TautulliSyncService {
 
         // Fallback: If metadata is incomplete, use data from the list item
         if (!metadata.title || !metadata.rating_key) {
-          console.warn(`[Tautulli Sync] Incomplete metadata for "${item.title}" (rating_key: ${item.rating_key}), using list data as fallback`);
+          logger.warn('Incomplete series metadata, using list data fallback', {
+            namespace: 'tautulli-sync',
+            title: item.title,
+            ratingKey: item.rating_key,
+          });
           metadata = item as unknown as TautulliMetadata;
         }
 
@@ -451,7 +500,11 @@ export class TautulliSyncService {
             }
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            console.warn(`[Tautulli Sync] Image download failed for series "${item.title}":`, errorMessage);
+            logger.warn('Image download failed for series', {
+              namespace: 'tautulli-sync',
+              title: item.title,
+              error: errorMessage,
+            });
             // Continue without images
           }
         }
@@ -475,7 +528,12 @@ export class TautulliSyncService {
             }
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            console.warn(`[Tautulli Sync] TMDb enrichment failed for series "${item.title}" (rating_key: ${item.rating_key}):`, errorMessage);
+            logger.warn('TMDb enrichment failed for series', {
+              namespace: 'tautulli-sync',
+              title: item.title,
+              ratingKey: item.rating_key,
+              error: errorMessage,
+            });
             errors.push(`TMDb enrichment failed for ${item.title}: ${errorMessage}`);
             // Continue with Tautulli data
           }
@@ -500,15 +558,27 @@ export class TautulliSyncService {
         }
 
         // Sync seasons and episodes
-        await this.syncSeasonsAndEpisodes(item.rating_key, mediaItemId, options, onProgress);
+        const seasonErrors = await this.syncSeasonsAndEpisodes(
+          item.rating_key,
+          mediaItemId,
+          options,
+          onProgress,
+        );
+        errors.push(...seasonErrors.map((message) => `Failed to sync series ${item.title}: ${message}`));
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(`[Tautulli Sync] Failed to sync series "${item.title}" (rating_key: ${item.rating_key}):`, errorMessage);
+        logger.error('Failed to sync series', {
+          namespace: 'tautulli-sync',
+          title: item.title,
+          ratingKey: item.rating_key,
+          error: errorMessage,
+        });
         errors.push(`Failed to sync series ${item.title}: ${errorMessage}`);
       }
     }
 
-    console.log(`[Tautulli Sync] TV series sync completed:`, {
+    logger.info('TV series sync completed', {
+      namespace: 'tautulli-sync',
       total: mediaItems.length,
       created,
       updated,
@@ -527,13 +597,14 @@ export class TautulliSyncService {
     mediaItemId: number,
     options: SyncOptions = {},
     onProgress?: ProgressCallback,
-  ): Promise<void> {
+  ): Promise<string[]> {
     // Get all seasons
     const seasons = await this.tautulliService.getSeasons(showRatingKey);
 
     const reportedSeasonKeys = new Set<string>();
     const reportedEpisodeKeys = new Set<string>();
     const seasonsWithEpisodeSyncFailure = new Set<number>();
+    const errors: string[] = [];
 
     for (const seasonMetadata of seasons) {
       onProgress?.({
@@ -575,16 +646,21 @@ export class TautulliSyncService {
               if (downloadResult.success && downloadResult.localPath) {
                 seasonPoster = downloadResult.localPath;
               } else if (!downloadResult.success && downloadResult.error) {
-                console.warn(
-                  `[Tautulli Sync] Season image download unsuccessful for "${seasonMetadata.title}" (rating_key: ${seasonMetadata.rating_key}): ${downloadResult.error}`,
-                );
+                logger.warn('Season image download unsuccessful', {
+                  namespace: 'tautulli-sync',
+                  title: seasonMetadata.title,
+                  ratingKey: seasonMetadata.rating_key,
+                  error: downloadResult.error,
+                });
               }
             } catch (error) {
               const errorMessage = error instanceof Error ? error.message : String(error);
-              console.warn(
-                `[Tautulli Sync] Season image download failed for "${seasonMetadata.title}" (rating_key: ${seasonMetadata.rating_key}):`,
-                errorMessage,
-              );
+              logger.warn('Season image download failed', {
+                namespace: 'tautulli-sync',
+                title: seasonMetadata.title,
+                ratingKey: seasonMetadata.rating_key,
+                error: errorMessage,
+              });
             }
           }
         }
@@ -644,16 +720,21 @@ export class TautulliSyncService {
                   if (downloadResult.success && downloadResult.localPath) {
                     episodeThumb = downloadResult.localPath;
                   } else if (!downloadResult.success && downloadResult.error) {
-                    console.warn(
-                      `[Tautulli Sync] Episode image download unsuccessful for "${episodeMetadata.title}" (rating_key: ${episodeMetadata.rating_key}): ${downloadResult.error}`,
-                    );
+                    logger.warn('Episode image download unsuccessful', {
+                      namespace: 'tautulli-sync',
+                      title: episodeMetadata.title,
+                      ratingKey: episodeMetadata.rating_key,
+                      error: downloadResult.error,
+                    });
                   }
                 } catch (error) {
                   const errorMessage = error instanceof Error ? error.message : String(error);
-                  console.warn(
-                    `[Tautulli Sync] Episode image download failed for "${episodeMetadata.title}" (rating_key: ${episodeMetadata.rating_key}):`,
-                    errorMessage,
-                  );
+                  logger.warn('Episode image download failed', {
+                    namespace: 'tautulli-sync',
+                    title: episodeMetadata.title,
+                    ratingKey: episodeMetadata.rating_key,
+                    error: errorMessage,
+                  });
                 }
               }
             }
@@ -676,11 +757,17 @@ export class TautulliSyncService {
               this.seasonRepo.createEpisode(episodeData);
             }
           } catch (error) {
-            // Skip episode errors
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            errors.push(
+              `Episode sync failed for "${episodeMetadata.title}" (rating_key: ${episodeMetadata.rating_key}): ${errorMessage}`,
+            );
           }
         }
       } catch (error) {
-        // Skip season errors
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        errors.push(
+          `Season sync failed for "${seasonMetadata.title}" (rating_key: ${seasonMetadata.rating_key}): ${errorMessage}`,
+        );
         if (seasonId !== undefined) {
           seasonsWithEpisodeSyncFailure.add(seasonId);
         }
@@ -705,12 +792,15 @@ export class TautulliSyncService {
         this.seasonRepo.deleteSeasonById(season.id);
       }
     }
+
+    return errors;
   }
 
   /**
    * Delete media items that no longer exist in Tautulli
    */
   private async deleteRemovedMedia(sectionId: number, currentTautulliIds: string[]): Promise<number> {
+    const currentIdSet = new Set(currentTautulliIds.filter(Boolean));
     const existingMedia = this.mediaRepo.filter({
       librarySectionId: sectionId,
       limit: 10000, // Fetch all for deletion check
@@ -719,7 +809,7 @@ export class TautulliSyncService {
     let deleted = 0;
 
     for (const media of existingMedia) {
-      if (!currentTautulliIds.includes(media.plexId)) {
+      if (!currentIdSet.has(media.plexId)) {
         await this.removeMediaAssets(media);
         this.mediaRepo.delete(media.id);
         deleted++;
@@ -738,10 +828,12 @@ export class TautulliSyncService {
       await this.imageStorageService.removeMediaAssets(media.mediaType, media.plexId);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.warn(
-        `[Tautulli Sync] Failed to delete stored images for ${media.title} (${media.plexId}):`,
-        message,
-      );
+      logger.warn('Failed to delete stored images', {
+        namespace: 'tautulli-sync',
+        title: media.title,
+        plexId: media.plexId,
+        error: message,
+      });
     }
   }
 
@@ -856,14 +948,18 @@ export class TautulliSyncService {
     syncCovers?: boolean,
   ): Promise<{ poster?: string; backdrop?: string }> {
     if (!this.imageStorageService) {
-      console.warn(`[Tautulli Sync] ImageStorageService not available for ${ratingKey}`);
+      logger.warn('ImageStorageService not available', { namespace: 'tautulli-sync', ratingKey });
       return {};
     }
     if (!syncCovers) {
-      console.log(`[Tautulli Sync] syncCovers is disabled, skipping image download for ${ratingKey}`);
+      logger.debug('syncCovers disabled, skipping image download', { namespace: 'tautulli-sync', ratingKey });
       return {};
     }
-    console.log(`[Tautulli Sync] Starting image download for ${metadata.title} (${ratingKey})`);
+    logger.debug('Starting Tautulli image download', {
+      namespace: 'tautulli-sync',
+      title: metadata.title,
+      ratingKey,
+    });
     const result: { poster?: string; backdrop?: string } = {};
     const downloadItems: Array<{
       ratingKey: string;
@@ -876,11 +972,17 @@ export class TautulliSyncService {
 
     // Parse poster URL
     if (metadata.thumb) {
-      console.log(`[Tautulli Sync] Parsing poster URL: ${metadata.thumb}`);
+      logger.debug('Parsing poster URL', { namespace: 'tautulli-sync', ratingKey });
       const posterInfo = this.parseTautulliImageUrl(metadata.thumb);
       if (posterInfo) {
         const posterPath = this.imageStorageService.getMediaImagePath(mediaType, ratingKey, 'poster');
-        console.log(`[Tautulli Sync] Poster path: ${posterPath}, metadata ID: ${posterInfo.id}, timestamp: ${posterInfo.timestamp}`);
+        logger.debug('Resolved poster download path', {
+          namespace: 'tautulli-sync',
+          ratingKey,
+          posterPath,
+          metadataId: posterInfo.id,
+          timestamp: posterInfo.timestamp,
+        });
         downloadItems.push({
           ratingKey: posterInfo.id,
           type: posterInfo.type,
@@ -890,19 +992,25 @@ export class TautulliSyncService {
         });
         targetToAssetType.set(posterPath, 'poster');
       } else {
-        console.warn(`[Tautulli Sync] Could not parse poster URL: ${metadata.thumb}`);
+        logger.warn('Could not parse poster URL', { namespace: 'tautulli-sync', ratingKey });
       }
     } else {
-      console.log(`[Tautulli Sync] No poster URL found for ${ratingKey}`);
+      logger.debug('No poster URL found', { namespace: 'tautulli-sync', ratingKey });
     }
 
     // Parse backdrop URL
     if (metadata.art) {
-      console.log(`[Tautulli Sync] Parsing backdrop URL: ${metadata.art}`);
+      logger.debug('Parsing backdrop URL', { namespace: 'tautulli-sync', ratingKey });
       const backdropInfo = this.parseTautulliImageUrl(metadata.art);
       if (backdropInfo) {
         const backdropPath = this.imageStorageService.getMediaImagePath(mediaType, ratingKey, 'backdrop');
-        console.log(`[Tautulli Sync] Backdrop path: ${backdropPath}, metadata ID: ${backdropInfo.id}, timestamp: ${backdropInfo.timestamp}`);
+        logger.debug('Resolved backdrop download path', {
+          namespace: 'tautulli-sync',
+          ratingKey,
+          backdropPath,
+          metadataId: backdropInfo.id,
+          timestamp: backdropInfo.timestamp,
+        });
         downloadItems.push({
           ratingKey: backdropInfo.id,
           type: backdropInfo.type,
@@ -912,18 +1020,26 @@ export class TautulliSyncService {
         });
         targetToAssetType.set(backdropPath, 'backdrop');
       } else {
-        console.warn(`[Tautulli Sync] Could not parse backdrop URL: ${metadata.art}`);
+        logger.warn('Could not parse backdrop URL', { namespace: 'tautulli-sync', ratingKey });
       }
     } else {
-      console.log(`[Tautulli Sync] No backdrop URL found for ${ratingKey}`);
+      logger.debug('No backdrop URL found', { namespace: 'tautulli-sync', ratingKey });
     }
 
     // Download images in batch
     if (downloadItems.length > 0) {
-      console.log(`[Tautulli Sync] Downloading ${downloadItems.length} images for ${ratingKey}`);
+      logger.debug('Downloading Tautulli images', {
+        namespace: 'tautulli-sync',
+        ratingKey,
+        count: downloadItems.length,
+      });
       try {
         const downloadResults = await this.imageStorageService.downloadBatch(downloadItems);
-        console.log(`[Tautulli Sync] Download results for ${ratingKey}:`, downloadResults.length);
+        logger.debug('Tautulli image download results received', {
+          namespace: 'tautulli-sync',
+          ratingKey,
+          count: downloadResults.length,
+        });
 
         for (const downloadResult of downloadResults) {
           const assetType = targetToAssetType.get(downloadResult.targetPath);
@@ -938,23 +1054,28 @@ export class TautulliSyncService {
               result.backdrop = downloadResult.localPath;
             }
           } else if (!downloadResult.success) {
-            console.warn(
-              `[Tautulli Sync] Failed to download ${assetType} for ${metadata.title} (${ratingKey}):`,
-              downloadResult.error ?? 'Unknown error',
-            );
+            logger.warn('Failed to download image asset', {
+              namespace: 'tautulli-sync',
+              assetType,
+              title: metadata.title,
+              ratingKey,
+              error: downloadResult.error ?? 'Unknown error',
+            });
           }
         }
 
-        console.log(`[Tautulli Sync] Completed image download evaluation for ${ratingKey}`);
+        logger.debug('Completed image download evaluation', { namespace: 'tautulli-sync', ratingKey });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(`[Tautulli Sync] Failed to download images for ${ratingKey}:`, errorMessage);
-        console.warn(
-          `[Tautulli Sync] Falling back to Tautulli-hosted images for ${metadata.title} (${ratingKey})`,
-        );
+        logger.error('Failed to download images', { namespace: 'tautulli-sync', ratingKey, error: errorMessage });
+        logger.warn('Falling back to Tautulli-hosted images', {
+          namespace: 'tautulli-sync',
+          title: metadata.title,
+          ratingKey,
+        });
       }
     } else {
-      console.warn(`[Tautulli Sync] No images to download for ${ratingKey}`);
+      logger.warn('No images to download', { namespace: 'tautulli-sync', ratingKey });
     }
 
     return result;
@@ -1039,7 +1160,7 @@ export class TautulliSyncService {
     tmdbEnriched: boolean;
   } | null> {
     if (!this.tmdbService) {
-      console.warn(`[TMDb Enrichment] TMDb service not available`);
+      logger.warn('TMDb service not available for enrichment', { namespace: 'tautulli-sync' });
       return null;
     }
 
@@ -1074,9 +1195,10 @@ export class TautulliSyncService {
 
     const trySearch = async () => {
       if (!titleForSearch) {
-        console.warn(
-          `[TMDb Enrichment] Cannot search without title for rating_key: ${metadata.rating_key}`,
-        );
+        logger.warn('Cannot search TMDb without title', {
+          namespace: 'tautulli-sync',
+          ratingKey: metadata.rating_key,
+        });
         return null;
       }
 
@@ -1117,9 +1239,12 @@ export class TautulliSyncService {
       return await trySearch();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.warn(
-        `[TMDb Enrichment] Failed for "${metadata.title ?? metadata.rating_key}": ${message}`,
-      );
+      logger.warn('TMDb enrichment failed', {
+        namespace: 'tautulli-sync',
+        title: metadata.title,
+        ratingKey: metadata.rating_key,
+        error: message,
+      });
       return null;
     }
   }

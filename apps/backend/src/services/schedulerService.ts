@@ -26,18 +26,18 @@ export class SchedulerService {
    */
   start(): void {
     if (this.isRunning) {
-      console.warn('Scheduler already running');
+      logger.warn('Scheduler already running', { namespace: 'scheduler' });
       return;
     }
 
     if (this.config.enabled === false) {
-      console.log('Scheduler is disabled');
+      logger.info('Scheduler is disabled', { namespace: 'scheduler' });
       return;
     }
 
     this.isRunning = true;
     this.loadSchedules();
-    console.log('Scheduler started');
+    logger.info('Scheduler started', { namespace: 'scheduler' });
   }
 
   /**
@@ -54,7 +54,7 @@ export class SchedulerService {
     }
 
     this.isRunning = false;
-    console.log('Scheduler stopped');
+    logger.info('Scheduler stopped', { namespace: 'scheduler' });
   }
 
   /**
@@ -71,11 +71,11 @@ export class SchedulerService {
           schedule.jobType,
         );
       } catch (error) {
-        console.error(`Failed to schedule job ${schedule.id}:`, error);
+        logger.error('Failed to schedule job', { namespace: 'scheduler', scheduleId: schedule.id, error });
       }
     }
 
-    console.log(`Loaded ${schedules.length} scheduled jobs`);
+    logger.info('Loaded scheduled jobs', { namespace: 'scheduler', count: schedules.length });
   }
 
   /**
@@ -104,14 +104,14 @@ export class SchedulerService {
     const task = cron.schedule(
       cronExpression,
       async () => {
-        console.log(`Running scheduled job: ${jobType} (${id})`);
+        logger.info('Running scheduled job', { namespace: 'scheduler', jobType, id });
         const startTime = Date.now();
 
         try {
           const didRun = await handler();
 
           if (!didRun) {
-            console.log(`Skipped scheduled job: ${jobType} (${id}) because another sync is active`);
+            logger.info('Skipped scheduled job because another sync is active', { namespace: 'scheduler', jobType, id });
             return;
           }
 
@@ -122,9 +122,9 @@ export class SchedulerService {
           this.syncScheduleRepo.updateLastRun(id, lastRunAt, nextRunAt);
 
           const duration = Date.now() - startTime;
-          console.log(`Completed scheduled job: ${jobType} (${id}) in ${duration}ms`);
+          logger.info('Completed scheduled job', { namespace: 'scheduler', jobType, id, durationMs: duration });
         } catch (error) {
-          console.error(`Failed to execute scheduled job ${jobType} (${id}):`, error);
+          logger.error('Failed to execute scheduled job', { namespace: 'scheduler', jobType, id, error });
         }
       },
       {
@@ -134,7 +134,7 @@ export class SchedulerService {
     );
 
     this.tasks.set(id, task);
-    console.log(`Scheduled job: ${jobType} (${id}) with cron: ${cronExpression}`);
+    logger.info('Scheduled job', { namespace: 'scheduler', jobType, id, cronExpression });
   }
 
   /**
@@ -176,7 +176,7 @@ export class SchedulerService {
               (progress) => {
                 const progressMessage =
                   `[Sync] ${progress.phase}: ${progress.current}/${progress.total} (${progress.percentage}%)`;
-                console.log(progressMessage);
+                logger.debug('Scheduled sync progress', { namespace: 'scheduler', progress });
                 if (runId && this.syncLiveMonitor) {
                   this.syncLiveMonitor.onProgress(runId, progress);
                   this.syncLiveMonitor.onLog(runId, 'debug', progressMessage);
@@ -208,7 +208,7 @@ export class SchedulerService {
       case 'cover_update':
         return async () => {
           // This will be implemented later for batch cover updates
-          console.log('Cover update job not yet implemented');
+          logger.info('Cover update job not yet implemented', { namespace: 'scheduler' });
           return false;
         };
 
@@ -251,7 +251,7 @@ export class SchedulerService {
    * Reload all schedules (useful after schedule changes)
    */
   reload(): void {
-    console.log('Reloading schedules...');
+    logger.info('Reloading schedules', { namespace: 'scheduler' });
     this.stop();
     this.start();
   }
@@ -279,7 +279,7 @@ export class SchedulerService {
     if (task) {
       task.stop();
       this.tasks.delete(id);
-      console.log(`Removed schedule: ${id}`);
+      logger.info('Removed schedule', { namespace: 'scheduler', id });
     }
   }
 

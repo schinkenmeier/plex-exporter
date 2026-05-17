@@ -47,6 +47,20 @@ describe('Tautulli sync integration', () => {
         tautulliConfigRepo,
         getSchedulerService: () => schedulerMock as any,
         refreshTautulliIntegration: () => {},
+        getTautulliConfigStatus: () => ({
+          configured: true,
+          source: 'tautulli_config',
+          activeSource: 'tautulli_config',
+          fromEnv: false,
+          envOverride: false,
+          tautulliUrl: 'https://tautulli.example.test',
+          hasApiKey: true,
+          saved: {
+            source: 'tautulli_config',
+            tautulliUrl: 'https://tautulli.example.test',
+            hasApiKey: true,
+          },
+        }),
         settingsRepository,
         tautulliSnapshotRepository: snapshotRepository,
         syncLiveMonitor,
@@ -69,6 +83,15 @@ describe('Tautulli sync integration', () => {
       expect.objectContaining({ incremental: true, syncCovers: false, enrichWithTmdb: false }),
       expect.any(Function),
     );
+  });
+
+  it('returns unified Tautulli configuration status', async () => {
+    const response = await request(app).get('/admin/api/tautulli/config');
+
+    expect(response.status).toBe(200);
+    expect(response.body.configured).toBe(true);
+    expect(response.body.activeSource).toBe('tautulli_config');
+    expect(response.body.saved.source).toBe('tautulli_config');
   });
 
   it('blocks a second manual sync while one run is active and exposes live state', async () => {
@@ -115,6 +138,32 @@ describe('Tautulli sync integration', () => {
     expect(liveStateAfterRun.status).toBe(200);
     expect(liveStateAfterRun.body.activeRun).toBeNull();
     expect(liveStateAfterRun.body.lastRun?.status).toBe('completed');
+  });
+
+  it('exposes manual sync runs with item errors as completed with errors', async () => {
+    syncService.syncAll.mockResolvedValue({
+      totalCreated: 0,
+      totalUpdated: 1,
+      totalDeleted: 0,
+      totalSkipped: 0,
+      totalErrors: 1,
+      results: [],
+      startTime: Date.now() - 1000,
+      endTime: Date.now(),
+      duration: 1000,
+    });
+
+    const response = await request(app)
+      .post('/admin/api/tautulli/sync/manual')
+      .send({ incremental: false, syncCovers: true, enrichWithTmdb: true });
+
+    expect(response.status).toBe(200);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const liveState = await request(app).get('/admin/api/tautulli/sync/live/state');
+    expect(liveState.status).toBe(200);
+    expect(liveState.body.lastRun?.status).toBe('completed_with_errors');
+    expect(liveState.body.lastRun?.degraded).toBe(true);
   });
 
   it('creates and lists sync schedules', async () => {

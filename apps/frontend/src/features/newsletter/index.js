@@ -233,6 +233,8 @@ function renderStatus() {
   const statusEl = document.getElementById('newsletterStatus');
   if (!statusEl) return;
 
+  const message = document.createElement('div');
+
   if (isSubscribed()) {
     const mediaTypeLabel = subscriptionData.mediaType === 'movie'
       ? 'Filme'
@@ -240,20 +242,20 @@ function renderStatus() {
       ? 'Serien'
       : 'Alle';
 
-    statusEl.innerHTML = `
-      <div class="status-message success">
-        ✓ Newsletter aktiv für ${subscriptionData.email}
-        <br>
-        <small>Filter: ${mediaTypeLabel}</small>
-      </div>
-    `;
+    message.className = 'status-message success';
+    message.append(
+      document.createTextNode(`✓ Newsletter aktiv für ${subscriptionData.email}`),
+      document.createElement('br'),
+    );
+    const detail = document.createElement('small');
+    detail.textContent = `Filter: ${mediaTypeLabel}`;
+    message.appendChild(detail);
   } else {
-    statusEl.innerHTML = `
-      <div class="status-message info">
-        ℹ️ Du hast den Newsletter noch nicht abonniert
-      </div>
-    `;
+    message.className = 'status-message info';
+    message.textContent = 'ℹ️ Du hast den Newsletter noch nicht abonniert';
   }
+
+  statusEl.replaceChildren(message);
 }
 
 /**

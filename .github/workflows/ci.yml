@@ -9,6 +9,7 @@ on:
 
 env:
   CI: true
+  EXPECTED_NPM_VERSION: 11.14.1
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -38,6 +39,10 @@ jobs:
               - 'apps/frontend/**'
               - 'packages/shared/**'
               - 'config/**'
+              - '.github/workflows/**'
+              - 'tools/lint.mjs'
+              - '.nvmrc'
+              - '.npmrc'
               - 'package-lock.json'
               - 'package.json'
               - 'tsconfig.base.json'
@@ -45,16 +50,30 @@ jobs:
               - 'apps/backend/**'
               - 'packages/shared/**'
               - 'config/**'
+              - '.github/workflows/**'
+              - 'tools/lint.mjs'
+              - '.nvmrc'
+              - '.npmrc'
               - 'package-lock.json'
               - 'package.json'
               - 'tsconfig.base.json'
             docker:
+              - '.dockerignore'
+              - '.github/workflows/**'
+              - '.npmrc'
+              - '.nvmrc'
+              - 'package-lock.json'
+              - 'package.json'
               - 'apps/backend/Dockerfile'
               - 'apps/frontend/Dockerfile'
               - 'docker-compose.yml'
+              - 'deploy/**'
               - 'tools/tautulli-mock/**'
               - 'Caddyfile'
             docs:
+              - '.github/workflows/**'
+              - '.nvmrc'
+              - '.npmrc'
               - 'README.md'
               - 'CONTRIBUTING.md'
               - 'SECURITY.md'
@@ -64,8 +83,36 @@ jobs:
               - 'apps/**/SECURITY.md'
               - 'tools/**/README.md'
               - 'tools/check-doc-links.mjs'
+              - 'tools/check-german-transliterations.mjs'
+              - 'tools/lint.mjs'
               - 'package.json'
               - 'tools/package.json'
+
+  quality:
+    name: Repository • lint gate
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.docs == 'true' || needs.changes.outputs.docker == 'true' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Use expected npm version
+        run: |
+          npm install -g npm@${EXPECTED_NPM_VERSION}
+          test "$(npm --version)" = "${EXPECTED_NPM_VERSION}"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run repository lint gate
+        run: npm run lint
 
   docs:
     name: Docs • link validation
@@ -81,6 +128,11 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: package-lock.json
+
+      - name: Use expected npm version
+        run: |
+          npm install -g npm@${EXPECTED_NPM_VERSION}
+          test "$(npm --version)" = "${EXPECTED_NPM_VERSION}"
 
       - name: Install dependencies
         run: npm ci
@@ -106,11 +158,19 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
+      - name: Use expected npm version
+        run: |
+          npm install -g npm@${EXPECTED_NPM_VERSION}
+          test "$(npm --version)" = "${EXPECTED_NPM_VERSION}"
+
       - name: Install dependencies
         run: npm ci
 
       - name: Run unit tests
         run: npm test --workspace @plex-exporter/frontend
+
+      - name: Type-check frontend
+        run: npm run type-check --workspace @plex-exporter/frontend
 
       - name: Build production bundle
         run: npm run build --workspace @plex-exporter/frontend
@@ -138,6 +198,11 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
+      - name: Use expected npm version
+        run: |
+          npm install -g npm@${EXPECTED_NPM_VERSION}
+          test "$(npm --version)" = "${EXPECTED_NPM_VERSION}"
+
       - name: Install dependencies
         run: npm ci
 
@@ -146,6 +211,9 @@ jobs:
 
       - name: Run tests
         run: npm test --workspace @plex-exporter/backend
+
+      - name: Type-check backend
+        run: npm run type-check --workspace @plex-exporter/backend
 
       - name: Build backend
         run: npm run build --workspace @plex-exporter/backend
@@ -166,6 +234,22 @@ jobs:
 
       - name: Build backend & frontend images
         run: docker compose build backend caddy
+
+      - name: Smoke test backend image
+        run: |
+          docker build --target production --load -t plex-exporter-backend:smoke -f apps/backend/Dockerfile .
+          docker run --rm --entrypoint node plex-exporter-backend:smoke -e "const Database=require('better-sqlite3'); const db=new Database(':memory:'); db.close();"
+          docker run -d --name plex-exporter-backend-smoke -e NODE_ENV=production -e SQLITE_PATH=/app/data/sqlite/smoke.sqlite plex-exporter-backend:smoke
+          for i in $(seq 1 30); do
+            if docker exec plex-exporter-backend-smoke node -e "require('http').get('http://localhost:4000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"; then
+              docker rm -f plex-exporter-backend-smoke
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs plex-exporter-backend-smoke
+          docker rm -f plex-exporter-backend-smoke
+          exit 1
 
       - name: Build tautulli mock image
         run: docker compose --profile tautulli build tautulli-mock

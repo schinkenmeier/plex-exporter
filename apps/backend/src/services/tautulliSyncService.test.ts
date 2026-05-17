@@ -265,6 +265,77 @@ describe('TautulliSyncService - season cleanup', () => {
 });
 
 describe('TautulliSyncService - removed media cleanup', () => {
+  it('does not update a section timestamp when a sync result contains errors', async () => {
+    const librarySectionRepo = {
+      listEnabled: vi.fn().mockReturnValue([
+        { id: 1, sectionId: 10, sectionName: 'Movies', sectionType: 'movie' },
+      ]),
+      updateLastSynced: vi.fn(),
+    };
+
+    const service = new TautulliSyncService(
+      {} as any,
+      {} as any,
+      {} as any,
+      librarySectionRepo as any,
+    );
+
+    vi.spyOn(service as any, 'syncLibrarySection').mockResolvedValue({
+      librarySection: 'Movies',
+      sectionId: 10,
+      mediaType: 'movie',
+      created: 0,
+      updated: 0,
+      deleted: 0,
+      skipped: 0,
+      errors: ['metadata failed'],
+      duration: 1,
+    });
+
+    await service.syncAll();
+
+    expect(librarySectionRepo.updateLastSynced).not.toHaveBeenCalled();
+  });
+
+  it('skips deletion when item processing reports errors', async () => {
+    const mediaRepo = {
+      filter: vi.fn(),
+      delete: vi.fn(),
+    };
+    const librarySectionRepo = {
+      getBySectionId: vi.fn().mockReturnValue({
+        id: 1,
+        sectionId: 1,
+        sectionName: 'Movies',
+        sectionType: 'movie',
+      }),
+    };
+
+    const service = new TautulliSyncService(
+      {} as any,
+      mediaRepo as any,
+      {} as any,
+      librarySectionRepo as any,
+    );
+
+    vi.spyOn(service as any, 'fetchAllMediaFromLibrary').mockResolvedValue([
+      { rating_key: 'keep-me', title: 'Keep' },
+    ]);
+    vi.spyOn(service as any, 'syncMovies').mockResolvedValue({
+      created: 0,
+      updated: 0,
+      skipped: 0,
+      errors: ['movie failed'],
+    });
+
+    const result = await service.syncLibrarySection(1);
+
+    expect(result.deleted).toBe(0);
+    expect(result.errors).toEqual(['movie failed']);
+    expect(mediaRepo.filter).not.toHaveBeenCalled();
+    expect(mediaRepo.delete).not.toHaveBeenCalled();
+  });
+
   it('deletes missing items even during incremental sync and removes covers', async () => {
     const mediaRepo = {
       filter: vi.fn().mockReturnValue([

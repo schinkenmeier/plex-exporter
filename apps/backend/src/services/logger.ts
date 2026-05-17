@@ -4,6 +4,8 @@ import { logBuffer, type LogEntry } from './logBuffer.js';
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 type LogContext = Record<string, unknown> | undefined;
+const REDACTED = '[redacted]';
+const SENSITIVE_KEY_PATTERN = /(api[-_]?key|token|authorization|password|secret)/i;
 
 const consoleMethod: Record<LogLevel, (message?: any, ...optionalParams: any[]) => void> = {
   debug: console.debug.bind(console),
@@ -20,7 +22,11 @@ const serialize = (context: LogContext) => {
   return JSON.parse(
     JSON.stringify(
       context,
-      (_key, value) => {
+      (key, value) => {
+        if (SENSITIVE_KEY_PATTERN.test(key)) {
+          return REDACTED;
+        }
+
         if (value instanceof Error) {
           return {
             name: value.name,

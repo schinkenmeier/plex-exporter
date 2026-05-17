@@ -18,7 +18,7 @@ if(typeof global.localStorage === 'undefined'){
   };
 }
 
-const { prefixThumbValue, prefixMovieThumb, prefixShowThumb, fetchJson, loadMovies, searchLibrary } = await import('../../src/js/data.js');
+const { prefixThumbValue, prefixMovieThumb, prefixShowThumb, fetchJson, loadMovies, loadMoviesStatus, searchLibrary } = await import('../../src/js/data.js');
 const { isMovieEntry, isShowEntry, validateLibraryList } = await import('../../src/js/data/validators.js');
 const { DEFAULT_PAGE_SIZE } = await import('@plex-exporter/shared');
 
@@ -164,6 +164,19 @@ describe('data loading resilience', () => {
     assert.ok(Array.isArray(result));
     assert.strictEqual(result.length, 0);
     assert.ok(callCount >= 1);
+  });
+
+  it('returns a structured error status when the movies endpoint is unavailable', async () => {
+    global.fetch = async () => {
+      throw new Error('offline');
+    };
+
+    const result = await loadMoviesStatus();
+    assert.deepStrictEqual(result.items, []);
+    assert.strictEqual(result.source, 'error');
+    assert.match(result.error, /offline/);
+    assert.strictEqual(result.loading, false);
+    assert.strictEqual(result.partial, false);
   });
 });
 

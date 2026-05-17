@@ -8,7 +8,12 @@ export function createLoaderService(): LoaderHandle {
   const show = (target?: HTMLElement, text = 'Lädt...'): HTMLElement => {
     const spinner = document.createElement('div');
     spinner.className = 'admin-loader';
-    spinner.innerHTML = `<span class="admin-loader-spinner" aria-hidden="true"></span><span>${text}</span>`;
+    const icon = document.createElement('span');
+    icon.className = 'admin-loader-spinner';
+    icon.setAttribute('aria-hidden', 'true');
+    const label = document.createElement('span');
+    label.textContent = text;
+    spinner.append(icon, label);
 
     if (target) {
       spinner.classList.add('admin-loader-inline');

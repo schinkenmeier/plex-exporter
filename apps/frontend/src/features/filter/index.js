@@ -143,14 +143,19 @@ export function applyFilters(pagination = {}){
     page: desiredPage,
     pageSize: desiredPageSize,
     total: fallback.length,
-    hasMore: false,
+    hasMore: desiredPage * desiredPageSize < fallback.length,
     isLoadingMore: false,
+    source: 'local',
   };
+  const fallbackStart = (desiredPage - 1) * desiredPageSize;
+  const fallbackPage = fallback.slice(fallbackStart, fallbackStart + desiredPageSize);
 
   // Reset filtered items when applying new filters (not loading more)
-  setState({ filtered: fallback, filteredMeta: fallbackMeta });
+  setState({ filtered: fallbackPage, filteredMeta: fallbackMeta });
+  updateLoadMoreIndicator(false);
 
   const requestId = ++activeFilterRequest;
+  activeLoadMoreRequest++;
 
   searchLibrary(view, payload, { includeFacets: false, page: desiredPage, pageSize: desiredPageSize })
     .then((response) => {
@@ -164,6 +169,7 @@ export function applyFilters(pagination = {}){
         total,
         hasMore,
         isLoadingMore: false,
+        source: 'api',
       };
 
       setState({ filtered: response.items, filteredMeta: resolvedMeta });
@@ -175,7 +181,7 @@ export function applyFilters(pagination = {}){
       setState({ filteredMeta: { ...fallbackMeta, isLoadingMore: false } });
     });
 
-  return fallback;
+  return fallbackPage;
 }
 
 export function loadMoreItems(){
@@ -199,11 +205,25 @@ export function loadMoreItems(){
   const currentItems = Array.isArray(state.filtered) ? state.filtered : [];
   
   const requestId = ++activeLoadMoreRequest;
+  const filterRequestId = activeFilterRequest;
+  const clearStaleLoadMoreState = () => {
+    updateLoadMoreIndicator(false);
+    const latestMeta = getState().filteredMeta || {};
+    if(latestMeta.isLoadingMore){
+      setState({ filteredMeta: { ...latestMeta, isLoadingMore: false } });
+    }
+  };
   
   return searchLibrary(view, payload, { includeFacets: false, page: nextPage, pageSize })
     .then((response) => {
-      if(requestId !== activeLoadMoreRequest) return [];
-      if(!response || !Array.isArray(response.items)) return [];
+      if(requestId !== activeLoadMoreRequest || filterRequestId !== activeFilterRequest){
+        clearStaleLoadMoreState();
+        return [];
+      }
+      if(!response || !Array.isArray(response.items)){
+        clearStaleLoadMoreState();
+        return [];
+      }
       
       const total = Number.isFinite(response.total) && response.total >= 0 ? response.total : currentItems.length + response.items.length;
       const hasMore = Boolean(response.hasMore || response.pagination?.hasMore);
@@ -325,4 +345,3 @@ function notifyFiltersUpdated(items){
     console.warn('[filter] Failed to notify filters handler:', err?.message);
   }
 }
-

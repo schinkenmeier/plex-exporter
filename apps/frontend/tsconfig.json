@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "strict": true,
+    "types": []
+  },
+  "include": ["src/admin/**/*.ts"]
+}

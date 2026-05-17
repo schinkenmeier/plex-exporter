@@ -11,6 +11,7 @@ WORKDIR /app
 
 # Copy package files for dependency installation
 COPY package.json package-lock.json ./
+COPY tsconfig.base.json ./
 COPY apps/frontend/package.json apps/frontend/
 COPY packages/shared/package.json packages/shared/
 

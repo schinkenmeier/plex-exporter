@@ -88,6 +88,7 @@ export interface HeroPoolPayload {
     selectionCount: number;
     tmdb: {
       enabled: boolean;
+      serviceRevision?: number;
       rateLimit: TmdbRateLimitState;
       hitLimit: boolean;
     };
@@ -804,11 +805,14 @@ export const createHeroPipelineService = ({
   policyPath,
 }: HeroPipelineOptions): HeroPipelineService => {
   let activeTmdbService = initialTmdbService ?? null;
+  let tmdbServiceRevision = activeTmdbService ? 1 : 0;
   let cachedPolicy: { policy: HeroPolicy; hash: string } | null = null;
   let cachedPolicyMeta: { path: string | null; mtimeMs: number | null } | null = null;
+  const inFlightBuilds = new Map<HeroKind, Promise<HeroPoolPayload>>();
 
   const buildTmdbMeta = (hitLimit: boolean) => ({
     enabled: !!activeTmdbService?.isEnabled(),
+    serviceRevision: tmdbServiceRevision,
     rateLimit: activeTmdbService?.getRateLimitState() ?? {
       active: false,
       until: 0,
@@ -1043,7 +1047,11 @@ export const createHeroPipelineService = ({
 
     const tmdbEnabledNow = Boolean(activeTmdbService?.isEnabled());
     const cachedTmdbEnabled = Boolean(stored?.payload?.meta?.tmdb?.enabled);
-    const shouldInvalidateTmdbCache = tmdbEnabledNow && !cachedTmdbEnabled;
+    const cachedTmdbRevision = stored?.payload?.meta?.tmdb?.serviceRevision;
+    const shouldInvalidateTmdbCache =
+      cachedTmdbEnabled !== tmdbEnabledNow ||
+      (cachedTmdbRevision != null && cachedTmdbRevision !== tmdbServiceRevision) ||
+      (tmdbEnabledNow && cachedTmdbRevision == null);
     const storedRow = stored?.row ?? null;
     const storedPayload = stored?.payload ?? null;
     const cacheVersionMatches = storedPayload?.cacheVersion === HERO_CACHE_VERSION;
@@ -1173,9 +1181,24 @@ export const createHeroPipelineService = ({
     return payload;
   };
 
-  const getPool = async (kind: HeroKind, options: { force?: boolean } = {}) => buildPool(kind, options);
+  const getPool = async (kind: HeroKind, options: { force?: boolean } = {}) => {
+    const normalizedKind: HeroKind = kind === 'series' ? 'series' : 'movies';
+    const existing = inFlightBuilds.get(normalizedKind);
+    if (existing) return existing;
+
+    const build = buildPool(normalizedKind, options).finally(() => {
+      inFlightBuilds.delete(normalizedKind);
+    });
+    inFlightBuilds.set(normalizedKind, build);
+    return build;
+  };
+
   const setTmdbService = (next: TmdbService | null) => {
-    activeTmdbService = next ?? null;
+    const normalized = next ?? null;
+    if (activeTmdbService !== normalized) {
+      tmdbServiceRevision += 1;
+    }
+    activeTmdbService = normalized;
   };
 
   return {

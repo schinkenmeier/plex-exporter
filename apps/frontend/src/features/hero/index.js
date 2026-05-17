@@ -2,6 +2,7 @@ import { getState } from '../../core/state.js';
 import { openMovieDetailV3, openSeriesDetailV3 } from '../modal/modalV3/index.js';
 import { humanYear, formatRating } from '../../js/utils.js';
 import { prefixThumbValue } from '../../js/data.js';
+import { debugLog } from '../../core/debugLogger.js';
 import * as HeroPipeline from './pipeline.js';
 
 const NUMBER_FORMAT = typeof Intl !== 'undefined' ? new Intl.NumberFormat('en-US') : { format: (value)=>String(value) };
@@ -569,7 +570,7 @@ function renderMedia(hero, picture, image, sourceLarge, sourceMedium, entry, pla
   const primary = backdrops[0] || '';
   const posterFallback = resolvePosterFallback(entry);
 
-  console.log('[Hero] renderMedia called with entry:', {
+  debugLog('[Hero] renderMedia called with entry:', {
     title: entry?.title,
     normalizedBackdrops: backdrops,
     primary,

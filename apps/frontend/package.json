@@ -14,7 +14,8 @@
     "build:watch": "node scripts/build.mjs --watch",
     "test": "node --test tests/__tests__/*.test.js",
     "test:coverage": "node --test --experimental-test-coverage tests/__tests__/*.test.js",
-    "test:integration": "node --test tests/__tests__/app.integration.test.js"
+    "test:integration": "node --test tests/__tests__/app.integration.test.js",
+    "type-check": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
     "esbuild": "^0.28.0",

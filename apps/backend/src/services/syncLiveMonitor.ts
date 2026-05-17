@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import type { SyncOptions, SyncProgress, SyncStats } from './tautulliSyncService.js';
 
 export type SyncRunSource = 'manual' | 'scheduler';
-export type SyncRunStatus = 'running' | 'completed' | 'failed';
+export type SyncRunStatus = 'running' | 'completed' | 'completed_with_errors' | 'failed';
 export type SyncLogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 export interface SyncRunOptions {
@@ -25,13 +25,14 @@ export interface ActiveSyncRun {
 export interface CompletedSyncRun {
   runId: string;
   source: SyncRunSource;
-  status: 'completed' | 'failed';
+  status: 'completed' | 'completed_with_errors' | 'failed';
   startedAt: string;
   finishedAt: string;
   durationMs: number;
   options: SyncRunOptions;
   stats: SyncStats | null;
   error: string | null;
+  degraded: boolean;
 }
 
 export interface SyncLiveEventMap {
@@ -148,16 +149,18 @@ export class SyncLiveMonitor {
     }
 
     const finishedAt = new Date().toISOString();
+    const degraded = stats.totalErrors > 0;
     const completedRun: CompletedSyncRun = {
       runId,
       source: this.activeRun.source,
-      status: 'completed',
+      status: degraded ? 'completed_with_errors' : 'completed',
       startedAt: this.activeRun.startedAt,
       finishedAt,
       durationMs: new Date(finishedAt).getTime() - new Date(this.activeRun.startedAt).getTime(),
       options: this.activeRun.options,
       stats,
       error: null,
+      degraded,
     };
 
     this.lastRun = completedRun;
@@ -182,6 +185,7 @@ export class SyncLiveMonitor {
       options: this.activeRun.options,
       stats: null,
       error: errorMessage,
+      degraded: true,
     };
 
     this.lastRun = failedRun;
@@ -217,4 +221,3 @@ export class SyncLiveMonitor {
     this.emitter.emit('event', event);
   }
 }
-

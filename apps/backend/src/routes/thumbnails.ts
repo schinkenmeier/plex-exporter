@@ -54,7 +54,7 @@ export const createThumbnailRouter = (options: ThumbnailRouterOptions = {}): Rou
    * GET /thumbnails/movies/:filename(*)
    * Supports paths like: Movie - Title [ID].images/Title.thumb.jpg
    */
-  router.get('/movies/*', (req, res) => {
+  router.get(/^\/movies\/(.+)$/, (req, res) => {
     const filename = (req.params as any)[0]; // Get everything after /movies/
 
     // Security: Prevent directory traversal
@@ -87,7 +87,7 @@ export const createThumbnailRouter = (options: ThumbnailRouterOptions = {}): Rou
    * GET /thumbnails/series/:filename(*)
    * Supports paths like: Series - Title [ID].images/Title.thumb.jpg
    */
-  router.get('/series/*', (req, res) => {
+  router.get(/^\/series\/(.+)$/, (req, res) => {
     const filename = (req.params as any)[0]; // Get everything after /series/
 
     // Security: Prevent directory traversal
@@ -120,7 +120,7 @@ export const createThumbnailRouter = (options: ThumbnailRouterOptions = {}): Rou
    * GET /thumbnails/covers/:path(*)
    * Supports nested paths like covers/movie/{ratingKey}/poster.jpg
    */
-  router.get('/covers/*', (req, res) => {
+  router.get(/^\/covers\/(.+)$/, (req, res) => {
     const relativePath = (req.params as any)[0];
 
     if (!relativePath || relativePath.includes('..') || relativePath.startsWith('/')) {

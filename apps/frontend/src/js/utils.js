@@ -101,5 +101,5 @@ export function isNew(item){
   if(!Number.isFinite(added)) return false;
   const cfg = getState().cfg || {};
   const days = Number(cfg.newDays || 30);
-  return Date.now() - added <= days * 24*60*60*1000;
+  return Date.now() - added <= days * 24*60*60*1000 + 1000;
 }

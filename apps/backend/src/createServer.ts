@@ -43,11 +43,11 @@ import { createTmdbManager, type TmdbManager } from './services/tmdbManager.js';
 import createHeroPipelineService from './services/heroPipeline.js';
 import { createHeroRouter } from './routes/hero.js';
 import { setupSwagger } from './config/swaggerSetup.js';
-import { createAdminRouter } from './routes/admin.js';
+import { createAdminRouter, type TautulliConfigSource, type TautulliConfigStatus } from './routes/admin.js';
 import { createBasicAuthMiddleware } from './middleware/basicAuth.js';
 import { createThumbnailRouter } from './routes/thumbnails.js';
 import { createRateLimiters } from './middleware/rateLimiter.js';
-import { createSQLiteRateLimitStore } from './middleware/sqliteRateLimitStore.js';
+import { closeSQLiteRateLimitStore, createSQLiteRateLimitStore } from './middleware/sqliteRateLimitStore.js';
 import {
   createTautulliSyncRouter,
   DEFAULT_SNAPSHOT_LIMIT,
@@ -76,8 +76,37 @@ export interface ServerDependencies {
   tmdbManager?: TmdbManager | null;
 }
 
-export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}) => {
+export interface ServerRuntime {
+  app: express.Express;
+  appConfig: AppConfig;
+  dispose(): void;
+  getTautulliService(): TautulliClient | null;
+  getTautulliSyncService(): TautulliSyncService | null;
+  getSchedulerService(): SchedulerService | null;
+}
+
+const isServerRuntime = (value: AppConfig | ServerRuntime): value is ServerRuntime =>
+  Boolean(value && typeof value === 'object' && 'dispose' in value && 'app' in value);
+
+export function createRuntime(appConfig: AppConfig, deps: ServerDependencies = {}): ServerRuntime {
+  const app = createServer(appConfig, deps);
+  const runtime = app.locals.runtime as ServerRuntime | undefined;
+  if (!runtime) {
+    throw new Error('Server runtime was not attached to the Express app.');
+  }
+  return runtime;
+}
+
+export function createServer(runtime: ServerRuntime): express.Express;
+export function createServer(appConfig: AppConfig, deps?: ServerDependencies): express.Express;
+export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps: ServerDependencies = {}): express.Express {
+  if (isServerRuntime(appConfigOrRuntime)) {
+    return appConfigOrRuntime.app;
+  }
+
+  const appConfig = appConfigOrRuntime;
   const app = express();
+  const ownsDatabase = !('database' in deps || 'drizzleDatabase' in deps);
   const adminUiDir = path.resolve(__dirname, '..', '..', 'frontend', 'public');
   if (!fs.existsSync(adminUiDir)) {
     throw new Error(
@@ -133,6 +162,7 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
 
   // Load persisted configuration from database (supplements environment variables)
   const persistedConfig = loadPersistedConfig((key: string) => settingsRepository.get(key));
+  const tautulliConfigRepo = new TautulliConfigRepository(drizzleDb);
 
   // Initialize Resend service with environment or persisted config
   let resendService =
@@ -157,22 +187,52 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
     newsletterService.setMailSender(resendService);
   }
 
-  // Initialize Tautulli service with environment or persisted config
+  const resolveInitialTautulliConfig = (): { baseUrl: string; apiKey: string; source: string } | null => {
+    if (appConfig.tautulli) {
+      return {
+        baseUrl: appConfig.tautulli.url,
+        apiKey: appConfig.tautulli.apiKey,
+        source: 'env',
+      };
+    }
+
+    const storedConfig = tautulliConfigRepo.get();
+    if (storedConfig) {
+      return {
+        baseUrl: storedConfig.tautulliUrl,
+        apiKey: storedConfig.apiKey,
+        source: 'tautulli_config',
+      };
+    }
+
+    if (persistedConfig.tautulli) {
+      return {
+        baseUrl: persistedConfig.tautulli.url,
+        apiKey: persistedConfig.tautulli.apiKey,
+        source: 'legacy_settings',
+      };
+    }
+
+    return null;
+  };
+
+  // Initialize Tautulli service with env, tautulli_config or legacy settings.
   let tautulliService =
     'tautulliService' in deps
       ? deps.tautulliService ?? null
       : null;
 
   if (!tautulliService) {
-    const tautulliConfig = appConfig.tautulli ?? persistedConfig.tautulli;
+    const tautulliConfig = resolveInitialTautulliConfig();
     if (tautulliConfig) {
       tautulliService = createTautulliService({
-        baseUrl: tautulliConfig.url,
+        baseUrl: tautulliConfig.baseUrl,
         apiKey: tautulliConfig.apiKey,
       });
-      if (!appConfig.tautulli && persistedConfig.tautulli) {
-        logger.info('Tautulli service initialized from database settings', { url: tautulliConfig.url });
-      }
+      logger.info('Tautulli service initialized', {
+        source: tautulliConfig.source,
+        url: tautulliConfig.baseUrl,
+      });
     }
   }
 
@@ -242,8 +302,6 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
   // Initialize new repositories for Tautulli sync
   const librarySectionRepo = new LibrarySectionRepository(drizzleDb);
   const syncScheduleRepo = new SyncScheduleRepository(drizzleDb);
-  const tautulliConfigRepo = new TautulliConfigRepository(drizzleDb);
-
   if (!mediaRepository || !thumbnailRepository || !tautulliSnapshotRepository || !seasonRepository || !castRepository) {
     throw new Error('Database repositories are not configured.');
   }
@@ -313,13 +371,41 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
   };
 
   const refreshTautulliIntegration = (input?: { baseUrl: string; apiKey: string }) => {
-    const config = input ?? (() => {
+    const config = (() => {
+      if (appConfig.tautulli) {
+        return {
+          baseUrl: appConfig.tautulli.url,
+          apiKey: appConfig.tautulli.apiKey,
+          source: 'env',
+        };
+      }
+
+      if (input) {
+        return { ...input, source: 'runtime' };
+      }
+
       const stored = tautulliConfigRepo.get();
       if (!stored) {
-        throw new Error('Tautulli is not configured.');
+        if (persistedConfig.tautulli) {
+          return {
+            baseUrl: persistedConfig.tautulli.url,
+            apiKey: persistedConfig.tautulli.apiKey,
+            source: 'legacy_settings',
+          };
+        }
+        return null;
       }
-      return { baseUrl: stored.tautulliUrl, apiKey: stored.apiKey };
+
+      return { baseUrl: stored.tautulliUrl, apiKey: stored.apiKey, source: 'tautulli_config' };
     })();
+
+    if (!config) {
+      tautulliState.service = null;
+      tautulliState.syncService = null;
+      restartScheduler(null);
+      logger.info('Tautulli integration cleared');
+      return;
+    }
 
     tautulliState.service = createTautulliService({
       baseUrl: config.baseUrl,
@@ -328,7 +414,7 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
     tautulliService = tautulliState.service;
 
     logger.info('Tautulli service initialized', {
-      source: input ? 'runtime' : 'stored',
+      source: config.source,
       url: config.baseUrl,
     });
 
@@ -338,6 +424,35 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
     }
 
     restartScheduler(tautulliState.syncService);
+  };
+
+  const getTautulliConfigStatus = (): TautulliConfigStatus => {
+    const stored = tautulliConfigRepo.get();
+    const legacyUrl = settingsRepository.get('tautulli.url');
+    const legacyApiKey = settingsRepository.get('tautulli.apiKey');
+    const savedSource = stored
+      ? 'tautulli_config'
+      : legacyUrl || legacyApiKey
+        ? 'legacy_settings'
+        : 'unset';
+    const savedUrl = stored?.tautulliUrl || legacyUrl?.value || null;
+    const savedHasApiKey = Boolean(stored?.apiKey || legacyApiKey?.value);
+    const activeSource: TautulliConfigSource = appConfig.tautulli ? 'env' : savedSource;
+
+    return {
+      configured: activeSource !== 'unset',
+      source: activeSource,
+      activeSource,
+      fromEnv: Boolean(appConfig.tautulli),
+      envOverride: Boolean(appConfig.tautulli) && savedSource !== 'unset',
+      tautulliUrl: appConfig.tautulli?.url || savedUrl,
+      hasApiKey: Boolean(appConfig.tautulli?.apiKey) || savedHasApiKey,
+      saved: {
+        source: savedSource,
+        tautulliUrl: savedUrl,
+        hasApiKey: savedHasApiKey,
+      },
+    };
   };
 
   // Attempt to build sync and scheduler services with existing configuration
@@ -463,12 +578,16 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
       thumbnailRepository,
       resendService,
       tautulliService: tautulliState.service,
+      getTautulliService: () => tautulliState.service,
       seasonRepository,
       castRepository,
       drizzleDatabase: drizzleDb ?? undefined,
       settingsRepository,
+      tautulliConfigRepository: tautulliConfigRepo,
       tmdbManager,
       heroPipeline: heroPipelineService,
+      refreshTautulliIntegration,
+      getTautulliConfigStatus,
       adminUiDir,
     }),
   );
@@ -485,6 +604,7 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
       tautulliConfigRepo,
       getSchedulerService: () => tautulliState.scheduler,
       refreshTautulliIntegration,
+      getTautulliConfigStatus,
       settingsRepository,
       tautulliSnapshotRepository: tautulliSnapshotRepository!,
       syncLiveMonitor,
@@ -494,7 +614,31 @@ export const createServer = (appConfig: AppConfig, deps: ServerDependencies = {}
   // Logging & error handling
   app.use(errorHandler);
 
+  let disposed = false;
+  const runtime: ServerRuntime = {
+    app,
+    appConfig,
+    getTautulliService: () => tautulliState.service,
+    getTautulliSyncService: () => tautulliState.syncService,
+    getSchedulerService: () => tautulliState.scheduler,
+    dispose: () => {
+      if (disposed) return;
+      disposed = true;
+      if (tautulliState.scheduler) {
+        tautulliState.scheduler.stop();
+        tautulliState.scheduler = null;
+      }
+      if (ownsDatabase) {
+        database.close();
+        if (rateLimitDatabasePath) {
+          closeSQLiteRateLimitStore(rateLimitDatabasePath);
+        }
+      }
+    },
+  };
+  app.locals.runtime = runtime;
+
   return app;
-};
+}
 
 export default createServer;
