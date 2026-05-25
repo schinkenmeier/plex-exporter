@@ -10,8 +10,8 @@ import logger from '../services/logger.js';
 import SettingsRepository from '../repositories/settingsRepository.js';
 import TautulliSnapshotRepository from '../repositories/tautulliSnapshotRepository.js';
 import type { SyncLiveEvent, SyncLiveMonitor } from '../services/syncLiveMonitor.js';
+import { resolveTautulliConfigStatus, type TautulliConfigStatus } from '../services/tautulliConfigStatus.js';
 import { getRouteParam } from './params.js';
-import type { TautulliConfigStatus } from './admin.js';
 
 export const SNAPSHOT_LIMIT_SETTING_KEY = 'tautulli.snapshots.max';
 export const DEFAULT_SNAPSHOT_LIMIT = 50;
@@ -77,28 +77,21 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
     res.write(`data: ${JSON.stringify(payload)}\n\n`);
   };
 
+  const resolveConfigStatus = (): TautulliConfigStatus =>
+    getTautulliConfigStatus?.() ??
+    resolveTautulliConfigStatus({
+      envConfig: null,
+      tautulliConfigRepository: tautulliConfigRepo,
+      settingsRepository,
+    });
+
   /**
    * GET /admin/api/tautulli/config
    * Get current Tautulli configuration
    */
   router.get('/config', async (_req: Request, res: Response, next: NextFunction) => {
     try {
-      if (getTautulliConfigStatus) {
-        res.json(getTautulliConfigStatus());
-        return;
-      }
-
-      const config = tautulliConfigRepo.get();
-      if (!config) {
-        res.json({ configured: false });
-        return;
-      }
-      res.json({
-        configured: true,
-        tautulliUrl: config.tautulliUrl,
-        // Don't send the full API key, just indicate it's set
-        hasApiKey: !!config.apiKey,
-      });
+      res.json(resolveConfigStatus());
     } catch (error) {
       next(error);
     }
@@ -148,12 +141,17 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
         );
       }
 
+      settingsRepository.delete('tautulli.url');
+      settingsRepository.delete('tautulli.apiKey');
+
+      const status = resolveConfigStatus();
+
       res.json({
         success: true,
-        message: getTautulliConfigStatus?.().envOverride
+        message: status.envOverride
           ? 'Configuration saved. Environment configuration remains active.'
           : 'Configuration saved successfully',
-        status: getTautulliConfigStatus?.(),
+        status,
         config: {
           tautulliUrl: config.tautulliUrl,
           hasApiKey: true,
@@ -173,15 +171,13 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
       const { tautulliUrl, apiKey } = req.body;
 
       if (!tautulliUrl || !apiKey) {
-        // Try to use saved config
-        const config = tautulliConfigRepo.get();
-        if (!config) {
-          throw new HttpError(400, 'No configuration provided and no saved configuration found');
-        }
-
-        // Test with saved config
         let existingService = getTautulliService();
         if (!existingService) {
+          const status = resolveConfigStatus();
+          if (!status.configured) {
+            throw new HttpError(400, 'No configuration provided and no active or saved configuration found');
+          }
+
           try {
             refreshTautulliIntegration();
             existingService = getTautulliService();
@@ -228,6 +224,11 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
         });
       }
     } catch (error) {
+      if (error instanceof HttpError) {
+        next(error);
+        return;
+      }
+
       let message = 'Unknown error';
       let details = {};
 
@@ -323,14 +324,8 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
       let serviceToUse = getTautulliService();
 
       if (!serviceToUse) {
-        // Load config from database and create temporary service
-        const config = tautulliConfigRepo.get();
-        if (!config) {
-          throw new HttpError(503, 'Tautulli is not configured. Please configure it first in the connection settings.');
-        }
-
         try {
-          refreshTautulliIntegration({ baseUrl: config.tautulliUrl, apiKey: config.apiKey });
+          refreshTautulliIntegration();
         } catch (refreshError) {
           const message = refreshError instanceof Error ? refreshError.message : 'Unknown error';
           throw new HttpError(503, `Failed to initialize Tautulli service: ${message}`);

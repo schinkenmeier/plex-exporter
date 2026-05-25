@@ -13,6 +13,13 @@ import {
   type TautulliConfigStatus,
   type TautulliLibrary,
 } from '../../core/api.ts';
+import { formatConfigStatus, renderConfigSummary } from './configStatus.js';
+import {
+  formatSyncRunDegradedMessage,
+  formatSyncRunStatus,
+  formatSyncRunSummary,
+  getSyncRunStatusClass,
+} from './syncStatus.js';
 
 const MAX_LIVE_EVENTS = 300;
 const LIVE_RECONNECT_BASE_MS = 1000;
@@ -81,12 +88,19 @@ export const tautulliView: AdminViewModule = {
     };
 
     const applyConfig = (config: TautulliConfigStatus) => {
-      if (config.configured && config.tautulliUrl) {
+      renderConfigSummary(refs.configSummary, config);
+      refs.saveConfigButton.textContent = config.fromEnv ? 'DB-Konfiguration speichern' : 'Speichern';
+
+      const savedUrl = config.saved?.tautulliUrl ?? null;
+      if (config.fromEnv) {
+        refs.tautulliUrl.value = savedUrl ?? '';
+      } else if (config.configured && config.tautulliUrl) {
         refs.tautulliUrl.value = config.tautulliUrl;
-        refs.configStatus.textContent = 'Konfiguration geladen. API-Key ist gesetzt.';
       } else {
-        refs.configStatus.textContent = 'Keine Konfiguration vorhanden.';
+        refs.tautulliUrl.value = savedUrl ?? '';
       }
+
+      refs.configStatus.textContent = formatConfigStatus(config);
     };
 
     const updateConnectionBadge = () => {
@@ -131,19 +145,21 @@ export const tautulliView: AdminViewModule = {
         return;
       }
 
-      const stats = run.stats;
-      const statsText = stats
-        ? `Created ${stats.totalCreated}, Updated ${stats.totalUpdated}, Deleted ${stats.totalDeleted}, Errors ${stats.totalErrors}`
-        : 'Keine Statistik vorhanden';
+      const statusLabel = formatSyncRunStatus(run.status, run.degraded);
+      const statusClass = getSyncRunStatusClass(run.status, run.degraded);
+      const statsText = formatSyncRunSummary(run.stats);
+      const degradedMessage = formatSyncRunDegradedMessage(run);
       const errorText = run.error ? `<div><strong>Fehler:</strong> ${escapeHtml(run.error)}</div>` : '';
+      const degradedText = degradedMessage ? `<p class="admin-warning-text">${escapeHtml(degradedMessage)}</p>` : '';
 
       refs.liveLast.innerHTML = `
         <div><strong>Run ID:</strong> ${escapeHtml(run.runId)}</div>
         <div><strong>Quelle:</strong> ${escapeHtml(run.source)}</div>
-        <div><strong>Status:</strong> ${escapeHtml(run.status)}</div>
+        <div><strong>Status:</strong> <span class="${statusClass}">${escapeHtml(statusLabel)}</span></div>
         <div><strong>Dauer:</strong> ${escapeHtml(formatDuration(run.durationMs))}</div>
         <div><strong>Beendet:</strong> ${escapeHtml(formatDate(run.finishedAt))}</div>
         <div><strong>Summary:</strong> ${escapeHtml(statsText)}</div>
+        ${degradedText}
         ${errorText}
       `;
     };
@@ -433,9 +449,9 @@ export const tautulliView: AdminViewModule = {
       }
       refs.saveConfigButton.disabled = true;
       try {
-        await adminApiClient.saveTautulliConfig({ tautulliUrl: url, apiKey });
+        const response = await adminApiClient.saveTautulliConfig({ tautulliUrl: url, apiKey });
         refs.tautulliApiKey.value = '';
-        toast.show('Konfiguration gespeichert', 'success');
+        toast.show(response.message || 'Konfiguration gespeichert', 'success');
         await loadConfig();
       } catch (error) {
         toast.show(error instanceof Error ? error.message : 'Speichern fehlgeschlagen', 'error');
@@ -446,7 +462,9 @@ export const tautulliView: AdminViewModule = {
 
     refs.testConfigButton.addEventListener('click', async () => {
       refs.testConfigButton.disabled = true;
-      refs.configStatus.textContent = 'Teste Verbindung...';
+      refs.configStatus.textContent = refs.tautulliUrl.value.trim() && refs.tautulliApiKey.value.trim()
+        ? 'Teste eingegebene Verbindung...'
+        : 'Teste aktive Verbindung...';
       try {
         const url = refs.tautulliUrl.value.trim();
         const apiKey = refs.tautulliApiKey.value.trim();
@@ -616,6 +634,7 @@ function createMarkup(): string {
           <button class="admin-btn admin-btn-primary" id="btn-save-tautulli">Speichern</button>
           <button class="admin-btn" id="btn-test-tautulli">Verbindung testen</button>
         </div>
+        <div class="tautulli-config-summary" id="tautulli-config-summary"></div>
         <p class="admin-muted-text" id="tautulli-config-status">Status unbekannt.</p>
       </div>
     </div>
@@ -705,6 +724,7 @@ function resolveRefs(root: HTMLElement) {
     tautulliUrl: byId('tautulli-url') as HTMLInputElement,
     tautulliApiKey: byId('tautulli-api-key') as HTMLInputElement,
     showApiKeyToggle: byId('tautulli-show-key') as HTMLInputElement,
+    configSummary: byId('tautulli-config-summary'),
     configStatus: byId('tautulli-config-status'),
     saveConfigButton: byId('btn-save-tautulli') as HTMLButtonElement,
     testConfigButton: byId('btn-test-tautulli') as HTMLButtonElement,

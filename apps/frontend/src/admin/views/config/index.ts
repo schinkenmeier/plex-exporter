@@ -684,6 +684,9 @@ async function loadConfigSnapshot(refs: SnapshotRefs, toast: { show: (message: s
 function createSnapshotHtml(snapshot: AdminConfigSnapshot): string {
   const entries = Object.entries(snapshot)
     .map(([section, value]) => {
+      if (section === 'tautulli' && value && typeof value === 'object') {
+        return createTautulliSnapshotHtml(value as AdminConfigSnapshot['tautulli']);
+      }
       const pretty = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
       return `
         <details open>
@@ -694,6 +697,45 @@ function createSnapshotHtml(snapshot: AdminConfigSnapshot): string {
     })
     .join('');
   return entries;
+}
+
+function createTautulliSnapshotHtml(tautulli: AdminConfigSnapshot['tautulli']): string {
+  const activeSource = formatTautulliSource(tautulli.activeSource ?? tautulli.source ?? 'unset');
+  const savedSource = formatTautulliSource(tautulli.saved?.source ?? 'unset');
+  const override = tautulli.envOverride
+    ? '<p class="admin-warning-text">DB-Konfiguration ist gespeichert, aber aktuell wegen ENV-Override nicht aktiv.</p>'
+    : '';
+  const savedUrl = tautulli.saved?.tautulliUrl || 'Nicht gespeichert';
+
+  return `
+    <details open>
+      <summary>tautulli</summary>
+      <div class="tautulli-config-summary">
+        <div class="admin-button-row">
+          <span class="admin-chip ${tautulli.enabled ? 'admin-chip-success' : 'admin-chip-danger'}">Aktiv: ${escapeHtml(activeSource)}</span>
+          <span class="admin-chip">Gespeichert: ${escapeHtml(savedSource)}</span>
+          ${tautulli.envOverride ? '<span class="admin-chip admin-chip-warning">ENV-Override</span>' : ''}
+        </div>
+        <div class="tautulli-config-row"><span class="admin-muted-text">Aktive URL</span><strong>${escapeHtml(tautulli.url || 'Nicht gesetzt')}</strong></div>
+        <div class="tautulli-config-row"><span class="admin-muted-text">Gespeicherte URL</span><strong>${escapeHtml(savedUrl)}</strong></div>
+        ${override}
+        <pre>${escapeHtml(JSON.stringify(tautulli, null, 2))}</pre>
+      </div>
+    </details>
+  `;
+}
+
+function formatTautulliSource(source: string): string {
+  switch (source) {
+    case 'env':
+      return 'Environment';
+    case 'tautulli_config':
+      return 'Datenbank';
+    case 'legacy_settings':
+      return 'Legacy-Fallback';
+    default:
+      return 'Nicht gesetzt';
+  }
 }
 
 function escapeHtml(value: string): string {

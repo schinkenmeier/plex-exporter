@@ -8,6 +8,7 @@ import { SyncScheduleRepository } from '../../src/repositories/syncScheduleRepos
 import { TautulliConfigRepository } from '../../src/repositories/tautulliConfigRepository.js';
 import SettingsRepository from '../../src/repositories/settingsRepository.js';
 import TautulliSnapshotRepository from '../../src/repositories/tautulliSnapshotRepository.js';
+import { errorHandler } from '../../src/middleware/errorHandler.js';
 import { SyncLiveMonitor } from '../../src/services/syncLiveMonitor.js';
 import { createTestDatabase, type TestDatabaseHandle } from '../helpers/testDatabase.js';
 
@@ -16,13 +17,15 @@ describe('Tautulli sync integration', () => {
   let app: express.Express;
   let syncService: { syncAll: ReturnType<typeof vi.fn> };
   let syncLiveMonitor: SyncLiveMonitor;
+  let tautulliConfigRepo: TautulliConfigRepository;
+  let settingsRepository: SettingsRepository;
 
   beforeEach(() => {
     dbHandle = createTestDatabase();
     const librarySectionRepo = new LibrarySectionRepository(dbHandle.drizzle);
     const syncScheduleRepo = new SyncScheduleRepository(dbHandle.drizzle);
-    const tautulliConfigRepo = new TautulliConfigRepository(dbHandle.drizzle);
-    const settingsRepository = new SettingsRepository(dbHandle.drizzle);
+    tautulliConfigRepo = new TautulliConfigRepository(dbHandle.drizzle);
+    settingsRepository = new SettingsRepository(dbHandle.drizzle);
     const snapshotRepository = new TautulliSnapshotRepository(dbHandle.drizzle);
     syncLiveMonitor = new SyncLiveMonitor();
 
@@ -66,6 +69,7 @@ describe('Tautulli sync integration', () => {
         syncLiveMonitor,
       }),
     );
+    app.use(errorHandler);
   });
 
   afterEach(() => {
@@ -92,6 +96,119 @@ describe('Tautulli sync integration', () => {
     expect(response.body.configured).toBe(true);
     expect(response.body.activeSource).toBe('tautulli_config');
     expect(response.body.saved.source).toBe('tautulli_config');
+  });
+
+  it('clears legacy Tautulli settings when saving canonical config', async () => {
+    settingsRepository.set('tautulli.url', 'https://legacy-tautulli.example.test');
+    settingsRepository.set('tautulli.apiKey', 'legacy-secret');
+
+    const response = await request(app)
+      .post('/admin/api/tautulli/config')
+      .send({
+        tautulliUrl: 'https://canonical-tautulli.example.test/api/v2',
+        apiKey: 'canonical-secret',
+      });
+
+    expect(response.status).toBe(200);
+    expect(tautulliConfigRepo.get()?.tautulliUrl).toBe('https://canonical-tautulli.example.test');
+    expect(settingsRepository.get('tautulli.url')).toBeNull();
+    expect(settingsRepository.get('tautulli.apiKey')).toBeNull();
+  });
+
+  it('keeps legacy Tautulli settings when saving canonical config cannot refresh runtime', async () => {
+    settingsRepository.set('tautulli.url', 'https://legacy-tautulli.example.test');
+    settingsRepository.set('tautulli.apiKey', 'legacy-secret');
+
+    const failingApp = express();
+    failingApp.use(express.json());
+    failingApp.use(
+      '/admin/api/tautulli',
+      createTautulliSyncRouter({
+        getTautulliService: () => null,
+        getTautulliSyncService: () => syncService as any,
+        librarySectionRepo: new LibrarySectionRepository(dbHandle.drizzle),
+        syncScheduleRepo: new SyncScheduleRepository(dbHandle.drizzle),
+        tautulliConfigRepo,
+        getSchedulerService: () => null,
+        refreshTautulliIntegration: () => {
+          throw new Error('refresh failed');
+        },
+        settingsRepository,
+        tautulliSnapshotRepository: new TautulliSnapshotRepository(dbHandle.drizzle),
+        syncLiveMonitor,
+      }),
+    );
+    failingApp.use(errorHandler);
+
+    const response = await request(failingApp)
+      .post('/admin/api/tautulli/config')
+      .send({
+        tautulliUrl: 'https://canonical-tautulli.example.test',
+        apiKey: 'canonical-secret',
+      });
+
+    expect(response.status).toBe(500);
+    expect(tautulliConfigRepo.get()?.tautulliUrl).toBe('https://canonical-tautulli.example.test');
+    expect(settingsRepository.get('tautulli.url')?.value).toBe('https://legacy-tautulli.example.test');
+    expect(settingsRepository.get('tautulli.apiKey')?.value).toBe('legacy-secret');
+  });
+
+  it('tests the active runtime service when no form credentials are supplied', async () => {
+    const getLibraries = vi.fn(async () => [
+      { section_id: 1, section_name: 'Movies', friendly_name: 'Movies' },
+    ]);
+    const activeApp = express();
+    activeApp.use(express.json());
+    activeApp.use(
+      '/admin/api/tautulli',
+      createTautulliSyncRouter({
+        getTautulliService: () => ({ getLibraries }) as any,
+        getTautulliSyncService: () => syncService as any,
+        librarySectionRepo: new LibrarySectionRepository(dbHandle.drizzle),
+        syncScheduleRepo: new SyncScheduleRepository(dbHandle.drizzle),
+        tautulliConfigRepo,
+        getSchedulerService: () => null,
+        refreshTautulliIntegration: vi.fn(),
+        settingsRepository,
+        tautulliSnapshotRepository: new TautulliSnapshotRepository(dbHandle.drizzle),
+        syncLiveMonitor,
+      }),
+    );
+    activeApp.use(errorHandler);
+
+    const response = await request(activeApp).post('/admin/api/tautulli/config/test').send({});
+
+    expect(response.status).toBe(200);
+    expect(response.body.libraryCount).toBe(1);
+    expect(getLibraries).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns a clear error when testing without credentials and no config exists', async () => {
+    const refreshTautulliIntegration = vi.fn();
+    const unconfiguredApp = express();
+    unconfiguredApp.use(express.json());
+    unconfiguredApp.use(
+      '/admin/api/tautulli',
+      createTautulliSyncRouter({
+        getTautulliService: () => null,
+        getTautulliSyncService: () => syncService as any,
+        librarySectionRepo: new LibrarySectionRepository(dbHandle.drizzle),
+        syncScheduleRepo: new SyncScheduleRepository(dbHandle.drizzle),
+        tautulliConfigRepo,
+        getSchedulerService: () => null,
+        refreshTautulliIntegration,
+        settingsRepository,
+        tautulliSnapshotRepository: new TautulliSnapshotRepository(dbHandle.drizzle),
+        syncLiveMonitor,
+      }),
+    );
+    unconfiguredApp.use(errorHandler);
+
+    const response = await request(unconfiguredApp).post('/admin/api/tautulli/config/test').send({});
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.message).toBe('No configuration provided and no active or saved configuration found');
+    expect(refreshTautulliIntegration).not.toHaveBeenCalled();
   });
 
   it('blocks a second manual sync while one run is active and exposes live state', async () => {

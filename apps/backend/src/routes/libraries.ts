@@ -7,17 +7,21 @@ import logger from '../services/logger.js';
 
 export interface LibrariesRouterOptions {
   tautulliService: TautulliClient | null;
+  getTautulliService?: () => TautulliClient | null;
   snapshotRepository: TautulliSnapshotRepository | null;
 }
 
 export const createLibrariesRouter = ({
   tautulliService,
+  getTautulliService,
   snapshotRepository,
 }: LibrariesRouterOptions) => {
   const router = Router();
 
   router.get('/', async (_req: Request, res: Response, next: NextFunction) => {
-    if (!tautulliService) {
+    const activeTautulliService = getTautulliService ? getTautulliService() : tautulliService;
+
+    if (!activeTautulliService) {
       return next(new HttpError(503, 'Tautulli service is not configured.'));
     }
 
@@ -26,7 +30,7 @@ export const createLibrariesRouter = ({
     }
 
     try {
-      const libraries = await tautulliService.getLibraries();
+      const libraries = await activeTautulliService.getLibraries();
 
       try {
         snapshotRepository.recordSnapshot({ libraries });

@@ -777,6 +777,39 @@ body.admin-body {
   color: #ef5b5b;
 }
 
+.admin-chip-warning {
+  background: rgba(229, 160, 13, 0.15);
+  border-color: rgba(229, 160, 13, 0.45);
+  color: #e5a00d;
+}
+
+.admin-warning-text {
+  margin: 0;
+  color: #e5a00d;
+}
+
+.tautulli-config-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--admin-radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.tautulli-config-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.tautulli-config-row strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .admin-metric-card {
   background: linear-gradient(135deg, rgba(229, 160, 13, 0.1), rgba(27, 31, 38, 0.95));
   border-radius: var(--admin-radius);

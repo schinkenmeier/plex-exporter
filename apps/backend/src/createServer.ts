@@ -40,10 +40,10 @@ import { errorHandler, requestLogger } from './middleware/errorHandler.js';
 import { createAuthMiddleware } from './middleware/auth.js';
 import SettingsRepository from './repositories/settingsRepository.js';
 import { createTmdbManager, type TmdbManager } from './services/tmdbManager.js';
-import createHeroPipelineService from './services/heroPipeline.js';
+import createHeroPipelineService, { type HeroPipelineService } from './services/heroPipeline.js';
 import { createHeroRouter } from './routes/hero.js';
 import { setupSwagger } from './config/swaggerSetup.js';
-import { createAdminRouter, type TautulliConfigSource, type TautulliConfigStatus } from './routes/admin.js';
+import { createAdminRouter } from './routes/admin.js';
 import { createBasicAuthMiddleware } from './middleware/basicAuth.js';
 import { createThumbnailRouter } from './routes/thumbnails.js';
 import { createRateLimiters } from './middleware/rateLimiter.js';
@@ -59,6 +59,12 @@ import { SchedulerService } from './services/schedulerService.js';
 import { ImageStorageService } from './services/imageStorageService.js';
 import logger from './services/logger.js';
 import { SyncLiveMonitor } from './services/syncLiveMonitor.js';
+import type { TmdbService } from './services/tmdbService.js';
+import {
+  resolveActiveTautulliConfig,
+  resolveTautulliConfigStatus,
+  type TautulliConfigStatus,
+} from './services/tautulliConfigStatus.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -76,9 +82,36 @@ export interface ServerDependencies {
   tmdbManager?: TmdbManager | null;
 }
 
+interface TautulliRuntimeState {
+  service: TautulliClient | null;
+  syncService: TautulliSyncService | null;
+  scheduler: SchedulerService | null;
+}
+
 export interface ServerRuntime {
   app: express.Express;
   appConfig: AppConfig;
+  adminUiDir: string;
+  database: SqliteDatabase;
+  drizzleDatabase: DrizzleDatabase;
+  mediaRepository: MediaRepository;
+  thumbnailRepository: ThumbnailRepository;
+  tautulliSnapshotRepository: TautulliSnapshotRepository;
+  seasonRepository: SeasonRepository;
+  castRepository: CastRepository;
+  librarySectionRepo: LibrarySectionRepository;
+  syncScheduleRepo: SyncScheduleRepository;
+  settingsRepository: SettingsRepository;
+  tautulliConfigRepo: TautulliConfigRepository;
+  tmdbManager: TmdbManager;
+  tmdbService: TmdbService | null;
+  resendService: MailSender | null;
+  heroPipeline: HeroPipelineService;
+  rateLimiters: ReturnType<typeof createRateLimiters>;
+  syncLiveMonitor: SyncLiveMonitor;
+  tautulliState: TautulliRuntimeState;
+  refreshTautulliIntegration(input?: { baseUrl: string; apiKey: string }): void;
+  getTautulliConfigStatus(): TautulliConfigStatus;
   dispose(): void;
   getTautulliService(): TautulliClient | null;
   getTautulliSyncService(): TautulliSyncService | null;
@@ -89,23 +122,6 @@ const isServerRuntime = (value: AppConfig | ServerRuntime): value is ServerRunti
   Boolean(value && typeof value === 'object' && 'dispose' in value && 'app' in value);
 
 export function createRuntime(appConfig: AppConfig, deps: ServerDependencies = {}): ServerRuntime {
-  const app = createServer(appConfig, deps);
-  const runtime = app.locals.runtime as ServerRuntime | undefined;
-  if (!runtime) {
-    throw new Error('Server runtime was not attached to the Express app.');
-  }
-  return runtime;
-}
-
-export function createServer(runtime: ServerRuntime): express.Express;
-export function createServer(appConfig: AppConfig, deps?: ServerDependencies): express.Express;
-export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps: ServerDependencies = {}): express.Express {
-  if (isServerRuntime(appConfigOrRuntime)) {
-    return appConfigOrRuntime.app;
-  }
-
-  const appConfig = appConfigOrRuntime;
-  const app = express();
   const ownsDatabase = !('database' in deps || 'drizzleDatabase' in deps);
   const adminUiDir = path.resolve(__dirname, '..', '..', 'frontend', 'public');
   if (!fs.existsSync(adminUiDir)) {
@@ -187,35 +203,6 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
     newsletterService.setMailSender(resendService);
   }
 
-  const resolveInitialTautulliConfig = (): { baseUrl: string; apiKey: string; source: string } | null => {
-    if (appConfig.tautulli) {
-      return {
-        baseUrl: appConfig.tautulli.url,
-        apiKey: appConfig.tautulli.apiKey,
-        source: 'env',
-      };
-    }
-
-    const storedConfig = tautulliConfigRepo.get();
-    if (storedConfig) {
-      return {
-        baseUrl: storedConfig.tautulliUrl,
-        apiKey: storedConfig.apiKey,
-        source: 'tautulli_config',
-      };
-    }
-
-    if (persistedConfig.tautulli) {
-      return {
-        baseUrl: persistedConfig.tautulli.url,
-        apiKey: persistedConfig.tautulli.apiKey,
-        source: 'legacy_settings',
-      };
-    }
-
-    return null;
-  };
-
   // Initialize Tautulli service with env, tautulli_config or legacy settings.
   let tautulliService =
     'tautulliService' in deps
@@ -223,7 +210,11 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
       : null;
 
   if (!tautulliService) {
-    const tautulliConfig = resolveInitialTautulliConfig();
+    const tautulliConfig = resolveActiveTautulliConfig({
+      envConfig: appConfig.tautulli,
+      tautulliConfigRepository: tautulliConfigRepo,
+      settingsRepository,
+    });
     if (tautulliConfig) {
       tautulliService = createTautulliService({
         baseUrl: tautulliConfig.baseUrl,
@@ -306,13 +297,7 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
     throw new Error('Database repositories are not configured.');
   }
 
-  interface TautulliState {
-    service: TautulliClient | null;
-    syncService: TautulliSyncService | null;
-    scheduler: SchedulerService | null;
-  }
-
-  const tautulliState: TautulliState = {
+  const tautulliState: TautulliRuntimeState = {
     service: tautulliService,
     syncService: null,
     scheduler: null,
@@ -373,30 +358,23 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
   const refreshTautulliIntegration = (input?: { baseUrl: string; apiKey: string }) => {
     const config = (() => {
       if (appConfig.tautulli) {
-        return {
-          baseUrl: appConfig.tautulli.url,
-          apiKey: appConfig.tautulli.apiKey,
-          source: 'env',
-        };
+        // Environment configuration intentionally stays authoritative; runtime input is only persisted for later use.
+        return resolveActiveTautulliConfig({
+          envConfig: appConfig.tautulli,
+          tautulliConfigRepository: tautulliConfigRepo,
+          settingsRepository,
+        });
       }
 
       if (input) {
         return { ...input, source: 'runtime' };
       }
 
-      const stored = tautulliConfigRepo.get();
-      if (!stored) {
-        if (persistedConfig.tautulli) {
-          return {
-            baseUrl: persistedConfig.tautulli.url,
-            apiKey: persistedConfig.tautulli.apiKey,
-            source: 'legacy_settings',
-          };
-        }
-        return null;
-      }
-
-      return { baseUrl: stored.tautulliUrl, apiKey: stored.apiKey, source: 'tautulli_config' };
+      return resolveActiveTautulliConfig({
+        envConfig: null,
+        tautulliConfigRepository: tautulliConfigRepo,
+        settingsRepository,
+      });
     })();
 
     if (!config) {
@@ -411,7 +389,6 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
       baseUrl: config.baseUrl,
       apiKey: config.apiKey,
     });
-    tautulliService = tautulliState.service;
 
     logger.info('Tautulli service initialized', {
       source: config.source,
@@ -426,34 +403,12 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
     restartScheduler(tautulliState.syncService);
   };
 
-  const getTautulliConfigStatus = (): TautulliConfigStatus => {
-    const stored = tautulliConfigRepo.get();
-    const legacyUrl = settingsRepository.get('tautulli.url');
-    const legacyApiKey = settingsRepository.get('tautulli.apiKey');
-    const savedSource = stored
-      ? 'tautulli_config'
-      : legacyUrl || legacyApiKey
-        ? 'legacy_settings'
-        : 'unset';
-    const savedUrl = stored?.tautulliUrl || legacyUrl?.value || null;
-    const savedHasApiKey = Boolean(stored?.apiKey || legacyApiKey?.value);
-    const activeSource: TautulliConfigSource = appConfig.tautulli ? 'env' : savedSource;
-
-    return {
-      configured: activeSource !== 'unset',
-      source: activeSource,
-      activeSource,
-      fromEnv: Boolean(appConfig.tautulli),
-      envOverride: Boolean(appConfig.tautulli) && savedSource !== 'unset',
-      tautulliUrl: appConfig.tautulli?.url || savedUrl,
-      hasApiKey: Boolean(appConfig.tautulli?.apiKey) || savedHasApiKey,
-      saved: {
-        source: savedSource,
-        tautulliUrl: savedUrl,
-        hasApiKey: savedHasApiKey,
-      },
-    };
-  };
+  const getTautulliConfigStatus = (): TautulliConfigStatus =>
+    resolveTautulliConfigStatus({
+      envConfig: appConfig.tautulli,
+      tautulliConfigRepository: tautulliConfigRepo,
+      settingsRepository,
+    });
 
   // Attempt to build sync and scheduler services with existing configuration
   tautulliState.syncService = buildSyncService(tautulliState.service);
@@ -477,6 +432,90 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
     policyPath: appConfig.hero?.policyPath ?? null,
   });
 
+  let disposed = false;
+  const runtime: ServerRuntime = {
+    app: null as unknown as express.Express,
+    appConfig,
+    adminUiDir,
+    database,
+    drizzleDatabase: drizzleDb,
+    mediaRepository,
+    thumbnailRepository,
+    tautulliSnapshotRepository,
+    seasonRepository,
+    castRepository,
+    librarySectionRepo,
+    syncScheduleRepo,
+    settingsRepository,
+    tautulliConfigRepo,
+    tmdbManager,
+    tmdbService,
+    resendService,
+    heroPipeline: heroPipelineService,
+    rateLimiters,
+    syncLiveMonitor,
+    tautulliState,
+    refreshTautulliIntegration,
+    getTautulliConfigStatus,
+    getTautulliService: () => tautulliState.service,
+    getTautulliSyncService: () => tautulliState.syncService,
+    getSchedulerService: () => tautulliState.scheduler,
+    dispose: () => {
+      if (disposed) return;
+      disposed = true;
+      if (tautulliState.scheduler) {
+        tautulliState.scheduler.stop();
+        tautulliState.scheduler = null;
+      }
+      if (ownsDatabase) {
+        database.close();
+      }
+      if (rateLimitDatabasePath) {
+        closeSQLiteRateLimitStore(rateLimitDatabasePath);
+      }
+    },
+  };
+
+  runtime.app = createServer(runtime);
+  return runtime;
+}
+
+export function createServer(runtime: ServerRuntime): express.Express;
+export function createServer(appConfig: AppConfig, deps?: ServerDependencies): express.Express;
+export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps: ServerDependencies = {}): express.Express {
+  if (!isServerRuntime(appConfigOrRuntime)) {
+    return createRuntime(appConfigOrRuntime, deps).app;
+  }
+
+  const runtime = appConfigOrRuntime;
+  if (runtime.app) {
+    return runtime.app;
+  }
+
+  const {
+    appConfig,
+    adminUiDir,
+    mediaRepository,
+    thumbnailRepository,
+    tautulliSnapshotRepository,
+    seasonRepository,
+    castRepository,
+    librarySectionRepo,
+    syncScheduleRepo,
+    settingsRepository,
+    tautulliConfigRepo,
+    tmdbManager,
+    tmdbService,
+    resendService,
+    heroPipeline,
+    rateLimiters,
+    syncLiveMonitor,
+    tautulliState,
+    refreshTautulliIntegration,
+    getTautulliConfigStatus,
+  } = runtime;
+
+  const app = express();
   const authMiddleware = createAuthMiddleware({ token: appConfig.auth?.token ?? null });
   const basicAuthMiddleware = createBasicAuthMiddleware({
     username: appConfig.admin?.username ?? null,
@@ -540,8 +579,8 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
   app.use('/api/thumbnails', createThumbnailRouter({
     getTautulliService: () => tautulliState.service as any
   }));
-  if (heroPipelineService) {
-    app.use('/api/hero', createHeroRouter({ heroPipeline: heroPipelineService, heroLimiter: rateLimiters.heroLimiter }));
+  if (heroPipeline) {
+    app.use('/api/hero', createHeroRouter({ heroPipeline, heroLimiter: rateLimiters.heroLimiter }));
   }
   app.use('/api/v1', createV1Router({
     mediaRepository,
@@ -559,12 +598,14 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
   app.use('/api/newsletter', newsletterRouter);
 
   // Protected routes
-  tautulliService = tautulliState.service;
-
   app.use(
     '/libraries',
     authMiddleware,
-    createLibrariesRouter({ tautulliService: tautulliState.service, snapshotRepository: tautulliSnapshotRepository }),
+    createLibrariesRouter({
+      tautulliService: tautulliState.service,
+      getTautulliService: () => tautulliState.service,
+      snapshotRepository: tautulliSnapshotRepository,
+    }),
   );
   app.use('/media', basicAuthMiddleware, createMediaRouter({ mediaRepository, thumbnailRepository }));
 
@@ -581,11 +622,11 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
       getTautulliService: () => tautulliState.service,
       seasonRepository,
       castRepository,
-      drizzleDatabase: drizzleDb ?? undefined,
+      drizzleDatabase: runtime.drizzleDatabase,
       settingsRepository,
       tautulliConfigRepository: tautulliConfigRepo,
       tmdbManager,
-      heroPipeline: heroPipelineService,
+      heroPipeline,
       refreshTautulliIntegration,
       getTautulliConfigStatus,
       adminUiDir,
@@ -614,28 +655,7 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
   // Logging & error handling
   app.use(errorHandler);
 
-  let disposed = false;
-  const runtime: ServerRuntime = {
-    app,
-    appConfig,
-    getTautulliService: () => tautulliState.service,
-    getTautulliSyncService: () => tautulliState.syncService,
-    getSchedulerService: () => tautulliState.scheduler,
-    dispose: () => {
-      if (disposed) return;
-      disposed = true;
-      if (tautulliState.scheduler) {
-        tautulliState.scheduler.stop();
-        tautulliState.scheduler = null;
-      }
-      if (ownsDatabase) {
-        database.close();
-        if (rateLimitDatabasePath) {
-          closeSQLiteRateLimitStore(rateLimitDatabasePath);
-        }
-      }
-    },
-  };
+  runtime.app = app;
   app.locals.runtime = runtime;
 
   return app;

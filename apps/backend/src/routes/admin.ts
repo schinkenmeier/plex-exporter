@@ -19,6 +19,10 @@ import type { DrizzleDatabase, SqliteDatabase } from '../db/index.js';
 import { seasons, episodes, castMembers } from '../db/schema.js';
 import type { TmdbManager } from '../services/tmdbManager.js';
 import type { HeroPipelineService } from '../services/heroPipeline.js';
+import {
+  resolveTautulliConfigStatus,
+  type TautulliConfigStatus,
+} from '../services/tautulliConfigStatus.js';
 
 export interface AdminRouterOptions {
   config: AppConfig;
@@ -39,22 +43,7 @@ export interface AdminRouterOptions {
   adminUiDir?: string | null;
 }
 
-export type TautulliConfigSource = 'env' | 'tautulli_config' | 'legacy_settings' | 'unset';
-
-export interface TautulliConfigStatus {
-  configured: boolean;
-  source: TautulliConfigSource;
-  activeSource: TautulliConfigSource;
-  fromEnv: boolean;
-  envOverride: boolean;
-  tautulliUrl: string | null;
-  hasApiKey: boolean;
-  saved: {
-    source: 'tautulli_config' | 'legacy_settings' | 'unset';
-    tautulliUrl: string | null;
-    hasApiKey: boolean;
-  };
-}
+export type { TautulliConfigStatus, TautulliConfigSource } from '../services/tautulliConfigStatus.js';
 
 const startTime = Date.now();
 
@@ -267,34 +256,16 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
     (drizzleDatabase ? new SeasonRepository(drizzleDatabase) : null);
   const castRepository =
     suppliedCastRepository ?? (drizzleDatabase ? new CastRepository(drizzleDatabase) : null);
-  const resolveTautulliConfigStatus = (): TautulliConfigStatus => {
+  const getResolvedTautulliConfigStatus = (): TautulliConfigStatus => {
     if (getTautulliConfigStatus) {
       return getTautulliConfigStatus();
     }
 
-    const canonical = tautulliConfigRepository?.get();
-    const legacyUrl = settingsRepository.get('tautulli.url');
-    const legacyApiKey = settingsRepository.get('tautulli.apiKey');
-    const savedSource = canonical ? 'tautulli_config' : legacyUrl || legacyApiKey ? 'legacy_settings' : 'unset';
-    const savedUrl = canonical?.tautulliUrl || legacyUrl?.value || null;
-    const savedHasApiKey = Boolean(canonical?.apiKey || legacyApiKey?.value);
-    const fromEnv = Boolean(config.tautulli);
-    const activeSource: TautulliConfigSource = fromEnv ? 'env' : savedSource;
-
-    return {
-      configured: activeSource !== 'unset',
-      source: activeSource,
-      activeSource,
-      fromEnv,
-      envOverride: fromEnv && savedSource !== 'unset',
-      tautulliUrl: config.tautulli?.url || savedUrl,
-      hasApiKey: Boolean(config.tautulli?.apiKey) || savedHasApiKey,
-      saved: {
-        source: savedSource,
-        tautulliUrl: savedUrl,
-        hasApiKey: savedHasApiKey,
-      },
-    };
+    return resolveTautulliConfigStatus({
+      envConfig: config.tautulli,
+      tautulliConfigRepository,
+      settingsRepository,
+    });
   };
 
   /**
@@ -346,7 +317,7 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
    */
   router.get('/api/config', (_req: Request, res: Response) => {
     const tmdbStatus = tmdbManager.getStatus();
-    const tautulliStatus = resolveTautulliConfigStatus();
+    const tautulliStatus = getResolvedTautulliConfigStatus();
 
     res.json({
       runtime: {
@@ -1144,7 +1115,7 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
       const canonical = tautulliConfigRepository?.get();
       const legacyUrl = settingsRepository.get('tautulli.url');
       const legacyApiKey = settingsRepository.get('tautulli.apiKey');
-      const status = resolveTautulliConfigStatus();
+      const status = getResolvedTautulliConfigStatus();
 
       res.json({
         success: true,
@@ -1200,7 +1171,7 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
       }
 
       refreshTautulliIntegration?.({ baseUrl: normalizedUrl, apiKey: normalizedApiKey });
-      const status = resolveTautulliConfigStatus();
+      const status = getResolvedTautulliConfigStatus();
 
       logger.info('Tautulli settings updated', {
         url: normalizedUrl,
@@ -1234,7 +1205,7 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
       settingsRepository.delete('tautulli.url');
       settingsRepository.delete('tautulli.apiKey');
       refreshTautulliIntegration?.();
-      const status = resolveTautulliConfigStatus();
+      const status = getResolvedTautulliConfigStatus();
 
       logger.info('Tautulli settings cleared');
 

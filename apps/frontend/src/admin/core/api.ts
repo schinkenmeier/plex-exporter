@@ -67,7 +67,16 @@ export interface AdminConfigSnapshot {
   auth: { enabled: boolean; token: string };
   database: { sqlitePath: string; exists: boolean };
   hero: { policyPath: string; policyExists: boolean };
-  tautulli: { enabled: boolean; url: string; apiKey: string };
+  tautulli: {
+    enabled: boolean;
+    url: string;
+    apiKey: string;
+    source: TautulliConfigSource;
+    activeSource: TautulliConfigSource;
+    fromEnv: boolean;
+    envOverride: boolean;
+    saved: SavedTautulliConfigStatus;
+  };
   tmdb: {
     enabled: boolean;
     accessToken: string | null;
@@ -219,10 +228,24 @@ export interface WatchlistAdminEmailResponse {
   updatedAt: number | null;
 }
 
+export type TautulliConfigSource = 'env' | 'tautulli_config' | 'legacy_settings' | 'unset';
+export type SavedTautulliConfigSource = Exclude<TautulliConfigSource, 'env'>;
+
+export interface SavedTautulliConfigStatus {
+  source: SavedTautulliConfigSource;
+  tautulliUrl: string | null;
+  hasApiKey: boolean;
+}
+
 export interface TautulliConfigStatus {
   configured: boolean;
-  tautulliUrl?: string;
-  hasApiKey?: boolean;
+  source: TautulliConfigSource;
+  activeSource: TautulliConfigSource;
+  fromEnv: boolean;
+  envOverride: boolean;
+  tautulliUrl: string | null;
+  hasApiKey: boolean;
+  saved: SavedTautulliConfigStatus;
 }
 
 export interface TautulliLibrary {
@@ -274,7 +297,7 @@ export interface ManualSyncOptions {
 }
 
 export type SyncRunSource = 'manual' | 'scheduler';
-export type SyncRunStatus = 'running' | 'completed' | 'failed';
+export type SyncRunStatus = 'running' | 'completed' | 'completed_with_errors' | 'failed';
 export type SyncLiveEventType = 'run_started' | 'progress' | 'log' | 'run_completed' | 'run_failed';
 
 export interface SyncRunOptions {
@@ -302,7 +325,7 @@ export interface SyncLiveActiveRun {
 export interface SyncLiveCompletedRun {
   runId: string;
   source: SyncRunSource;
-  status: 'completed' | 'failed';
+  status: 'completed' | 'completed_with_errors' | 'failed';
   startedAt: string;
   finishedAt: string;
   durationMs: number;
@@ -315,6 +338,7 @@ export interface SyncLiveCompletedRun {
     totalErrors: number;
   } | null;
   error: string | null;
+  degraded: boolean;
 }
 
 export interface SyncLiveEvent {

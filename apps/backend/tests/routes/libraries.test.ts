@@ -83,6 +83,37 @@ describe('libraries routes', () => {
     expect(snapshot.payload.libraries).toEqual(libraries);
   });
 
+  it('resolves the active Tautulli service through the runtime getter', async () => {
+    const initialGetLibraries = vi.fn(async () => [
+      { section_id: 1, section_name: 'Initial', friendly_name: 'Initial' },
+    ]);
+    const refreshedLibraries: TautulliLibrarySummary[] = [
+      { section_id: 2, section_name: 'Refreshed', friendly_name: 'Refreshed' },
+    ];
+    const refreshedGetLibraries = vi.fn(async () => refreshedLibraries);
+    let activeService: TautulliClient | null = { getLibraries: initialGetLibraries };
+
+    const app = express();
+    app.use(
+      '/libraries',
+      createLibrariesRouter({
+        tautulliService: null,
+        getTautulliService: () => activeService,
+        snapshotRepository,
+      }),
+    );
+    app.use(errorHandler);
+
+    activeService = { getLibraries: refreshedGetLibraries };
+
+    const response = await withAuthHeader(request(app).get('/libraries'));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ libraries: refreshedLibraries });
+    expect(initialGetLibraries).not.toHaveBeenCalled();
+    expect(refreshedGetLibraries).toHaveBeenCalledTimes(1);
+  });
+
   it('handles errors from the Tautulli service', async () => {
     const getLibraries = vi.fn(async () => {
       throw new Error('Tautulli unavailable');
