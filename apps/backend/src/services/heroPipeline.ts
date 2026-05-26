@@ -80,6 +80,7 @@ export interface HeroPoolPayload {
   policyHash: string;
   slotSummary: Record<string, number>;
   matchesPolicy: boolean;
+  policyDiagnostics: HeroPolicyDiagnostic[];
   fromCache: boolean;
   meta: {
     source: 'fresh' | 'cache';
@@ -97,7 +98,20 @@ export interface HeroPoolPayload {
 
 export interface HeroPipelineService {
   getPool(kind: HeroKind, options?: { force?: boolean }): Promise<HeroPoolPayload>;
+  invalidate(kind?: HeroKind, reason?: string): number;
   setTmdbService(next: TmdbService | null): void;
+}
+
+export interface HeroPolicyDiagnostic {
+  code: string;
+  severity: 'warning';
+  message: string;
+  matchesPolicy: false;
+  expected?: number;
+  actual?: number;
+  slot?: string;
+  dimension?: 'poolSize' | 'slot' | 'genre' | 'year';
+  value?: string | number;
 }
 
 const DEFAULT_POLICY: HeroPolicy = {
@@ -121,7 +135,7 @@ const DEFAULT_POLICY: HeroPolicy = {
   language: 'en-US',
 };
 
-const HERO_CACHE_VERSION = 2;
+const HERO_CACHE_VERSION = 3;
 const HISTORY_LIMIT = 60;
 const HISTORY_WINDOW_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
 const NEW_WINDOW_MS = 1000 * 60 * 60 * 24 * 90; // 90 days
@@ -293,6 +307,113 @@ const computeCaps = (poolSize: number, diversity?: HeroPolicy['diversity']) => {
   return { perGenre: genreCap, perYear: yearCap };
 };
 
+const emptySlotSummary = (): Record<string, number> => ({
+  new: 0,
+  topRated: 0,
+  oldButGold: 0,
+  random: 0,
+});
+
+const summarizeSelectionSlots = (
+  selection: Array<{ slot: HeroPoolItem['slot'] }>,
+): Record<string, number> => {
+  const summary = emptySlotSummary();
+  for (const entry of selection) {
+    summary[entry.slot] = (summary[entry.slot] || 0) + 1;
+  }
+  return summary;
+};
+
+const computeMatchesPolicy = (diagnostics: HeroPolicyDiagnostic[]): boolean =>
+  diagnostics.every((diagnostic) => diagnostic.matchesPolicy !== false);
+
+const computePolicyDiagnostics = ({
+  poolSize,
+  plan,
+  selection,
+  caps,
+}: {
+  poolSize: number;
+  plan: Record<string, number>;
+  selection: Array<Candidate & { slot: HeroPoolItem['slot'] }>;
+  caps: { perGenre: number; perYear: number };
+}): HeroPolicyDiagnostic[] => {
+  const diagnostics: HeroPolicyDiagnostic[] = [];
+  const slotSummary = summarizeSelectionSlots(selection);
+
+  if (selection.length !== poolSize) {
+    diagnostics.push({
+      code: 'pool-size-mismatch',
+      severity: 'warning',
+      message: `Hero pool selected ${selection.length} item(s), expected ${poolSize}.`,
+      matchesPolicy: false,
+      dimension: 'poolSize',
+      expected: poolSize,
+      actual: selection.length,
+    });
+  }
+
+  for (const slot of SLOT_KEYS) {
+    const expected = plan[slot] ?? 0;
+    const actual = slotSummary[slot] ?? 0;
+    if (actual !== expected) {
+      diagnostics.push({
+        code: 'slot-quota-mismatch',
+        severity: 'warning',
+        message: `Hero slot "${slot}" selected ${actual} item(s), expected ${expected}.`,
+        matchesPolicy: false,
+        dimension: 'slot',
+        slot,
+        expected,
+        actual,
+      });
+    }
+  }
+
+  const genreCounts = new Map<string, number>();
+  const yearCounts = new Map<number, number>();
+  for (const entry of selection) {
+    for (const genre of entry.genres || []) {
+      genreCounts.set(genre, (genreCounts.get(genre) || 0) + 1);
+    }
+    if (entry.year) {
+      yearCounts.set(entry.year, (yearCounts.get(entry.year) || 0) + 1);
+    }
+  }
+
+  for (const [genre, count] of genreCounts.entries()) {
+    if (caps.perGenre > 0 && count > caps.perGenre) {
+      diagnostics.push({
+        code: 'genre-cap-exceeded',
+        severity: 'warning',
+        message: `Hero genre "${genre}" selected ${count} item(s), cap is ${caps.perGenre}.`,
+        matchesPolicy: false,
+        dimension: 'genre',
+        value: genre,
+        expected: caps.perGenre,
+        actual: count,
+      });
+    }
+  }
+
+  for (const [year, count] of yearCounts.entries()) {
+    if (caps.perYear > 0 && count > caps.perYear) {
+      diagnostics.push({
+        code: 'year-cap-exceeded',
+        severity: 'warning',
+        message: `Hero year "${year}" selected ${count} item(s), cap is ${caps.perYear}.`,
+        matchesPolicy: false,
+        dimension: 'year',
+        value: year,
+        expected: caps.perYear,
+        actual: count,
+      });
+    }
+  }
+
+  return diagnostics;
+};
+
 const passesCaps = (context: SelectionContext, candidate: Candidate): boolean => {
   const { caps, genreCounts, yearCounts } = context;
   if (caps.perGenre > 0 && candidate.genres && candidate.genres.length) {
@@ -372,7 +493,7 @@ const classifyCandidates = (
     poolSize,
     caps: computeCaps(poolSize, diversity),
     selected: [],
-    summary: { new: 0, topRated: 0, oldButGold: 0, random: 0 },
+    summary: emptySlotSummary(),
     genreCounts: new Map(),
     yearCounts: new Map(),
     selectedIds: new Set(),
@@ -808,7 +929,15 @@ export const createHeroPipelineService = ({
   let tmdbServiceRevision = activeTmdbService ? 1 : 0;
   let cachedPolicy: { policy: HeroPolicy; hash: string } | null = null;
   let cachedPolicyMeta: { path: string | null; mtimeMs: number | null } | null = null;
-  const inFlightBuilds = new Map<HeroKind, Promise<HeroPoolPayload>>();
+  const inFlightBuilds = new Map<string, Promise<HeroPoolPayload>>();
+  const buildSequences = new Map<HeroKind, number>();
+
+  const inFlightKey = (kind: HeroKind, force: boolean) => `${kind}:${force ? 'force' : 'normal'}`;
+  const nextBuildSequence = (kind: HeroKind) => {
+    const sequence = (buildSequences.get(kind) ?? 0) + 1;
+    buildSequences.set(kind, sequence);
+    return sequence;
+  };
 
   const buildTmdbMeta = (hitLimit: boolean) => ({
     enabled: !!activeTmdbService?.isEnabled(),
@@ -1039,7 +1168,10 @@ export const createHeroPipelineService = ({
     return { items, rateLimitHit };
   };
 
-  const buildPool = async (kind: HeroKind, options: { force?: boolean } = {}): Promise<HeroPoolPayload> => {
+  const buildPool = async (
+    kind: HeroKind,
+    options: { force?: boolean; sequence?: number } = {},
+  ): Promise<HeroPoolPayload> => {
     const { policy, hash: policyHash } = await loadPolicy({ force: options.force });
     const normalizedKind: HeroKind = kind === 'series' ? 'series' : 'movies';
     const stored = loadStored(normalizedKind);
@@ -1066,8 +1198,11 @@ export const createHeroPipelineService = ({
       !shouldInvalidateTmdbCache
     ) {
       const payload = storedPayload;
+      const policyDiagnostics = Array.isArray(payload.policyDiagnostics) ? payload.policyDiagnostics : [];
       return {
         ...payload,
+        policyDiagnostics,
+        matchesPolicy: computeMatchesPolicy(policyDiagnostics),
         fromCache: true,
         meta: {
           ...payload.meta,
@@ -1086,7 +1221,8 @@ export const createHeroPipelineService = ({
         expiresAt: nowTs,
         policyHash,
         slotSummary: {},
-        matchesPolicy: true,
+        matchesPolicy: computeMatchesPolicy([]),
+        policyDiagnostics: [],
         fromCache: false,
         meta: {
           source: 'fresh',
@@ -1122,6 +1258,13 @@ export const createHeroPipelineService = ({
     const historySnapshot = buildHistorySnapshot(historyEntries, nowTs, HISTORY_WINDOW_MS, HISTORY_LIMIT);
     const context = classifyCandidates(candidates, plan, policy.diversity, historySnapshot);
     const trimmedSelection = context.selected.slice(0, poolSize);
+    const slotSummary = summarizeSelectionSlots(trimmedSelection);
+    const policyDiagnostics = computePolicyDiagnostics({
+      poolSize,
+      plan,
+      selection: trimmedSelection,
+      caps: context.caps,
+    });
 
     const { items, rateLimitHit } = await normalizeSelection(
       trimmedSelection,
@@ -1140,8 +1283,9 @@ export const createHeroPipelineService = ({
       expiresAt,
       cacheVersion: HERO_CACHE_VERSION,
       policyHash,
-      slotSummary: context.summary,
-      matchesPolicy: true,
+      slotSummary,
+      matchesPolicy: computeMatchesPolicy(policyDiagnostics),
+      policyDiagnostics,
       fromCache: false,
       meta: {
         source: 'fresh',
@@ -1156,41 +1300,87 @@ export const createHeroPipelineService = ({
     const serializedPayload = JSON.stringify(payload);
     const serializedHistory = serializeHistory(nextHistory);
 
-    drizzleDatabase
-      .insert(heroPools)
-      .values({
-        kind: normalizedKind,
-        policyHash,
-        payload: serializedPayload,
-        history: serializedHistory,
-        expiresAt,
-        updatedAt,
-      })
-      .onConflictDoUpdate({
-        target: heroPools.kind,
-        set: {
+    if (options.sequence === undefined || buildSequences.get(normalizedKind) === options.sequence) {
+      drizzleDatabase
+        .insert(heroPools)
+        .values({
+          kind: normalizedKind,
           policyHash,
           payload: serializedPayload,
           history: serializedHistory,
           expiresAt,
           updatedAt,
-        },
-      })
-      .run();
+        })
+        .onConflictDoUpdate({
+          target: heroPools.kind,
+          set: {
+            policyHash,
+            payload: serializedPayload,
+            history: serializedHistory,
+            expiresAt,
+            updatedAt,
+          },
+        })
+        .run();
+    } else {
+      logger.info('Skipped stale hero pool write', {
+        namespace: 'hero',
+        kind: normalizedKind,
+        sequence: options.sequence,
+        latestSequence: buildSequences.get(normalizedKind),
+      });
+    }
 
     return payload;
   };
 
   const getPool = async (kind: HeroKind, options: { force?: boolean } = {}) => {
     const normalizedKind: HeroKind = kind === 'series' ? 'series' : 'movies';
-    const existing = inFlightBuilds.get(normalizedKind);
+    const force = options.force === true;
+    const key = inFlightKey(normalizedKind, force);
+    const existing = inFlightBuilds.get(key);
     if (existing) return existing;
 
-    const build = buildPool(normalizedKind, options).finally(() => {
-      inFlightBuilds.delete(normalizedKind);
+    const sequence = nextBuildSequence(normalizedKind);
+    const build = buildPool(normalizedKind, { ...options, sequence }).finally(() => {
+      inFlightBuilds.delete(key);
     });
-    inFlightBuilds.set(normalizedKind, build);
+    inFlightBuilds.set(key, build);
     return build;
+  };
+
+  const invalidate = (kind?: HeroKind, reason?: string): number => {
+    const kinds: HeroKind[] = kind ? [kind === 'series' ? 'series' : 'movies'] : ['movies', 'series'];
+    const nowTs = Date.now();
+    const expiresAt = nowTs - 1;
+    let expired = 0;
+
+    for (const currentKind of kinds) {
+      nextBuildSequence(currentKind);
+      const stored = loadStored(currentKind);
+      if (!stored?.row) continue;
+
+      drizzleDatabase
+        .update(heroPools)
+        .set({
+          expiresAt,
+          updatedAt: nowTs,
+        })
+        .where(eq(heroPools.kind, currentKind))
+        .run();
+      expired += 1;
+    }
+
+    if (expired > 0) {
+      logger.info('Invalidated hero pool cache', {
+        namespace: 'hero',
+        kind: kind ?? 'all',
+        reason: reason || 'unspecified',
+        expired,
+      });
+    }
+
+    return expired;
   };
 
   const setTmdbService = (next: TmdbService | null) => {
@@ -1203,6 +1393,7 @@ export const createHeroPipelineService = ({
 
   return {
     getPool,
+    invalidate,
     setTmdbService,
   };
 };

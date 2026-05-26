@@ -31,7 +31,7 @@ export const startServer = (options: StartServerOptions = {}): StartServerHandle
   const resolvedConfig = options.appConfig ?? appConfig;
   const runtime = createRuntime(resolvedConfig, options.deps ?? {});
   const app = createServer(runtime);
-  let disposed = false;
+  let disposeRuntimePromise: Promise<void> | null = null;
 
   const server = app.listen(resolvedConfig.server.port, () => {
     logger.info('Plex Exporter backend listening', {
@@ -40,10 +40,11 @@ export const startServer = (options: StartServerOptions = {}): StartServerHandle
     });
   });
 
-  const disposeRuntime = () => {
-    if (disposed) return;
-    disposed = true;
-    runtime.dispose();
+  const disposeRuntime = async () => {
+    if (!disposeRuntimePromise) {
+      disposeRuntimePromise = runtime.shutdown();
+    }
+    await disposeRuntimePromise;
   };
 
   const shutdown = (signal?: NodeJS.Signals): Promise<void> =>
@@ -53,18 +54,16 @@ export const startServer = (options: StartServerOptions = {}): StartServerHandle
       }
 
       if (!server.listening) {
-        disposeRuntime();
-        resolve();
+        disposeRuntime().then(resolve).catch(reject);
         return;
       }
 
       server.close((error) => {
-        disposeRuntime();
         if (error) {
           reject(error);
           return;
         }
-        resolve();
+        disposeRuntime().then(resolve).catch(reject);
       });
     });
 
@@ -96,7 +95,7 @@ export const startServer = (options: StartServerOptions = {}): StartServerHandle
   }
 
   server.once('close', () => {
-    disposeRuntime();
+    void disposeRuntime();
     if (registerSignalHandlers) {
       for (const signal of signals) {
         process.off(signal, handleSignal);

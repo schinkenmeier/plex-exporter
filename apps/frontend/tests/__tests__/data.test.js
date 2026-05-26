@@ -6,6 +6,19 @@ const originalDocument = global.document;
 const originalLocalStorage = global.localStorage;
 const originalFetch = global.fetch;
 
+async function withSilencedConsole(fn){
+  const originalWarn = console.warn;
+  const originalError = console.error;
+  console.warn = () => {};
+  console.error = () => {};
+  try{
+    return await fn();
+  }finally{
+    console.warn = originalWarn;
+    console.error = originalError;
+  }
+}
+
 if(typeof global.window === 'undefined') global.window = { __PLEX_EXPORTER__: {} };
 if(typeof global.document === 'undefined') global.document = { getElementById: () => null };
 if(typeof global.localStorage === 'undefined'){
@@ -136,47 +149,53 @@ describe('prefixThumb helpers', () => {
 
 describe('data loading resilience', () => {
   it('throws a descriptive error after exhausting fetch retries', async () => {
-    let callCount = 0;
-    global.fetch = async () => {
-      callCount++;
-      throw new Error('network unreachable');
-    };
+    await withSilencedConsole(async () => {
+      let callCount = 0;
+      global.fetch = async () => {
+        callCount++;
+        throw new Error('network unreachable');
+      };
 
-    await assert.rejects(
-      fetchJson('https://example.invalid/test.json', 1),
-      err => {
-        assert.ok(err instanceof Error);
-        assert.match(err.message, /Daten konnten nicht geladen werden/);
-        return true;
-      }
-    );
-    assert.strictEqual(callCount, 2);
+      await assert.rejects(
+        fetchJson('https://example.invalid/test.json', 1),
+        err => {
+          assert.ok(err instanceof Error);
+          assert.match(err.message, /Daten konnten nicht geladen werden/);
+          return true;
+        }
+      );
+      assert.strictEqual(callCount, 2);
+    });
   });
 
   it('returns an empty list when the movies endpoint is unavailable', async () => {
-    let callCount = 0;
-    global.fetch = async () => {
-      callCount++;
-      throw new Error('offline');
-    };
+    await withSilencedConsole(async () => {
+      let callCount = 0;
+      global.fetch = async () => {
+        callCount++;
+        throw new Error('offline');
+      };
 
-    const result = await loadMovies();
-    assert.ok(Array.isArray(result));
-    assert.strictEqual(result.length, 0);
-    assert.ok(callCount >= 1);
+      const result = await loadMovies();
+      assert.ok(Array.isArray(result));
+      assert.strictEqual(result.length, 0);
+      assert.ok(callCount >= 1);
+    });
   });
 
   it('returns a structured error status when the movies endpoint is unavailable', async () => {
-    global.fetch = async () => {
-      throw new Error('offline');
-    };
+    await withSilencedConsole(async () => {
+      global.fetch = async () => {
+        throw new Error('offline');
+      };
 
-    const result = await loadMoviesStatus();
-    assert.deepStrictEqual(result.items, []);
-    assert.strictEqual(result.source, 'error');
-    assert.match(result.error, /offline/);
-    assert.strictEqual(result.loading, false);
-    assert.strictEqual(result.partial, false);
+      const result = await loadMoviesStatus();
+      assert.deepStrictEqual(result.items, []);
+      assert.strictEqual(result.source, 'error');
+      assert.match(result.error, /offline/);
+      assert.strictEqual(result.loading, false);
+      assert.strictEqual(result.partial, false);
+    });
   });
 });
 

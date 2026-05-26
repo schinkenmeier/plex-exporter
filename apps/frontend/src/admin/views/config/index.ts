@@ -585,17 +585,27 @@ async function loadWelcomeStats(refs: WelcomeRefs, toast: { show: (message: stri
   refs.stats.textContent = 'Lade Statistiken...';
   try {
     const stats = await welcomeEmailApiClient.getStats();
-    refs.stats.innerHTML = `
-      Gesamt: ${stats.total}<br>
-      Erfolgreich: ${stats.sent}<br>
-      Fehlgeschlagen: ${stats.failed}<br>
-      Erfolgsquote: ${stats.successRate}
-    `;
+    renderWelcomeStats(refs.stats, stats);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Statistiken konnten nicht geladen werden';
     refs.stats.textContent = message;
     toast.show(message, 'error');
   }
+}
+
+function renderWelcomeStats(container: HTMLElement, stats: { total: unknown; sent: unknown; failed: unknown; successRate: unknown }) {
+  container.replaceChildren(
+    createStatsLine('Gesamt', stats.total),
+    createStatsLine('Erfolgreich', stats.sent),
+    createStatsLine('Fehlgeschlagen', stats.failed),
+    createStatsLine('Erfolgsquote', stats.successRate),
+  );
+}
+
+function createStatsLine(label: string, value: unknown): HTMLElement {
+  const line = document.createElement('div');
+  line.textContent = `${label}: ${String(value ?? '')}`;
+  return line;
 }
 
 async function loadWelcomeHistory(refs: WelcomeRefs, toast: { show: (message: string, variant?: 'info' | 'success' | 'error') => void }) {
@@ -615,8 +625,7 @@ function renderWelcomeHistory(container: HTMLElement, entries: WelcomeEmailHisto
     container.textContent = 'Keine Einträge vorhanden.';
     return;
   }
-  container.innerHTML = '';
-  entries.forEach(entry => {
+  const items = entries.map(entry => {
     const item = document.createElement('div');
     item.className = 'admin-history-item';
 
@@ -665,8 +674,9 @@ function renderWelcomeHistory(container: HTMLElement, entries: WelcomeEmailHisto
     }
     item.appendChild(actions);
 
-    container.appendChild(item);
+    return item;
   });
+  container.replaceChildren(...items);
 }
 
 async function loadConfigSnapshot(refs: SnapshotRefs, toast: { show: (message: string, variant?: 'info' | 'success' | 'error') => void }) {

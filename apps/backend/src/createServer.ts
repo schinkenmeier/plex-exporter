@@ -59,6 +59,7 @@ import { SchedulerService } from './services/schedulerService.js';
 import { ImageStorageService } from './services/imageStorageService.js';
 import logger from './services/logger.js';
 import { SyncLiveMonitor } from './services/syncLiveMonitor.js';
+import { SyncCoordinator } from './services/syncCoordinator.js';
 import type { TmdbService } from './services/tmdbService.js';
 import {
   resolveActiveTautulliConfig,
@@ -109,10 +110,12 @@ export interface ServerRuntime {
   heroPipeline: HeroPipelineService;
   rateLimiters: ReturnType<typeof createRateLimiters>;
   syncLiveMonitor: SyncLiveMonitor;
+  syncCoordinator: SyncCoordinator;
   tautulliState: TautulliRuntimeState;
   refreshTautulliIntegration(input?: { baseUrl: string; apiKey: string }): void;
   getTautulliConfigStatus(): TautulliConfigStatus;
   dispose(): void;
+  shutdown(options?: { syncDrainTimeoutMs?: number }): Promise<void>;
   getTautulliService(): TautulliClient | null;
   getTautulliSyncService(): TautulliSyncService | null;
   getSchedulerService(): SchedulerService | null;
@@ -303,6 +306,15 @@ export function createRuntime(appConfig: AppConfig, deps: ServerDependencies = {
     scheduler: null,
   };
   const syncLiveMonitor = new SyncLiveMonitor();
+  const syncCoordinator = new SyncCoordinator(syncLiveMonitor);
+
+  const heroPipelineService = createHeroPipelineService({
+    drizzleDatabase: drizzleDb,
+    mediaRepository,
+    thumbnailRepository,
+    tmdbService,
+    policyPath: appConfig.hero?.policyPath ?? null,
+  });
 
   const buildSyncService = (service: TautulliClient | null): TautulliSyncService | null => {
     if (!service) {
@@ -346,10 +358,11 @@ export function createRuntime(appConfig: AppConfig, deps: ServerDependencies = {
     }
 
     tautulliState.scheduler = new SchedulerService(
-      { enabled: true },
+      { enabled: true, timezone: appConfig.scheduler.timezone },
       syncScheduleRepo,
       syncService,
-      syncLiveMonitor,
+      syncCoordinator,
+      heroPipelineService,
     );
     tautulliState.scheduler.start();
     logger.info('Scheduler service started');
@@ -424,14 +437,6 @@ export function createRuntime(appConfig: AppConfig, deps: ServerDependencies = {
     }
   }
 
-  const heroPipelineService = createHeroPipelineService({
-    drizzleDatabase: drizzleDb,
-    mediaRepository,
-    thumbnailRepository,
-    tmdbService,
-    policyPath: appConfig.hero?.policyPath ?? null,
-  });
-
   let disposed = false;
   const runtime: ServerRuntime = {
     app: null as unknown as express.Express,
@@ -454,6 +459,7 @@ export function createRuntime(appConfig: AppConfig, deps: ServerDependencies = {
     heroPipeline: heroPipelineService,
     rateLimiters,
     syncLiveMonitor,
+    syncCoordinator,
     tautulliState,
     refreshTautulliIntegration,
     getTautulliConfigStatus,
@@ -473,6 +479,24 @@ export function createRuntime(appConfig: AppConfig, deps: ServerDependencies = {
       if (rateLimitDatabasePath) {
         closeSQLiteRateLimitStore(rateLimitDatabasePath);
       }
+    },
+    shutdown: async ({ syncDrainTimeoutMs = 30_000 }: { syncDrainTimeoutMs?: number } = {}) => {
+      if (disposed) return;
+      if (tautulliState.scheduler) {
+        tautulliState.scheduler.stop();
+        tautulliState.scheduler = null;
+      }
+
+      const result = await syncCoordinator.shutdown({ timeoutMs: syncDrainTimeoutMs });
+      if (!result.drained) {
+        logger.warn('Timed out while waiting for active sync during shutdown', {
+          namespace: 'sync-coordinator',
+          timeoutMs: syncDrainTimeoutMs,
+          activeRun: result.activeRun,
+        });
+      }
+
+      runtime.dispose();
     },
   };
 
@@ -510,6 +534,7 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
     heroPipeline,
     rateLimiters,
     syncLiveMonitor,
+    syncCoordinator,
     tautulliState,
     refreshTautulliIntegration,
     getTautulliConfigStatus,
@@ -649,6 +674,8 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
       settingsRepository,
       tautulliSnapshotRepository: tautulliSnapshotRepository!,
       syncLiveMonitor,
+      syncCoordinator,
+      heroPipeline,
     }),
   );
 

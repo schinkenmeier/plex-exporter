@@ -39,6 +39,7 @@ describe('Admin router integration', () => {
       auth: null,
       database: { sqlitePath: dbHandle.filePath },
       hero: { policyPath: null },
+      scheduler: { timezone: 'Europe/Berlin' },
       tautulli: null,
       tmdb: null,
       admin: null,
@@ -51,6 +52,7 @@ describe('Admin router integration', () => {
     const castRepository = new CastRepository(dbHandle.drizzle);
     const heroPipeline: HeroPipelineService = {
       getPool: vi.fn(),
+      invalidate: vi.fn(),
       setTmdbService: vi.fn(),
     };
 
@@ -234,6 +236,7 @@ describe('Admin router integration', () => {
       auth: null,
       database: { sqlitePath: dbHandle.filePath },
       hero: { policyPath: null },
+      scheduler: { timezone: 'Europe/Berlin' },
       tautulli: {
         url: 'https://env-tautulli.example.test',
         apiKey: 'env-secret',
@@ -248,6 +251,7 @@ describe('Admin router integration', () => {
     const castRepository = new CastRepository(dbHandle.drizzle);
     const heroPipeline: HeroPipelineService = {
       getPool: vi.fn(),
+      invalidate: vi.fn(),
       setTmdbService: vi.fn(),
     };
     const envApp = express();

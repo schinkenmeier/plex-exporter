@@ -5,11 +5,14 @@ import type { SyncScheduleRepository } from '../repositories/syncScheduleReposit
 import type { TautulliConfigRepository } from '../repositories/tautulliConfigRepository.js';
 import type { SchedulerService } from '../services/schedulerService.js';
 import type { TautulliClient } from '../services/tautulliService.js';
-import type { SyncOptions, SyncStats, TautulliSyncService } from '../services/tautulliSyncService.js';
+import type { SyncOptions, TautulliSyncService } from '../services/tautulliSyncService.js';
 import logger from '../services/logger.js';
 import SettingsRepository from '../repositories/settingsRepository.js';
 import TautulliSnapshotRepository from '../repositories/tautulliSnapshotRepository.js';
 import type { SyncLiveEvent, SyncLiveMonitor } from '../services/syncLiveMonitor.js';
+import type { SyncCoordinator } from '../services/syncCoordinator.js';
+import type { HeroPipelineService } from '../services/heroPipeline.js';
+import { invalidateHeroPoolsForSyncStats } from '../services/heroInvalidation.js';
 import { resolveTautulliConfigStatus, type TautulliConfigStatus } from '../services/tautulliConfigStatus.js';
 import { getRouteParam } from './params.js';
 
@@ -51,6 +54,8 @@ export interface TautulliSyncRouterOptions {
   settingsRepository: SettingsRepository;
   tautulliSnapshotRepository: TautulliSnapshotRepository;
   syncLiveMonitor: SyncLiveMonitor;
+  syncCoordinator: SyncCoordinator;
+  heroPipeline?: HeroPipelineService | null;
 }
 
 /**
@@ -70,6 +75,8 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
     settingsRepository,
     tautulliSnapshotRepository,
     syncLiveMonitor,
+    syncCoordinator,
+    heroPipeline,
   } = options;
 
   const writeSseEvent = (res: Response, eventName: string, payload: unknown): void => {
@@ -85,10 +92,7 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
       settingsRepository,
     });
 
-  /**
-   * GET /admin/api/tautulli/config
-   * Get current Tautulli configuration
-   */
+  // GET /admin/api/tautulli/config - Get current Tautulli configuration
   router.get('/config', async (_req: Request, res: Response, next: NextFunction) => {
     try {
       res.json(resolveConfigStatus());
@@ -97,9 +101,7 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
     }
   });
 
-  /**
-   * Normalize Tautulli URL by removing /api/v2 suffix if present
-   */
+  // Normalize Tautulli URL by removing /api/v2 suffix if present.
   function normalizeTautulliUrl(url: string): string {
     let normalized = url.trim();
     // Remove trailing slash
@@ -109,10 +111,7 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
     return normalized;
   }
 
-  /**
-   * POST /admin/api/tautulli/config
-   * Save or update Tautulli configuration
-   */
+  // POST /admin/api/tautulli/config - Save or update Tautulli configuration
   router.post('/config', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { tautulliUrl, apiKey } = req.body;
@@ -162,10 +161,7 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
     }
   });
 
-  /**
-   * POST /admin/api/tautulli/config/test
-   * Test Tautulli connection with provided or saved credentials
-   */
+  // POST /admin/api/tautulli/config/test - Test Tautulli connection with provided or saved credentials
   router.post('/config/test', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { tautulliUrl, apiKey } = req.body;
@@ -314,10 +310,7 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
     }
   });
 
-  /**
-   * GET /admin/api/tautulli/libraries
-   * Get all available libraries from Tautulli
-   */
+  // GET /admin/api/tautulli/libraries - Get all available libraries from Tautulli
   router.get('/libraries', async (_req: Request, res: Response, next: NextFunction) => {
     try {
       // Try to use existing service, or create one from saved config
@@ -352,10 +345,7 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
     }
   });
 
-  /**
-   * GET /admin/api/tautulli/library-sections
-   * Get configured library sections
-   */
+  // GET /admin/api/tautulli/library-sections - Get configured library sections
   router.get('/library-sections', async (_req: Request, res: Response, next: NextFunction) => {
     try {
       const sections = librarySectionRepo.listAll();
@@ -367,10 +357,7 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
     }
   });
 
-  /**
-   * POST /admin/api/tautulli/library-sections
-   * Configure library sections for syncing
-   */
+  // POST /admin/api/tautulli/library-sections - Configure library sections for syncing
   router.post('/library-sections', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { sections } = req.body;
@@ -421,10 +408,7 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
     }
   });
 
-  /**
-   * PUT /admin/api/tautulli/library-sections/:id/enabled
-   * Enable or disable a library section
-   */
+  // PUT /admin/api/tautulli/library-sections/:id/enabled - Enable or disable a library section
   router.put('/library-sections/:id/enabled', (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = parseInt(getRouteParam(req.params.id) ?? '', 10);
@@ -455,18 +439,12 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
     }
   });
 
-  /**
-   * GET /admin/api/tautulli/sync/live/state
-   * Get live sync monitor snapshot
-   */
+  // GET /admin/api/tautulli/sync/live/state - Get live sync monitor snapshot
   router.get('/sync/live/state', (_req: Request, res: Response) => {
     res.json(syncLiveMonitor.getStateSnapshot());
   });
 
-  /**
-   * GET /admin/api/tautulli/sync/live/stream
-   * Stream live sync events via SSE
-   */
+  // GET /admin/api/tautulli/sync/live/stream - Stream live sync events via SSE
   router.get('/sync/live/stream', (_req: Request, res: Response) => {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -491,10 +469,7 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
     });
   });
 
-  /**
-   * POST /admin/api/tautulli/sync/manual
-   * Manually trigger a sync
-   */
+  // POST /admin/api/tautulli/sync/manual - Manually trigger a sync
   router.post('/sync/manual', async (req: Request, res: Response, next: NextFunction) => {
     try {
       let syncService = getTautulliSyncService();
@@ -527,55 +502,60 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
         syncCovers: syncCovers ?? true, // Default to true for manual syncs
         refreshMediaInfo: refreshMediaInfo ?? true,
       };
-      const run = syncLiveMonitor.tryStartRun('manual', options);
-      if (!run) {
-        const activeRun = syncLiveMonitor.getActiveRun();
+      const startResult = syncCoordinator.start('manual', options, async ({ onProgress, onLog }) => {
+        onLog('info', 'Manual sync requested', { options });
+
+        return syncService.syncAll(options, (progress) => {
+          const message = `[Manual Sync] ${progress.phase}: ${progress.current}/${progress.total} (${progress.percentage}%)`;
+          logger.debug('Manual sync progress', { progress });
+          onProgress(progress);
+          onLog('debug', message);
+        });
+      });
+
+      if (startResult.status === 'busy') {
+        const activeRun = startResult.activeRun;
         throw new HttpError(
           409,
           `A sync is already running (${activeRun?.source ?? 'unknown'}). Please wait until it finishes.`,
         );
       }
-      syncLiveMonitor.onLog(run.runId, 'info', 'Manual sync requested', { options });
 
-      // Start sync in background (don't await)
-      syncService
-        .syncAll(options, (progress) => {
-          const message = `[Manual Sync] ${progress.phase}: ${progress.current}/${progress.total} (${progress.percentage}%)`;
-          logger.debug('Manual sync progress', { progress });
-          syncLiveMonitor.onProgress(run.runId, progress);
-          syncLiveMonitor.onLog(run.runId, 'debug', message);
-        })
-        .then((stats: SyncStats) => {
-          const completedRun = syncLiveMonitor.completeRun(run.runId, stats);
-          const completedWithErrors = stats.totalErrors > 0;
-          logger.info(completedWithErrors ? 'Manual sync completed with errors' : 'Manual sync completed', {
-            stats,
-            status: completedRun?.status,
-          });
-          syncLiveMonitor.onLog(
-            run.runId,
-            completedWithErrors ? 'warn' : 'info',
-            completedWithErrors ? 'Manual sync completed with errors' : 'Manual sync completed',
-            {
-              totalCreated: stats.totalCreated,
-              totalUpdated: stats.totalUpdated,
-              totalDeleted: stats.totalDeleted,
-              totalErrors: stats.totalErrors,
-              status: completedRun?.status,
-            },
-          );
-        })
-        .catch((error) => {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          logger.error('Manual sync failed', { error: errorMessage });
-          syncLiveMonitor.onLog(run.runId, 'error', 'Manual sync failed', { error: errorMessage });
-          syncLiveMonitor.failRun(run.runId, errorMessage);
+      if (startResult.status === 'shutting_down') {
+        throw new HttpError(503, 'A sync cannot be started because shutdown is in progress');
+      }
+
+      void startResult.promise.then((result) => {
+        if (result.status === 'failed') {
+          logger.error('Manual sync failed', { error: result.error });
+          syncLiveMonitor.onLog(result.run.runId, 'error', 'Manual sync failed', { error: result.error });
+          return;
+        }
+
+        const completedWithErrors = result.stats.totalErrors > 0;
+        logger.info(completedWithErrors ? 'Manual sync completed with errors' : 'Manual sync completed', {
+          stats: result.stats,
+          status: completedWithErrors ? 'completed_with_errors' : 'completed',
         });
+        invalidateHeroPoolsForSyncStats(heroPipeline, result.stats, 'manual-tautulli-sync');
+        syncLiveMonitor.onLog(
+          result.run.runId,
+          completedWithErrors ? 'warn' : 'info',
+          completedWithErrors ? 'Manual sync completed with errors' : 'Manual sync completed',
+          {
+            totalCreated: result.stats.totalCreated,
+            totalUpdated: result.stats.totalUpdated,
+            totalDeleted: result.stats.totalDeleted,
+            totalErrors: result.stats.totalErrors,
+            status: completedWithErrors ? 'completed_with_errors' : 'completed',
+          },
+        );
+      });
 
       res.json({
         message: 'Sync started',
         options,
-        runId: run.runId,
+        runId: startResult.run.runId,
       });
     } catch (error) {
       if (error instanceof HttpError) {
@@ -587,19 +567,13 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
     }
   });
 
-  /**
-   * GET /admin/api/tautulli/sync/schedules
-   * Get all sync schedules
-   */
+  // GET /admin/api/tautulli/sync/schedules - Get all sync schedules
   router.get('/sync/schedules', (_req: Request, res: Response) => {
     const schedules = syncScheduleRepo.listAll();
     res.json({ schedules });
   });
 
-  /**
-   * POST /admin/api/tautulli/sync/schedules
-   * Create or update a sync schedule
-   */
+  // POST /admin/api/tautulli/sync/schedules - Create or update a sync schedule
   router.post('/sync/schedules', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { jobType, cronExpression, enabled } = req.body;
@@ -638,10 +612,7 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
     }
   });
 
-  /**
-   * PUT /admin/api/tautulli/sync/schedules/:id/enabled
-   * Enable or disable a sync schedule
-   */
+  // PUT /admin/api/tautulli/sync/schedules/:id/enabled - Enable or disable a sync schedule
   router.put('/sync/schedules/:id/enabled', (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = getRouteParam(req.params.id);
@@ -682,10 +653,7 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
     }
   });
 
-  /**
-   * DELETE /admin/api/tautulli/sync/schedules/:id
-   * Delete a sync schedule
-   */
+  // DELETE /admin/api/tautulli/sync/schedules/:id - Delete a sync schedule
   router.delete('/sync/schedules/:id', (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = getRouteParam(req.params.id);

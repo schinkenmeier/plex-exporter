@@ -82,13 +82,12 @@ export class SyncScheduleRepository {
   /**
    * Update last run timestamp and calculate next run
    */
-  updateLastRun(id: string, lastRunAt: string, nextRunAt: string): void {
+  updateLastRun(id: string, lastRunAt: string, nextRunAt: string | null): void {
     this.db
       .update(syncSchedules)
       .set({
         lastRunAt,
         nextRunAt,
-        
       })
       .where(eq(syncSchedules.id, id))
       .run();
@@ -102,7 +101,6 @@ export class SyncScheduleRepository {
       .update(syncSchedules)
       .set({
         enabled,
-        
       })
       .where(eq(syncSchedules.id, id))
       .run();

@@ -44,6 +44,19 @@ global.window = { localStorage: global.localStorage };
 // Import after mocks are set up
 const { setCache, getCache, removeCache, clearAllCache, getCacheStats, stopCleanupInterval } = await import('../../src/shared/cache.js');
 
+function withSilencedConsole(fn) {
+  const originalLog = console.log;
+  const originalError = console.error;
+  console.log = () => {};
+  console.error = () => {};
+  try {
+    return fn();
+  } finally {
+    console.log = originalLog;
+    console.error = originalError;
+  }
+}
+
 // Cleanup after all tests
 after(() => {
   stopCleanupInterval();
@@ -123,7 +136,7 @@ describe('Cache Module', () => {
       setCache('key2', 'value2');
       setCache('key3', 'value3');
 
-      clearAllCache();
+      withSilencedConsole(() => clearAllCache());
 
       assert.strictEqual(getCache('key1'), null);
       assert.strictEqual(getCache('key2'), null);
@@ -134,7 +147,7 @@ describe('Cache Module', () => {
       global.localStorage.setItem('non-cache-item', 'value');
       setCache('cache-item', 'value');
 
-      clearAllCache();
+      withSilencedConsole(() => clearAllCache());
 
       assert.strictEqual(global.localStorage.getItem('non-cache-item'), 'value');
       assert.strictEqual(getCache('cache-item'), null);
@@ -175,7 +188,7 @@ describe('Cache Module', () => {
   describe('Error handling', () => {
     it('should handle JSON parse errors gracefully', () => {
       global.localStorage.setItem('plex_cache_corrupt', 'not-valid-json');
-      const result = getCache('corrupt');
+      const result = withSilencedConsole(() => getCache('corrupt'));
       assert.strictEqual(result, null);
     });
 

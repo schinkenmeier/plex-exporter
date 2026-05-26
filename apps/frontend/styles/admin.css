@@ -81,6 +81,7 @@ body.admin-body {
 .admin-main {
   flex: 1;
   padding: 32px;
+  min-width: 0;
 }
 
 .admin-header {
@@ -97,6 +98,7 @@ body.admin-body {
   border-radius: var(--admin-radius);
   padding: 24px;
   min-height: 400px;
+  min-width: 0;
   box-shadow: 0 16px 30px rgba(0, 0, 0, 0.22);
 }
 
@@ -112,6 +114,7 @@ body.admin-body {
   flex-direction: column;
   gap: 12px;
   z-index: 60;
+  pointer-events: none;
 }
 
 .admin-toast {
@@ -122,6 +125,7 @@ body.admin-body {
   min-width: 200px;
   box-shadow: 0 18px 32px rgba(0, 0, 0, 0.28);
   transition: transform 0.25s ease, opacity 0.25s ease;
+  pointer-events: none;
 }
 
 .admin-toast.hide {
@@ -478,8 +482,10 @@ body.admin-body {
 
 .admin-database {
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
   gap: 16px;
+  min-width: 0;
+  align-items: start;
 }
 
 .db-table-panel {
@@ -490,12 +496,15 @@ body.admin-body {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
 }
 
 .db-table-panel header {
   display: flex;
   justify-content: space-between;
   gap: 12px;
+  align-items: flex-start;
+  min-width: 0;
 }
 
 .db-table-list {
@@ -510,12 +519,20 @@ body.admin-body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
   padding: 8px 12px;
   border-radius: 8px;
   border: none;
   background: rgba(255, 255, 255, 0.05);
   color: var(--admin-text);
   cursor: pointer;
+  min-width: 0;
+}
+
+.db-table-button span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: left;
 }
 
 .db-table-button.active {
@@ -525,12 +542,14 @@ body.admin-body {
 .db-table-count {
   font-size: 12px;
   color: var(--admin-muted);
+  flex: 0 0 auto;
 }
 
 .db-content-panel {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
 }
 
 .db-filter-grid {
@@ -559,6 +578,12 @@ body.admin-body {
   align-items: center;
   gap: 8px;
   font-size: 14px;
+  min-width: 0;
+}
+
+.db-column-item span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .db-pill-container {
@@ -581,6 +606,9 @@ body.admin-body {
   background: transparent;
   color: var(--admin-text);
   cursor: pointer;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: left;
 }
 
 .db-pill.active {
@@ -593,23 +621,48 @@ body.admin-body {
   justify-content: space-between;
   gap: 16px;
   align-items: flex-start;
+  min-width: 0;
+}
+
+.db-header > div {
+  min-width: 0;
+}
+
+.db-header h3,
+.db-header p,
+.admin-muted-text,
+.admin-error-text {
+  overflow-wrap: anywhere;
 }
 
 .db-controls {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  min-width: 0;
+}
+
+.db-controls .admin-input {
+  flex: 1 1 220px;
+  min-width: min(100%, 220px);
+}
+
+.db-controls .admin-btn {
+  flex: 0 0 auto;
 }
 
 .table-container {
   margin-top: 16px;
   overflow: auto;
+  max-width: 100%;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--admin-radius);
+  -webkit-overflow-scrolling: touch;
 }
 
 .data-table {
   width: 100%;
+  min-width: 680px;
   border-collapse: collapse;
 }
 
@@ -617,6 +670,11 @@ body.admin-body {
 .data-table td {
   padding: 10px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  max-width: 24rem;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .data-table th {
@@ -629,6 +687,14 @@ body.admin-body {
   color: var(--admin-text);
   font-weight: 600;
   cursor: pointer;
+  max-width: 100%;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.data-table code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .db-pagination {
@@ -725,9 +791,11 @@ body.admin-body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   font-size: 14px;
   padding: 4px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  min-width: 0;
 }
 
 .admin-info-item:last-child {
@@ -736,10 +804,15 @@ body.admin-body {
 
 .admin-info-label {
   color: var(--admin-muted);
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .admin-info-value {
   font-weight: 600;
+  min-width: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .admin-info-hint {
@@ -806,6 +879,12 @@ body.admin-body {
 }
 
 .tautulli-config-row strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.tautulli-config-row span,
+.tautulli-config-row code {
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -897,4 +976,60 @@ body.admin-body {
   margin: 0;
   font-size: 13px;
   color: rgba(245, 246, 249, 0.85);
+}
+
+@media (max-width: 960px) {
+  .admin-database {
+    grid-template-columns: 1fr;
+  }
+
+  .db-table-list {
+    max-height: 280px;
+  }
+
+  .db-header {
+    flex-direction: column;
+  }
+
+  .db-controls {
+    width: 100%;
+  }
+
+  .db-controls .admin-input {
+    flex-basis: 100%;
+  }
+
+  .admin-info-item {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-card,
+  .admin-panel {
+    padding: 16px;
+  }
+
+  .db-table-panel header,
+  .db-pagination {
+    flex-wrap: wrap;
+  }
+
+  .db-pagination {
+    gap: 8px;
+  }
+
+  .data-table {
+    min-width: 600px;
+  }
+
+  .admin-info-item,
+  .tautulli-config-row {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .admin-info-value {
+    text-align: left;
+  }
 }

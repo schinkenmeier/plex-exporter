@@ -19,6 +19,7 @@ services:
       RESEND_FROM_EMAIL: ${BACKEND_RESEND_FROM_EMAIL:-}
       TAUTULLI_URL: ${BACKEND_TAUTULLI_URL:-http://192.168.178.34:8181}
       TAUTULLI_API_KEY: ${BACKEND_TAUTULLI_API_KEY:-}
+      SCHEDULER_TIMEZONE: ${BACKEND_SCHEDULER_TIMEZONE:-Europe/Berlin}
     volumes:
       - ${BACKEND_DATA_PATH:-/mnt/user/appdata/plex-exporter/backend}:/app/data
     healthcheck:

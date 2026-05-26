@@ -52,9 +52,9 @@ Thumbs.db
 nul
 
 # Data & Database (Docker bind mount volumes)
-data/
-!data/.gitkeep
-apps/*/data/
+/data/
+!/data/.gitkeep
+/apps/*/data/
 
 # Temporary files
 tmp/

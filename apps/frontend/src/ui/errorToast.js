@@ -42,21 +42,36 @@ function mountToast(toast) {
 export function createErrorToast({ title, message }) {
   const toast = document.createElement('div');
   toast.className = 'error-toast';
-  toast.innerHTML = `
-    <div class="error-toast-content">
-      <div class="error-toast-icon">⚠️</div>
-      <div class="error-toast-text">
-        <div class="error-toast-title">${escapeHtml(title)}</div>
-        ${message ? `<div class="error-toast-message">${escapeHtml(message)}</div>` : ''}
-      </div>
-      <button class="error-toast-close" aria-label="Schließen">×</button>
-    </div>
-  `;
+  const content = document.createElement('div');
+  content.className = 'error-toast-content';
 
-  const closeBtn = toast.querySelector('.error-toast-close');
-  if (closeBtn) {
-    closeBtn.addEventListener('click', () => dismissToast(toast));
+  const icon = document.createElement('div');
+  icon.className = 'error-toast-icon';
+  icon.textContent = '⚠️';
+
+  const text = document.createElement('div');
+  text.className = 'error-toast-text';
+  const titleEl = document.createElement('div');
+  titleEl.className = 'error-toast-title';
+  titleEl.textContent = title ?? '';
+  text.appendChild(titleEl);
+
+  if (message) {
+    const messageEl = document.createElement('div');
+    messageEl.className = 'error-toast-message';
+    messageEl.textContent = message;
+    text.appendChild(messageEl);
   }
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'error-toast-close';
+  closeBtn.setAttribute('aria-label', 'Schließen');
+  closeBtn.textContent = '×';
+
+  content.append(icon, text, closeBtn);
+  toast.appendChild(content);
+
+  closeBtn.addEventListener('click', () => dismissToast(toast));
 
   return mountToast(toast);
 }
@@ -64,18 +79,32 @@ export function createErrorToast({ title, message }) {
 export function createRetryableErrorToast({ title, onRetry }) {
   const toast = document.createElement('div');
   toast.className = 'error-toast error-toast-retryable';
-  toast.innerHTML = `
-    <div class="error-toast-content">
-      <div class="error-toast-icon">⚠️</div>
-      <div class="error-toast-text">
-        <div class="error-toast-title">${escapeHtml(title)}</div>
-      </div>
-      <button class="error-toast-retry">Erneut versuchen</button>
-      <button class="error-toast-close" aria-label="Schließen">×</button>
-    </div>
-  `;
+  const content = document.createElement('div');
+  content.className = 'error-toast-content';
 
-  const retryBtn = toast.querySelector('.error-toast-retry');
+  const icon = document.createElement('div');
+  icon.className = 'error-toast-icon';
+  icon.textContent = '⚠️';
+
+  const text = document.createElement('div');
+  text.className = 'error-toast-text';
+  const titleEl = document.createElement('div');
+  titleEl.className = 'error-toast-title';
+  titleEl.textContent = title ?? '';
+  text.appendChild(titleEl);
+
+  const retryBtn = document.createElement('button');
+  retryBtn.className = 'error-toast-retry';
+  retryBtn.textContent = 'Erneut versuchen';
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'error-toast-close';
+  closeBtn.setAttribute('aria-label', 'Schließen');
+  closeBtn.textContent = '×';
+
+  content.append(icon, text, retryBtn, closeBtn);
+  toast.appendChild(content);
+
   if (retryBtn && typeof onRetry === 'function') {
     retryBtn.addEventListener('click', () => {
       dismissToast(toast);
@@ -85,21 +114,12 @@ export function createRetryableErrorToast({ title, onRetry }) {
     });
   }
 
-  const closeBtn = toast.querySelector('.error-toast-close');
-  if (closeBtn) {
-    closeBtn.addEventListener('click', () => dismissToast(toast));
-  }
+  closeBtn.addEventListener('click', () => dismissToast(toast));
 
   return mountToast(toast);
 }
 
 export function clearErrorToasts() {
   const host = ensureContainer();
-  host.innerHTML = '';
-}
-
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str ?? '';
-  return div.innerHTML;
+  host.replaceChildren();
 }

@@ -10,6 +10,7 @@ import SettingsRepository from '../../src/repositories/settingsRepository.js';
 import TautulliSnapshotRepository from '../../src/repositories/tautulliSnapshotRepository.js';
 import { errorHandler } from '../../src/middleware/errorHandler.js';
 import { SyncLiveMonitor } from '../../src/services/syncLiveMonitor.js';
+import { SyncCoordinator } from '../../src/services/syncCoordinator.js';
 import { createTestDatabase, type TestDatabaseHandle } from '../helpers/testDatabase.js';
 
 describe('Tautulli sync integration', () => {
@@ -17,6 +18,8 @@ describe('Tautulli sync integration', () => {
   let app: express.Express;
   let syncService: { syncAll: ReturnType<typeof vi.fn> };
   let syncLiveMonitor: SyncLiveMonitor;
+  let syncCoordinator: SyncCoordinator;
+  let heroPipeline: { getPool: ReturnType<typeof vi.fn>; invalidate: ReturnType<typeof vi.fn>; setTmdbService: ReturnType<typeof vi.fn> };
   let tautulliConfigRepo: TautulliConfigRepository;
   let settingsRepository: SettingsRepository;
 
@@ -28,9 +31,15 @@ describe('Tautulli sync integration', () => {
     settingsRepository = new SettingsRepository(dbHandle.drizzle);
     const snapshotRepository = new TautulliSnapshotRepository(dbHandle.drizzle);
     syncLiveMonitor = new SyncLiveMonitor();
+    syncCoordinator = new SyncCoordinator(syncLiveMonitor);
 
     syncService = {
       syncAll: vi.fn().mockResolvedValue({}),
+    };
+    heroPipeline = {
+      getPool: vi.fn(),
+      invalidate: vi.fn(() => 1),
+      setTmdbService: vi.fn(),
     };
 
     const schedulerMock = {
@@ -67,6 +76,8 @@ describe('Tautulli sync integration', () => {
         settingsRepository,
         tautulliSnapshotRepository: snapshotRepository,
         syncLiveMonitor,
+        syncCoordinator,
+        heroPipeline: heroPipeline as any,
       }),
     );
     app.use(errorHandler);
@@ -136,6 +147,7 @@ describe('Tautulli sync integration', () => {
         settingsRepository,
         tautulliSnapshotRepository: new TautulliSnapshotRepository(dbHandle.drizzle),
         syncLiveMonitor,
+        syncCoordinator,
       }),
     );
     failingApp.use(errorHandler);
@@ -172,6 +184,7 @@ describe('Tautulli sync integration', () => {
         settingsRepository,
         tautulliSnapshotRepository: new TautulliSnapshotRepository(dbHandle.drizzle),
         syncLiveMonitor,
+        syncCoordinator,
       }),
     );
     activeApp.use(errorHandler);
@@ -200,6 +213,7 @@ describe('Tautulli sync integration', () => {
         settingsRepository,
         tautulliSnapshotRepository: new TautulliSnapshotRepository(dbHandle.drizzle),
         syncLiveMonitor,
+        syncCoordinator,
       }),
     );
     unconfiguredApp.use(errorHandler);
@@ -281,6 +295,52 @@ describe('Tautulli sync integration', () => {
     expect(liveState.status).toBe(200);
     expect(liveState.body.lastRun?.status).toBe('completed_with_errors');
     expect(liveState.body.lastRun?.degraded).toBe(true);
+  });
+
+  it('invalidates changed hero pools after a completed manual sync', async () => {
+    syncService.syncAll.mockResolvedValue({
+      totalCreated: 1,
+      totalUpdated: 0,
+      totalDeleted: 0,
+      totalSkipped: 0,
+      totalErrors: 0,
+      results: [
+        {
+          librarySection: 'Movies',
+          sectionId: 1,
+          mediaType: 'movie',
+          created: 1,
+          updated: 0,
+          deleted: 0,
+          skipped: 0,
+          errors: [],
+          duration: 10,
+        },
+      ],
+      startTime: Date.now() - 10,
+      endTime: Date.now(),
+      duration: 10,
+    });
+
+    const response = await request(app)
+      .post('/admin/api/tautulli/sync/manual')
+      .send({ incremental: false, syncCovers: true, enrichWithTmdb: true });
+
+    expect(response.status).toBe(200);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(heroPipeline.invalidate).toHaveBeenCalledWith('movies', 'manual-tautulli-sync');
+  });
+
+  it('rejects new manual syncs after coordinator shutdown begins', async () => {
+    await syncCoordinator.shutdown({ timeoutMs: 1_000 });
+
+    const response = await request(app)
+      .post('/admin/api/tautulli/sync/manual')
+      .send({ incremental: false, syncCovers: true, enrichWithTmdb: true });
+
+    expect(response.status).toBe(503);
+    expect(syncService.syncAll).not.toHaveBeenCalled();
   });
 
   it('creates and lists sync schedules', async () => {

@@ -11,6 +11,7 @@ import type { AppConfig } from '../../src/config/index.js';
 import { createTestDatabase } from '../helpers/testDatabase.js';
 import SettingsRepository from '../../src/repositories/settingsRepository.js';
 import { TautulliConfigRepository } from '../../src/repositories/tautulliConfigRepository.js';
+import type { SyncStats } from '../../src/services/tautulliSyncService.js';
 
 describe('server runtime lifecycle', () => {
   let tempDir: string | null = null;
@@ -30,11 +31,32 @@ describe('server runtime lifecycle', () => {
       auth: null,
       database: { sqlitePath: path.join(tempDir, 'runtime.sqlite') },
       hero: { policyPath: null },
+      scheduler: { timezone: 'Europe/Berlin' },
       tautulli: null,
       tmdb: null,
       admin: null,
       resend: null,
     };
+  };
+
+  const createStats = (): SyncStats => ({
+    totalCreated: 0,
+    totalUpdated: 0,
+    totalDeleted: 0,
+    totalSkipped: 0,
+    totalErrors: 0,
+    results: [],
+    startTime: Date.now(),
+    endTime: Date.now(),
+    duration: 0,
+  });
+
+  const createDeferred = <T>() => {
+    let resolve!: (value: T) => void;
+    const promise = new Promise<T>((res) => {
+      resolve = res;
+    });
+    return { promise, resolve };
   };
 
   it('creates a runtime, returns its Express app, and disposes idempotently', () => {
@@ -173,5 +195,28 @@ describe('server runtime lifecycle', () => {
     await handle.shutdown();
 
     expect(disposeSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('drains an active sync before disposing runtime during shutdown', async () => {
+    const handle = startServer({
+      appConfig: createConfig(),
+      registerSignalHandlers: false,
+      exitProcessOnSignal: false,
+    });
+    const closeSpy = vi.spyOn(handle.runtime.database, 'close');
+    const deferred = createDeferred<SyncStats>();
+
+    const started = handle.runtime.syncCoordinator.start('manual', {}, () => deferred.promise);
+    expect(started.status).toBe('started');
+
+    const shutdown = handle.shutdown('SIGTERM');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(closeSpy).not.toHaveBeenCalled();
+
+    deferred.resolve(createStats());
+    await shutdown;
+
+    expect(closeSpy).toHaveBeenCalledTimes(1);
   });
 });

@@ -8,6 +8,7 @@
 | `CADDY_CONFIG_PATH` | Host-Pfad für Caddy-Konfiguration |
 | `BACKEND_NODE_ENV` | setzt `NODE_ENV` im Backend-Container |
 | `BACKEND_INTERNAL_PORT` | interner Backend-Port |
+| `BACKEND_SCHEDULER_TIMEZONE` | Zeitzone für geplante Backend-Jobs |
 | `BACKEND_SQLITE_PATH` | SQLite-Pfad im Container |
 | `BACKEND_API_TOKEN` | optionales Token für geschützte API-Nutzung |
 | `BACKEND_ADMIN_USERNAME` | Admin-Basic-Auth Benutzer |
@@ -32,6 +33,8 @@
 | --- | --- |
 | `NODE_ENV` | Laufzeitmodus |
 | `PORT` | lokaler Backend-Port |
+| `SCHEDULER_TIMEZONE` | Zeitzone für geplante Jobs |
+| `TZ` | Fallback-Zeitzone, falls `SCHEDULER_TIMEZONE` nicht gesetzt ist |
 | `SQLITE_PATH` | SQLite-Datei für Source-Runs |
 | `API_TOKEN` | optionales Token |
 | `ADMIN_USERNAME` | optionaler Admin-Benutzer |

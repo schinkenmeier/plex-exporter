@@ -1,11 +1,14 @@
 import cron, { type ScheduledTask } from 'node-cron';
 import type { SyncScheduleRepository } from '../repositories/syncScheduleRepository.js';
 import type { TautulliSyncService } from './tautulliSyncService.js';
-import type { SyncLiveMonitor } from './syncLiveMonitor.js';
+import type { SyncCoordinator } from './syncCoordinator.js';
+import type { HeroPipelineService } from './heroPipeline.js';
+import { invalidateHeroPoolsForSyncStats } from './heroInvalidation.js';
 import logger from './logger.js';
 
 export interface SchedulerConfig {
   enabled?: boolean;
+  timezone?: string;
 }
 
 type JobHandler = () => Promise<boolean>;
@@ -18,7 +21,8 @@ export class SchedulerService {
     private readonly config: SchedulerConfig,
     private readonly syncScheduleRepo: SyncScheduleRepository,
     private readonly tautulliSyncService: TautulliSyncService,
-    private readonly syncLiveMonitor?: SyncLiveMonitor,
+    private readonly syncCoordinator?: SyncCoordinator,
+    private readonly heroPipeline?: HeroPipelineService | null,
   ) {}
 
   /**
@@ -117,9 +121,7 @@ export class SchedulerService {
 
           // Update last run and next run times
           const lastRunAt = new Date().toISOString();
-          const nextRunAt = this.calculateNextRun(cronExpression);
-
-          this.syncScheduleRepo.updateLastRun(id, lastRunAt, nextRunAt);
+          this.syncScheduleRepo.updateLastRun(id, lastRunAt, null);
 
           const duration = Date.now() - startTime;
           logger.info('Completed scheduled job', { namespace: 'scheduler', jobType, id, durationMs: duration });
@@ -128,8 +130,7 @@ export class SchedulerService {
         }
       },
       {
-        
-        timezone: 'Europe/Berlin', // Adjust to your timezone
+        timezone: this.config.timezone ?? 'Europe/Berlin',
       },
     );
 
@@ -151,58 +152,62 @@ export class SchedulerService {
             refreshMediaInfo: true,
           };
 
-          const run = this.syncLiveMonitor?.tryStartRun('scheduler', options);
-          if (this.syncLiveMonitor && !run) {
-            const activeRun = this.syncLiveMonitor.getActiveRun();
-            const message = 'Scheduled sync skipped because another sync is currently running';
-            this.syncLiveMonitor.onLog(
-              activeRun?.runId ?? null,
-              'warn',
-              message,
-              activeRun ? { activeRunId: activeRun.runId, source: activeRun.source } : undefined,
-            );
-            logger.warn(message, activeRun ? { activeRunId: activeRun.runId, source: activeRun.source } : undefined);
-            return false;
+          const coordinator = this.syncCoordinator;
+          if (!coordinator) {
+            const stats = await this.tautulliSyncService.syncAll(options);
+            logger.info('Scheduled sync completed', {
+              namespace: 'scheduler',
+              totalCreated: stats.totalCreated,
+              totalUpdated: stats.totalUpdated,
+              totalDeleted: stats.totalDeleted,
+              totalErrors: stats.totalErrors,
+            });
+            invalidateHeroPoolsForSyncStats(this.heroPipeline, stats, 'scheduled-tautulli-sync');
+            return true;
           }
 
-          const runId = run?.runId ?? null;
-          if (runId && this.syncLiveMonitor) {
-            this.syncLiveMonitor.onLog(runId, 'info', 'Scheduled sync started');
-          }
+          const startResult = coordinator.start('scheduler', options, async ({ onProgress, onLog }) => {
+            onLog('info', 'Scheduled sync started');
 
-          try {
-            const stats = await this.tautulliSyncService.syncAll(
+            return this.tautulliSyncService.syncAll(
               options,
               (progress) => {
                 const progressMessage =
                   `[Sync] ${progress.phase}: ${progress.current}/${progress.total} (${progress.percentage}%)`;
                 logger.debug('Scheduled sync progress', { namespace: 'scheduler', progress });
-                if (runId && this.syncLiveMonitor) {
-                  this.syncLiveMonitor.onProgress(runId, progress);
-                  this.syncLiveMonitor.onLog(runId, 'debug', progressMessage);
-                }
+                onProgress(progress);
+                onLog('debug', progressMessage);
               },
             );
+          });
 
-            if (runId && this.syncLiveMonitor) {
-              this.syncLiveMonitor.completeRun(runId, stats);
-              this.syncLiveMonitor.onLog(runId, 'info', 'Scheduled sync completed', {
-                totalCreated: stats.totalCreated,
-                totalUpdated: stats.totalUpdated,
-                totalDeleted: stats.totalDeleted,
-                totalErrors: stats.totalErrors,
-              });
-            }
-
-            return true;
-          } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            if (runId && this.syncLiveMonitor) {
-              this.syncLiveMonitor.onLog(runId, 'error', 'Scheduled sync failed', { error: errorMessage });
-              this.syncLiveMonitor.failRun(runId, errorMessage);
-            }
-            throw error;
+          if (startResult.status === 'busy') {
+            const activeRun = startResult.activeRun;
+            const message = 'Scheduled sync skipped because another sync is currently running';
+            logger.warn(message, activeRun ? { activeRunId: activeRun.runId, source: activeRun.source } : undefined);
+            return false;
           }
+
+          if (startResult.status === 'shutting_down') {
+            logger.warn('Scheduled sync skipped because shutdown is in progress', { namespace: 'scheduler' });
+            return false;
+          }
+
+          const result = await startResult.promise;
+          if (result.status === 'failed') {
+            logger.error('Scheduled sync failed', { namespace: 'scheduler', error: result.error });
+            throw new Error(result.error);
+          }
+
+          logger.info('Scheduled sync completed', {
+            namespace: 'scheduler',
+            totalCreated: result.stats.totalCreated,
+            totalUpdated: result.stats.totalUpdated,
+            totalDeleted: result.stats.totalDeleted,
+            totalErrors: result.stats.totalErrors,
+          });
+          invalidateHeroPoolsForSyncStats(this.heroPipeline, result.stats, 'scheduled-tautulli-sync');
+          return true;
         };
 
       case 'cover_update':
@@ -215,36 +220,6 @@ export class SchedulerService {
       default:
         throw new Error(`Unknown job type: ${jobType}`);
     }
-  }
-
-  /**
-   * Calculate the next run time based on cron expression
-   */
-  private calculateNextRun(cronExpression: string): string {
-    // Simple calculation - this could be improved with a proper cron parser
-    // For now, just add 24 hours if it's a daily cron
-    const now = new Date();
-
-    // Basic parsing for common patterns
-    if (cronExpression.startsWith('0 ')) {
-      // Daily at specific hour
-      const [, hour] = cronExpression.split(' ');
-      const hourNum = parseInt(hour, 10);
-
-      const next = new Date(now);
-      next.setHours(hourNum, 0, 0, 0);
-
-      // If the time has already passed today, schedule for tomorrow
-      if (next <= now) {
-        next.setDate(next.getDate() + 1);
-      }
-
-      return next.toISOString();
-    }
-
-    // Default: add 24 hours
-    const next = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-    return next.toISOString();
   }
 
   /**

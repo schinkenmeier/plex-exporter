@@ -17,6 +17,7 @@ const createApp = (items: any[]) => {
       fromCache: false,
       meta: {},
     })),
+    invalidate: vi.fn(),
     setTmdbService: vi.fn(),
   };
 

@@ -113,6 +113,8 @@ const envSchema = z
     ADMIN_PASSWORD: optionalString,
     RESEND_API_KEY: optionalString,
     RESEND_FROM_EMAIL: optionalEmail,
+    SCHEDULER_TIMEZONE: optionalString,
+    TZ: optionalString,
   })
   .superRefine((env, ctx) => {
     const hasPartialTautulliConfiguration = Boolean(env.TAUTULLI_URL) !== Boolean(env.TAUTULLI_API_KEY);
@@ -165,6 +167,9 @@ export const config = {
   },
   hero: {
     policyPath: rawConfig.HERO_POLICY_PATH || null,
+  },
+  scheduler: {
+    timezone: rawConfig.SCHEDULER_TIMEZONE || rawConfig.TZ || 'Europe/Berlin',
   },
   tautulli: rawConfig.TAUTULLI_URL
     ? {

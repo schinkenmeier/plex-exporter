@@ -6,6 +6,16 @@ const originalLocalStorage = global.localStorage;
 const originalSessionStorage = global.sessionStorage;
 const originalWindow = global.window;
 
+function withSilencedConsole(fn){
+  const originalWarn = console.warn;
+  console.warn = () => {};
+  try{
+    return fn();
+  }finally{
+    console.warn = originalWarn;
+  }
+}
+
 function createDocumentStub(){
   return {
     getElementById: () => null,
@@ -74,16 +84,20 @@ afterEach(() => {
 
 describe('watchlist storage resilience', () => {
   it('handles storage read failures when initializing UI', () => {
-    global.sessionStorage.getItem = () => { throw new Error('read failed'); };
-    assert.doesNotThrow(() => initUi());
-    assert.strictEqual(count(), 0);
+    withSilencedConsole(() => {
+      global.sessionStorage.getItem = () => { throw new Error('read failed'); };
+      assert.doesNotThrow(() => initUi());
+      assert.strictEqual(count(), 0);
+    });
   });
 
   it('continues to toggle items when storage writes fail', () => {
-    global.sessionStorage.setItem = () => { throw new Error('quota exceeded'); };
-    const item = { title: 'Testfilm', type: 'movie', ids: { imdb: 'tt123' }, ratingKey: 42 };
-    assert.doesNotThrow(() => toggle(item));
-    assert.strictEqual(isSaved(item), true);
+    withSilencedConsole(() => {
+      global.sessionStorage.setItem = () => { throw new Error('quota exceeded'); };
+      const item = { title: 'Testfilm', type: 'movie', ids: { imdb: 'tt123' }, ratingKey: 42 };
+      assert.doesNotThrow(() => toggle(item));
+      assert.strictEqual(isSaved(item), true);
+    });
   });
 });
 
