@@ -6,6 +6,45 @@ type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 type LogContext = Record<string, unknown> | undefined;
 const REDACTED = '[redacted]';
 const SENSITIVE_KEY_PATTERN = /(api[-_]?key|token|authorization|password|secret)/i;
+const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+\-.]*:\/\//i;
+
+export const redactUrlQueryString = (value: string): string => {
+  if (!value.includes('?')) {
+    return value;
+  }
+
+  try {
+    const isAbsoluteUrl = ABSOLUTE_URL_PATTERN.test(value);
+    const isProtocolRelativeUrl = value.startsWith('//');
+    const hasLeadingSlash = value.startsWith('/');
+    const parsed = new URL(value, 'http://logger.local');
+    let redacted = false;
+
+    for (const key of [...parsed.searchParams.keys()]) {
+      if (SENSITIVE_KEY_PATTERN.test(key)) {
+        parsed.searchParams.set(key, REDACTED);
+        redacted = true;
+      }
+    }
+
+    if (!redacted) {
+      return value;
+    }
+
+    if (isAbsoluteUrl) {
+      return parsed.toString();
+    }
+
+    const pathAndQuery = `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    if (isProtocolRelativeUrl) {
+      return `//${parsed.host}${pathAndQuery}`;
+    }
+
+    return hasLeadingSlash ? pathAndQuery : pathAndQuery.replace(/^\//, '');
+  } catch {
+    return value;
+  }
+};
 
 const consoleMethod: Record<LogLevel, (message?: any, ...optionalParams: any[]) => void> = {
   debug: console.debug.bind(console),
@@ -37,6 +76,10 @@ const serialize = (context: LogContext) => {
 
         if (typeof value === 'bigint') {
           return value.toString();
+        }
+
+        if (typeof value === 'string') {
+          return redactUrlQueryString(value);
         }
 
         return value;

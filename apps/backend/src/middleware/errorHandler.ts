@@ -1,7 +1,7 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 import { ZodError } from 'zod';
 
-import logger from '../services/logger.js';
+import logger, { redactUrlQueryString } from '../services/logger.js';
 
 export interface HttpErrorOptions extends ErrorOptions {
   details?: unknown;
@@ -35,14 +35,42 @@ const toErrorLog = (error: unknown) => {
   return { value: error };
 };
 
+const getRequestPathname = (originalUrl: string): string => {
+  try {
+    return new URL(originalUrl, 'http://request.local').pathname;
+  } catch {
+    return originalUrl.split('?')[0] ?? originalUrl;
+  }
+};
+
+const noisyRequestPathPatterns = [
+  /^\/health(?:\/|$)/,
+  /^\/dist(?:\/|$)/,
+  /^\/admin\/api\/logs(?:\/|$)/,
+  /^\/admin\/api\/tautulli\/sync\/live\/(?:state|stream)(?:\/|$)/,
+];
+
+const shouldSkipRequestLog = (originalUrl: string, statusCode: number): boolean => {
+  if (statusCode >= 400) {
+    return false;
+  }
+
+  const pathname = getRequestPathname(originalUrl);
+  return noisyRequestPathPatterns.some(pattern => pattern.test(pathname));
+};
+
 export const requestLogger: RequestHandler = (req, res, next) => {
   const start = process.hrtime.bigint();
 
   res.on('finish', () => {
+    if (shouldSkipRequestLog(req.originalUrl, res.statusCode)) {
+      return;
+    }
+
     const durationMs = Number(process.hrtime.bigint() - start) / 1_000_000;
     logger.info('Request completed', {
       method: req.method,
-      path: req.originalUrl,
+      path: redactUrlQueryString(req.originalUrl),
       statusCode: res.statusCode,
       durationMs: Number.isFinite(durationMs) ? Number(durationMs.toFixed(2)) : durationMs,
       contentLength: res.get('Content-Length') ?? undefined,
@@ -96,7 +124,7 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
   logger.error('Request failed', {
     request: {
       method: req.method,
-      path: req.originalUrl,
+      path: redactUrlQueryString(req.originalUrl),
     },
     statusCode,
     error: toErrorLog(err),
