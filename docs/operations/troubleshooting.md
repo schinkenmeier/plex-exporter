@@ -1,30 +1,61 @@
-# Betrieb: Troubleshooting
+# Troubleshooting
 
 ## Backend ist unhealthy
-- `docker logs` prüfen
-- Port und Health-Endpunkt prüfen
-- SQLite-Pfad und Mount prüfen
 
-## Frontend liefert HTML statt JSON
-- Caddy-/Cloudflare-Regeln prüfen
-- sicherstellen, dass `/config/*.json` und andere JSON-Dateien nicht im SPA-Fallback landen
+- Logs prüfen: `docker compose logs backend`.
+- Healthcheck direkt prüfen: `/health`.
+- `BACKEND_SQLITE_PATH` und `BACKEND_DATA_PATH` prüfen.
+- Sicherstellen, dass der Container in `/app/data/sqlite` schreiben kann.
 
-## Keine Daten im Katalog
-- Datenbank leer oder Sync nie gelaufen
-- Tautulli nicht konfiguriert oder Bibliotheksabschnitte nicht ausgewählt
-- Admin-UI prüfen: Dashboard, Tautulli, Diagnostics
+## Lokaler Backend-Start bricht wegen Admin-Assets ab
 
-## Bilder fehlen
-- Export-/Cover-Pfade fehlen
-- `/api/thumbnails/*` ist extern blockiert
-- Container hat keinen Zugriff auf den Daten-Mount
+Vorher bauen:
 
-## GHCR-Images lassen sich nicht ziehen
-- Registry-Login und Berechtigungen prüfen
-- richtigen Owner/Tag verwenden
+```bash
+npm run build --workspace @plex-exporter/frontend
+```
 
-## Weitere Referenzen
-- `docker-compose.md`
-- `cloudflare.md`
-- `unraid.md`
-- `../reference/runtime-paths.md`
+Das Backend erwartet `apps/frontend/public/admin.html` und `apps/frontend/public/dist`.
+
+## Lokale Tests scheitern mit `better_sqlite3.node`
+
+Die lokale native Abhängigkeit passt nicht zur aktiven Node-Version.
+
+```bash
+npm ci
+npm rebuild better-sqlite3 --workspace @plex-exporter/backend
+```
+
+Node `24.x` verwenden.
+
+## Katalog zeigt keine Daten
+
+- Admin-UI unter `/admin` prüfen.
+- Tautulli-Konfiguration und Verbindung prüfen.
+- Ausgewählte Library Sections prüfen.
+- Letzten manuellen oder geplanten Sync prüfen.
+- SQLite-Datei und Tabellen über Admin-Datenbankansicht prüfen.
+
+## Bilder oder Thumbnails fehlen
+
+- `/api/thumbnails/*` extern erreichbar machen.
+- Daten-Mount und `exports`-Pfad prüfen.
+- Bei Tautulli-Bildern URL/API-Key und Netzwerkzugriff prüfen.
+
+## Frontend lädt HTML statt JSON
+
+- Caddy-/Cloudflare-Regeln prüfen.
+- `/config/*.json` und `/*.json` dürfen nicht auf `index.html` oder Login-Seiten fallen.
+- Direkt testen: `/config/frontend.json`, `/api/v1/movies`, `/health`.
+
+## Admin/Auth wirkt falsch
+
+- `ADMIN_USERNAME` und `ADMIN_PASSWORD` müssen gemeinsam gesetzt sein.
+- Env-Werte haben Vorrang vor DB-gespeicherten Admin-/Integrationswerten.
+- `/libraries` ist separat über `API_TOKEN` geschützt, wenn gesetzt.
+
+## Weiterführend
+
+- Cloudflare: [cloudflare.md](cloudflare.md)
+- Pfade: [../reference/runtime-paths.md](../reference/runtime-paths.md)
+- Konfiguration: [../reference/configuration.md](../reference/configuration.md)

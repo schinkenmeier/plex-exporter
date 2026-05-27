@@ -1,39 +1,47 @@
-# Benutzerhandbuch: Erste Inbetriebnahme
+# Erste Inbetriebnahme
 
-## Geeigneten Betriebsmodus wählen
-- Für schnelle lokale Nutzung oder Tests: Docker Compose
-- Für Unraid: `deploy/unraid/` plus `../operations/unraid.md`
-- Für Entwicklung: `../development/local-setup.md`
+## Empfohlene Modi
 
-## Docker Compose in Kurzform
-1. Root-`.env` aus `.env.example` erzeugen.
-2. Wichtige Werte setzen:
-   - Datenpfade
-   - Admin-Zugang
-   - optional Tautulli-, TMDB- und Resend-Zugang
-3. Stack starten:
-   ```bash
-   docker compose up --build
-   ```
-4. Öffnen:
-   - Katalog: `http://localhost`
-   - Health: `http://localhost/health`
+- Docker Compose: schnellster vollständiger Betrieb mit Frontend, Backend und Caddy.
+- Unraid: Compose-Bundle unter [../../deploy/unraid/](../../deploy/unraid/), Details in [../operations/unraid.md](../operations/unraid.md).
+- Lokaler Source-Run: Entwicklung am Backend/Frontend, siehe [../development/local-setup.md](../development/local-setup.md).
 
-## Lokaler Source-Run in Kurzform
-1. `npm ci`
-2. `cp apps/backend/.env.example apps/backend/.env`
-3. `npm run build --workspace @plex-exporter/frontend`
-4. `npm run dev --workspace @plex-exporter/backend`
-5. Browser: `http://localhost:4000`
+## Docker Compose
 
-## Was du zuerst konfigurieren solltest
-- Admin-Zugang (`ADMIN_USERNAME`, `ADMIN_PASSWORD`)
-- SQLite-Pfad bzw. Daten-Mount
-- optional Tautulli für Datenimport
-- optional TMDB für Anreicherung
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+Danach:
+
+- Katalog: `http://localhost`
+- Admin: `http://localhost/admin`
+- Health: `http://localhost/health`
+
+## Lokaler Source-Run
+
+```bash
+npm ci
+cp apps/backend/.env.example apps/backend/.env
+npm run build --workspace @plex-exporter/frontend
+npm run dev --workspace @plex-exporter/backend
+```
+
+Danach:
+
+- Backend/API/Admin: `http://localhost:4000`
+- Admin: `http://localhost:4000/admin`
+- Health: `http://localhost:4000/health`
+
+Für den vollständigen Katalog mit statischem Frontend ist Docker/Caddy der dokumentierte Betriebsweg.
+
+## Zuerst konfigurieren
+
+- Admin-Zugang: `ADMIN_USERNAME` und `ADMIN_PASSWORD`
+- SQLite-Pfad oder Daten-Mount
+- optional Tautulli für Import
+- optional TMDB für Metadaten
 - optional Resend für Mail-Funktionen
 
-## Wichtiger Hinweis zu Pfaden
-- Im Repository gibt es kein dauerhaft versioniertes Root-`data/`.
-- Je nach Startmodus entstehen Daten lokal, unter einem Host-Mount oder im Container unter `/app/data`.
-- Die kanonische Pfadreferenz steht unter `../reference/runtime-paths.md`.
+Variablen stehen in [../reference/environment-variables.md](../reference/environment-variables.md), Pfade in [../reference/runtime-paths.md](../reference/runtime-paths.md).

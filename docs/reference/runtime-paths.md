@@ -1,23 +1,22 @@
-# Referenz: Runtime-Pfade
+# Runtime-Pfade
 
 ## Grundsatz
-Dieses Repository hat bewusst keine versionierten Root-Verzeichnisse `config/` oder `data/` als feste Projektbestandteile. Je nach Laufzeitmodus entstehen unterschiedliche reale Pfade.
 
-## Frontend-Konfiguration
-| Zweck | Versionierter Pfad | Laufzeitpfad |
-| --- | --- | --- |
-| Frontend-Config-Template | `apps/frontend/config/frontend.json.sample` | n/a |
-| erzeugte Runtime-Konfiguration | n/a | `apps/frontend/public/config/frontend.json` |
-| erzeugtes Beispiel in `public/` | n/a | `apps/frontend/public/config/frontend.json.sample` |
+Es gibt kein versioniertes Root-`data/` oder Root-`config/` als feste Projektstruktur. Diese Pfade entstehen je nach Laufzeitmodus lokal, im Container oder unter einem Host-Mount.
 
 ## Lokaler Source-Run
+
 | Zweck | Pfad |
 | --- | --- |
-| Backend-ENV | `apps/backend/.env` |
+| Backend-Env | `apps/backend/.env` |
 | SQLite-Default | `data/sqlite/plex-exporter.sqlite` |
-| Exportsuche | `data/exports` |
+| Rate-Limit-DB | neben der SQLite-Datei als `rate-limit.sqlite` |
+| Frontend-Build | `apps/frontend/public/dist` |
+| Frontend-Runtime-Config | `apps/frontend/public/config/frontend.json` |
+| Hero-Policy | `apps/frontend/public/hero.policy.json` oder `HERO_POLICY_PATH` |
 
-## Docker-Compose-Betrieb
+## Docker Compose
+
 | Zweck | Host | Container |
 | --- | --- | --- |
 | Backend-Datenwurzel | `BACKEND_DATA_PATH` | `/app/data` |
@@ -27,8 +26,11 @@ Dieses Repository hat bewusst keine versionierten Root-Verzeichnisse `config/` o
 | Caddy-Konfiguration | `CADDY_CONFIG_PATH` | `/config` |
 
 ## Unraid
-Unraid folgt demselben Container-Modell wie Docker Compose, nutzt aber typischerweise absolute Appdata-Pfade unter `/mnt/user/appdata/plex-exporter/...`.
 
-## Hero-Policy
-- versioniert: `apps/frontend/public/hero.policy.json`
-- optionaler Backend-Override: `HERO_POLICY_PATH`
+Unraid folgt demselben Container-Modell, nutzt aber typischerweise:
+
+- Backend: `/mnt/user/appdata/plex-exporter/backend`
+- Caddy-Daten: `/mnt/user/appdata/plex-exporter/caddy/data`
+- Caddy-Konfiguration: `/mnt/user/appdata/plex-exporter/caddy/config`
+
+Siehe [../operations/unraid.md](../operations/unraid.md).

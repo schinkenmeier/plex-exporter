@@ -1,33 +1,52 @@
-# Referenz: Konfigurationsmodell
+# Konfiguration
 
-## Backend
-Das Backend liest Konfiguration aus zwei Ebenen:
+## Ebenen
+
+Das Backend liest Konfiguration aus:
+
 1. Umgebungsvariablen
-2. gespeicherte Werte in der Datenbank für ausgewählte Integrationen
+2. gespeicherten SQLite-Werten für ausgewählte Integrationen
 
-### Vorrang
-- ENV gewinnt vor Datenbankwerten.
-- Datenbankwerte dienen als persistente Betriebswerte für Admin-Workflows.
+Env-Werte haben Vorrang. Das ist besonders relevant für Tautulli, TMDB und Resend: Werte aus der Admin-UI können gespeichert sein, aber durch Env überschrieben werden.
 
-## Frontend
-Das Frontend lädt seine Runtime-Konfiguration beim Start als JSON.
+## Backend-Env
 
-### Relevante Orte
-- Template: `apps/frontend/config/frontend.json.sample`
-- erzeugte Runtime-Datei: `apps/frontend/public/config/frontend.json`
+Lokaler Source-Run nutzt [../../apps/backend/.env.example](../../apps/backend/.env.example). Docker Compose nutzt Root-[../../.env.example](../../.env.example), dessen `BACKEND_*`-Variablen auf Backend-Env gemappt werden.
 
-### Relevante Inhalte
-- `startView`
-- `lang`
-- `features.*`
+Wichtige Gruppen:
 
-## Admin-UI und gespeicherte Betriebswerte
-Die Admin-Oberfläche kann unter anderem Werte für folgende Integrationen in der Datenbank halten:
-- TMDB
-- Resend
-- Tautulli
-- Watchlist-Admin-E-Mail
+- Server: `NODE_ENV`, `PORT`
+- Datenbank: `SQLITE_PATH`
+- Auth: `API_TOKEN`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`
+- Integrationen: `TAUTULLI_URL`, `TAUTULLI_API_KEY`, `TMDB_ACCESS_TOKEN`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`
+- Jobs: `SCHEDULER_TIMEZONE`, `TZ`
+- Hero: `HERO_POLICY_PATH`
+
+Die vollständige Liste steht in [environment-variables.md](environment-variables.md).
+
+## Paarregeln
+
+Diese Werte müssen gemeinsam gesetzt werden:
+
+- `ADMIN_USERNAME` und `ADMIN_PASSWORD`
+- `TAUTULLI_URL` und `TAUTULLI_API_KEY`
+- `RESEND_API_KEY` und `RESEND_FROM_EMAIL`
+
+## Frontend-Runtime-Konfiguration
+
+- Template: [../../apps/frontend/config/frontend.json.sample](../../apps/frontend/config/frontend.json.sample)
+- Build-Ziel: `apps/frontend/public/config/frontend.json`
+- Geladene URL im Browser: `/config/frontend.json`
+
+Der Build kopiert zuerst ein vorhandenes `frontend.json`, sonst das Sample. Kandidaten liegen in `apps/frontend/config/` und optional in einem nicht versionierten Root-`config/frontend/`.
 
 ## Hero-Policy
-- Standarddatei: `apps/frontend/public/hero.policy.json`
-- optionaler Override im Backend über `HERO_POLICY_PATH`
+
+- Standard: [../../apps/frontend/public/hero.policy.json](../../apps/frontend/public/hero.policy.json)
+- Backend-Override: `HERO_POLICY_PATH`
+
+Die Hero-Pipeline sucht zusätzlich typische Source-Run-Pfade, wenn kein Override gesetzt ist.
+
+## Admin-UI
+
+Die Admin-UI kann Betriebswerte für Tautulli, TMDB, Resend und Watchlist-E-Mail speichern. Tautulli nutzt die Tabelle `tautulli_config` als aktuelle Persistenz; alte `settings`-Einträge sind nur Legacy-Fallback.

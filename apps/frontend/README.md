@@ -1,25 +1,33 @@
 # Frontend Workspace
 
-Dieses Paket enthält das öffentliche Katalog-Frontend und den Build der Admin-Oberfläche.
+Statisches Frontend für den öffentlichen Katalog und Client-Code für die Admin-UI.
 
-## Wichtige Bereiche
-- `src/main.js`: Bootstrap für den öffentlichen Katalog.
-- `src/admin/`: modulare Admin-Oberfläche.
-- `public/`: auslieferbare HTML-Dateien, Assets, Runtime-Config und Build-Output.
-- `scripts/build.mjs`: esbuild-Build inklusive Config-Kopie nach `public/config/`.
-- `tests/__tests__/`: Frontend-Tests.
+## Bereiche
+
+- `src/main.js`: öffentlicher Katalog.
+- `src/admin/main.ts`: Admin-App.
+- `src/core/` und `src/features/`: Katalog-Bootstrap, State, Grid, Filter, Hero, Modal, Watchlist, Newsletter.
+- `public/`: HTML, Assets, Hero-Policy, Runtime-Config, Build-Ziel.
+- `scripts/build.mjs`: esbuild-Build, Bundle-Limits, Config-Kopie.
 
 ## Befehle
-- `npm run build --workspace @plex-exporter/frontend`
-- `npm run build:watch --workspace @plex-exporter/frontend`
-- `npm run test --workspace @plex-exporter/frontend`
-- `npm run test:coverage --workspace @plex-exporter/frontend`
 
-## Hinweise
-- Das Backend erwartet die gebauten Assets in `apps/frontend/public`.
-- Das versionierte Frontend-Config-Template liegt unter `apps/frontend/config/frontend.json.sample`.
-- Die Runtime-Datei in `apps/frontend/public/config/` wird durch den Build erzeugt.
+```bash
+npm run build --workspace @plex-exporter/frontend
+npm run build:watch --workspace @plex-exporter/frontend
+npm run test --workspace @plex-exporter/frontend
+npm run type-check --workspace @plex-exporter/frontend
+```
+
+## Build-Realitäten
+
+- Build-Ziel ist `apps/frontend/public/dist`.
+- Runtime-Konfiguration wird nach `apps/frontend/public/config/frontend.json` kopiert.
+- Im Docker-Betrieb liefert Caddy dieses `public/`-Verzeichnis aus.
+- Das Backend erwartet dieselben Assets für `/admin` und `/dist`.
 
 ## Doku
-- Frontend-Entwicklerdoku: `../../docs/development/frontend.md`
-- Konfigurations- und Pfadreferenz: `../../docs/reference/`
+
+- Frontend-Details: [../../docs/development/frontend.md](../../docs/development/frontend.md)
+- Architektur: [../../docs/development/architecture.md](../../docs/development/architecture.md)
+- Konfiguration: [../../docs/reference/configuration.md](../../docs/reference/configuration.md)

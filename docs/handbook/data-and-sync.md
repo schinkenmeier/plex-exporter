@@ -1,26 +1,27 @@
-# Benutzerhandbuch: Daten und Synchronisation
+# Daten und Synchronisation
 
-## Primärer Datenpfad
-Die aktive Katalogausgabe des Projekts basiert auf der SQLite-Datenbank, die das Backend über `/api/v1/*` ausliefert.
+## Normaler Datenfluss
 
-## Tautulli als Hauptquelle
-Der reguläre Weg für aktuelle Bibliotheksdaten ist:
-1. Tautulli in der Admin-UI oder per ENV konfigurieren.
-2. Bibliotheksbereiche auswählen.
-3. Manuellen Sync auslösen oder Zeitpläne anlegen.
-4. Ergebnisse werden in SQLite persistiert und über die API sichtbar.
+```text
+Tautulli -> Sync-Service -> SQLite -> /api/v1/* -> Frontend
+```
 
-## Covers und Export-Artefakte
-- Bilddateien und exportnahe Artefakte liegen je nach Laufzeitmodell unter einem `exports`-Pfad.
-- Im Container ist das typischerweise `/app/data/exports`.
-- Bei lokalen Source-Runs und bei Docker-Bind-Mounts unterscheiden sich die Host-Pfade. Die genaue Matrix steht unter `../reference/data-layout.md`.
+Tautulli ist die Hauptquelle für Bibliotheksdaten. Der Sync persistiert Filme, Serien, Staffeln, Episoden, Cast, Library Sections, Snapshots und weitere Betriebsdaten in SQLite.
 
-## Serien-Splitter
-- `tools/split_series.mjs` verarbeitet einen Serien-Gesamtexport.
-- Das Ergebnis ist `series_index.json` plus `details/<ratingKey>.json`.
-- Dieser Ablauf ist relevant für exportbasierte oder legacy-nahe Datenpflege, nicht für den normalen Tautulli-Sync-Pfad.
+## Sync-Bedienung
 
-## Hero-Policy
-- Die Hero-Rotation wird über `hero.policy.json` gesteuert.
-- Für Nutzer ist vor allem relevant, dass diese Datei das Verhalten der Highlights bestimmt.
-- Die technische Konfigurationslogik steht unter `../reference/configuration.md`.
+1. Tautulli per Env oder Admin-UI konfigurieren.
+2. Verbindung in der Admin-UI testen.
+3. Library Sections auswählen.
+4. Manuellen Sync starten oder Zeitplan anlegen.
+5. Ergebnis im Katalog, in `/api/v1/*` oder in der Admin-Datenbankansicht prüfen.
+
+## Bilder und Exporte
+
+Cover und exportnahe Artefakte liegen je nach Modus unter einem `exports`-Pfad. Im Container ist das typischerweise `/app/data/exports`, auf dem Host entsprechend unter `BACKEND_DATA_PATH`.
+
+Die genaue Matrix steht in [../reference/runtime-paths.md](../reference/runtime-paths.md) und [../reference/data-layout.md](../reference/data-layout.md).
+
+## Legacy-/Tooling-Pfad
+
+`tools/split_series.mjs` verarbeitet einen Serien-Gesamtexport und schreibt `series_index.json` plus `details/<ratingKey>.json`. Das ist Tooling für exportnahe Daten, nicht der normale produktive Tautulli-Sync.

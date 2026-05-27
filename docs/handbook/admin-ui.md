@@ -1,27 +1,26 @@
-# Benutzerhandbuch: Admin-Oberfläche
+# Admin-UI
 
 ## Zugriff
-- Die Admin-Oberfläche liegt unter `/admin`.
-- Sie ist per Basic Auth geschützt und benötigt `ADMIN_USERNAME` und `ADMIN_PASSWORD`.
 
-## Bereiche der Admin-UI
-- Dashboard: Status, Laufzeit, Speicher- und Datenbankkennzahlen
-- Config: Konfigurationen und gespeicherte Werte für TMDB, Resend, Watchlist-E-Mail und weitere Betriebsdaten
-- Logs: gepufferte Laufzeitlogs
-- Database: Tabellen-Explorer für SQLite
-- Tautulli: Verbindungsprüfung, Bibliotheksauswahl, manueller Sync, Zeitpläne, Snapshots
-- Diagnostics: Tests für zentrale Integrationen
+Die Admin-UI liegt unter `/admin`. Sie ist nur nutzbar, wenn `ADMIN_USERNAME` und `ADMIN_PASSWORD` gemeinsam gesetzt sind; sonst antwortet das Backend mit `503`.
 
-## Wichtige Betriebslogik
-- Einige Werte können über die Admin-UI in der Datenbank gespeichert werden.
-- Umgebungsvariablen haben Vorrang vor gespeicherten DB-Werten.
-- Änderungen an Tautulli, TMDB oder Resend wirken je nach Bereich sofort oder nach Neuinitialisierung.
+## Bereiche
 
-## Wann diese Oberfläche gedacht ist
-- für Betrieb und Fehlersuche
-- für produktionsnahe Konfiguration
-- nicht als Ersatz für lokale Entwicklerwerkzeuge
+- Dashboard: Laufzeit-, System- und Datenbankstatus.
+- Config: maskierte Laufzeitkonfiguration und gespeicherte Integrationswerte.
+- Logs: gepufferte Backend-Logs.
+- Database: SQLite-Tabellenansicht mit begrenzten Abfragen.
+- Tautulli: Verbindung, Library Sections, manueller Sync, Live-Status, Zeitpläne, Snapshots.
+- Diagnostics: Tests für Datenbank und Integrationen.
 
-## Weiterführend
-- Konfigurationsmodell: `../reference/configuration.md`
-- Schnittstellen und Oberflächen: `../reference/interfaces.md`
+## Konfigurationslogik
+
+- Env-Werte haben Vorrang vor DB-Werten.
+- Tautulli kann per Env oder Admin-UI konfiguriert werden; gespeichert wird aktuell in `tautulli_config`.
+- TMDB und Resend können ebenfalls aus Env oder gespeicherten Werten kommen.
+
+## Siehe auch
+
+- Konfiguration: [../reference/configuration.md](../reference/configuration.md)
+- Schnittstellen: [../reference/interfaces.md](../reference/interfaces.md)
+- Troubleshooting: [../operations/troubleshooting.md](../operations/troubleshooting.md)

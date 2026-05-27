@@ -1,28 +1,33 @@
-# Benutzerhandbuch: Überblick
+# Überblick
 
-Dieses Handbuch richtet sich an Menschen, die Plex Exporter benutzen, konfigurieren oder im Alltag betreiben wollen, ohne sich durch den Quellcode arbeiten zu müssen.
+Plex Exporter stellt einen webbasierten Plex-Katalog mit Admin-Oberfläche bereit. Die laufende Anwendung besteht aus statischem Frontend, Backend-API, SQLite-Datenbank und optionalen Integrationen.
 
-## Was Plex Exporter bereitstellt
-- einen webbasierten Katalog für Filme und Serien
-- Filter, Suche und Detailansichten
-- eine Watchlist im Browser
-- optionale Newsletter- und E-Mail-Flows
-- eine geschützte Admin-Oberfläche für Betrieb, Konfiguration und Tautulli-Sync
+## Sichtbare Flächen
 
-## Welche Teile du als Nutzer siehst
-- `/`: der öffentliche Katalog
-- `/admin`: die geschützte Admin-Oberfläche
-- `/health`: einfacher Betriebscheck
+- `/`: öffentlicher Katalog im Caddy-/Frontend-Betrieb.
+- `/admin`: geschützte Admin-UI.
+- `/health`: Backend-Healthcheck.
+- `/api/v1/*`: Katalogdaten für das Frontend.
 
-## Begriffe
-- `Admin-UI`: die Verwaltungsoberfläche unter `/admin`
-- `Tautulli-Sync`: Übernahme von Bibliotheksdaten aus Tautulli in die SQLite-Datenbank
-- `Hero-Policy`: JSON-Datei für Regeln der Hero-Rotation
-- `series_index.json`: vorbereiteter Serienindex für exportbasierte/legacy-nahe Datenabläufe
+## Kernfunktionen
 
-## Wie du weiterlesen solltest
-- Erste Inbetriebnahme: `getting-started.md`
-- Bedienung des Katalogs: `using-the-catalog.md`
-- Admin-Oberfläche: `admin-ui.md`
-- Datenpflege und Sync: `data-and-sync.md`
-- Häufige Probleme: `troubleshooting.md`
+- Filme und Serien anzeigen, filtern, suchen und sortieren.
+- Detailansichten mit Metadaten, Cast, Staffeln und Episoden.
+- Hero-Bereich für Highlights.
+- Browser-lokale Watchlist.
+- Optionale Newsletter-, Watchlist- und Welcome-Mail-Flows.
+- Admin-UI für Status, Konfiguration, Logs, Datenbankansicht, Tautulli-Sync und Diagnosen.
+
+## Datenquellen
+
+- Tautulli ist der normale Importpfad für Bibliotheksdaten.
+- SQLite ist die aktive Persistenz für Katalog- und Betriebsdaten.
+- TMDB kann Metadaten ergänzen.
+- Resend wird nur für Mail-Funktionen benötigt.
+
+## Weiter
+
+- Erste Schritte: [getting-started.md](getting-started.md)
+- Daten und Sync: [data-and-sync.md](data-and-sync.md)
+- Admin-UI: [admin-ui.md](admin-ui.md)
+- Architektur: [../development/architecture.md](../development/architecture.md)

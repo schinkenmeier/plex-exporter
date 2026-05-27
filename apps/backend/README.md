@@ -1,44 +1,39 @@
 # Backend Workspace
 
-Dieses Paket enthält das Express-/TypeScript-Backend für API, Admin-Oberfläche, Tautulli-Synchronisation, Scheduler und SQLite-Zugriff.
+Express-/TypeScript-Backend für API, Admin-UI, Tautulli-Sync, Scheduler, SQLite/Drizzle und Integrationen.
+
+## Einstiegspunkte
+
+- `src/server.ts`: Prozessstart.
+- `src/createServer.ts`: Runtime, Middleware, Routen, Admin-Assets.
+- `src/config/index.ts`: Env-Parsing und Konfigurationsobjekt.
+- `src/routes/`: Public-, Protected- und Admin-Routen.
+- `src/services/`: Tautulli, Scheduler, Hero, TMDB, Resend, Logging.
+- `src/repositories/`: SQLite/Drizzle-Zugriff.
 
 ## Lokaler Start
-1. Abhängigkeiten installieren:
-   ```bash
-   npm ci
-   ```
-2. Backend-Umgebung anlegen:
-   ```bash
-   cp apps/backend/.env.example apps/backend/.env
-   ```
-3. Frontend bauen, damit Admin-Assets verfügbar sind:
-   ```bash
-   npm run build --workspace @plex-exporter/frontend
-   ```
-4. Backend starten:
-   ```bash
-   npm run dev --workspace @plex-exporter/backend
-   ```
 
-## Wichtige Befehle
-- `npm run dev --workspace @plex-exporter/backend`
-- `npm run start --workspace @plex-exporter/backend`
-- `npm run build --workspace @plex-exporter/backend`
-- `npm run test --workspace @plex-exporter/backend`
-- `npm run test:coverage --workspace @plex-exporter/backend`
+```bash
+npm ci
+cp apps/backend/.env.example apps/backend/.env
+npm run build --workspace @plex-exporter/frontend
+npm run dev --workspace @plex-exporter/backend
+```
 
-## Lokale Dateien
-- `src/server.ts`: Prozess-Entry.
-- `src/createServer.ts`: Server-Zusammenbau, Middleware, Router und Admin-UI-Einbindung.
-- `src/config/index.ts`: ENV-Parsing und Konfigurationsobjekt.
-- `src/routes/`: Public-, Protected- und Admin-Routen.
-- `tests/`: aktive Backend-Test-Suite.
+Der Frontend-Build ist nötig, weil das Backend `/admin` und `/dist` aus `apps/frontend/public` einbindet.
+
+## Befehle
+
+```bash
+npm run dev --workspace @plex-exporter/backend
+npm run build --workspace @plex-exporter/backend
+npm run test --workspace @plex-exporter/backend
+npm run type-check --workspace @plex-exporter/backend
+```
 
 ## Doku
-- Zentrale Entwicklerdoku: `../../docs/development/backend.md`
-- Architektur und Datenfluss: `../../docs/development/architecture.md`
-- ENV- und Pfadreferenz: `../../docs/reference/`
 
-## Hinweise
-- Das Backend liefert die gebauten Frontend-Assets aus `apps/frontend/public` aus.
-- Die lokale `.env` ist für Source-Runs gedacht; Docker Compose nutzt stattdessen die Root-`.env`.
+- Lokales Setup: [../../docs/development/local-setup.md](../../docs/development/local-setup.md)
+- Architektur: [../../docs/development/architecture.md](../../docs/development/architecture.md)
+- Konfiguration: [../../docs/reference/configuration.md](../../docs/reference/configuration.md)
+- Schnittstellen: [../../docs/reference/interfaces.md](../../docs/reference/interfaces.md)

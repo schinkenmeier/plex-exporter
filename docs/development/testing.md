@@ -1,22 +1,39 @@
-# Entwicklung: Tests
+# Tests und Qualität
 
 ## Root-Befehle
-- `npm test`
-- `npm run build`
-- `npm run type-check`
-- `npm run lint`
-- `npm run docs:check`
 
-## Frontend
-- Runner: Node Test Runner
-- Pfad: `apps/frontend/tests/__tests__/`
+```bash
+npm test
+npm run build
+npm run type-check
+npm run lint
+npm run docs:check
+npm run text:check
+```
 
-## Backend
-- Runner: Vitest
-- Pfad: `apps/backend/tests/`
+## Workspace-Befehle
 
-## Wichtiger Kontext
-- Backend-Tests und lokaler Backend-Start können an nativen `better-sqlite3`-Binaries scheitern, wenn Node-Version und Build-Artefakt nicht zusammenpassen.
-- Lokal Node `24.x` verwenden; `.nvmrc`, `.npmrc`, `package.json`, CI und Dockerfiles sind darauf ausgerichtet.
-- Nach einem Node-Wechsel zuerst `npm ci` ausführen. `npm rebuild better-sqlite3 --workspace @plex-exporter/backend` ist nur ein Reparaturpfad, wenn lokale native Artefakte weiterhin zur falschen Node-ABI passen.
-- Frontend und Backend haben unterschiedliche Test-Runner; die Doku soll das klar benennen, statt vereinheitlichende Annahmen zu treffen.
+```bash
+npm run test --workspace @plex-exporter/backend
+npm run test:coverage --workspace @plex-exporter/backend
+npm run type-check --workspace @plex-exporter/backend
+
+npm run test --workspace @plex-exporter/frontend
+npm run test:coverage --workspace @plex-exporter/frontend
+npm run type-check --workspace @plex-exporter/frontend
+```
+
+## Runner
+
+- Backend: Vitest, Tests unter `apps/backend/tests/` und einzelne Co-located Tests unter `apps/backend/src/`.
+- Frontend: Node Test Runner, Tests unter `apps/frontend/tests/__tests__/`.
+- Doku-Links: `tools/check-doc-links.mjs`.
+- Deutsche Schreibweise: `tools/check-german-transliterations.mjs`.
+
+## Bekannte lokale Risiken
+
+- Backend-Tests nutzen SQLite und können an einer falschen lokalen `better-sqlite3`-ABI scheitern.
+- Node `24.x` verwenden; nach einem Node-Wechsel `npm ci` ausführen.
+- Wenn nur das native Binary defekt ist: `npm rebuild better-sqlite3 --workspace @plex-exporter/backend`.
+
+Siehe auch [local-setup.md](local-setup.md).
