@@ -6,10 +6,12 @@
 - `/api/v1/*`: Katalog-API
 - `/api/hero/:kind`: Hero-Endpunkte
 - `/api/thumbnails/*`: Bild- und Thumbnail-Auslieferung
-- `/api/watchlist/*`, `/api/welcome-email/*`, `/api/newsletter/*`
+- `/api/watchlist/*`
+- `/api/newsletter/subscribe`, `/api/newsletter/unsubscribe`
 
 ## Geschützte Flächen
 - `/admin/*`: Admin-Oberfläche und zugehörige API
+- `/admin/api/welcome-email/*`, `/admin/api/newsletter/*`: Welcome-Mail- und Newsletter-Betriebsfunktionen
 - `/admin/api/tautulli/*`: Tautulli-Konfiguration, Sync, Schedules, Snapshots
 - `/libraries`: token-geschützte Bibliotheksabfrage, wenn konfiguriert
 - `/media/*`: Basic-Auth-geschützte Medien-Endpunkte

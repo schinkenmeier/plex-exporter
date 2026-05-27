@@ -11,7 +11,10 @@ import { createHealthRouter } from './routes/health.js';
 import { createV1Router } from './routes/v1.js';
 import { createWatchlistRouter } from './routes/watchlist.js';
 import welcomeEmailRouter from './routes/welcomeEmail.js';
-import newsletterRouter from './routes/newsletter.js';
+import {
+  adminNewsletterRouter,
+  publicNewsletterRouter,
+} from './routes/newsletter.js';
 import {
   createTautulliService,
   type TautulliClient,
@@ -619,8 +622,7 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
     },
   }));
   app.use('/api/watchlist', createWatchlistRouter({ settingsRepository }));
-  app.use('/api/welcome-email', welcomeEmailRouter);
-  app.use('/api/newsletter', newsletterRouter);
+  app.use('/api/newsletter', rateLimiters.apiLimiter, publicNewsletterRouter);
 
   // Protected routes
   app.use(
@@ -657,6 +659,10 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
       adminUiDir,
     }),
   );
+
+  // Admin-only email operations; Basic Auth is enforced by the preceding /admin mount.
+  app.use('/admin/api/welcome-email', welcomeEmailRouter);
+  app.use('/admin/api/newsletter', adminNewsletterRouter);
 
   // Tautulli Sync routes (protected with Basic Auth)
   app.use(

@@ -1,0 +1,166 @@
+import express from 'express';
+import request from 'supertest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { createBasicAuthMiddleware } from '../../src/middleware/basicAuth.js';
+import { errorHandler } from '../../src/middleware/errorHandler.js';
+import { adminNewsletterRouter, publicNewsletterRouter } from '../../src/routes/newsletter.js';
+import welcomeEmailRouter from '../../src/routes/welcomeEmail.js';
+import { newsletterService } from '../../src/services/newsletterService.js';
+import { welcomeEmailService } from '../../src/services/welcomeEmailService.js';
+
+vi.mock('../../src/services/newsletterService.js', () => ({
+  newsletterService: {
+    subscribe: vi.fn(),
+    unsubscribe: vi.fn(),
+    getActiveSubscriptions: vi.fn(),
+    sendNewsletter: vi.fn(),
+    getStatistics: vi.fn(),
+    getRecentlyAddedMedia: vi.fn(),
+    getRecentDigests: vi.fn(),
+  },
+}));
+
+vi.mock('../../src/services/welcomeEmailService.js', () => ({
+  welcomeEmailService: {
+    hasReceivedWelcomeEmail: vi.fn(),
+    sendWelcomeEmail: vi.fn(),
+    getAllWelcomeEmails: vi.fn(),
+    deleteWelcomeEmailById: vi.fn(),
+    deleteWelcomeEmailsByEmail: vi.fn(),
+    clearWelcomeEmails: vi.fn(),
+    getStatistics: vi.fn(),
+  },
+}));
+
+const authHeader = `Basic ${Buffer.from('admin:secret').toString('base64')}`;
+
+const createApp = () => {
+  const app = express();
+  const basicAuth = createBasicAuthMiddleware({ username: 'admin', password: 'secret' });
+
+  app.use(express.json());
+  app.use('/api/newsletter', publicNewsletterRouter);
+  app.use('/admin', basicAuth, express.Router());
+  app.use('/admin/api/newsletter', adminNewsletterRouter);
+  app.use('/admin/api/welcome-email', welcomeEmailRouter);
+  app.use(errorHandler);
+
+  return app;
+};
+
+const sendRequest = (app: express.Express, method: string, path: string) => {
+  switch (method) {
+    case 'GET':
+      return request(app).get(path);
+    case 'POST':
+      return request(app).post(path);
+    case 'DELETE':
+      return request(app).delete(path);
+    default:
+      throw new Error(`Unsupported method: ${method}`);
+  }
+};
+
+describe('email route security boundary', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('keeps public newsletter subscribe and unsubscribe flows reachable without Basic Auth', async () => {
+    vi.mocked(newsletterService.subscribe).mockResolvedValue({
+      id: 'sub-1',
+      email: 'user@example.test',
+      mediaType: 'movie',
+      active: true,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+    });
+    vi.mocked(newsletterService.unsubscribe).mockResolvedValue(undefined);
+
+    const app = createApp();
+
+    const subscribeResponse = await request(app)
+      .post('/api/newsletter/subscribe')
+      .send({ email: 'user@example.test', mediaType: 'movie' });
+
+    expect(subscribeResponse.status).toBe(200);
+    expect(newsletterService.subscribe).toHaveBeenCalledWith('user@example.test', 'movie');
+
+    const unsubscribeResponse = await request(app)
+      .post('/api/newsletter/unsubscribe')
+      .send({ email: 'user@example.test' });
+
+    expect(unsubscribeResponse.status).toBe(200);
+    expect(newsletterService.unsubscribe).toHaveBeenCalledWith('user@example.test');
+  });
+
+  it.each([
+    ['GET', '/admin/api/newsletter/subscriptions'],
+    ['POST', '/admin/api/newsletter/send'],
+    ['GET', '/admin/api/newsletter/stats'],
+    ['GET', '/admin/api/newsletter/recent-media'],
+    ['GET', '/admin/api/newsletter/digests'],
+  ])('requires Basic Auth for %s %s', async (method, path) => {
+    const response = await sendRequest(createApp(), method, path);
+
+    expect(response.status).toBe(401);
+    expect(response.headers['www-authenticate']).toContain('Basic');
+  });
+
+  it('serves newsletter admin endpoints with valid Basic Auth', async () => {
+    vi.mocked(newsletterService.getStatistics).mockResolvedValue({
+      subscriptions: { total: 1, active: 1, inactive: 0 },
+      digests: { total: 0, totalRecipients: 0, averageRecipients: '0' },
+    });
+
+    const response = await request(createApp())
+      .get('/admin/api/newsletter/stats')
+      .set('Authorization', authHeader);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      success: true,
+      data: {
+        subscriptions: { total: 1, active: 1, inactive: 0 },
+        digests: { total: 0, totalRecipients: 0, averageRecipients: '0' },
+      },
+    });
+  });
+
+  it('does not expose welcome email operations on the public API path', async () => {
+    const response = await request(createApp())
+      .post('/api/welcome-email')
+      .send({ email: 'user@example.test' });
+
+    expect(response.status).toBe(404);
+    expect(welcomeEmailService.sendWelcomeEmail).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['POST', '/admin/api/welcome-email'],
+    ['GET', '/admin/api/welcome-email/check/user%40example.test'],
+    ['GET', '/admin/api/welcome-email/history'],
+    ['DELETE', '/admin/api/welcome-email/history/00000000-0000-4000-8000-000000000000'],
+    ['DELETE', '/admin/api/welcome-email/recipient/user%40example.test'],
+    ['DELETE', '/admin/api/welcome-email/history'],
+    ['GET', '/admin/api/welcome-email/stats'],
+  ])('requires Basic Auth for %s %s', async (method, path) => {
+    const response = await sendRequest(createApp(), method, path);
+
+    expect(response.status).toBe(401);
+    expect(response.headers['www-authenticate']).toContain('Basic');
+  });
+
+  it('serves welcome email admin endpoints with valid Basic Auth', async () => {
+    vi.mocked(welcomeEmailService.hasReceivedWelcomeEmail).mockResolvedValue(true);
+
+    const response = await request(createApp())
+      .get('/admin/api/welcome-email/check/user%40example.test')
+      .set('Authorization', authHeader);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ success: true, hasReceived: true });
+    expect(welcomeEmailService.hasReceivedWelcomeEmail).toHaveBeenCalledWith('user@example.test');
+  });
+});

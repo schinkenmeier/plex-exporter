@@ -573,7 +573,7 @@ export class AdminApiClient {
 export const adminApiClient = new AdminApiClient();
 
 class WelcomeEmailApiClient {
-  constructor(private readonly baseUrl: string = '/api/welcome-email') {}
+  constructor(private readonly baseUrl: string = `${ADMIN_API_BASE}/welcome-email`) {}
 
   private async request<T>(
     path: string,

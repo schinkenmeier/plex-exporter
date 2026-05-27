@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { newsletterService } from '../services/newsletterService.js';
 import logger from '../services/logger.js';
 
-const router = Router();
+export const publicNewsletterRouter = Router();
+export const adminNewsletterRouter = Router();
 
 // Validation schemas
 const subscribeSchema = z.object({
@@ -25,7 +26,7 @@ const sendNewsletterSchema = z.object({
  * POST /api/newsletter/subscribe
  * Subscribe to newsletter
  */
-router.post('/subscribe', async (req, res) => {
+publicNewsletterRouter.post('/subscribe', async (req, res) => {
   try {
     const { email, mediaType } = subscribeSchema.parse(req.body);
 
@@ -57,7 +58,7 @@ router.post('/subscribe', async (req, res) => {
  * POST /api/newsletter/unsubscribe
  * Unsubscribe from newsletter
  */
-router.post('/unsubscribe', async (req, res) => {
+publicNewsletterRouter.post('/unsubscribe', async (req, res) => {
   try {
     const { email } = unsubscribeSchema.parse(req.body);
 
@@ -92,10 +93,10 @@ router.post('/unsubscribe', async (req, res) => {
 });
 
 /**
- * GET /api/newsletter/subscriptions
- * Get all active subscriptions (admin only)
+ * GET /admin/api/newsletter/subscriptions
+ * Get all active subscriptions
  */
-router.get('/subscriptions', async (req, res) => {
+adminNewsletterRouter.get('/subscriptions', async (req, res) => {
   try {
     const mediaType = req.query.mediaType as 'movie' | 'tv' | undefined;
 
@@ -116,10 +117,10 @@ router.get('/subscriptions', async (req, res) => {
 });
 
 /**
- * POST /api/newsletter/send
- * Send newsletter to all active subscribers (admin only)
+ * POST /admin/api/newsletter/send
+ * Send newsletter to all active subscribers
  */
-router.post('/send', async (req, res) => {
+adminNewsletterRouter.post('/send', async (req, res) => {
   try {
     const { mediaType, limit, sinceDate } = sendNewsletterSchema.parse(req.body);
 
@@ -152,10 +153,10 @@ router.post('/send', async (req, res) => {
 });
 
 /**
- * GET /api/newsletter/stats
+ * GET /admin/api/newsletter/stats
  * Get newsletter statistics
  */
-router.get('/stats', async (req, res) => {
+adminNewsletterRouter.get('/stats', async (req, res) => {
   try {
     const stats = await newsletterService.getStatistics();
 
@@ -173,10 +174,10 @@ router.get('/stats', async (req, res) => {
 });
 
 /**
- * GET /api/newsletter/recent-media
+ * GET /admin/api/newsletter/recent-media
  * Get recently added media items
  */
-router.get('/recent-media', async (req, res) => {
+adminNewsletterRouter.get('/recent-media', async (req, res) => {
   try {
     const mediaType = req.query.mediaType as 'movie' | 'tv' | undefined;
     const limit = parseInt(req.query.limit as string) || 10;
@@ -203,10 +204,10 @@ router.get('/recent-media', async (req, res) => {
 });
 
 /**
- * GET /api/newsletter/digests
- * Get recent newsletter digests (admin only)
+ * GET /admin/api/newsletter/digests
+ * Get recent newsletter digests
  */
-router.get('/digests', async (req, res) => {
+adminNewsletterRouter.get('/digests', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit as string) || 20;
 
@@ -225,5 +226,3 @@ router.get('/digests', async (req, res) => {
     });
   }
 });
-
-export default router;

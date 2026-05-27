@@ -21,7 +21,7 @@ const deleteByEmailParamsSchema = z.object({
 });
 
 /**
- * POST /api/welcome-email
+ * POST /admin/api/welcome-email
  * Send a welcome email to a specific address
  */
 router.post('/', async (req, res) => {
@@ -65,7 +65,7 @@ router.post('/', async (req, res) => {
 });
 
 /**
- * GET /api/welcome-email/check/:email
+ * GET /admin/api/welcome-email/check/:email
  * Check if a welcome email has been sent to an address
  */
 router.get('/check/:email', async (req, res) => {
@@ -96,8 +96,8 @@ router.get('/check/:email', async (req, res) => {
 });
 
 /**
- * GET /api/welcome-email/history
- * Get all sent welcome emails (admin only)
+ * GET /admin/api/welcome-email/history
+ * Get all sent welcome emails
  */
 router.get('/history', async (req, res) => {
   try {
@@ -120,7 +120,7 @@ router.get('/history', async (req, res) => {
 });
 
 /**
- * DELETE /api/welcome-email/history/:id
+ * DELETE /admin/api/welcome-email/history/:id
  * Remove a specific welcome email entry
  */
 router.delete('/history/:id', async (req, res) => {
@@ -159,7 +159,7 @@ router.delete('/history/:id', async (req, res) => {
 });
 
 /**
- * DELETE /api/welcome-email/recipient/:email
+ * DELETE /admin/api/welcome-email/recipient/:email
  * Remove all welcome email entries for a recipient
  */
 router.delete('/recipient/:email', async (req, res) => {
@@ -200,7 +200,7 @@ router.delete('/recipient/:email', async (req, res) => {
 });
 
 /**
- * DELETE /api/welcome-email/history
+ * DELETE /admin/api/welcome-email/history
  * Clear entire welcome email history
  */
 router.delete('/history', async (_req, res) => {
@@ -225,7 +225,7 @@ router.delete('/history', async (_req, res) => {
 });
 
 /**
- * GET /api/welcome-email/stats
+ * GET /admin/api/welcome-email/stats
  * Get welcome email statistics
  */
 router.get('/stats', async (req, res) => {

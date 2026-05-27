@@ -134,7 +134,7 @@ describe('admin/frontend XSS safety', () => {
         adminEmail: null,
         updatedAt: null,
       },
-      '/api/welcome-email/stats': {
+      '/admin/api/welcome-email/stats': {
         success: true,
         data: {
           total: XSS_PAYLOAD,
@@ -143,7 +143,7 @@ describe('admin/frontend XSS safety', () => {
           successRate: XSS_PAYLOAD,
         },
       },
-      '/api/welcome-email/history': {
+      '/admin/api/welcome-email/history': {
         success: true,
         data: [],
       },
