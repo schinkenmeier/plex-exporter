@@ -12,10 +12,12 @@ import SeasonRepository from '../../src/repositories/seasonRepository.js';
 import CastRepository from '../../src/repositories/castRepository.js';
 import SettingsRepository from '../../src/repositories/settingsRepository.js';
 import { TautulliConfigRepository } from '../../src/repositories/tautulliConfigRepository.js';
+import WatchlistRequestRepository from '../../src/repositories/watchlistRequestRepository.js';
 import type { AppConfig } from '../../src/config/index.js';
 import type { TmdbManager } from '../../src/services/tmdbManager.js';
 import type { MailSender } from '../../src/services/resendService.js';
 import type { HeroPipelineService } from '../../src/services/heroPipeline.js';
+import { watchlistEmailService } from '../../src/services/watchlistEmailService.js';
 import { logBuffer } from '../../src/services/logBuffer.js';
 import { createTestDatabase, type TestDatabaseHandle } from '../helpers/testDatabase.js';
 
@@ -26,6 +28,7 @@ describe('Admin router integration', () => {
   let dbHandle: TestDatabaseHandle;
   let settingsRepository: SettingsRepository;
   let tautulliConfigRepository: TautulliConfigRepository;
+  let watchlistRequestRepository: WatchlistRequestRepository;
   let refreshTautulliIntegration: ReturnType<typeof vi.fn>;
   let activeResendService: MailSender | null;
   let refreshResendIntegration: ReturnType<typeof vi.fn>;
@@ -36,6 +39,7 @@ describe('Admin router integration', () => {
     dbHandle = createTestDatabase();
     settingsRepository = new SettingsRepository(dbHandle.drizzle);
     tautulliConfigRepository = new TautulliConfigRepository(dbHandle.drizzle);
+    watchlistRequestRepository = new WatchlistRequestRepository(dbHandle.drizzle);
     refreshTautulliIntegration = vi.fn();
     activeResendService = null;
     refreshResendIntegration = vi.fn(() => {
@@ -151,6 +155,7 @@ describe('Admin router integration', () => {
         drizzleDatabase: dbHandle.drizzle,
         settingsRepository,
         tautulliConfigRepository,
+        watchlistRequestRepository,
         tmdbManager,
         heroPipeline,
         refreshTautulliIntegration,
@@ -162,6 +167,7 @@ describe('Admin router integration', () => {
   });
 
   afterEach(() => {
+    watchlistEmailService.setMailSender(null);
     logBuffer.clear();
     dbHandle.cleanup();
     vi.restoreAllMocks();
@@ -332,6 +338,7 @@ describe('Admin router integration', () => {
         drizzleDatabase: dbHandle.drizzle,
         settingsRepository,
         tautulliConfigRepository,
+        watchlistRequestRepository,
         tmdbManager,
         heroPipeline,
         refreshTautulliIntegration,
@@ -468,6 +475,80 @@ describe('Admin router integration', () => {
     expect(clearedResponse.body.updatedAt).toBeNull();
   });
 
+  it('manages watchlist request lifecycle and sends replies', async () => {
+    const requestRecord = watchlistRequestRepository.create({
+      requesterEmail: 'user@example.test',
+      items: [
+        {
+          title: 'Example Movie',
+          type: 'movie',
+          year: 2026,
+          summary: 'Please add this',
+          poster: null,
+        },
+      ],
+      message: 'Danke',
+    });
+
+    const listResponse = await request(app).get('/admin/api/watchlist/requests');
+    expect(listResponse.status).toBe(200);
+    expect(listResponse.body.requests).toHaveLength(1);
+    expect(listResponse.body.requests[0]).toEqual(expect.objectContaining({
+      id: requestRecord.id,
+      requesterEmail: 'user@example.test',
+      status: 'new',
+    }));
+
+    const filteredResponse = await request(app).get('/admin/api/watchlist/requests?status=done');
+    expect(filteredResponse.status).toBe(200);
+    expect(filteredResponse.body.requests).toEqual([]);
+
+    const statusResponse = await request(app)
+      .patch(`/admin/api/watchlist/requests/${requestRecord.id}/status`)
+      .send({ status: 'in_progress' });
+    expect(statusResponse.status).toBe(200);
+    expect(statusResponse.body.request.status).toBe('in_progress');
+
+    const noteResponse = await request(app)
+      .patch(`/admin/api/watchlist/requests/${requestRecord.id}/note`)
+      .send({ adminNote: 'Prüfen, ob verfügbar.' });
+    expect(noteResponse.status).toBe(200);
+    expect(noteResponse.body.request.adminNote).toBe('Prüfen, ob verfügbar.');
+
+    const sender: MailSender = {
+      sendMail: vi.fn(async payload => ({
+        id: 'reply-email-1',
+        from: 'plex@example.test',
+        to: Array.isArray(payload.to) ? payload.to : [payload.to],
+        created_at: '2026-05-30T00:00:00.000Z',
+      })),
+    };
+    watchlistEmailService.setMailSender(sender);
+
+    const replyResponse = await request(app)
+      .post(`/admin/api/watchlist/requests/${requestRecord.id}/reply`)
+      .send({
+        subject: 'Kann ich machen',
+        message: 'Ist in Arbeit.',
+        status: 'done',
+      });
+    expect(replyResponse.status).toBe(200);
+    expect(replyResponse.body.emailId).toBe('reply-email-1');
+    expect(replyResponse.body.request.status).toBe('done');
+    expect(replyResponse.body.request.lastResponseEmailId).toBe('reply-email-1');
+    expect(sender.sendMail).toHaveBeenCalledWith(expect.objectContaining({
+      to: 'user@example.test',
+      subject: 'Kann ich machen',
+      text: 'Ist in Arbeit.',
+    }));
+
+    const detailsResponse = await request(app).get(`/admin/api/watchlist/requests/${requestRecord.id}`);
+    expect(detailsResponse.status).toBe(200);
+    expect(detailsResponse.body.events.map((event: { type: string }) => event.type)).toEqual(
+      expect.arrayContaining(['created', 'status_changed', 'note_updated', 'reply_sent']),
+    );
+  });
+
   it('tests database connectivity through the admin test endpoint', async () => {
     const response = await request(app).post('/admin/api/test/database');
 
@@ -552,6 +633,7 @@ describe('Admin router integration', () => {
         drizzleDatabase: dbHandle.drizzle,
         settingsRepository,
         tautulliConfigRepository,
+        watchlistRequestRepository,
         tmdbManager,
         heroPipeline,
         refreshTautulliIntegration,

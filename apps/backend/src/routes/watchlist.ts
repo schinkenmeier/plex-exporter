@@ -3,14 +3,20 @@ import type { RequestHandler } from 'express';
 import { z } from 'zod';
 import { watchlistEmailService } from '../services/watchlistEmailService.js';
 import type SettingsRepository from '../repositories/settingsRepository.js';
+import type WatchlistRequestRepository from '../repositories/watchlistRequestRepository.js';
 import logger from '../services/logger.js';
 
 export interface WatchlistRouterOptions {
   settingsRepository: SettingsRepository;
+  watchlistRequestRepository: WatchlistRequestRepository;
   sendEmailLimiter?: RequestHandler;
 }
 
-export const createWatchlistRouter = ({ settingsRepository, sendEmailLimiter }: WatchlistRouterOptions): Router => {
+export const createWatchlistRouter = ({
+  settingsRepository,
+  watchlistRequestRepository,
+  sendEmailLimiter,
+}: WatchlistRouterOptions): Router => {
   const router = Router();
 
   // Validation schema
@@ -23,6 +29,7 @@ export const createWatchlistRouter = ({ settingsRepository, sendEmailLimiter }: 
       summary: z.string().max(2000).optional().nullable(),
       poster: z.string().max(2048).optional().nullable(),
     })).min(1, 'At least one item is required').max(50, 'At most 50 items are allowed'),
+    message: z.string().trim().max(2000).optional().nullable(),
     sendCopyToAdmin: z.boolean().optional(),
   });
 
@@ -48,7 +55,12 @@ export const createWatchlistRouter = ({ settingsRepository, sendEmailLimiter }: 
    */
   router.post('/send-email', ...(sendEmailLimiter ? [sendEmailLimiter] : []), async (req, res) => {
     try {
-      const { email, items, sendCopyToAdmin } = sendWatchlistEmailSchema.parse(req.body);
+      const { email, items, message, sendCopyToAdmin } = sendWatchlistEmailSchema.parse(req.body);
+      const watchlistRequest = watchlistRequestRepository.create({
+        requesterEmail: email,
+        items,
+        message: message || null,
+      });
 
       // Get admin email from settings if sendCopyToAdmin is true
       let adminEmail: string | undefined;
@@ -57,16 +69,35 @@ export const createWatchlistRouter = ({ settingsRepository, sendEmailLimiter }: 
         adminEmail = adminEmailSetting?.value || undefined;
       }
 
-      const emailId = await watchlistEmailService.sendWatchlistEmail(email, items, {
-        sendCopyToAdmin,
-        adminEmail,
-      });
+      try {
+        const emailId = await watchlistEmailService.sendWatchlistEmail(email, items, {
+          sendCopyToAdmin,
+          adminEmail,
+        });
 
-      res.json({
-        success: true,
-        message: 'Watchlist sent via email successfully',
-        emailId,
-      });
+        watchlistRequestRepository.setEmailIds(watchlistRequest.id, {
+          confirmationEmailId: emailId,
+        });
+
+        res.json({
+          success: true,
+          message: 'Watchlist request created and email sent successfully',
+          requestId: watchlistRequest.id,
+          emailSent: true,
+          emailId,
+        });
+      } catch (error) {
+        logger.error('Watchlist request created but email sending failed', {
+          error,
+          requestId: watchlistRequest.id,
+        });
+        res.status(202).json({
+          success: true,
+          message: 'Watchlist request created, but email delivery failed',
+          requestId: watchlistRequest.id,
+          emailSent: false,
+        });
+      }
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({

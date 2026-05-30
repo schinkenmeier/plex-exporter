@@ -60,3 +60,6 @@ nul
 tmp/
 temp/
 *.tmp
+
+# Local design mockups
+new_admin-ui/

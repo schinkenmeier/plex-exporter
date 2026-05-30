@@ -1,4 +1,4 @@
-type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 const ADMIN_API_BASE = '/admin/api';
 
@@ -252,6 +252,60 @@ export interface WatchlistAdminEmailResponse {
   success: boolean;
   adminEmail: string | null;
   updatedAt: number | null;
+}
+
+export type WatchlistRequestStatus = 'new' | 'in_progress' | 'parked' | 'done' | 'rejected';
+
+export interface WatchlistRequestItem {
+  title: string;
+  type: 'movie' | 'tv';
+  year?: number | null;
+  summary?: string | null;
+  poster?: string | null;
+}
+
+export interface WatchlistRequestRecord {
+  id: string;
+  requesterEmail: string;
+  status: WatchlistRequestStatus;
+  items: WatchlistRequestItem[];
+  message: string | null;
+  adminNote: string | null;
+  confirmationEmailId: string | null;
+  adminNotificationEmailId: string | null;
+  lastResponseEmailId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt: string | null;
+}
+
+export interface WatchlistRequestEvent {
+  id: string;
+  requestId: string;
+  type: 'created' | 'status_changed' | 'reply_sent' | 'note_updated';
+  actor: 'system' | 'admin';
+  fromStatus: WatchlistRequestStatus | null;
+  toStatus: WatchlistRequestStatus | null;
+  message: string | null;
+  emailId: string | null;
+  createdAt: string;
+}
+
+export interface WatchlistRequestsResponse {
+  success: boolean;
+  requests: WatchlistRequestRecord[];
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+  };
+}
+
+export interface WatchlistRequestDetailsResponse {
+  success: boolean;
+  request: WatchlistRequestRecord;
+  events: WatchlistRequestEvent[];
 }
 
 export type TautulliConfigSource = 'env' | 'tautulli_config' | 'legacy_settings' | 'unset';
@@ -570,6 +624,48 @@ export class AdminApiClient {
 
   clearWatchlistAdminEmail(): Promise<TestResponse> {
     return this.request<TestResponse>('/watchlist/admin-email', 'DELETE');
+  }
+
+  getWatchlistRequests(params: {
+    status?: WatchlistRequestStatus;
+    limit?: number;
+    offset?: number;
+  } = {}): Promise<WatchlistRequestsResponse> {
+    return this.request<WatchlistRequestsResponse>(
+      '/watchlist/requests',
+      'GET',
+      undefined,
+      params,
+    );
+  }
+
+  getWatchlistRequest(id: string): Promise<WatchlistRequestDetailsResponse> {
+    return this.request<WatchlistRequestDetailsResponse>(`/watchlist/requests/${encodeURIComponent(id)}`, 'GET');
+  }
+
+  updateWatchlistRequestStatus(id: string, status: WatchlistRequestStatus): Promise<{
+    success: boolean;
+    request: WatchlistRequestRecord;
+  }> {
+    return this.request(`/watchlist/requests/${encodeURIComponent(id)}/status`, 'PATCH', { status });
+  }
+
+  updateWatchlistRequestNote(id: string, adminNote: string | null): Promise<{
+    success: boolean;
+    request: WatchlistRequestRecord;
+  }> {
+    return this.request(`/watchlist/requests/${encodeURIComponent(id)}/note`, 'PATCH', { adminNote });
+  }
+
+  replyToWatchlistRequest(
+    id: string,
+    payload: { message: string; subject?: string; status?: WatchlistRequestStatus },
+  ): Promise<{
+    success: boolean;
+    request: WatchlistRequestRecord;
+    emailId: string;
+  }> {
+    return this.request(`/watchlist/requests/${encodeURIComponent(id)}/reply`, 'POST', payload);
   }
 
   testTautulli(): Promise<TestResponse> {

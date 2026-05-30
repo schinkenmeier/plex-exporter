@@ -11,6 +11,9 @@ const emailStatuses = ['draft', 'scheduled', 'sent', 'failed'] as const;
 const scheduleFrequencies = ['hourly', 'daily', 'weekly', 'monthly'] as const;
 const jobTypes = ['tautulli_sync', 'cover_update'] as const;
 const sectionTypes = ['movie', 'show'] as const;
+const watchlistRequestStatuses = ['new', 'in_progress', 'parked', 'done', 'rejected'] as const;
+const watchlistRequestEventTypes = ['created', 'status_changed', 'reply_sent', 'note_updated'] as const;
+const watchlistRequestActors = ['system', 'admin'] as const;
 
 export const users = sqliteTable('users', {
   id: text('id')
@@ -408,6 +411,79 @@ export const insertWelcomeEmailSchema = createInsertSchema(welcomeEmails).omit({
 });
 export type InsertWelcomeEmail = z.infer<typeof insertWelcomeEmailSchema>;
 export type WelcomeEmail = typeof welcomeEmails.$inferSelect;
+
+export const watchlistRequests = sqliteTable('watchlist_requests', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  requesterEmail: text('requester_email').notNull(),
+  status: text('status', { enum: watchlistRequestStatuses }).notNull().default('new'),
+  items: text('items', { mode: 'json' })
+    .$type<Array<{
+      title: string;
+      type: 'movie' | 'tv';
+      year?: number | null;
+      summary?: string | null;
+      poster?: string | null;
+    }>>()
+    .notNull(),
+  message: text('message'),
+  adminNote: text('admin_note'),
+  confirmationEmailId: text('confirmation_email_id'),
+  adminNotificationEmailId: text('admin_notification_email_id'),
+  lastResponseEmailId: text('last_response_email_id'),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+  resolvedAt: text('resolved_at'),
+});
+
+export const insertWatchlistRequestSchema = createInsertSchema(watchlistRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertWatchlistRequest = z.infer<typeof insertWatchlistRequestSchema>;
+export type WatchlistRequest = typeof watchlistRequests.$inferSelect;
+
+export const watchlistRequestEvents = sqliteTable('watchlist_request_events', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  requestId: text('request_id')
+    .notNull()
+    .references(() => watchlistRequests.id, { onDelete: 'cascade' }),
+  type: text('type', { enum: watchlistRequestEventTypes }).notNull(),
+  actor: text('actor', { enum: watchlistRequestActors }).notNull(),
+  fromStatus: text('from_status', { enum: watchlistRequestStatuses }),
+  toStatus: text('to_status', { enum: watchlistRequestStatuses }),
+  message: text('message'),
+  emailId: text('email_id'),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const insertWatchlistRequestEventSchema = createInsertSchema(watchlistRequestEvents).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertWatchlistRequestEvent = z.infer<typeof insertWatchlistRequestEventSchema>;
+export type WatchlistRequestEvent = typeof watchlistRequestEvents.$inferSelect;
+
+export const watchlistRequestsRelations = relations(watchlistRequests, ({ many }) => ({
+  events: many(watchlistRequestEvents),
+}));
+
+export const watchlistRequestEventsRelations = relations(watchlistRequestEvents, ({ one }) => ({
+  request: one(watchlistRequests, {
+    fields: [watchlistRequestEvents.requestId],
+    references: [watchlistRequests.id],
+  }),
+}));
 
 export const librarySections = sqliteTable('library_sections', {
   id: integer('id').primaryKey({ autoIncrement: true }),

@@ -9,6 +9,14 @@ export interface WatchlistItem {
   poster?: string | null;
 }
 
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
 class WatchlistEmailService {
   private mailSender: MailSender | null = null;
 
@@ -45,9 +53,9 @@ class WatchlistEmailService {
       .map(
         (item) => `
           <div style="margin-bottom: 20px; padding: 15px; background: #f9f9f9; border-radius: 8px;">
-            <h3 style="margin: 0 0 10px 0;">${item.title} ${item.year ? `(${item.year})` : ''}</h3>
+            <h3 style="margin: 0 0 10px 0;">${escapeHtml(item.title)} ${item.year ? `(${item.year})` : ''}</h3>
             <p style="margin: 0; color: #666;">${item.type === 'movie' ? 'Film' : 'Serie'}</p>
-            ${item.summary ? `<p style="margin: 10px 0 0 0; color: #333;">${item.summary.substring(0, 200)}${item.summary.length > 200 ? '...' : ''}</p>` : ''}
+            ${item.summary ? `<p style="margin: 10px 0 0 0; color: #333;">${escapeHtml(item.summary.substring(0, 200))}${item.summary.length > 200 ? '...' : ''}</p>` : ''}
           </div>
         `
       )
@@ -98,6 +106,52 @@ class WatchlistEmailService {
         // Don't fail the main request if admin copy fails
       }
     }
+
+    return result.id;
+  }
+
+  async sendRequestReply(input: {
+    recipientEmail: string;
+    subject?: string;
+    message: string;
+    requestId: string;
+  }): Promise<string> {
+    if (!this.mailSender) {
+      throw new Error('Mail sender not configured. Email functionality is disabled.');
+    }
+
+    const htmlMessage = escapeHtml(input.message).replace(/\r?\n/g, '<br>');
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Antwort auf deine Merkliste</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: #20232a; color: white; padding: 24px; border-radius: 8px; margin-bottom: 24px;">
+            <h1 style="margin: 0;">Antwort auf deine Merkliste</h1>
+          </div>
+          <div style="padding: 18px; background: #f8f8f8; border-radius: 8px;">
+            <p style="margin: 0;">${htmlMessage}</p>
+          </div>
+          <p style="margin-top: 24px; color: #777; font-size: 13px;">Anfrage-ID: ${escapeHtml(input.requestId)}</p>
+        </body>
+      </html>
+    `;
+
+    const result = await this.mailSender.sendMail({
+      to: input.recipientEmail,
+      subject: input.subject?.trim() || 'Antwort auf deine Merkliste',
+      html,
+      text: input.message,
+    });
+
+    logger.info('Watchlist request reply sent', {
+      recipientEmail: input.recipientEmail,
+      requestId: input.requestId,
+      emailId: result.id,
+    });
 
     return result.id;
   }

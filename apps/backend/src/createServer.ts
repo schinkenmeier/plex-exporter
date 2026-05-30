@@ -39,6 +39,7 @@ import CastRepository from './repositories/castRepository.js';
 import { LibrarySectionRepository } from './repositories/librarySectionRepository.js';
 import { SyncScheduleRepository } from './repositories/syncScheduleRepository.js';
 import { TautulliConfigRepository } from './repositories/tautulliConfigRepository.js';
+import WatchlistRequestRepository from './repositories/watchlistRequestRepository.js';
 import { createMediaRouter } from './routes/media.js';
 import { errorHandler, requestLogger } from './middleware/errorHandler.js';
 import { createAuthMiddleware } from './middleware/auth.js';
@@ -85,6 +86,7 @@ export interface ServerDependencies {
   castRepository?: CastRepository | null;
   settingsRepository?: SettingsRepository | null;
   tmdbManager?: TmdbManager | null;
+  watchlistRequestRepository?: WatchlistRequestRepository | null;
 }
 
 interface TautulliRuntimeState {
@@ -108,6 +110,7 @@ export interface ServerRuntime {
   syncScheduleRepo: SyncScheduleRepository;
   settingsRepository: SettingsRepository;
   tautulliConfigRepo: TautulliConfigRepository;
+  watchlistRequestRepository: WatchlistRequestRepository;
   tmdbManager: TmdbManager;
   tmdbService: TmdbService | null;
   resendService: MailSender | null;
@@ -203,6 +206,14 @@ export function createRuntime(appConfig: AppConfig, deps: ServerDependencies = {
   }
 
   const tautulliConfigRepo = new TautulliConfigRepository(drizzleDb);
+  const watchlistRequestRepository =
+    'watchlistRequestRepository' in deps
+      ? deps.watchlistRequestRepository ?? null
+      : new WatchlistRequestRepository(drizzleDb);
+
+  if (!watchlistRequestRepository) {
+    throw new Error('Watchlist request repository could not be initialised.');
+  }
 
   // Initialize Resend service with environment or persisted config
   let resendService =
@@ -528,6 +539,7 @@ export function createRuntime(appConfig: AppConfig, deps: ServerDependencies = {
     syncScheduleRepo,
     settingsRepository,
     tautulliConfigRepo,
+    watchlistRequestRepository,
     tmdbManager,
     tmdbService,
     resendService,
@@ -609,6 +621,7 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
     syncScheduleRepo,
     settingsRepository,
     tautulliConfigRepo,
+    watchlistRequestRepository,
     tmdbManager,
     resendService,
     heroPipeline,
@@ -707,6 +720,7 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
   }));
   app.use('/api/watchlist', createWatchlistRouter({
     settingsRepository,
+    watchlistRequestRepository,
     sendEmailLimiter: rateLimiters.publicMailLimiter,
   }));
   app.use('/api/newsletter', rateLimiters.publicMailLimiter, publicNewsletterRouter);
@@ -744,6 +758,7 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
       drizzleDatabase: runtime.drizzleDatabase,
       settingsRepository,
       tautulliConfigRepository: tautulliConfigRepo,
+      watchlistRequestRepository,
       tmdbManager,
       heroPipeline,
       refreshTautulliIntegration,

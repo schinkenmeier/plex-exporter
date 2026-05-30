@@ -292,7 +292,11 @@ export async function sendEmail(email, sendCopyToAdmin = false){
     }
 
     const result = await response.json();
-    showToast('E-Mail erfolgreich versendet!', 'success');
+    if(result.emailSent === false){
+      showToast('Anfrage gespeichert, E-Mail konnte nicht gesendet werden', 'info');
+    } else {
+      showToast('E-Mail erfolgreich versendet!', 'success');
+    }
     return result.emailId;
   } catch(err){
     console.error(`${LOG_PREFIX} Failed to send email:`, err);

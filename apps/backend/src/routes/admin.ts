@@ -21,6 +21,8 @@ import { createAdminLegacyTautulliSettingsRouter } from './admin/legacyTautulliS
 import { createAdminLogsRouter } from './admin/logs.js';
 import { createAdminOverviewRouter } from './admin/overview.js';
 import { createAdminWatchlistSettingsRouter } from './admin/watchlistSettings.js';
+import { createAdminWatchlistRequestsRouter } from './admin/watchlistRequests.js';
+import type WatchlistRequestRepository from '../repositories/watchlistRequestRepository.js';
 
 export interface AdminRouterOptions {
   config: AppConfig;
@@ -37,6 +39,7 @@ export interface AdminRouterOptions {
   tautulliConfigRepository?: TautulliConfigRepository | null;
   tmdbManager: TmdbManager;
   heroPipeline: HeroPipelineService;
+  watchlistRequestRepository: WatchlistRequestRepository;
   refreshTautulliIntegration?: (input?: { baseUrl: string; apiKey: string }) => void;
   refreshResendIntegration?: () => MailSender | null;
   refreshTmdbIntegration?: () => unknown;
@@ -65,6 +68,7 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
     tautulliConfigRepository,
     tmdbManager,
     heroPipeline,
+    watchlistRequestRepository,
     refreshTautulliIntegration,
     refreshResendIntegration,
     refreshTmdbIntegration,
@@ -154,6 +158,7 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
     }),
   );
   router.use('/api/watchlist', createAdminWatchlistSettingsRouter({ settingsRepository }));
+  router.use('/api/watchlist', createAdminWatchlistRequestsRouter({ watchlistRequestRepository }));
 
   return router;
 };
