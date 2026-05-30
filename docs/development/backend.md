@@ -7,12 +7,15 @@
 
 ## Hauptbereiche
 - `src/routes/`: API-, Admin- und Sync-Routen
+- `src/routes/admin.ts`: Admin-Shell für UI-Auslieferung, Auth-Status und Router-Mounts
+- `src/routes/admin/`: fachliche Admin-Router für Status, Config, Stats, DB-Explorer, Logs, Integrationen, Tautulli-Legacy-Settings und Watchlist-Settings
 - `src/repositories/`: Datenzugriff auf SQLite/Drizzle
 - `src/services/`: Hero-Pipeline, Tautulli, Scheduler, Mail, Logging
 - `src/db/`: Datenbank- und Migrationsschicht
 
 ## Relevante technische Punkte
-- Das Backend bindet die Admin-UI nur ein, wenn das Frontend vorher gebaut wurde.
+- Das Backend bindet die Admin-UI im Standardmodus `ADMIN_UI_MODE=embedded` nur ein, wenn das Frontend vorher gebaut wurde. `ADMIN_UI_MODE=api-only` startet die API-Flächen ohne Admin-HTML und `/dist`.
+- Admin-Routen sollen Fehler per `HttpError` an den zentralen Error-Handler weitergeben, damit der API-Envelope `{ error, meta }` konsistent bleibt.
 - Einige Konfigurationen können aus der Datenbank kommen, ENV-Werte haben aber Vorrang.
 - Tautulli-Konfiguration nutzt `tautulli_config` als kanonische Persistenz. ENV bleibt höher priorisiert; alte `tautulli.*` Settings sind nur Legacy-Fallback bzw. Kompatibilität für alte Admin-Endpunkte.
 - `createRuntime(appConfig, deps)` liefert den Server-Runtime-Handle mit `dispose()`. `createServer(appConfig, deps)` bleibt als Kompatibilitätswrapper erhalten; `createServer(runtime)` gibt die Express-App der Runtime zurück.

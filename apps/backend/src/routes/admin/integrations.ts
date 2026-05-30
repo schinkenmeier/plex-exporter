@@ -9,7 +9,7 @@ import logger from '../../services/logger.js';
 import type { TmdbManager } from '../../services/tmdbManager.js';
 import type { HeroPipelineService } from '../../services/heroPipeline.js';
 import { isValidEmail } from './helpers.js';
-import { getActiveResendService, getResolvedResendConfigStatus } from './status.js';
+import { getActiveResendService, getResolvedResendConfigStatus } from './configStatus.js';
 
 export interface AdminIntegrationsRouterOptions {
   config: AppConfig;
@@ -107,15 +107,19 @@ export const createAdminIntegrationsRouter = (options: AdminIntegrationsRouterOp
     }
   });
 
-  router.post('/test/tautulli', async (_req: Request, res: Response) => {
+  router.post('/test/tautulli', async (_req: Request, res: Response, next: NextFunction) => {
     const activeTautulliService = getTautulliService ? getTautulliService() : tautulliService;
 
     if (!activeTautulliService) {
-      return res.status(503).json({
-        success: false,
-        error: 'Tautulli service is not configured',
-        message: 'Please configure Tautulli environment variables (TAUTULLI_URL, TAUTULLI_API_KEY)',
-      });
+      return next(
+        new HttpError(
+          503,
+          'Tautulli service is not configured',
+          {
+            details: 'Please configure Tautulli environment variables (TAUTULLI_URL, TAUTULLI_API_KEY)',
+          },
+        ),
+      );
     }
 
     try {
@@ -130,11 +134,11 @@ export const createAdminIntegrationsRouter = (options: AdminIntegrationsRouterOp
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       logger.error('Tautulli test failed', { error: message });
-      res.status(502).json({ success: false, error: 'Tautulli test failed', details: message });
+      next(new HttpError(502, 'Tautulli test failed', { details: message }));
     }
   });
 
-  router.post('/test/database', (_req: Request, res: Response) => {
+  router.post('/test/database', (_req: Request, res: Response, next: NextFunction) => {
     try {
       const allMedia = mediaRepository.listAll();
 
@@ -146,18 +150,22 @@ export const createAdminIntegrationsRouter = (options: AdminIntegrationsRouterOp
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       logger.error('Database test failed', { error: message });
-      res.status(500).json({ success: false, error: 'Database test failed', details: message });
+      next(new HttpError(500, 'Database test failed', { details: message }));
     }
   });
 
   router.post('/test/resend', async (req: Request, res: Response, next: NextFunction) => {
     const activeResendService = resolveActiveResendService();
     if (!activeResendService) {
-      return res.status(503).json({
-        success: false,
-        error: 'Resend service is not configured',
-        message: 'Please configure Resend environment variables (RESEND_API_KEY, RESEND_FROM_EMAIL) or set them in the admin panel',
-      });
+      return next(
+        new HttpError(
+          503,
+          'Resend service is not configured',
+          {
+            details: 'Please configure Resend environment variables (RESEND_API_KEY, RESEND_FROM_EMAIL) or set them in the admin panel',
+          },
+        ),
+      );
     }
 
     const { to } = req.body || {};
@@ -183,11 +191,11 @@ export const createAdminIntegrationsRouter = (options: AdminIntegrationsRouterOp
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       logger.error('Resend test failed', { error: message });
-      res.status(502).json({ success: false, error: 'Resend test failed', details: message });
+      next(new HttpError(502, 'Resend test failed', { details: message }));
     }
   });
 
-  router.get('/resend/settings', (_req: Request, res: Response) => {
+  router.get('/resend/settings', (_req: Request, res: Response, next: NextFunction) => {
     try {
       const status = getResolvedResendConfigStatus({
         config,
@@ -203,7 +211,7 @@ export const createAdminIntegrationsRouter = (options: AdminIntegrationsRouterOp
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       logger.error('Failed to get Resend settings', { error: message });
-      res.status(500).json({ success: false, error: 'Failed to get Resend settings', details: message });
+      next(new HttpError(500, 'Failed to get Resend settings', { details: message }));
     }
   });
 
@@ -242,11 +250,11 @@ export const createAdminIntegrationsRouter = (options: AdminIntegrationsRouterOp
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       logger.error('Failed to update Resend settings', { error: message });
-      res.status(500).json({ success: false, error: 'Failed to update Resend settings', details: message });
+      next(new HttpError(500, 'Failed to update Resend settings', { details: message }));
     }
   });
 
-  router.delete('/resend/settings', (_req: Request, res: Response) => {
+  router.delete('/resend/settings', (_req: Request, res: Response, next: NextFunction) => {
     try {
       settingsRepository.delete('resend.apiKey');
       settingsRepository.delete('resend.fromEmail');
@@ -271,7 +279,7 @@ export const createAdminIntegrationsRouter = (options: AdminIntegrationsRouterOp
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       logger.error('Failed to clear Resend settings', { error: message });
-      res.status(500).json({ success: false, error: 'Failed to clear Resend settings', details: message });
+      next(new HttpError(500, 'Failed to clear Resend settings', { details: message }));
     }
   });
 

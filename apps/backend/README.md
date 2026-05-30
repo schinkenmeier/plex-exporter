@@ -7,7 +7,7 @@ Express-/TypeScript-Backend für API, Admin-UI, Tautulli-Sync, Scheduler, SQLite
 - `src/server.ts`: Prozessstart.
 - `src/createServer.ts`: Runtime, Middleware, Routen, Admin-Assets.
 - `src/config/index.ts`: Env-Parsing und Konfigurationsobjekt.
-- `src/routes/`: Public-, Protected- und Admin-Routen.
+- `src/routes/`: Public-, Protected- und Admin-Routen. Die Admin-Shell liegt in `src/routes/admin.ts`; fachliche Admin-Router liegen unter `src/routes/admin/`.
 - `src/services/`: Tautulli, Scheduler, Hero, TMDB, Resend, Logging.
 - `src/repositories/`: SQLite/Drizzle-Zugriff.
 
@@ -20,7 +20,7 @@ npm run build --workspace @plex-exporter/frontend
 npm run dev --workspace @plex-exporter/backend
 ```
 
-Der Frontend-Build ist nötig, weil das Backend `/admin` und `/dist` aus `apps/frontend/public` einbindet.
+Der Frontend-Build ist im Standardmodus `ADMIN_UI_MODE=embedded` nötig, weil das Backend `/admin` und `/dist` aus `apps/frontend/public` einbindet. Für reine API-Entwicklung kann `ADMIN_UI_MODE=api-only` genutzt werden.
 
 ## Befehle
 

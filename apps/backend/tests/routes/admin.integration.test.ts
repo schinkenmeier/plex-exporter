@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { createAdminRouter } from '../../src/routes/admin.js';
+import { errorHandler } from '../../src/middleware/errorHandler.js';
 import MediaRepository from '../../src/repositories/mediaRepository.js';
 import ThumbnailRepository from '../../src/repositories/thumbnailRepository.js';
 import SeasonRepository from '../../src/repositories/seasonRepository.js';
@@ -157,6 +158,7 @@ describe('Admin router integration', () => {
         adminUiDir: adminUiFixture,
       }),
     );
+    app.use(errorHandler);
   });
 
   afterEach(() => {
@@ -225,6 +227,14 @@ describe('Admin router integration', () => {
       .post('/admin/api/test/resend')
       .send({ to: 'before@example.test' });
     expect(unavailableResponse.status).toBe(503);
+    expect(unavailableResponse.body.error).toEqual(expect.objectContaining({
+      message: 'Resend service is not configured',
+      statusCode: 503,
+    }));
+    expect(unavailableResponse.body.meta).toEqual(expect.objectContaining({
+      path: '/admin/api/test/resend',
+      method: 'POST',
+    }));
 
     const saveResponse = await request(app)
       .put('/admin/api/resend/settings')
@@ -329,6 +339,7 @@ describe('Admin router integration', () => {
         adminUiDir: adminUiFixture,
       }),
     );
+    envApp.use(errorHandler);
 
     const saveResponse = await request(envApp)
       .put('/admin/api/resend/settings')
@@ -547,6 +558,7 @@ describe('Admin router integration', () => {
         adminUiDir: adminUiFixture,
       }),
     );
+    envApp.use(errorHandler);
 
     const saveResponse = await request(envApp)
       .put('/admin/api/tautulli/settings')

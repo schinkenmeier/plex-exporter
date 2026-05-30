@@ -22,9 +22,22 @@ Plex Exporter ist kein reiner JSON-Exporter mehr. Der produktive Katalog wird au
 
 - Öffentlich: `/health`, `/api/v1/*`, `/api/hero/:kind`, `/api/thumbnails/*`, `/api/watchlist/*`, `/api/newsletter/*`.
 - Token-geschützt: `/libraries`, wenn `API_TOKEN` gesetzt ist.
-- Basic-Auth-geschützt: `/admin/*`, `/admin/api/*`, `/admin/api/tautulli/*`, `/media/*`, wenn Admin-Credentials gesetzt sind.
+- Admin-geschützt: `/admin/*`, `/admin/api/*`, `/admin/api/tautulli/*`, `/media/*`, wenn Admin-Credentials gesetzt sind. Basic Auth bleibt Standard; optional ist ein Bearer-Token über `ADMIN_API_TOKEN` möglich.
 
-Die Admin-API wird in `apps/backend/src/routes/admin.ts` als Shell zusammengesetzt. Die fachlichen Router liegen unter `apps/backend/src/routes/admin/`: Overview (`/admin/api/status`, `/config`, `/stats`), DB-Explorer (`/admin/api/db/*`), Logs, Integrationen (`/tmdb`, `/resend/settings`, `/test/*`), Legacy-Tautulli-Settings (`/admin/api/tautulli/settings`) und Watchlist-Settings. Die Pfade bleiben bewusst kompatibel zum Frontend-Client; neue Endpunkte sollten deshalb in den spezifischsten Domain-Router statt als konkurrierende Route unter dem gemeinsamen `/admin/api`-Präfix.
+Die Admin-API wird in `apps/backend/src/routes/admin.ts` als Shell zusammengesetzt. Die fachlichen Router liegen unter `apps/backend/src/routes/admin/`:
+
+- `overview.ts`: bündelt nur die Dashboard-Mounts.
+- `systemStatus.ts`: `/admin/api/status`.
+- `runtimeConfig.ts`: `/admin/api/config`.
+- `stats.ts`: `/admin/api/stats`.
+- `dbExplorer.ts`: `/admin/api/db/*`.
+- `logs.ts`: `/admin/api/logs`.
+- `integrations.ts`: `/admin/api/tmdb`, `/admin/api/resend/settings`, `/admin/api/test/*`.
+- `legacyTautulliSettings.ts`: `/admin/api/tautulli/settings`.
+- `watchlistSettings.ts`: `/admin/api/watchlist/*`.
+- `configStatus.ts`: gemeinsame Resolver für Tautulli-/Resend-Konfigurationsstatus, kein Express-Router.
+
+Die Pfade bleiben bewusst kompatibel zum Frontend-Client; neue Endpunkte sollten deshalb in den spezifischsten Domain-Router statt als konkurrierende Route unter dem gemeinsamen `/admin/api`-Präfix. Admin-Routen sollen Fehler über `next(new HttpError(...))` an den zentralen Error-Handler geben, damit API-Clients den einheitlichen Envelope bekommen.
 
 Details stehen in [../reference/interfaces.md](../reference/interfaces.md).
 

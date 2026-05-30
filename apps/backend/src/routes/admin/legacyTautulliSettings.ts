@@ -6,7 +6,7 @@ import type { TautulliConfigRepository } from '../../repositories/tautulliConfig
 import logger from '../../services/logger.js';
 import type { TautulliConfigStatus } from '../../services/tautulliConfigStatus.js';
 import { normalizeTautulliUrl } from './helpers.js';
-import { getResolvedAdminTautulliConfigStatus } from './status.js';
+import { getResolvedAdminTautulliConfigStatus } from './configStatus.js';
 
 export interface AdminLegacyTautulliSettingsRouterOptions {
   config: AppConfig;
@@ -36,7 +36,7 @@ export const createAdminLegacyTautulliSettingsRouter = (
       getTautulliConfigStatus,
     });
 
-  router.get('/', (_req: Request, res: Response) => {
+  router.get('/', (_req: Request, res: Response, next: NextFunction) => {
     try {
       const canonical = tautulliConfigRepository?.get();
       const legacyUrl = settingsRepository.get('tautulli.url');
@@ -58,7 +58,7 @@ export const createAdminLegacyTautulliSettingsRouter = (
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       logger.error('Failed to get Tautulli settings', { error: message });
-      res.status(500).json({ success: false, error: 'Failed to get Tautulli settings', details: message });
+      next(new HttpError(500, 'Failed to get Tautulli settings', { details: message }));
     }
   });
 
@@ -112,11 +112,11 @@ export const createAdminLegacyTautulliSettingsRouter = (
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       logger.error('Failed to update Tautulli settings', { error: message });
-      res.status(500).json({ success: false, error: 'Failed to update Tautulli settings', details: message });
+      next(new HttpError(500, 'Failed to update Tautulli settings', { details: message }));
     }
   });
 
-  router.delete('/', async (_req: Request, res: Response) => {
+  router.delete('/', async (_req: Request, res: Response, next: NextFunction) => {
     try {
       await tautulliConfigRepository?.delete();
       settingsRepository.delete('tautulli.url');
@@ -139,7 +139,7 @@ export const createAdminLegacyTautulliSettingsRouter = (
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       logger.error('Failed to clear Tautulli settings', { error: message });
-      res.status(500).json({ success: false, error: 'Failed to clear Tautulli settings', details: message });
+      next(new HttpError(500, 'Failed to clear Tautulli settings', { details: message }));
     }
   });
 

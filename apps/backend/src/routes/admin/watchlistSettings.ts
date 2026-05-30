@@ -13,7 +13,7 @@ export const createAdminWatchlistSettingsRouter = ({
 }: AdminWatchlistSettingsRouterOptions): Router => {
   const router = Router();
 
-  router.get('/admin-email', (_req: Request, res: Response) => {
+  router.get('/admin-email', (_req: Request, res: Response, next: NextFunction) => {
     try {
       const adminEmail = settingsRepository.get('watchlist.adminEmail');
 
@@ -25,7 +25,7 @@ export const createAdminWatchlistSettingsRouter = ({
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       logger.error('Failed to get watchlist admin email', { error: message });
-      res.status(500).json({ success: false, error: 'Failed to get watchlist admin email', details: message });
+      next(new HttpError(500, 'Failed to get watchlist admin email', { details: message }));
     }
   });
 
@@ -52,11 +52,11 @@ export const createAdminWatchlistSettingsRouter = ({
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       logger.error('Failed to update watchlist admin email', { error: message });
-      res.status(500).json({ success: false, error: 'Failed to update watchlist admin email', details: message });
+      next(new HttpError(500, 'Failed to update watchlist admin email', { details: message }));
     }
   });
 
-  router.delete('/admin-email', (_req: Request, res: Response) => {
+  router.delete('/admin-email', (_req: Request, res: Response, next: NextFunction) => {
     try {
       settingsRepository.delete('watchlist.adminEmail');
 
@@ -69,7 +69,7 @@ export const createAdminWatchlistSettingsRouter = ({
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       logger.error('Failed to clear watchlist admin email', { error: message });
-      res.status(500).json({ success: false, error: 'Failed to clear watchlist admin email', details: message });
+      next(new HttpError(500, 'Failed to clear watchlist admin email', { details: message }));
     }
   });
 

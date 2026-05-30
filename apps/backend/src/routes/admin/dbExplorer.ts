@@ -1,5 +1,6 @@
-import { Router, type Request, type Response } from 'express';
+import { Router, type NextFunction, type Request, type Response } from 'express';
 import type { DrizzleDatabase, SqliteDatabase } from '../../db/index.js';
+import { HttpError } from '../../middleware/errorHandler.js';
 import logger from '../../services/logger.js';
 
 export interface AdminDbExplorerRouterOptions {
@@ -180,11 +181,9 @@ export const createAdminDbExplorerRouter = ({
 }: AdminDbExplorerRouterOptions): Router => {
   const router = Router();
 
-  router.get('/tables', (_req: Request, res: Response) => {
+  router.get('/tables', (_req: Request, res: Response, next: NextFunction) => {
     if (!drizzleDatabase) {
-      return res.status(503).json({
-        error: 'Database explorer is unavailable without an active SQLite connection.',
-      });
+      return next(new HttpError(503, 'Database explorer is unavailable without an active SQLite connection.'));
     }
 
     try {
@@ -218,18 +217,17 @@ export const createAdminDbExplorerRouter = ({
 
       res.json({ tables });
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
       logger.error('Failed to list database tables', {
-        error: error instanceof Error ? error.message : error,
+        error: message,
       });
-      res.status(500).json({ error: 'Failed to list database tables' });
+      next(new HttpError(500, 'Failed to list database tables', { details: message }));
     }
   });
 
-  router.post('/query', (req: Request, res: Response) => {
+  router.post('/query', (req: Request, res: Response, next: NextFunction) => {
     if (!drizzleDatabase) {
-      return res.status(503).json({
-        error: 'Database explorer is unavailable without an active SQLite connection.',
-      });
+      return next(new HttpError(503, 'Database explorer is unavailable without an active SQLite connection.'));
     }
 
     try {
@@ -242,7 +240,7 @@ export const createAdminDbExplorerRouter = ({
       const tableNameRaw = typeof req.body?.table === 'string' ? req.body.table.trim() : '';
 
       if (!tableNameRaw || !isValidIdentifier(tableNameRaw)) {
-        return res.status(400).json({ error: 'Invalid table name supplied.' });
+        return next(new HttpError(400, 'Invalid table name supplied.'));
       }
 
       const limitParsed = Number.parseInt(String(req.body?.limit ?? ''), 10);
@@ -261,7 +259,7 @@ export const createAdminDbExplorerRouter = ({
         .all() as PragmaColumnInfo[];
 
       if (pragmaColumns.length === 0) {
-        return res.status(404).json({ error: 'Table not found.' });
+        return next(new HttpError(404, 'Table not found.'));
       }
 
       const normalizedColumns: NormalizedColumnInfo[] = pragmaColumns.map(column => ({
@@ -278,7 +276,7 @@ export const createAdminDbExplorerRouter = ({
         typeof req.body?.orderBy === 'string' ? req.body.orderBy.trim() : undefined;
 
       if (orderByRaw && !availableColumns.includes(orderByRaw)) {
-        return res.status(400).json({ error: 'Invalid order column supplied.' });
+        return next(new HttpError(400, 'Invalid order column supplied.'));
       }
 
       const filtersRaw: IncomingFilters =
@@ -382,7 +380,7 @@ export const createAdminDbExplorerRouter = ({
           if (primaryKeyInfo && isNumericColumn(primaryKeyInfo)) {
             const numericValue = Number(rawValue);
             if (Number.isNaN(numericValue)) {
-              return res.status(400).json({ error: 'Invalid numeric primary key value supplied.' });
+              return next(new HttpError(400, 'Invalid numeric primary key value supplied.'));
             }
             primaryKeyValue = numericValue;
           } else {
@@ -514,10 +512,11 @@ export const createAdminDbExplorerRouter = ({
         selectedColumns: resolvedSelectedColumns,
       });
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
       logger.error('Failed to execute database explorer query', {
-        error: error instanceof Error ? error.message : error,
+        error: message,
       });
-      res.status(500).json({ error: 'Failed to execute query.' });
+      next(new HttpError(500, 'Failed to execute query.', { details: message }));
     }
   });
 

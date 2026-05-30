@@ -49,6 +49,8 @@ Resend --> Newsletter/Watchlist/Welcome-Mail
 
 Neue Backend-Fehlerantworten verwenden den Envelope `{ error: { message, statusCode, details? }, meta: { timestamp, path, method } }`. Admin-API-Clients sollten vorerst weiter alte Formen aus `message`, `error`, `error.message` oder `details` normalisieren.
 
+Die modularisierten Admin-Router unter `apps/backend/src/routes/admin/` geben neue Fehler über `HttpError` an den zentralen Error-Handler weiter. Dadurch liefern insbesondere DB-Explorer, Integrationsdiagnosen, Runtime-Stats, Legacy-Tautulli-Settings und Watchlist-Settings den Envelope, statt eigene `{ error: ... }`-Formen zu erzeugen.
+
 ## Integrationsstatus
 
 Tautulli, TMDB und Resend können aus Env oder gespeicherten DB-Werten kommen. Env ist immer aktiv, wenn vollständig gesetzt. Gespeicherte Werte bleiben trotzdem erhalten und können über die Admin-API gelöscht werden.
