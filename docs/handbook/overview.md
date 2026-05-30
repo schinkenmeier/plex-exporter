@@ -14,9 +14,9 @@ Plex Exporter stellt einen webbasierten Plex-Katalog mit Admin-Oberfläche berei
 - Filme und Serien anzeigen, filtern, suchen und sortieren.
 - Detailansichten mit Metadaten, Cast, Staffeln und Episoden.
 - Hero-Bereich für Highlights.
-- Browser-lokale Watchlist.
+- Browser-lokale Watchlist mit serverseitigem Anfrage-Lifecycle beim Absenden.
 - Optionale Newsletter-, Watchlist- und Welcome-Mail-Flows.
-- Admin-UI für Status, Konfiguration, Logs, Datenbankansicht, Tautulli-Sync und Diagnosen.
+- Admin-UI für Status, Konfiguration, Logs, Datenbankansicht, Tautulli-Sync, Diagnosen, Profilmetadaten und Watchlist-Anfragen.
 
 ## Datenquellen
 

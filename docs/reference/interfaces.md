@@ -14,9 +14,10 @@
 ## Geschützte Flächen
 
 - `/admin`: Admin-UI.
-- `/admin/api/status`, `/admin/api/config`, `/admin/api/stats`, `/admin/api/logs`, `/admin/api/db/*`.
+- `/admin/api/status`, `/admin/api/config`, `/admin/api/stats`, `/admin/api/profile`, `/admin/api/logs`, `/admin/api/db/*`.
 - `/admin/api/tautulli/*`: Tautulli-Konfiguration, Library Sections, manueller Sync, Live-Stream, Schedules, Snapshots.
-- `/admin/api/tmdb`, `/admin/api/resend/settings`: Integrationsstatus und gespeicherte Tokens/Settings. Env-Konfiguration bleibt jeweils aktiv und wird in Statusfeldern wie `source`, `fromEnv`, `fromDatabase` und `envOverride` sichtbar; gespeicherte DB-Werte werden separat über `saved` gemeldet.
+- `/admin/api/tmdb`, `/admin/api/resend/settings`, `/admin/api/test/*`, `/admin/api/diagnostics/run`: Integrationsstatus, Einzeltests und Batch-Diagnosen. Env-Konfiguration bleibt jeweils aktiv und wird in Statusfeldern wie `source`, `fromEnv`, `fromDatabase` und `envOverride` sichtbar; gespeicherte DB-Werte werden separat über `saved` gemeldet.
+- `/admin/api/watchlist/*`: Watchlist-Settings, Anfrage-Lifecycle, Anfrage-Summary, Reply-Templates und Admin-Antworten.
 - `/admin/api/newsletter/*`, `/admin/api/welcome-email/*`: Mail-Betriebsfunktionen.
 - `/media/*`: Admin-geschützte Medienverwaltung.
 - `/libraries`: Bearer-Token-geschützt, wenn `API_TOKEN` gesetzt ist.
@@ -25,6 +26,7 @@
 
 - Admin- und Media-Flächen nutzen Basic Auth über `ADMIN_USERNAME` und `ADMIN_PASSWORD`; optional akzeptieren sie zusätzlich `Authorization: Bearer <ADMIN_API_TOKEN>`.
 - `/admin/api/auth/status` meldet die aktive Admin-Authentifizierung für API-Clients.
+- `/admin/api/profile` liefert daraus abgeleitete minimale Admin-Metadaten wie Name, Rolle, Auth-Methode und Initialen.
 - `/libraries` nutzt `Authorization: Bearer <API_TOKEN>`, wenn `API_TOKEN` gesetzt ist.
 - Öffentliche Katalog-APIs haben Rate Limits und Cache Header, aber keine Benutzerkonten.
 - Öffentliche Mail-Flächen wie Newsletter-Subscribe/Unsubscribe und Watchlist-Senden haben ein eigenes, engeres Public-Mail-Rate-Limit.
@@ -37,6 +39,14 @@
 - Database
 - Tautulli
 - Diagnostics
+- Watchlist Requests
+
+## Admin-API-Hinweise
+
+- `GET /admin/api/logs` liefert gepufferte Backend-Logs newest-first. Unterstützt werden `level`, `since`, `limit`, `offset` und `q`; `q` sucht in Message und Context. Die Antwort enthält `logs`, `stats` und `pagination`.
+- `POST /admin/api/diagnostics/run` akzeptiert `{ checks: ["database", "tautulli", "tmdb", "resend"] }` und liefert pro Check `key`, `success`, `message`, `durationMs` und `checkedAt`.
+- Watchlist-Anfragen werden beim Public-Submit persistiert und über `/admin/api/watchlist/requests` verwaltet. Dazu gehören `GET /requests/summary`, Statuswechsel mit optionaler Message, Admin-Notizen, Reply-Mail und feste Reply-Templates unter `/reply-templates`.
+- Tautulli-Mutationsrouten für Library Sections und Sync-Schedules liefern bei Erfolg additiv `success: true` plus `section` bzw. `schedule`.
 
 ## Datenfluss
 

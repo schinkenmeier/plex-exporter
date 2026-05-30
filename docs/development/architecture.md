@@ -31,11 +31,14 @@ Die Admin-API wird in `apps/backend/src/routes/admin.ts` als Shell zusammengeset
 - `runtimeConfig.ts`: `/admin/api/config`.
 - `stats.ts`: `/admin/api/stats`.
 - `dbExplorer.ts`: `/admin/api/db/*`.
-- `logs.ts`: `/admin/api/logs`.
-- `integrations.ts`: `/admin/api/tmdb`, `/admin/api/resend/settings`, `/admin/api/test/*`.
+- `logs.ts`: `/admin/api/logs` mit Level-/Zeit-/Freitextfilter, `offset`/`limit` und newest-first Pagination.
+- `integrations.ts`: `/admin/api/tmdb`, `/admin/api/resend/settings`, `/admin/api/test/*`, `/admin/api/diagnostics/run`.
 - `legacyTautulliSettings.ts`: `/admin/api/tautulli/settings`.
-- `watchlistSettings.ts`: `/admin/api/watchlist/*`.
+- `watchlistSettings.ts`: `/admin/api/watchlist/admin-email`.
+- `watchlistRequests.ts`: `/admin/api/watchlist/requests*`, Anfrage-Summary, Statuswechsel, Notizen, Reply-Mail und Reply-Templates.
 - `configStatus.ts`: gemeinsame Resolver für Tautulli-/Resend-Konfigurationsstatus, kein Express-Router.
+
+`admin.ts` stellt außerdem `/admin/api/auth/status` und `/admin/api/profile` direkt bereit. Das Profil ist aktuell ein Single-Admin-Profil aus Config und aktiver Auth-Methode, kein eigenes User-Modell.
 
 Die Pfade bleiben bewusst kompatibel zum Frontend-Client; neue Endpunkte sollten deshalb in den spezifischsten Domain-Router statt als konkurrierende Route unter dem gemeinsamen `/admin/api`-Präfix. Admin-Routen sollen Fehler über `next(new HttpError(...))` an den zentralen Error-Handler geben, damit API-Clients den einheitlichen Envelope bekommen.
 

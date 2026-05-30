@@ -4,7 +4,7 @@ Stand: 2026-05-30
 
 ## Ziel
 
-Dieses Dokument beschreibt, welche Backend-Funktionen fuer das redesigned Admin UI noch fehlen oder geschaerft werden sollten. Das Mock-up unter `new_admin-ui/` dient dabei als Funktions- und UX-Referenz, nicht als technische Vorlage. Die bestehenden API-Werte, Datenmodelle und Namenskonventionen bleiben massgeblich.
+Dieses Dokument beschreibt, welche Backend-Funktionen für das redesigned Admin UI noch fehlen oder geschaerft werden sollten. Das Mock-up unter `new_admin-ui/` dient dabei als Funktions- und UX-Referenz, nicht als technische Vorlage. Die bestehenden API-Werte, Datenmodelle und Namenskonventionen bleiben massgeblich.
 
 ## Leitlinien
 
@@ -20,10 +20,11 @@ Dieses Dokument beschreibt, welche Backend-Funktionen fuer das redesigned Admin 
 | --- | --- | --- |
 | Dashboard | `/admin/api/status`, `/stats`, `/config` vorhanden | Gut abgedeckt |
 | Konfiguration | TMDb, Resend, Watchlist-Admin-Mail, Tautulli-Konfig vorhanden | Gut abgedeckt |
-| Anfragen | Request-Lifecycle, Events, Status, Notiz, Reply-Mail vorhanden | Nutzbar, Komfort fehlt |
-| Tautulli Sync | Config, Libraries, Sections, Manual Sync, SSE Live-State, Schedules, Snapshot-Limit vorhanden | Backend stark, Client/Details nachziehen |
-| Logs | Liste, Level/Since/Limit, Clear vorhanden | Nutzbar, Live/Query-Komfort fehlt |
-| Diagnostics | DB, Tautulli, TMDb, Resend Tests vorhanden | Gut abgedeckt |
+| Anfragen | Request-Lifecycle, Events, Status, Notiz, Reply-Mail, Summary und Reply-Templates vorhanden | Gut für Paket-Anfragen abgedeckt |
+| Tautulli Sync | Config, Libraries, Sections, Manual Sync, SSE Live-State, Schedules, Snapshot-Limit vorhanden; Mutationsresponses und AdminApiClient sind ergaenzt | Gut abgedeckt |
+| Logs | Liste, Level/Since/Limit/Offset/Q, Clear, Pagination und newest-first vorhanden | Gut für Polling abgedeckt |
+| Diagnostics | DB, Tautulli, TMDb, Resend Einzeltests plus Batch-Endpoint vorhanden | Gut abgedeckt |
+| Admin Profile | Minimalprofil aus Admin-Config/Auth-Context vorhanden | Gut für Single-Admin abgedeckt |
 | Welcome-Mail | Send, Check, History, Delete, Stats vorhanden | Gut abgedeckt |
 | Newsletter | Subscribe/Unsubscribe, Send Digest, Stats, Recent Media, Digest History vorhanden | Fachlich noch unfertig |
 | Datenbank-Explorer | Tables, Query, Filter, Sort, Pagination vorhanden | Stark abgedeckt |
@@ -32,7 +33,9 @@ Dieses Dokument beschreibt, welche Backend-Funktionen fuer das redesigned Admin 
 
 ### 1.1 Tautulli Admin Client vollstaendig spiegeln
 
-Backend vorhanden, aber im typisierten Admin-Client noch nicht vollstaendig abgebildet:
+Status: Erledigt in Sprint A.
+
+Backend und typisierter Admin-Client bilden diese Endpunkte ab:
 
 - `PUT /admin/api/tautulli/library-sections/:id/enabled`
 - `PUT /admin/api/tautulli/sync/schedules/:id/enabled`
@@ -41,15 +44,15 @@ Backend vorhanden, aber im typisierten Admin-Client noch nicht vollstaendig abge
 Umsetzung:
 
 - Methoden und Typen in `apps/frontend/src/admin/core/api.ts` ergaenzen.
-- Falls Rueckgabeformen uneinheitlich sind, Backend responses angleichen:
+- Falls Rückgabeformen uneinheitlich sind, Backend responses angleichen:
   - `success: true`
   - `message`
   - `section` oder `schedule`
-- Tests fuer Schedule enable/delete und Library Section enable ergaenzen.
+- Tests für Schedule enable/delete und Library Section enable ergaenzen.
 
 ### 1.2 Einheitliche Admin-API-Response-Formen
 
-Einige Routen liefern `{ message, schedule }`, andere `{ success, data }`. Fuer ein neues UI ist das wartbar, aber unschoen.
+Einige Routen liefern `{ message, schedule }`, andere `{ success, data }`. Für ein neues UI ist das wartbar, aber unschoen.
 
 Empfehlung:
 
@@ -68,15 +71,15 @@ Basis ist vorhanden:
 - Public Submit speichert zuerst.
 - Admin list/detail/status/note/reply.
 
-Noch sinnvoll:
+Status: Sprint-A-Komfortfunktionen erledigt. Item-Level-Status bleibt bewusst offen.
 
 ### 2.1 Request Summary Endpoint
 
-Neuer Endpoint:
+Vorhandener Endpoint:
 
 - `GET /admin/api/watchlist/requests/summary`
 
-Rueckgabe:
+Rückgabe:
 
 ```json
 {
@@ -101,7 +104,7 @@ Nutzen:
 
 ### 2.2 Statuswechsel mit optionalem Kommentar
 
-Aktuell erzeugt Statuswechsel ein Event ohne Message. Fuer Admin-Historie waere besser:
+Statuswechsel kann eine optionale Message speichern:
 
 - `PATCH /admin/api/watchlist/requests/:id/status`
 - Body erweitert um optional `message`.
@@ -117,7 +120,7 @@ Beispiel:
 
 ### 2.3 Reply Templates optional vorbereiten
 
-Nicht sofort voll ausbauen, aber API-seitig vorbereiten:
+API-seitig vorbereitet:
 
 - `GET /admin/api/watchlist/reply-templates`
 - spaeter `PUT /admin/api/watchlist/reply-templates`
@@ -131,7 +134,7 @@ Erstmal koennen Default-Templates im Backend konstant sein:
 
 ### 2.4 Mehrere Items pro Anfrage bewusst modellieren
 
-Backend speichert bereits `items[]`. Fuer spaetere UI-Entscheidungen fehlen optional:
+Backend speichert bereits `items[]`. Für spaetere UI-Entscheidungen fehlen optional:
 
 - Item-Level Status nur, wenn wirklich gebraucht.
 - Sonst Request bleibt Paket und UI klappt Items auf.
@@ -200,7 +203,7 @@ Neue/erweiterte Endpunkte:
 - `PATCH /admin/api/newsletter/campaigns/:id`
 - `POST /admin/api/newsletter/campaigns/:id/test`
 - `POST /admin/api/newsletter/campaigns/:id/send`
-- `DELETE /admin/api/newsletter/campaigns/:id` nur fuer Drafts
+- `DELETE /admin/api/newsletter/campaigns/:id` nur für Drafts
 
 Bestehende Endpunkte koennen parallel bleiben.
 
@@ -218,20 +221,18 @@ Public:
 
 ## Phase 4: Logs und Live-Monitoring schaerfen
 
+Status: Sprint B erledigt.
+
 Aktuell:
 
 - `GET /admin/api/logs`
 - `DELETE /admin/api/logs`
-
-Fuer redesigned UI sinnvoll:
+- Query: `level`, `since`, `limit`, `offset`, `q`
+- Antwort: `logs`, `stats`, `pagination` mit `sort: "newest-first"`
 
 ### 4.1 Log Query verbessern
 
-Ergaenzen:
-
-- `q` Suchparameter fuer Message und Context.
-- `offset` oder cursorbasierte Pagination.
-- Rueckgabe sortiert `newest-first` oder klar dokumentieren.
+Erledigt in Sprint B.
 
 ### 4.2 Optional Log SSE
 
@@ -246,12 +247,12 @@ Voraussetzung:
 
 ## Phase 5: Diagnostics vereinheitlichen
 
-Aktuell gut genug, aber ausbaufaehig.
+Status: Batch-Endpoint aus Sprint B ist vorhanden; Persistenz letzter Ergebnisse bleibt optional.
 
 Empfehlung:
 
-- `GET /admin/api/diagnostics` fuer letzte bekannte Ergebnisse optional.
-- `POST /admin/api/diagnostics/run` mit Body `{ checks: ["database", "tautulli", "tmdb", "resend"] }`.
+- `GET /admin/api/diagnostics` für letzte bekannte Ergebnisse optional.
+- `POST /admin/api/diagnostics/run` mit Body `{ checks: ["database", "tautulli", "tmdb", "resend"] }` ist vorhanden.
 
 Nutzen:
 
@@ -268,17 +269,19 @@ Nutzen:
 }
 ```
 
-Nicht kritisch fuer Start.
+Nicht kritisch für Start.
 
 ## Phase 6: Admin Meta/Profile
 
+Status: Minimalprofil aus Sprint B ist vorhanden.
+
 Mock-up zeigt Owner/Avatar oben rechts.
 
-Minimaler Endpoint:
+Vorhandener Endpoint:
 
 - `GET /admin/api/profile`
 
-Rueckgabe:
+Rückgabe:
 
 ```json
 {
@@ -302,39 +305,40 @@ Jede Phase sollte enthalten:
 - Repository/Service, falls Businesslogik.
 - Admin-Route.
 - AdminApiClient-Typen, falls Frontend relevant.
-- Supertest/Vitest fuer Routes.
+- Supertest/Vitest für Routes.
 - Mindestens ein Fehlerfall pro Endpoint.
 
 Empfohlene Testgruppen:
 
 - `tests/routes/admin.integration.test.ts`: API-Kontrakt und Admin-Flows.
-- Eigene Tests fuer Newsletter-Campaigns.
-- Repository-Tests fuer Watchlist/Newsletter, wenn Logik komplexer wird.
+- Eigene Tests für Newsletter-Campaigns.
+- Repository-Tests für Watchlist/Newsletter, wenn Logik komplexer wird.
 
 ## Priorisierte Umsetzung
 
-### P0: Schon erledigt oder nahezu fertig
+### P0: Schon erledigt
 
 - Watchlist Request Lifecycle Basis.
 - Dashboard/Config/Logs/Tautulli/Diagnostics API-Basis.
+- Tautulli Admin Client/Response-Luecken.
+- Watchlist Request Summary + Status-Kommentar + Reply-Templates.
+- Log Query mit `q`, `offset`, Pagination und newest-first.
+- Diagnostics Batch Endpoint.
+- Admin Profile Endpoint.
 
-### P1: Naechste sinnvolle Backend-Arbeiten
+### P1: Nächste sinnvolle Backend-Arbeiten
 
-1. Tautulli Admin Client/Response-Luecken schliessen.
-2. Watchlist Request Summary + Status-Kommentar.
-3. Newsletter Campaign Datenmodell + Draft/Test/Send API.
+1. Newsletter Campaign Datenmodell + Draft/Test/Send API.
 
 ### P2: Komfort und Realtime
 
-4. Log Query + optional Stream.
-5. Diagnostics Batch Endpoint.
-6. Admin Profile Endpoint.
+2. Optionaler Log Stream, falls Polling nicht reicht.
 
 ### P3: Spaetere fachliche Verfeinerung
 
-7. Watchlist Item-Level-Status nur falls UI-Design das wirklich braucht.
-8. Newsletter tokenbasiertes Unsubscribe.
-9. Mail-Template-System fuer Watchlist/Newsletter/Welcome.
+3. Watchlist Item-Level-Status nur falls UI-Design das wirklich braucht.
+4. Newsletter tokenbasiertes Unsubscribe.
+5. Mail-Template-System für Watchlist/Newsletter/Welcome.
 
 ## Offene Produktentscheidungen
 
@@ -344,21 +348,21 @@ Empfohlene Testgruppen:
 - Soll es langfristig mehrere Admin-User geben oder bleibt es ein Single-Admin-Tool?
 - Sollen Mail-Templates im Admin editierbar sein oder erstmal feste Defaults bleiben?
 
-## Empfohlener naechster Schritt
+## Empfohlener nächster Schritt
 
-Mit P1.1 und P1.2 starten:
+Nächster größerer Block ist Sprint C:
 
-1. Tautulli-Client/Response-Luecken klein und risikoarm schliessen.
-2. Watchlist Request Summary und Status-Kommentar ergaenzen.
-3. Danach Newsletter-Campaigns als groesseren Block planen und implementieren.
+1. Newsletter Campaign Datenmodell + Migration.
+2. Draft/Test/Send API mit Empfaenger-Historie.
+3. Bestehenden Digest-/Send-Flow als Legacy-Shortcut kompatibel halten.
 
-## Konkretisierte Ausfuehrungsplanung
+## Konkretisierte Ausführungsplanung
 
-Diese Reihenfolge ist fuer die Umsetzung vorgesehen. Sie trennt kleine API-Kontrakt-Arbeiten von groesseren Migrations-/Domain-Aenderungen.
+Diese Reihenfolge ist für die Umsetzung vorgesehen. Sie trennt kleine API-Kontrakt-Arbeiten von größeren Migrations-/Domain-Änderungen.
 
 ### Sprint A: Kleine Admin-API-Luecken ohne Migration
 
-Ziel: Schnell nutzbare Backend-Ergaenzungen fuer das neue Admin UI, ohne Datenmodell-Risiko.
+Ziel: Schnell nutzbare Backend-Ergaenzungen für das neue Admin UI, ohne Datenmodell-Risiko.
 
 Write-Set:
 
@@ -393,7 +397,7 @@ Verifikation:
 
 - `npm run type-check --workspace @plex-exporter/backend`
 - `npm run type-check --workspace @plex-exporter/frontend`
-- gezielte Backend-Tests fuer Admin/Tautulli
+- gezielte Backend-Tests für Admin/Tautulli
 - betroffene Frontend-AdminApiClient-Tests
 
 Status: Abgeschlossen am 2026-05-30.
@@ -407,7 +411,7 @@ Kurznotiz:
 
 ### Sprint B: Logs, Diagnostics und Admin Profile
 
-Ziel: Das redesigned Admin UI bekommt stabilere Query- und Meta-Endpunkte, ohne direkt Live-SSE fuer Logs einzufuehren.
+Ziel: Das redesigned Admin UI bekommt stabilere Query- und Meta-Endpunkte, ohne direkt Live-SSE für Logs einzufuehren.
 
 Write-Set:
 
@@ -420,8 +424,8 @@ Write-Set:
 Umfang:
 
 1. Logs Query verbessern:
-   - `q` fuer Message und Context.
-   - `offset` fuer Pagination.
+   - `q` für Message und Context.
+   - `offset` für Pagination.
    - klare Sortierung dokumentieren, bevorzugt newest-first.
 2. Diagnostics Batch:
    - `POST /admin/api/diagnostics/run`
@@ -433,15 +437,15 @@ Umfang:
 
 Explizit verschoben:
 
-- `GET /admin/api/logs/stream` erst spaeter, falls echtes Live-Streaming benoetigt wird. Fuer den Start reicht Polling.
+- `GET /admin/api/logs/stream` erst spaeter, falls echtes Live-Streaming benoetigt wird. Für den Start reicht Polling.
 
 Status: Abgeschlossen am 2026-05-30.
 
 Kurznotiz:
 
 - Logs unter `GET /admin/api/logs` unterstuetzen jetzt `q`, `offset`, Pagination-Metadaten und liefern die Treffer explizit `newest-first`.
-- `POST /admin/api/diagnostics/run` fuehrt ausgewaehlte Checks fuer `database`, `tautulli`, `tmdb` und `resend` als Batch aus und liefert pro Check Status, Message, Laufzeit und Zeitstempel.
-- `GET /admin/api/profile` liefert minimale Admin-Metadaten fuer das redesigned UI; der AdminApiClient spiegelt Profile, Diagnostics und die erweiterten Log-Parameter.
+- `POST /admin/api/diagnostics/run` fuehrt ausgewaehlte Checks für `database`, `tautulli`, `tmdb` und `resend` als Batch aus und liefert pro Check Status, Message, Laufzeit und Zeitstempel.
+- `GET /admin/api/profile` liefert minimale Admin-Metadaten für das redesigned UI; der AdminApiClient spiegelt Profile, Diagnostics und die erweiterten Log-Parameter.
 - Abgedeckt durch Admin-Integrationstests und AdminApiClient-Test; verifiziert mit Backend-/Frontend-Typecheck, Frontend-Testlauf und kompletter Backend-Test-Suite.
 
 ### Sprint C: Newsletter Campaigns als groesserer Domain-Block
@@ -487,15 +491,15 @@ Admin API:
 - `GET /admin/api/newsletter/campaigns`
 - `GET /admin/api/newsletter/campaigns/:id`
 - `POST /admin/api/newsletter/campaigns`
-- `PATCH /admin/api/newsletter/campaigns/:id` nur fuer Drafts
-- `DELETE /admin/api/newsletter/campaigns/:id` nur fuer Drafts
+- `PATCH /admin/api/newsletter/campaigns/:id` nur für Drafts
+- `DELETE /admin/api/newsletter/campaigns/:id` nur für Drafts
 - `POST /admin/api/newsletter/campaigns/:id/test`
 - `POST /admin/api/newsletter/campaigns/:id/send`
 
-Rueckwaertskompatibilitaet:
+Rückwärtskompatibilität:
 
 - Bestehende Subscribe/Unsubscribe-Endpunkte bleiben.
-- Bestehendes `POST /admin/api/newsletter/send` bleibt zunaechst als Legacy-Shortcut.
+- Bestehendes `POST /admin/api/newsletter/send` bleibt zunächst als Legacy-Shortcut.
 - `newsletter_digests` bleibt lesbar, wird aber perspektivisch von Campaign-History abgeloest.
 - Empfaengerlogik korrigieren: Abo mit `media_type = NULL` bedeutet "alle" und muss bei Movie/TV-Kampagnen mitlaufen.
 
@@ -513,6 +517,6 @@ Nur angehen, wenn Produktentscheidung gefallen ist:
 
 - Watchlist Item-Level-Status statt Paket-Status.
 - Tokenbasiertes Newsletter-Unsubscribe.
-- Editierbare Mail-Templates fuer Watchlist, Newsletter und Welcome.
+- Editierbare Mail-Templates für Watchlist, Newsletter und Welcome.
 - Echter Log-SSE-Stream.
 - Mehrbenutzerfaehiges Admin-Profil/User-Modell.

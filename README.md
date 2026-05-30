@@ -46,7 +46,7 @@ Der Root-Compose-Stack startet `backend`, `caddy` und optional per Profil `tautu
 - Runtime: Node `>=24 <25`, npm Workspaces.
 - Daten: SQLite über `better-sqlite3` und Drizzle; im Container typischerweise `/app/data/sqlite/plex-exporter.sqlite`.
 - Integrationen: Tautulli für Bibliotheksdaten, TMDB für Metadaten, Resend für E-Mail-Funktionen.
-- Auth: `/admin` und Admin-APIs nutzen Basic Auth, wenn `ADMIN_USERNAME` und `ADMIN_PASSWORD` gesetzt sind. `API_TOKEN` schützt die `/libraries`-Route.
+- Auth: `/admin`, Admin-APIs und `/media` nutzen Basic Auth, wenn `ADMIN_USERNAME` und `ADMIN_PASSWORD` gesetzt sind; optional akzeptieren sie `ADMIN_API_TOKEN` als Bearer-Token. `API_TOKEN` schützt die `/libraries`-Route.
 - Lokale `better-sqlite3`-ABI-Probleme nach Node-Wechseln werden mit `npm ci` oder notfalls `npm rebuild better-sqlite3 --workspace @plex-exporter/backend` behoben.
 
 ## Prüfung

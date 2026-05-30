@@ -40,3 +40,13 @@ Im Container ist die Datenwurzel `/app/data`. Auf dem Host sieht die Struktur un
 - exportnahe oder legacy-nahe Medienartefakte
 - Covers und heruntergeladene Bilder
 - Thumbnail-Auslieferung über `/api/thumbnails/*`
+
+## Wichtige SQLite-Bereiche
+
+- Katalogdaten: `media_items`, `seasons`, `episodes`, `cast_members`, `media_cast`, `media_thumbnails`.
+- Tautulli-Betrieb: `library_sections`, `sync_schedules`, `tautulli_snapshots`, `tautulli_config`.
+- Konfiguration und Jobs: `integration_settings`, `import_jobs`, `import_schedules`, `hero_pools`.
+- Mail-Flows: `newsletter_subscriptions`, `newsletter_digests`, `welcome_emails`.
+- Watchlist-Anfragen: `watchlist_requests` speichert das Request-Paket inklusive `items[]`; `watchlist_request_events` speichert Historie wie Erstellung, Statuswechsel, Notizen und Antworten.
+
+Newsletter-Campaigns sind noch nicht als eigenes Datenmodell vorhanden. Der aktuelle produktive Stand nutzt weiterhin Subscriptions und Digest-History; Campaign-Drafts, Testversand und Empfängerprotokoll sind der nächste größere Backend-Block.

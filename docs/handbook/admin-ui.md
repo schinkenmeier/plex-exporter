@@ -12,6 +12,15 @@ Die Admin-UI liegt unter `/admin`. Sie ist nur nutzbar, wenn `ADMIN_USERNAME` un
 - Database: SQLite-Tabellenansicht mit begrenzten Abfragen.
 - Tautulli: Verbindung, Library Sections, manueller Sync, Live-Status, Zeitpläne, Snapshots.
 - Diagnostics: Tests für Datenbank und Integrationen.
+- Watchlist Requests: eingegangene Watchlist-Anfragen, Status, Historie, Notizen und Antworten.
+
+## Betriebsfunktionen
+
+- Logs werden newest-first angezeigt und können nach Level, Zeitraum, Freitext (`q`) sowie per `limit`/`offset` paginiert abgefragt werden.
+- Diagnostics können einzeln über die historischen Test-Endpunkte oder gesammelt über `POST /admin/api/diagnostics/run` für Datenbank, Tautulli, TMDB und Resend ausgeführt werden.
+- Das Admin-Profil unter `/admin/api/profile` liefert aktuell ein Single-Admin-Profil aus der Admin-Konfiguration und der aktiven Auth-Methode.
+- Watchlist-Anfragen bleiben als Request-Paket modelliert. Statuswerte sind `new`, `in_progress`, `parked`, `done` und `rejected`; Statuswechsel können eine Kommentar-Message in der Historie speichern.
+- Reply-Templates für Watchlist-Antworten sind derzeit feste Backend-Defaults. Editierbare Templates sind noch nicht Teil des produktiven Backends.
 
 ## Konfigurationslogik
 

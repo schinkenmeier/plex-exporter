@@ -8,6 +8,7 @@ Express-/TypeScript-Backend für API, Admin-UI, Tautulli-Sync, Scheduler, SQLite
 - `src/createServer.ts`: Runtime, Middleware, Routen, Admin-Assets.
 - `src/config/index.ts`: Env-Parsing und Konfigurationsobjekt.
 - `src/routes/`: Public-, Protected- und Admin-Routen. Die Admin-Shell liegt in `src/routes/admin.ts`; fachliche Admin-Router liegen unter `src/routes/admin/`.
+- `src/routes/admin/`: Admin-Domänen für Overview, DB-Explorer, Logs, Integrationen/Diagnostics, Tautulli-Kompatibilität, Watchlist-Settings und Watchlist-Requests.
 - `src/services/`: Tautulli, Scheduler, Hero, TMDB, Resend, Logging.
 - `src/repositories/`: SQLite/Drizzle-Zugriff.
 
