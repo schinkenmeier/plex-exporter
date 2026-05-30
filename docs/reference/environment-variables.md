@@ -11,8 +11,10 @@
 | `BACKEND_SCHEDULER_TIMEZONE` | Zeitzone für geplante Backend-Jobs |
 | `BACKEND_SQLITE_PATH` | SQLite-Pfad im Container |
 | `BACKEND_API_TOKEN` | optionales Token für geschützte API-Nutzung |
+| `BACKEND_ADMIN_UI_MODE` | `embedded` oder `api-only` für Admin-UI-Auslieferung |
 | `BACKEND_ADMIN_USERNAME` | Admin-Basic-Auth Benutzer |
 | `BACKEND_ADMIN_PASSWORD` | Admin-Basic-Auth Passwort |
+| `BACKEND_ADMIN_API_TOKEN` | optionales Bearer-Token für Admin-/Media-APIs |
 | `BACKEND_HERO_POLICY_PATH` | optionaler Backend-Override für Hero-Policy |
 | `BACKEND_TMDB_ACCESS_TOKEN` | optionaler TMDB-Token |
 | `BACKEND_RESEND_API_KEY` | optionaler Resend-Key |
@@ -37,8 +39,10 @@
 | `TZ` | Fallback-Zeitzone, falls `SCHEDULER_TIMEZONE` nicht gesetzt ist |
 | `SQLITE_PATH` | SQLite-Datei für Source-Runs |
 | `API_TOKEN` | optionales Token |
+| `ADMIN_UI_MODE` | `embedded` oder `api-only` für Admin-UI-Auslieferung |
 | `ADMIN_USERNAME` | optionaler Admin-Benutzer |
 | `ADMIN_PASSWORD` | optionales Admin-Passwort |
+| `ADMIN_API_TOKEN` | optionales Bearer-Token für Admin-/Media-APIs |
 | `TMDB_ACCESS_TOKEN` | optionaler TMDB-Token |
 | `TAUTULLI_URL` | optionale Tautulli-URL |
 | `TAUTULLI_API_KEY` | optionaler Tautulli-Key |
@@ -48,5 +52,6 @@
 
 ## Paarregeln
 - `ADMIN_USERNAME` und `ADMIN_PASSWORD` nur gemeinsam
+- `ADMIN_API_TOKEN` kann allein oder zusätzlich zu Basic Auth gesetzt werden
 - `TAUTULLI_URL` und `TAUTULLI_API_KEY` nur gemeinsam
 - `RESEND_API_KEY` und `RESEND_FROM_EMAIL` nur gemeinsam

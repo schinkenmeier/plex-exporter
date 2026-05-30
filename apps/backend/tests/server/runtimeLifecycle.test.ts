@@ -27,7 +27,7 @@ describe('server runtime lifecycle', () => {
   const createConfig = (): AppConfig => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plex-exporter-runtime-test-'));
     return {
-      runtime: { env: 'test' },
+      runtime: { env: 'test', adminUiMode: 'embedded' },
       server: { port: 0 },
       auth: null,
       database: { sqlitePath: path.join(tempDir, 'runtime.sqlite') },
@@ -38,6 +38,12 @@ describe('server runtime lifecycle', () => {
       admin: null,
       resend: null,
     };
+  };
+
+  const createApiOnlyConfig = (): AppConfig => {
+    const config = createConfig();
+    config.runtime = { env: 'test', adminUiMode: 'api-only' };
+    return config;
   };
 
   const createStats = (): SyncStats => ({
@@ -83,6 +89,64 @@ describe('server runtime lifecycle', () => {
     expect(response.status).toBe(200);
 
     runtime.dispose();
+  });
+
+  it('starts in API-only mode without requiring frontend build artifacts', async () => {
+    const config = createApiOnlyConfig();
+    config.admin = {
+      username: 'admin',
+      password: 'secret',
+      apiToken: null,
+    };
+
+    const runtime = createRuntime(config);
+
+    try {
+      const healthResponse = await request(runtime.app).get('/health');
+      expect(healthResponse.status).toBe(200);
+
+      const statusResponse = await request(runtime.app)
+        .get('/admin/api/status')
+        .auth('admin', 'secret');
+      expect(statusResponse.status).toBe(200);
+
+      const uiResponse = await request(runtime.app)
+        .get('/admin')
+        .auth('admin', 'secret');
+      expect(uiResponse.status).toBe(404);
+    } finally {
+      runtime.dispose();
+    }
+  });
+
+  it('accepts ADMIN_API_TOKEN bearer auth on protected admin and media routes', async () => {
+    const config = createApiOnlyConfig();
+    config.admin = {
+      username: null,
+      password: null,
+      apiToken: 'admin-token',
+    };
+
+    const runtime = createRuntime(config);
+
+    try {
+      const statusResponse = await request(runtime.app)
+        .get('/admin/api/auth/status')
+        .set('Authorization', 'Bearer admin-token');
+      expect(statusResponse.status).toBe(200);
+      expect(statusResponse.body).toEqual({
+        authenticated: true,
+        method: 'bearer',
+        methods: ['bearer'],
+      });
+
+      const mediaResponse = await request(runtime.app)
+        .get('/media')
+        .set('Authorization', 'Bearer admin-token');
+      expect(mediaResponse.status).toBe(200);
+    } finally {
+      runtime.dispose();
+    }
   });
 
   it('does not rebuild an app when createServer receives an existing runtime', () => {
@@ -158,6 +222,7 @@ describe('server runtime lifecycle', () => {
     config.admin = {
       username: 'admin',
       password: 'secret',
+      apiToken: null,
     };
     const runtime = createRuntime(config, { tmdbManager });
 

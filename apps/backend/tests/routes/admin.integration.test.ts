@@ -53,7 +53,7 @@ describe('Admin router integration', () => {
     });
 
     const testConfig: AppConfig = {
-      runtime: { env: 'test' },
+      runtime: { env: 'test', adminUiMode: 'embedded' },
       server: { port: 0 },
       auth: null,
       database: { sqlitePath: dbHandle.filePath },
@@ -260,7 +260,7 @@ describe('Admin router integration', () => {
 
   it('keeps environment Resend configuration active when database settings are saved or cleared', async () => {
     const envConfig: AppConfig = {
-      runtime: { env: 'test' },
+      runtime: { env: 'test', adminUiMode: 'embedded' },
       server: { port: 0 },
       auth: null,
       database: { sqlitePath: dbHandle.filePath },
@@ -402,7 +402,7 @@ describe('Admin router integration', () => {
 
   it('reports environment Tautulli configuration as the active source when DB settings are saved', async () => {
     const envConfig: AppConfig = {
-      runtime: { env: 'test' },
+      runtime: { env: 'test', adminUiMode: 'embedded' },
       server: { port: 0 },
       auth: null,
       database: { sqlitePath: dbHandle.filePath },

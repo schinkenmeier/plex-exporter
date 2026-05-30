@@ -44,6 +44,8 @@ export interface AdminRouterOptions {
   refreshTmdbIntegration?: () => unknown;
   getTautulliConfigStatus?: () => TautulliConfigStatus;
   adminUiDir?: string | null;
+  serveUi?: boolean;
+  adminAuthMethods?: Array<'basic' | 'bearer'>;
 }
 
 export type { TautulliConfigStatus, TautulliConfigSource } from '../services/tautulliConfigStatus.js';
@@ -243,20 +245,24 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
     refreshTmdbIntegration,
     getTautulliConfigStatus,
     adminUiDir = null,
+    serveUi = true,
+    adminAuthMethods = [],
   } = options;
 
-  if (!adminUiDir) {
+  if (serveUi && !adminUiDir) {
     throw new Error('Admin UI directory is not configured. Please run the frontend build and pass adminUiDir.');
   }
 
-  const adminIndexPath = path.join(adminUiDir, 'admin.html');
-  if (!fs.existsSync(adminIndexPath)) {
+  const adminIndexPath = adminUiDir ? path.join(adminUiDir, 'admin.html') : null;
+  if (serveUi && adminIndexPath && !fs.existsSync(adminIndexPath)) {
     throw new Error(
       `Admin UI entry (${adminIndexPath}) nicht gefunden. Bitte das Frontend bauen (npm run build --workspace @plex-exporter/frontend).`,
     );
   }
 
-  router.use(express.static(adminUiDir, { index: false, redirect: false, fallthrough: true }));
+  if (serveUi && adminUiDir) {
+    router.use(express.static(adminUiDir, { index: false, redirect: false, fallthrough: true }));
+  }
   const seasonRepository =
     suppliedSeasonRepository ??
     (drizzleDatabase ? new SeasonRepository(drizzleDatabase) : null);
@@ -323,7 +329,18 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
    * Serve admin dashboard HTML
    */
   router.get('/', (_req: Request, res: Response) => {
+    if (!serveUi || !adminIndexPath) {
+      throw new HttpError(404, 'Admin UI is not served by this backend.');
+    }
     res.sendFile(adminIndexPath);
+  });
+
+  router.get('/api/auth/status', (_req: Request, res: Response) => {
+    res.json({
+      authenticated: true,
+      method: res.locals.adminAuthMethod ?? null,
+      methods: adminAuthMethods,
+    });
   });
 
   /**

@@ -18,12 +18,13 @@
 - `/admin/api/tautulli/*`: Tautulli-Konfiguration, Library Sections, manueller Sync, Live-Stream, Schedules, Snapshots.
 - `/admin/api/tmdb`, `/admin/api/resend/settings`: Integrationsstatus und gespeicherte Tokens/Settings. Env-Konfiguration bleibt jeweils aktiv und wird in Statusfeldern wie `source`, `fromEnv`, `fromDatabase` und `envOverride` sichtbar; gespeicherte DB-Werte werden separat über `saved` gemeldet.
 - `/admin/api/newsletter/*`, `/admin/api/welcome-email/*`: Mail-Betriebsfunktionen.
-- `/media/*`: Basic-Auth-geschützte Medienverwaltung.
+- `/media/*`: Admin-geschützte Medienverwaltung.
 - `/libraries`: Bearer-Token-geschützt, wenn `API_TOKEN` gesetzt ist.
 
 ## Auth
 
-- Admin- und Media-Flächen nutzen Basic Auth über `ADMIN_USERNAME` und `ADMIN_PASSWORD`.
+- Admin- und Media-Flächen nutzen Basic Auth über `ADMIN_USERNAME` und `ADMIN_PASSWORD`; optional akzeptieren sie zusätzlich `Authorization: Bearer <ADMIN_API_TOKEN>`.
+- `/admin/api/auth/status` meldet die aktive Admin-Authentifizierung für API-Clients.
 - `/libraries` nutzt `Authorization: Bearer <API_TOKEN>`, wenn `API_TOKEN` gesetzt ist.
 - Öffentliche Katalog-APIs haben Rate Limits und Cache Header, aber keine Benutzerkonten.
 - Öffentliche Mail-Flächen wie Newsletter-Subscribe/Unsubscribe und Watchlist-Senden haben ein eigenes, engeres Public-Mail-Rate-Limit.
@@ -46,7 +47,7 @@ TMDB ----> Hero/Details/Sync-Enrichment
 Resend --> Newsletter/Watchlist/Welcome-Mail
 ```
 
-Admin-API-Clients sollten Fehler aus `message`, `error`, `error.message` oder `details` normalisieren. Bestehende Backend-Endpunkte liefern noch mehrere dieser Formen.
+Neue Backend-Fehlerantworten verwenden den Envelope `{ error: { message, statusCode, details? }, meta: { timestamp, path, method } }`. Admin-API-Clients sollten vorerst weiter alte Formen aus `message`, `error`, `error.message` oder `details` normalisieren.
 
 ## Integrationsstatus
 

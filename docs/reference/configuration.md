@@ -17,7 +17,8 @@ Wichtige Gruppen:
 
 - Server: `NODE_ENV`, `PORT`
 - Datenbank: `SQLITE_PATH`
-- Auth: `API_TOKEN`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`
+- Auth: `API_TOKEN`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_API_TOKEN`
+- Admin-Auslieferung: `ADMIN_UI_MODE`
 - Integrationen: `TAUTULLI_URL`, `TAUTULLI_API_KEY`, `TMDB_ACCESS_TOKEN`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`
 - Jobs: `SCHEDULER_TIMEZONE`, `TZ`
 - Hero: `HERO_POLICY_PATH`
@@ -48,6 +49,11 @@ Der Build kopiert zuerst ein vorhandenes `frontend.json`, sonst das Sample. Kand
 Die Hero-Pipeline sucht zusätzlich typische Source-Run-Pfade, wenn kein Override gesetzt ist.
 
 ## Admin-UI
+
+`ADMIN_UI_MODE` steuert, ob das Backend die gebaute Admin-UI mit ausliefert:
+
+- `embedded` (Standard): `/admin` und `/dist` benötigen die Frontend-Build-Artefakte.
+- `api-only`: Das Backend startet ohne Frontend-Build und stellt nur API-Flächen bereit.
 
 Die Admin-UI kann Betriebswerte für Tautulli, TMDB, Resend und Watchlist-E-Mail speichern. Tautulli nutzt die Tabelle `tautulli_config` als aktuelle Persistenz; alte `settings`-Einträge sind nur Legacy-Fallback.
 

@@ -249,7 +249,7 @@ export const createV1Router = ({
     try {
       const activeTmdbService = resolveTmdbService();
       if (!activeTmdbService || !activeTmdbService.isEnabled()) {
-        return res.status(503).json({ error: 'TMDB integration not configured' });
+        return next(new HttpError(503, 'TMDB integration not configured'));
       }
 
       const rawType = req.params.type;
@@ -276,7 +276,10 @@ export const createV1Router = ({
       res.json(details);
     } catch (error) {
       if (error instanceof TmdbRateLimitError) {
-        return res.status(429).json({ error: 'TMDB rate limit reached', retryAfterMs: error.retryAfterMs, until: error.until });
+        return next(new HttpError(429, 'TMDB rate limit reached', {
+          details: { retryAfterMs: error.retryAfterMs, until: error.until },
+          responseExtensions: { retryAfterMs: error.retryAfterMs, until: error.until },
+        }));
       }
       next(new HttpError(500, 'Failed to fetch TMDB details', { cause: error instanceof Error ? error : undefined }));
     }
@@ -290,7 +293,7 @@ export const createV1Router = ({
     try {
       const activeTmdbService = resolveTmdbService();
       if (!activeTmdbService || !activeTmdbService.isEnabled()) {
-        return res.status(503).json({ error: 'TMDB integration not configured' });
+        return next(new HttpError(503, 'TMDB integration not configured'));
       }
 
       const id = getRouteParam(req.params.id);
@@ -308,7 +311,10 @@ export const createV1Router = ({
       res.json({ episodes });
     } catch (error) {
       if (error instanceof TmdbRateLimitError) {
-        return res.status(429).json({ error: 'TMDB rate limit reached', retryAfterMs: error.retryAfterMs, until: error.until });
+        return next(new HttpError(429, 'TMDB rate limit reached', {
+          details: { retryAfterMs: error.retryAfterMs, until: error.until },
+          responseExtensions: { retryAfterMs: error.retryAfterMs, until: error.until },
+        }));
       }
       next(new HttpError(500, 'Failed to fetch TMDB season', { cause: error instanceof Error ? error : undefined }));
     }
@@ -560,7 +566,18 @@ export const createV1Router = ({
       const results = mapMediaListToResponse(items, true, req);
 
       res.setHeader('Cache-Control', 'public, max-age=180'); // 3 min cache
-      res.json({ query: validatedQuery.q, total, results });
+      res.json({
+        query: validatedQuery.q,
+        total,
+        results,
+        items: results,
+        pagination: {
+          total,
+          limit: filterOptions.limit,
+          offset: filterOptions.offset,
+          hasMore: filterOptions.offset + filterOptions.limit < total,
+        },
+      });
     } catch (error) {
       next(new HttpError(500, 'Failed to search media', { cause: error instanceof Error ? error : undefined }));
     }
@@ -577,12 +594,22 @@ export const createV1Router = ({
       const validatedQuery = recentQuerySchema.parse(req.query);
 
       const items = mediaRepository.getRecent(validatedQuery.limit, validatedQuery.type);
+      const total = mediaRepository.count({ mediaType: validatedQuery.type });
 
       // Map to frontend format with extended metadata (bulk thumbnail loading)
       const results = mapMediaListToResponse(items, true, req);
 
       res.setHeader('Cache-Control', 'public, max-age=60'); // 1 min cache
-      res.json({ items: results, count: results.length });
+      res.json({
+        items: results,
+        count: results.length,
+        pagination: {
+          total,
+          limit: validatedQuery.limit,
+          offset: 0,
+          hasMore: results.length < total,
+        },
+      });
     } catch (error) {
       next(new HttpError(500, 'Failed to fetch recent media', { cause: error instanceof Error ? error : undefined }));
     }

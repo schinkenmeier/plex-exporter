@@ -64,6 +64,17 @@ describe('admin API client errors', () => {
       'nested error message',
     );
     assert.equal(
+      extractAdminApiErrorMessage({
+        error: {
+          message: 'envelope message',
+          statusCode: 400,
+          details: { fieldErrors: {} },
+        },
+        meta: { timestamp: '2026-01-01T00:00:00Z', path: '/admin/api/test', method: 'POST' },
+      }, 'fallback'),
+      'envelope message',
+    );
+    assert.equal(
       extractAdminApiErrorMessage({ details: 'details message' }, 'fallback'),
       'details message',
     );

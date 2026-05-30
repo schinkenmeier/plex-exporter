@@ -6,12 +6,14 @@ import logger, { redactUrlQueryString } from '../services/logger.js';
 export interface HttpErrorOptions extends ErrorOptions {
   details?: unknown;
   expose?: boolean;
+  responseExtensions?: Record<string, unknown>;
 }
 
 export class HttpError extends Error {
   public readonly statusCode: number;
   public readonly details?: unknown;
   public readonly expose: boolean;
+  public readonly responseExtensions?: Record<string, unknown>;
 
   constructor(statusCode: number, message: string, options: HttpErrorOptions = {}) {
     super(message, options);
@@ -20,6 +22,7 @@ export class HttpError extends Error {
     this.statusCode = statusCode;
     this.details = options.details;
     this.expose = options.expose ?? true;
+    this.responseExtensions = options.responseExtensions;
   }
 }
 
@@ -101,12 +104,14 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
   let statusCode = 500;
   let message = 'Internal server error';
   let details: unknown;
+  let responseExtensions: Record<string, unknown> | undefined;
 
   if (err instanceof HttpError) {
     statusCode = err.statusCode;
     if (err.expose) {
       message = err.message;
       details = err.details;
+      responseExtensions = err.responseExtensions;
     }
   } else if (err instanceof ZodError) {
     statusCode = 400;
@@ -130,7 +135,7 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
     error: toErrorLog(err),
   });
 
-  const response: ErrorResponseBody = {
+  const response: ErrorResponseBody & Record<string, unknown> = {
     error: {
       message,
       statusCode,
@@ -141,6 +146,7 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
       path: req.originalUrl,
       method: req.method,
     },
+    ...(responseExtensions ?? {}),
   };
 
   res.status(statusCode).json(response);

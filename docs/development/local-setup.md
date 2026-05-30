@@ -19,7 +19,9 @@ Der Backend-Dev-Server läuft standardmäßig auf `http://localhost:4000`.
 
 ## Warum der Frontend-Build vorher nötig ist
 
-`apps/backend/src/createServer.ts` prüft beim Start `apps/frontend/public` und `apps/frontend/public/dist`. Das Backend braucht diese Dateien für `/admin` und `/dist`. Ohne Build bricht der Start bewusst mit einer klaren Fehlermeldung ab.
+Im Standardmodus `ADMIN_UI_MODE=embedded` prüft `apps/backend/src/createServer.ts` beim Start `apps/frontend/public` und `apps/frontend/public/dist`. Das Backend braucht diese Dateien für `/admin` und `/dist`. Ohne Build bricht der Start bewusst mit einer klaren Fehlermeldung ab.
+
+Für reine API-Entwicklung kann `ADMIN_UI_MODE=api-only` gesetzt werden. Dann startet das Backend ohne Frontend-Build; `/health`, `/api/v1/*`, `/admin/api/*`, `/admin/api/tautulli/*` und `/media` bleiben verfügbar, aber `/admin` liefert keine UI aus.
 
 ## Lokale Konfiguration
 

@@ -197,6 +197,18 @@ describe('data loading resilience', () => {
       assert.strictEqual(result.partial, false);
     });
   });
+
+  it('continues to load movies from the existing array response shape', async () => {
+    global.fetch = async () => ({
+      ok: true,
+      json: async () => ([{ title: 'Existing Array Movie', ratingKey: '9', mediaType: 'movie' }]),
+    });
+
+    const result = await loadMoviesStatus();
+    assert.strictEqual(result.error, null);
+    assert.strictEqual(result.items.length, 1);
+    assert.strictEqual(result.items[0].title, 'Existing Array Movie');
+  });
 });
 
 describe('searchLibrary pagination', () => {
@@ -221,6 +233,23 @@ describe('searchLibrary pagination', () => {
     assert.strictEqual(result.total, 42);
     assert.strictEqual(result.items.length, 1);
     assert.strictEqual(result.items[0].title, 'Paged');
+  });
+
+  it('uses canonical items even when compatibility result fields are also present', async () => {
+    global.fetch = async () => ({
+      ok: true,
+      json: async () => ({
+        results: [{ title: 'Legacy Result', ratingKey: '1', mediaType: 'movie' }],
+        items: [{ title: 'Canonical Item', ratingKey: '2', mediaType: 'movie' }],
+        total: 2,
+        pagination: { total: 1, limit: 20, offset: 0, hasMore: false },
+      }),
+    });
+
+    const result = await searchLibrary('movies');
+    assert.strictEqual(result.total, 1);
+    assert.strictEqual(result.items.length, 1);
+    assert.strictEqual(result.items[0].title, 'Canonical Item');
   });
 
   it('falls back to defaults when server omits pagination fields', async () => {

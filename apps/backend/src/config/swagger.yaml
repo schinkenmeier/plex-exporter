@@ -142,15 +142,27 @@ components:
     Stats:
       type: object
       properties:
-        total:
-          type: integer
-          description: Total number of media items
-        movies:
+        totalMovies:
           type: integer
           description: Total number of movies
-        series:
+        totalSeries:
           type: integer
           description: Total number of TV series
+        totalItems:
+          type: integer
+          description: Total number of media items
+
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        hasMore:
+          type: boolean
 
     SearchResults:
       type: object
@@ -165,6 +177,13 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MediaExtended'
+        items:
+          type: array
+          description: Canonical item list; kept in sync with results for compatibility.
+          items:
+            $ref: '#/components/schemas/MediaExtended'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
 
     HeroItem:
       type: object
@@ -224,14 +243,25 @@ components:
       type: object
       properties:
         error:
-          type: string
-          description: Error type
-        message:
-          type: string
-          description: Error message
-        details:
           type: object
-          description: Additional error details
+          properties:
+            message:
+              type: string
+            statusCode:
+              type: integer
+            details:
+              nullable: true
+              description: Additional error details
+        meta:
+          type: object
+          properties:
+            timestamp:
+              type: string
+              format: date-time
+            path:
+              type: string
+            method:
+              type: string
 
   responses:
     TooManyRequests:
@@ -242,14 +272,25 @@ components:
             type: object
             properties:
               error:
-                type: string
-                example: "Too Many Requests"
-              message:
-                type: string
-                example: "You have exceeded the rate limit. Please try again later."
-              retryAfter:
-                type: string
-                description: Time until rate limit resets
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "You have exceeded the rate limit. Please try again later."
+                  statusCode:
+                    type: integer
+                    example: 429
+                  details:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        example: "Too Many Requests"
+                      retryAfter:
+                        type: string
+                        description: Time until rate limit resets
+              meta:
+                type: object
 
     NotFound:
       description: Resource not found
@@ -527,16 +568,12 @@ paths:
               schema:
                 type: object
                 properties:
-                  total:
-                    type: integer
-                  offset:
-                    type: integer
-                  limit:
-                    type: integer
-                  results:
+                  items:
                     type: array
                     items:
                       $ref: '#/components/schemas/MediaExtended'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
         '400':
           $ref: '#/components/responses/BadRequest'
         '429':
@@ -612,17 +649,18 @@ paths:
               schema:
                 type: object
                 properties:
-                  total:
-                    type: integer
-                  results:
+                  items:
                     type: array
                     items:
                       $ref: '#/components/schemas/MediaExtended'
+                  count:
+                    type: integer
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
         '400':
           $ref: '#/components/responses/BadRequest'
         '429':
           $ref: '#/components/responses/TooManyRequests'
-
   /api/hero/{kind}:
     get:
       summary: Get hero content pool

@@ -96,7 +96,7 @@ interface TautulliRuntimeState {
 export interface ServerRuntime {
   app: express.Express;
   appConfig: AppConfig;
-  adminUiDir: string;
+  adminUiDir: string | null;
   database: SqliteDatabase;
   drizzleDatabase: DrizzleDatabase;
   mediaRepository: MediaRepository;
@@ -141,8 +141,11 @@ const corsOrigin =
 
 export function createRuntime(appConfig: AppConfig, deps: ServerDependencies = {}): ServerRuntime {
   const ownsDatabase = !('database' in deps || 'drizzleDatabase' in deps);
-  const adminUiDir = path.resolve(__dirname, '..', '..', 'frontend', 'public');
-  if (!fs.existsSync(adminUiDir)) {
+  const adminUiMode = appConfig.runtime.adminUiMode ?? 'embedded';
+  const adminUiDir = adminUiMode === 'embedded'
+    ? path.resolve(__dirname, '..', '..', 'frontend', 'public')
+    : null;
+  if (adminUiMode === 'embedded' && adminUiDir && !fs.existsSync(adminUiDir)) {
     throw new Error(
       `Admin UI Build fehlt unter ${adminUiDir}. Bitte 'npm run build --workspace @plex-exporter/frontend' ausführen.`,
     );
@@ -627,6 +630,7 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
   const basicAuthMiddleware = createBasicAuthMiddleware({
     username: appConfig.admin?.username ?? null,
     password: appConfig.admin?.password ?? null,
+    bearerToken: appConfig.admin?.apiToken ?? null,
   });
 
   // Trust proxy when running behind Caddy reverse proxy
@@ -666,18 +670,20 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
   // Setup API documentation
   setupSwagger(app);
 
-  const adminDistDir = path.join(adminUiDir, 'dist');
-  if (!fs.existsSync(adminDistDir)) {
-    throw new Error(
-      `Admin UI Assets (${adminDistDir}) nicht gefunden. Bitte 'npm run build --workspace @plex-exporter/frontend' ausführen.`,
+  if (adminUiDir) {
+    const adminDistDir = path.join(adminUiDir, 'dist');
+    if (!fs.existsSync(adminDistDir)) {
+      throw new Error(
+        `Admin UI Assets (${adminDistDir}) nicht gefunden. Bitte 'npm run build --workspace @plex-exporter/frontend' ausführen.`,
+      );
+    }
+    app.use(
+      '/dist',
+      express.static(adminDistDir, {
+        maxAge: appConfig.runtime.env === 'production' ? '1d' : 0,
+      }),
     );
   }
-  app.use(
-    '/dist',
-    express.static(adminDistDir, {
-      maxAge: appConfig.runtime.env === 'production' ? '1d' : 0,
-    }),
-  );
 
   // Public routes (no auth required)
   app.use('/health', createHealthRouter(appConfig));
@@ -745,6 +751,11 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
       refreshTmdbIntegration,
       getTautulliConfigStatus,
       adminUiDir,
+      serveUi: Boolean(adminUiDir),
+      adminAuthMethods: [
+        ...(appConfig.admin?.username && appConfig.admin?.password ? ['basic' as const] : []),
+        ...(appConfig.admin?.apiToken ? ['bearer' as const] : []),
+      ],
     }),
   );
 

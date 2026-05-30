@@ -99,6 +99,12 @@ export interface AdminConfigSnapshot {
   };
 }
 
+export interface AdminAuthStatus {
+  authenticated: boolean;
+  method: 'basic' | 'bearer' | null;
+  methods: Array<'basic' | 'bearer'>;
+}
+
 export interface TableSummary {
   name: string;
   rowCount: number | null;
@@ -483,6 +489,10 @@ export class AdminApiClient {
 
   getSystemStatus(): Promise<AdminSystemStatus> {
     return this.request<AdminSystemStatus>('/status', 'GET');
+  }
+
+  getAuthStatus(): Promise<AdminAuthStatus> {
+    return this.request<AdminAuthStatus>('/auth/status', 'GET');
   }
 
   getStats(): Promise<AdminStatsResponse> {

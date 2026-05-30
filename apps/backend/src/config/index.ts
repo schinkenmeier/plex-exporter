@@ -93,8 +93,10 @@ const envSchema = z
       .min(1, 'SQLITE_PATH must not be empty')
       .default(DEFAULT_SQLITE_PATH),
     HERO_POLICY_PATH: optionalString,
+    ADMIN_UI_MODE: z.enum(['embedded', 'api-only']).default('embedded'),
     TMDB_ACCESS_TOKEN: optionalString,
     API_TOKEN: optionalString,
+    ADMIN_API_TOKEN: optionalString,
     TAUTULLI_URL: z
       .preprocess(
         (value) => {
@@ -153,6 +155,7 @@ const rawConfig = envSchema.parse(process.env);
 export const config = {
   runtime: {
     env: rawConfig.NODE_ENV,
+    adminUiMode: rawConfig.ADMIN_UI_MODE,
   },
   server: {
     port: rawConfig.PORT,
@@ -186,7 +189,14 @@ export const config = {
     ? {
         username: rawConfig.ADMIN_USERNAME,
         password: rawConfig.ADMIN_PASSWORD,
+        apiToken: rawConfig.ADMIN_API_TOKEN ?? null,
       }
+    : rawConfig.ADMIN_API_TOKEN
+      ? {
+          username: null,
+          password: null,
+          apiToken: rawConfig.ADMIN_API_TOKEN,
+        }
     : null,
   resend: rawConfig.RESEND_API_KEY && rawConfig.RESEND_FROM_EMAIL
     ? {

@@ -1,5 +1,9 @@
 import express from 'express';
 import request from 'supertest';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import yaml from 'yaml';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import MediaRepository from '../../src/repositories/mediaRepository.js';
@@ -8,7 +12,10 @@ import SeasonRepository from '../../src/repositories/seasonRepository.js';
 import CastRepository from '../../src/repositories/castRepository.js';
 import { clearV1CatalogCaches, createV1ApiCaches, createV1Router, type V1ApiCaches } from '../../src/routes/v1.js';
 import { errorHandler } from '../../src/middleware/errorHandler.js';
+import { TmdbRateLimitError } from '../../src/services/tmdbService.js';
 import { createTestDatabase, type TestDatabaseHandle } from '../helpers/testDatabase.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const createApp = (
   mediaRepository: MediaRepository,
@@ -160,6 +167,78 @@ describe('v1 routes', () => {
     );
   });
 
+  it('returns filter results using the canonical items and pagination envelope', async () => {
+    mediaRepository.create({ plexId: 'movie-filter-1', title: 'Filter Movie', mediaType: 'movie' });
+    mediaRepository.create({ plexId: 'show-filter-1', title: 'Filter Show', mediaType: 'tv' });
+
+    const response = await request(app).get('/api/v1/filter?type=movie&limit=10&offset=0');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      pagination: {
+        total: 1,
+        limit: 10,
+        offset: 0,
+        hasMore: false,
+      },
+    });
+    expect(response.body.items).toEqual([
+      expect.objectContaining({
+        ratingKey: 'movie-filter-1',
+        title: 'Filter Movie',
+      }),
+    ]);
+  });
+
+  it('keeps search response compatibility while exposing items and pagination', async () => {
+    mediaRepository.create({ plexId: 'movie-search-1', title: 'Searchable Movie', mediaType: 'movie' });
+
+    const response = await request(app).get('/api/v1/search?q=Searchable&limit=5');
+
+    expect(response.status).toBe(200);
+    expect(response.body.query).toBe('Searchable');
+    expect(response.body.total).toBe(1);
+    expect(response.body.results).toEqual(response.body.items);
+    expect(response.body.pagination).toEqual({
+      total: 1,
+      limit: 5,
+      offset: 0,
+      hasMore: false,
+    });
+  });
+
+  it('keeps recent response compatibility while exposing pagination', async () => {
+    mediaRepository.create({
+      plexId: 'movie-recent-1',
+      title: 'Recent Movie',
+      mediaType: 'movie',
+      plexAddedAt: '2026-01-01T00:00:00Z',
+    });
+    mediaRepository.create({
+      plexId: 'movie-recent-2',
+      title: 'Older Recent Movie',
+      mediaType: 'movie',
+      plexAddedAt: '2025-12-01T00:00:00Z',
+    });
+
+    const response = await request(app).get('/api/v1/recent?limit=1&type=movie');
+
+    expect(response.status).toBe(200);
+    expect(response.body.count).toBe(1);
+    expect(response.body.items).toEqual([
+      expect.objectContaining({
+        ratingKey: 'movie-recent-1',
+        title: 'Recent Movie',
+      }),
+    ]);
+    expect(response.body.pagination).toEqual({
+      total: 2,
+      limit: 1,
+      offset: 0,
+      hasMore: true,
+    });
+  });
+
   it('normalizes local cover paths to consumable thumbnail URLs', async () => {
     mediaRepository.create({
       plexId: 'movie-cover-1',
@@ -229,6 +308,7 @@ describe('v1 routes', () => {
       .set('Host', 'tmdb-cache.test');
     expect(unavailableResponse.status).toBe(503);
     expect(unavailableResponse.headers['x-cache']).toBe('MISS');
+    expect(unavailableResponse.body.error.message).toBe('TMDB integration not configured');
 
     tmdbService = {
       isEnabled: () => true,
@@ -247,5 +327,65 @@ describe('v1 routes', () => {
       .set('Host', 'tmdb-cache.test');
     expect(cachedSuccessResponse.status).toBe(200);
     expect(cachedSuccessResponse.headers['x-cache']).toBe('HIT');
+  });
+
+  it('keeps TMDB rate-limit compatibility fields while using the error envelope', async () => {
+    const tmdbApp = createApp(
+      mediaRepository,
+      thumbnailRepository,
+      seasonRepository,
+      castRepository,
+      createV1ApiCaches(),
+      {
+        getTmdbService: () => ({
+          isEnabled: () => true,
+          fetchDetails: async () => {
+            throw new TmdbRateLimitError('limit reached', {
+              retryAfterMs: 1234,
+              until: 1780000000000,
+            });
+          },
+        }) as any,
+      },
+    );
+
+    const response = await request(tmdbApp).get('/api/v1/tmdb/movie/123');
+
+    expect(response.status).toBe(429);
+    expect(response.body.error).toMatchObject({
+      message: 'TMDB rate limit reached',
+      statusCode: 429,
+      details: {
+        retryAfterMs: 1234,
+        until: 1780000000000,
+      },
+    });
+    expect(response.body.retryAfterMs).toBe(1234);
+    expect(response.body.until).toBe(1780000000000);
+  });
+
+  it('documents the canonical v1 response shapes in OpenAPI', () => {
+    const swaggerPath = path.resolve(__dirname, '../../src/config/swagger.yaml');
+    const document = yaml.parse(fs.readFileSync(swaggerPath, 'utf8'));
+
+    const statsProperties = document.components.schemas.Stats.properties;
+    expect(Object.keys(statsProperties)).toEqual(['totalMovies', 'totalSeries', 'totalItems']);
+
+    const filterProperties =
+      document.paths['/api/v1/filter'].get.responses['200'].content['application/json'].schema.properties;
+    expect(filterProperties).toHaveProperty('items');
+    expect(filterProperties).toHaveProperty('pagination');
+    expect(filterProperties).not.toHaveProperty('results');
+
+    const searchProperties = document.components.schemas.SearchResults.properties;
+    expect(searchProperties).toHaveProperty('results');
+    expect(searchProperties).toHaveProperty('items');
+    expect(searchProperties).toHaveProperty('pagination');
+
+    const recentProperties =
+      document.paths['/api/v1/recent'].get.responses['200'].content['application/json'].schema.properties;
+    expect(recentProperties).toHaveProperty('items');
+    expect(recentProperties).toHaveProperty('count');
+    expect(recentProperties).toHaveProperty('pagination');
   });
 });

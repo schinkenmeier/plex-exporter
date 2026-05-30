@@ -1,10 +1,35 @@
 import { Request, Response, NextFunction } from 'express';
+import crypto from 'node:crypto';
 import { HttpError } from './errorHandler.js';
 
 export interface BasicAuthOptions {
   username: string | null;
   password: string | null;
+  bearerToken?: string | null;
 }
+
+const safeEqual = (actual: string | undefined, expected: string | null | undefined): boolean => {
+  if (!actual || !expected) {
+    return false;
+  }
+
+  const actualHash = crypto.createHash('sha256').update(actual).digest();
+  const expectedHash = crypto.createHash('sha256').update(expected).digest();
+  return crypto.timingSafeEqual(actualHash, expectedHash);
+};
+
+const parseBearer = (authHeader: string | undefined): string | null => {
+  if (!authHeader) {
+    return null;
+  }
+
+  const [scheme, credentials] = authHeader.split(/\s+/, 2);
+  if (!scheme || !credentials || scheme.toLowerCase() !== 'bearer') {
+    return null;
+  }
+
+  return credentials;
+};
 
 /**
  * Basic Authentication Middleware
@@ -23,12 +48,15 @@ export interface BasicAuthOptions {
  */
 export const createBasicAuthMiddleware = (options: BasicAuthOptions) => {
   return (req: Request, res: Response, next: NextFunction) => {
+    const hasBasicAuth = Boolean(options.username && options.password);
+    const hasBearerAuth = Boolean(options.bearerToken);
+
     // If no credentials configured, deny access
-    if (!options.username || !options.password) {
+    if (!hasBasicAuth && !hasBearerAuth) {
       return next(
         new HttpError(
           503,
-          'Admin panel is not configured. Set ADMIN_USERNAME and ADMIN_PASSWORD environment variables.',
+          'Admin access is not configured. Set ADMIN_USERNAME and ADMIN_PASSWORD or ADMIN_API_TOKEN environment variables.',
         ),
       );
     }
@@ -36,12 +64,18 @@ export const createBasicAuthMiddleware = (options: BasicAuthOptions) => {
     // Parse Authorization header
     const authHeader = req.headers.authorization;
 
+    const bearerToken = parseBearer(authHeader);
+    if (bearerToken && safeEqual(bearerToken, options.bearerToken)) {
+      res.locals.adminAuthMethod = 'bearer';
+      return next();
+    }
+
     if (!authHeader || !authHeader.startsWith('Basic ')) {
-      res.setHeader('WWW-Authenticate', 'Basic realm="Admin Panel"');
-      return res.status(401).json({
-        error: 'Authentication required',
-        message: 'Please provide valid credentials',
-      });
+      res.setHeader(
+        'WWW-Authenticate',
+        hasBasicAuth ? 'Basic realm="Admin Panel"' : 'Bearer realm="Admin API"',
+      );
+      return next(new HttpError(401, 'Authentication required'));
     }
 
     // Decode credentials
@@ -50,16 +84,17 @@ export const createBasicAuthMiddleware = (options: BasicAuthOptions) => {
     const [username, password] = credentials.split(':');
 
     // Verify credentials
-    if (username === options.username && password === options.password) {
+    if (safeEqual(username, options.username) && safeEqual(password, options.password)) {
+      res.locals.adminAuthMethod = 'basic';
       return next();
     }
 
     // Invalid credentials
-    res.setHeader('WWW-Authenticate', 'Basic realm="Admin Panel"');
-    return res.status(401).json({
-      error: 'Authentication failed',
-      message: 'Invalid username or password',
-    });
+    res.setHeader(
+      'WWW-Authenticate',
+      hasBasicAuth ? 'Basic realm="Admin Panel"' : 'Bearer realm="Admin API"',
+    );
+    return next(new HttpError(401, 'Authentication failed'));
   };
 };
 

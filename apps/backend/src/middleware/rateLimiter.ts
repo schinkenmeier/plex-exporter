@@ -17,9 +17,19 @@ export interface RateLimiterSet {
 const createHandler =
   (message: string) => (req: Request, res: Response) => {
     res.status(429).json({
-      error: 'Too Many Requests',
-      message,
-      retryAfter: res.getHeader('RateLimit-Reset'),
+      error: {
+        message,
+        statusCode: 429,
+        details: {
+          type: 'Too Many Requests',
+          retryAfter: res.getHeader('RateLimit-Reset'),
+        },
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        path: req.originalUrl,
+        method: req.method,
+      },
     });
   };
 

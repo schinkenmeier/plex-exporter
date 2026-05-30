@@ -48,6 +48,22 @@ const createApp = () => {
   return app;
 };
 
+const createBearerOnlyApp = () => {
+  const app = express();
+  const auth = createBasicAuthMiddleware({
+    username: null,
+    password: null,
+    bearerToken: 'admin-token',
+  });
+
+  app.use('/admin/protected', auth, (_req, res) => {
+    res.json({ ok: true });
+  });
+  app.use(errorHandler);
+
+  return app;
+};
+
 const sendRequest = (app: express.Express, method: string, path: string) => {
   switch (method) {
     case 'GET':
@@ -160,6 +176,33 @@ describe('email route security boundary', () => {
         digests: { total: 0, totalRecipients: 0, averageRecipients: '0' },
       },
     });
+  });
+
+  it('advertises Bearer auth when only ADMIN_API_TOKEN is configured and auth is missing', async () => {
+    const response = await request(createBearerOnlyApp()).get('/admin/protected');
+
+    expect(response.status).toBe(401);
+    expect(response.headers['www-authenticate']).toContain('Bearer');
+    expect(response.body.error.message).toBe('Authentication required');
+  });
+
+  it('advertises Bearer auth when only ADMIN_API_TOKEN is configured and bearer auth fails', async () => {
+    const response = await request(createBearerOnlyApp())
+      .get('/admin/protected')
+      .set('Authorization', 'Bearer wrong-token');
+
+    expect(response.status).toBe(401);
+    expect(response.headers['www-authenticate']).toContain('Bearer');
+    expect(response.body.error.message).toBe('Authentication required');
+  });
+
+  it('accepts Bearer auth when only ADMIN_API_TOKEN is configured', async () => {
+    const response = await request(createBearerOnlyApp())
+      .get('/admin/protected')
+      .set('Authorization', 'Bearer admin-token');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ ok: true });
   });
 
   it.each([
