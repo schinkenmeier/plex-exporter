@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { RequestHandler } from 'express';
 import { z } from 'zod';
 import { watchlistEmailService } from '../services/watchlistEmailService.js';
 import type SettingsRepository from '../repositories/settingsRepository.js';
@@ -6,21 +7,22 @@ import logger from '../services/logger.js';
 
 export interface WatchlistRouterOptions {
   settingsRepository: SettingsRepository;
+  sendEmailLimiter?: RequestHandler;
 }
 
-export const createWatchlistRouter = ({ settingsRepository }: WatchlistRouterOptions): Router => {
+export const createWatchlistRouter = ({ settingsRepository, sendEmailLimiter }: WatchlistRouterOptions): Router => {
   const router = Router();
 
   // Validation schema
   const sendWatchlistEmailSchema = z.object({
     email: z.string().email(),
     items: z.array(z.object({
-      title: z.string(),
+      title: z.string().trim().min(1).max(200),
       type: z.enum(['movie', 'tv']),
       year: z.number().optional().nullable(),
-      summary: z.string().optional().nullable(),
-      poster: z.string().optional().nullable(),
-    })).min(1, 'At least one item is required'),
+      summary: z.string().max(2000).optional().nullable(),
+      poster: z.string().max(2048).optional().nullable(),
+    })).min(1, 'At least one item is required').max(50, 'At most 50 items are allowed'),
     sendCopyToAdmin: z.boolean().optional(),
   });
 
@@ -44,7 +46,7 @@ export const createWatchlistRouter = ({ settingsRepository }: WatchlistRouterOpt
    * POST /api/watchlist/send-email
    * Send watchlist items via email
    */
-  router.post('/send-email', async (req, res) => {
+  router.post('/send-email', ...(sendEmailLimiter ? [sendEmailLimiter] : []), async (req, res) => {
     try {
       const { email, items, sendCopyToAdmin } = sendWatchlistEmailSchema.parse(req.body);
 

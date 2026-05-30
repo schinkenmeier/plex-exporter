@@ -330,7 +330,14 @@ export class TautulliSyncService {
         const existing = this.mediaRepo.getByPlexId(item.rating_key);
 
         // Skip if incremental and not changed
-        if (options.incremental && existing && existing.plexUpdatedAt === metadata.updated_at?.toString()) {
+        const normalizedMetadataUpdatedAt = normalizeTimestamp(metadata.updated_at);
+        if (
+          options.incremental &&
+          existing &&
+          existing.plexUpdatedAt &&
+          normalizedMetadataUpdatedAt &&
+          existing.plexUpdatedAt === normalizedMetadataUpdatedAt
+        ) {
           skipped++;
           continue;
         }
@@ -475,7 +482,14 @@ export class TautulliSyncService {
         const existing = this.mediaRepo.getByPlexId(item.rating_key);
 
         // Skip if incremental and not changed
-        if (options.incremental && existing && existing.plexUpdatedAt === metadata.updated_at?.toString()) {
+        const normalizedMetadataUpdatedAt = normalizeTimestamp(metadata.updated_at);
+        if (
+          options.incremental &&
+          existing &&
+          existing.plexUpdatedAt &&
+          normalizedMetadataUpdatedAt &&
+          existing.plexUpdatedAt === normalizedMetadataUpdatedAt
+        ) {
           skipped++;
           continue;
         }

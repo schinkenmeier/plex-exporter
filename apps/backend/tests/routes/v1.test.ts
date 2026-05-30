@@ -6,7 +6,7 @@ import MediaRepository from '../../src/repositories/mediaRepository.js';
 import ThumbnailRepository from '../../src/repositories/thumbnailRepository.js';
 import SeasonRepository from '../../src/repositories/seasonRepository.js';
 import CastRepository from '../../src/repositories/castRepository.js';
-import { createV1Router } from '../../src/routes/v1.js';
+import { clearV1CatalogCaches, createV1ApiCaches, createV1Router, type V1ApiCaches } from '../../src/routes/v1.js';
 import { errorHandler } from '../../src/middleware/errorHandler.js';
 import { createTestDatabase, type TestDatabaseHandle } from '../helpers/testDatabase.js';
 
@@ -15,11 +15,20 @@ const createApp = (
   thumbnailRepository: ThumbnailRepository,
   seasonRepository: SeasonRepository,
   castRepository: CastRepository,
+  caches?: V1ApiCaches,
+  options: Partial<Parameters<typeof createV1Router>[0]> = {},
 ) => {
   const app = express();
   app.use(
     '/api/v1',
-    createV1Router({ mediaRepository, thumbnailRepository, seasonRepository, castRepository }),
+    createV1Router({
+      mediaRepository,
+      thumbnailRepository,
+      seasonRepository,
+      castRepository,
+      caches,
+      ...options,
+    }),
   );
   app.use(errorHandler);
   return app;
@@ -149,5 +158,94 @@ describe('v1 routes', () => {
     expect(response.body.seasons[0].episodes[0].thumb).toContain(
       '/api/thumbnails/tautulli/library/metadata/333/thumb/444',
     );
+  });
+
+  it('normalizes local cover paths to consumable thumbnail URLs', async () => {
+    mediaRepository.create({
+      plexId: 'movie-cover-1',
+      title: 'Local Cover Movie',
+      mediaType: 'movie',
+      poster: 'covers/movie/movie-cover-1/poster.jpg',
+      backdrop: 'covers/movie/movie-cover-1/backdrop.jpg',
+    });
+
+    const response = await request(app).get('/api/v1/movies/movie-cover-1');
+
+    expect(response.status).toBe(200);
+    expect(response.body.poster).toMatch(
+      /^https?:\/\/.+\/api\/thumbnails\/covers\/movie\/movie-cover-1\/poster\.jpg$/,
+    );
+    expect(response.body.backdrop).toMatch(
+      /^https?:\/\/.+\/api\/thumbnails\/covers\/movie\/movie-cover-1\/backdrop\.jpg$/,
+    );
+  });
+
+  it('serves fresh catalog data after v1 catalog caches are invalidated', async () => {
+    const caches = createV1ApiCaches();
+    const cacheApp = createApp(
+      mediaRepository,
+      thumbnailRepository,
+      seasonRepository,
+      castRepository,
+      caches,
+    );
+    const movie = mediaRepository.create({
+      plexId: 'movie-cache-1',
+      title: 'Cached Before Sync',
+      mediaType: 'movie',
+    });
+
+    const firstResponse = await request(cacheApp).get('/api/v1/movies').set('Host', 'catalog.test');
+    expect(firstResponse.status).toBe(200);
+    expect(firstResponse.body.some((item: any) => item.title === 'Cached Before Sync')).toBe(true);
+
+    mediaRepository.update(movie.id, { title: 'Fresh After Sync' });
+
+    const staleResponse = await request(cacheApp).get('/api/v1/movies').set('Host', 'catalog.test');
+    expect(staleResponse.headers['x-cache']).toBe('HIT');
+    expect(staleResponse.body.some((item: any) => item.title === 'Cached Before Sync')).toBe(true);
+
+    clearV1CatalogCaches(caches);
+
+    const freshResponse = await request(cacheApp).get('/api/v1/movies').set('Host', 'catalog.test');
+    expect(freshResponse.headers['x-cache']).toBe('MISS');
+    expect(freshResponse.body.some((item: any) => item.title === 'Fresh After Sync')).toBe(true);
+  });
+
+  it('does not cache TMDB error responses and allows a later success', async () => {
+    const caches = createV1ApiCaches();
+    let tmdbService: any = null;
+    const tmdbApp = createApp(
+      mediaRepository,
+      thumbnailRepository,
+      seasonRepository,
+      castRepository,
+      caches,
+      { getTmdbService: () => tmdbService },
+    );
+
+    const unavailableResponse = await request(tmdbApp)
+      .get('/api/v1/tmdb/movie/123')
+      .set('Host', 'tmdb-cache.test');
+    expect(unavailableResponse.status).toBe(503);
+    expect(unavailableResponse.headers['x-cache']).toBe('MISS');
+
+    tmdbService = {
+      isEnabled: () => true,
+      fetchDetails: async () => ({ id: 123, title: 'Runtime TMDB' }),
+    };
+
+    const successResponse = await request(tmdbApp)
+      .get('/api/v1/tmdb/movie/123')
+      .set('Host', 'tmdb-cache.test');
+    expect(successResponse.status).toBe(200);
+    expect(successResponse.headers['x-cache']).toBe('MISS');
+    expect(successResponse.body).toEqual({ id: 123, title: 'Runtime TMDB' });
+
+    const cachedSuccessResponse = await request(tmdbApp)
+      .get('/api/v1/tmdb/movie/123')
+      .set('Host', 'tmdb-cache.test');
+    expect(cachedSuccessResponse.status).toBe(200);
+    expect(cachedSuccessResponse.headers['x-cache']).toBe('HIT');
   });
 });

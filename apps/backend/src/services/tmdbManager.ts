@@ -12,6 +12,11 @@ export interface TmdbManagerStatus {
   tokenPreview: string | null;
   fromEnv: boolean;
   fromDatabase: boolean;
+  envOverride: boolean;
+  saved: {
+    tokenPreview: string | null;
+    updatedAt: number | null;
+  };
 }
 
 export interface TmdbManagerOptions {
@@ -58,15 +63,17 @@ export const createTmdbManager = (options: TmdbManagerOptions = {}): TmdbManager
   const envToken = normalizeToken(options.envToken);
   let dbToken = normalizeToken(options.dbToken);
 
-  let currentToken = dbToken ?? envToken ?? null;
-  let source: TokenSource = dbToken ? 'database' : envToken ? 'env' : 'unset';
-  let updatedAt = dbToken ? options.updatedAt ?? Date.now() : null;
+  let currentToken = envToken ?? dbToken ?? null;
+  let source: TokenSource = envToken ? 'env' : dbToken ? 'database' : 'unset';
+  let dbUpdatedAt = dbToken ? options.updatedAt ?? Date.now() : null;
+  let updatedAt = source === 'database' ? dbUpdatedAt : null;
   let service = currentToken ? createTmdbService({ accessToken: currentToken }) : null;
 
   const rebuild = (nextUpdatedAt: number | null = null) => {
-    currentToken = dbToken ?? envToken ?? null;
-    source = dbToken ? 'database' : envToken ? 'env' : 'unset';
-    updatedAt = dbToken ? nextUpdatedAt ?? Date.now() : null;
+    currentToken = envToken ?? dbToken ?? null;
+    source = envToken ? 'env' : dbToken ? 'database' : 'unset';
+    dbUpdatedAt = dbToken ? nextUpdatedAt ?? Date.now() : null;
+    updatedAt = source === 'database' ? dbUpdatedAt : null;
     service = currentToken ? createTmdbService({ accessToken: currentToken }) : null;
     logger.info('TMDb access token updated', {
       namespace: 'tmdb',
@@ -83,6 +90,11 @@ export const createTmdbManager = (options: TmdbManagerOptions = {}): TmdbManager
       tokenPreview: currentToken ? buildPreview(currentToken) : null,
       fromEnv: source === 'env',
       fromDatabase: source === 'database',
+      envOverride: Boolean(envToken && dbToken),
+      saved: {
+        tokenPreview: dbToken ? buildPreview(dbToken) : null,
+        updatedAt: dbUpdatedAt,
+      },
     }),
     setDatabaseToken: (token: string | null, options?: SetDatabaseTokenOptions) => {
       dbToken = normalizeToken(token);

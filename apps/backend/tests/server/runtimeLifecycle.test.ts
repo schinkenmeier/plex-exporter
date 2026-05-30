@@ -12,6 +12,7 @@ import { createTestDatabase } from '../helpers/testDatabase.js';
 import SettingsRepository from '../../src/repositories/settingsRepository.js';
 import { TautulliConfigRepository } from '../../src/repositories/tautulliConfigRepository.js';
 import type { SyncStats } from '../../src/services/tautulliSyncService.js';
+import type { TmdbManager } from '../../src/services/tmdbManager.js';
 
 describe('server runtime lifecycle', () => {
   let tempDir: string | null = null;
@@ -93,6 +94,100 @@ describe('server runtime lifecycle', () => {
     expect(secondApp).toBe(firstApp);
 
     runtime.dispose();
+  });
+
+  it('uses a TMDB token saved through admin routes without restarting v1 routes', async () => {
+    let activeTmdbService: any = null;
+    let tmdbStatus = {
+      hasToken: false,
+      source: 'unset' as const,
+      updatedAt: null,
+      tokenPreview: null,
+      fromEnv: false,
+      fromDatabase: false,
+      envOverride: false,
+      saved: {
+        tokenPreview: null,
+        updatedAt: null,
+      },
+    };
+    const tmdbManager: TmdbManager = {
+      getService: vi.fn(() => activeTmdbService),
+      getStatus: vi.fn(() => tmdbStatus),
+      setDatabaseToken: vi.fn((token: string | null, options?: { updatedAt?: number | null }) => {
+        if (token) {
+          const responseTitle = token === 'runtime-token-2' ? 'Runtime Updated' : 'Runtime Enabled';
+          activeTmdbService = {
+            isEnabled: () => true,
+            fetchDetails: vi.fn(async () => ({ id: 777, title: responseTitle })),
+          };
+          tmdbStatus = {
+            hasToken: true,
+            source: 'database',
+            updatedAt: options?.updatedAt ?? Date.now(),
+            tokenPreview: 'runt...oken',
+            fromEnv: false,
+            fromDatabase: true,
+            envOverride: false,
+            saved: {
+              tokenPreview: 'runt...oken',
+              updatedAt: options?.updatedAt ?? Date.now(),
+            },
+          };
+        } else {
+          activeTmdbService = null;
+          tmdbStatus = {
+            hasToken: false,
+            source: 'unset',
+            updatedAt: null,
+            tokenPreview: null,
+            fromEnv: false,
+            fromDatabase: false,
+            envOverride: false,
+            saved: {
+              tokenPreview: null,
+              updatedAt: null,
+            },
+          };
+        }
+        return activeTmdbService;
+      }),
+      testToken: vi.fn(),
+    };
+    const config = createConfig();
+    config.admin = {
+      username: 'admin',
+      password: 'secret',
+    };
+    const runtime = createRuntime(config, { tmdbManager });
+
+    try {
+      const unavailableResponse = await request(runtime.app).get('/api/v1/tmdb/movie/777');
+      expect(unavailableResponse.status).toBe(503);
+
+      const saveResponse = await request(runtime.app)
+        .post('/admin/api/tmdb')
+        .auth('admin', 'secret')
+        .send({ token: 'runtime-token' });
+      expect(saveResponse.status).toBe(200);
+
+      const tmdbResponse = await request(runtime.app).get('/api/v1/tmdb/movie/777');
+      expect(tmdbResponse.status).toBe(200);
+      expect(tmdbResponse.body).toEqual({ id: 777, title: 'Runtime Enabled' });
+      expect(activeTmdbService.fetchDetails).toHaveBeenCalledWith('movie', '777', expect.any(Object));
+
+      const updateResponse = await request(runtime.app)
+        .post('/admin/api/tmdb')
+        .auth('admin', 'secret')
+        .send({ token: 'runtime-token-2' });
+      expect(updateResponse.status).toBe(200);
+
+      const refreshedResponse = await request(runtime.app).get('/api/v1/tmdb/movie/777');
+      expect(refreshedResponse.status).toBe(200);
+      expect(refreshedResponse.body).toEqual({ id: 777, title: 'Runtime Updated' });
+    } finally {
+      runtime.dispose();
+    }
   });
 
   it('disposes internally owned database resources once', () => {

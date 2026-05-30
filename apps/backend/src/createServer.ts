@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import type { CorsOptions } from 'cors';
 import helmet from 'helmet';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -8,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { type AppConfig, loadPersistedConfig } from './config/index.js';
 import { createLibrariesRouter } from './routes/libraries.js';
 import { createHealthRouter } from './routes/health.js';
-import { createV1Router } from './routes/v1.js';
+import { clearV1CatalogCaches, createV1ApiCaches, createV1Router, type V1ApiCaches } from './routes/v1.js';
 import { createWatchlistRouter } from './routes/watchlist.js';
 import welcomeEmailRouter from './routes/welcomeEmail.js';
 import {
@@ -112,20 +113,31 @@ export interface ServerRuntime {
   resendService: MailSender | null;
   heroPipeline: HeroPipelineService;
   rateLimiters: ReturnType<typeof createRateLimiters>;
+  v1ApiCaches: V1ApiCaches;
   syncLiveMonitor: SyncLiveMonitor;
   syncCoordinator: SyncCoordinator;
   tautulliState: TautulliRuntimeState;
   refreshTautulliIntegration(input?: { baseUrl: string; apiKey: string }): void;
+  refreshResendIntegration(): MailSender | null;
+  refreshTmdbIntegration(): TmdbService | null;
   getTautulliConfigStatus(): TautulliConfigStatus;
   dispose(): void;
   shutdown(options?: { syncDrainTimeoutMs?: number }): Promise<void>;
   getTautulliService(): TautulliClient | null;
+  getResendService(): MailSender | null;
+  getTmdbService(): TmdbService | null;
   getTautulliSyncService(): TautulliSyncService | null;
   getSchedulerService(): SchedulerService | null;
 }
 
 const isServerRuntime = (value: AppConfig | ServerRuntime): value is ServerRuntime =>
   Boolean(value && typeof value === 'object' && 'dispose' in value && 'app' in value);
+
+const corsOrigin =
+  (env: AppConfig['runtime']['env']): CorsOptions['origin'] =>
+    env === 'production'
+      ? false
+      : '*';
 
 export function createRuntime(appConfig: AppConfig, deps: ServerDependencies = {}): ServerRuntime {
   const ownsDatabase = !('database' in deps || 'drizzleDatabase' in deps);
@@ -172,6 +184,11 @@ export function createRuntime(appConfig: AppConfig, deps: ServerDependencies = {
           })
       : undefined,
   });
+  const v1ApiCaches = createV1ApiCaches();
+  const invalidateV1CatalogCaches = (reason: string): void => {
+    clearV1CatalogCaches(v1ApiCaches);
+    logger.info('Invalidated v1 catalog API caches', { namespace: 'cache', reason });
+  };
 
   const settingsRepository =
     'settingsRepository' in deps
@@ -182,8 +199,6 @@ export function createRuntime(appConfig: AppConfig, deps: ServerDependencies = {
     throw new Error('Settings repository could not be initialised.');
   }
 
-  // Load persisted configuration from database (supplements environment variables)
-  const persistedConfig = loadPersistedConfig((key: string) => settingsRepository.get(key));
   const tautulliConfigRepo = new TautulliConfigRepository(drizzleDb);
 
   // Initialize Resend service with environment or persisted config
@@ -191,22 +206,54 @@ export function createRuntime(appConfig: AppConfig, deps: ServerDependencies = {
     'resendService' in deps
       ? deps.resendService ?? null
       : null;
+  let runtimeRef: ServerRuntime | null = null;
 
-  if (!resendService) {
-    const resendConfig = appConfig.resend ?? persistedConfig.resend;
-    if (resendConfig) {
-      resendService = createResendService(resendConfig);
-      if (!appConfig.resend && persistedConfig.resend) {
-        logger.info('Resend service initialized from database settings', { fromEmail: resendConfig.fromEmail });
+  const applyMailSender = (sender: MailSender | null): void => {
+    watchlistEmailService.setMailSender(sender);
+    welcomeEmailService.setMailSender(sender);
+    newsletterService.setMailSender(sender);
+  };
+
+  const resolveActiveResendConfig = () => {
+    if (appConfig.resend) {
+      return { config: appConfig.resend, source: 'env' as const };
+    }
+
+    const currentPersistedConfig = loadPersistedConfig((key: string) => settingsRepository.get(key));
+    if (currentPersistedConfig.resend) {
+      return { config: currentPersistedConfig.resend, source: 'database' as const };
+    }
+
+    return null;
+  };
+
+  const refreshResendIntegration = (): MailSender | null => {
+    if ('resendService' in deps) {
+      resendService = deps.resendService ?? null;
+    } else {
+      const resolved = resolveActiveResendConfig();
+      resendService = resolved ? createResendService(resolved.config) : null;
+      if (resolved) {
+        logger.info('Resend service initialized', {
+          source: resolved.source,
+          fromEmail: resolved.config.fromEmail,
+        });
+      } else {
+        logger.info('Resend service disabled');
       }
     }
-  }
 
-  // Initialize email services with mail sender if available
-  if (resendService) {
-    watchlistEmailService.setMailSender(resendService);
-    welcomeEmailService.setMailSender(resendService);
-    newsletterService.setMailSender(resendService);
+    applyMailSender(resendService);
+    if (runtimeRef) {
+      runtimeRef.resendService = resendService;
+    }
+    return resendService;
+  };
+
+  if (!resendService) {
+    refreshResendIntegration();
+  } else {
+    applyMailSender(resendService);
   }
 
   // Initialize Tautulli service with env, tautulli_config or legacy settings.
@@ -252,7 +299,7 @@ export function createRuntime(appConfig: AppConfig, deps: ServerDependencies = {
     tmdbManager.setDatabaseToken(storedTmdbSetting?.value ?? null, options);
   }
 
-  const tmdbService = tmdbManager.getService();
+  let tmdbService = tmdbManager.getService();
 
   const mediaRepository =
     'mediaRepository' in deps
@@ -366,6 +413,7 @@ export function createRuntime(appConfig: AppConfig, deps: ServerDependencies = {
       syncService,
       syncCoordinator,
       heroPipelineService,
+      invalidateV1CatalogCaches,
     );
     tautulliState.scheduler.start();
     logger.info('Scheduler service started');
@@ -426,6 +474,27 @@ export function createRuntime(appConfig: AppConfig, deps: ServerDependencies = {
       settingsRepository,
     });
 
+  const refreshTmdbIntegration = (): TmdbService | null => {
+    tmdbService = tmdbManager.getService();
+    heroPipelineService.setTmdbService(tmdbService);
+    v1ApiCaches.tmdb.clear();
+
+    if (tautulliState.service) {
+      tautulliState.syncService = buildSyncService(tautulliState.service);
+      restartScheduler(tautulliState.syncService);
+    }
+
+    if (runtimeRef) {
+      runtimeRef.tmdbService = tmdbService;
+    }
+
+    logger.info('Refreshed TMDB integration', {
+      namespace: 'tmdb',
+      enabled: Boolean(tmdbService),
+    });
+    return tmdbService;
+  };
+
   // Attempt to build sync and scheduler services with existing configuration
   tautulliState.syncService = buildSyncService(tautulliState.service);
   if (tautulliState.syncService) {
@@ -461,12 +530,17 @@ export function createRuntime(appConfig: AppConfig, deps: ServerDependencies = {
     resendService,
     heroPipeline: heroPipelineService,
     rateLimiters,
+    v1ApiCaches,
     syncLiveMonitor,
     syncCoordinator,
     tautulliState,
     refreshTautulliIntegration,
+    refreshResendIntegration,
+    refreshTmdbIntegration,
     getTautulliConfigStatus,
     getTautulliService: () => tautulliState.service,
+    getResendService: () => resendService,
+    getTmdbService: () => tmdbService,
     getTautulliSyncService: () => tautulliState.syncService,
     getSchedulerService: () => tautulliState.scheduler,
     dispose: () => {
@@ -502,6 +576,7 @@ export function createRuntime(appConfig: AppConfig, deps: ServerDependencies = {
       runtime.dispose();
     },
   };
+  runtimeRef = runtime;
 
   runtime.app = createServer(runtime);
   return runtime;
@@ -532,15 +607,19 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
     settingsRepository,
     tautulliConfigRepo,
     tmdbManager,
-    tmdbService,
     resendService,
     heroPipeline,
     rateLimiters,
+    v1ApiCaches,
     syncLiveMonitor,
     syncCoordinator,
     tautulliState,
     refreshTautulliIntegration,
+    refreshResendIntegration,
+    refreshTmdbIntegration,
     getTautulliConfigStatus,
+    getResendService,
+    getTmdbService,
   } = runtime;
 
   const app = express();
@@ -573,10 +652,8 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
 
   // Enable CORS for frontend access
   app.use(cors({
-    origin: appConfig.runtime.env === 'production'
-      ? true // Allow same-origin requests when served through Caddy reverse proxy
-      : '*', // Allow all origins in development
-    credentials: true,
+    origin: corsOrigin(appConfig.runtime.env),
+    credentials: false,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     exposedHeaders: ['RateLimit-Limit', 'RateLimit-Remaining', 'RateLimit-Reset'],
@@ -615,14 +692,18 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
     thumbnailRepository,
     seasonRepository,
     castRepository,
-    tmdbService,
+    getTmdbService,
     rateLimiters: {
       apiLimiter: rateLimiters.apiLimiter,
       searchLimiter: rateLimiters.searchLimiter,
     },
+    caches: v1ApiCaches,
   }));
-  app.use('/api/watchlist', createWatchlistRouter({ settingsRepository }));
-  app.use('/api/newsletter', rateLimiters.apiLimiter, publicNewsletterRouter);
+  app.use('/api/watchlist', createWatchlistRouter({
+    settingsRepository,
+    sendEmailLimiter: rateLimiters.publicMailLimiter,
+  }));
+  app.use('/api/newsletter', rateLimiters.publicMailLimiter, publicNewsletterRouter);
 
   // Protected routes
   app.use(
@@ -636,6 +717,10 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
   );
   app.use('/media', basicAuthMiddleware, createMediaRouter({ mediaRepository, thumbnailRepository }));
 
+  // Admin-only email operations (protected with Basic Auth)
+  app.use('/admin/api/welcome-email', basicAuthMiddleware, welcomeEmailRouter);
+  app.use('/admin/api/newsletter', basicAuthMiddleware, adminNewsletterRouter);
+
   // Admin panel (protected with Basic Auth)
   app.use(
     '/admin',
@@ -645,6 +730,7 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
       mediaRepository,
       thumbnailRepository,
       resendService,
+      getResendService,
       tautulliService: tautulliState.service,
       getTautulliService: () => tautulliState.service,
       seasonRepository,
@@ -655,14 +741,12 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
       tmdbManager,
       heroPipeline,
       refreshTautulliIntegration,
+      refreshResendIntegration,
+      refreshTmdbIntegration,
       getTautulliConfigStatus,
       adminUiDir,
     }),
   );
-
-  // Admin-only email operations; Basic Auth is enforced by the preceding /admin mount.
-  app.use('/admin/api/welcome-email', welcomeEmailRouter);
-  app.use('/admin/api/newsletter', adminNewsletterRouter);
 
   // Tautulli Sync routes (protected with Basic Auth)
   app.use(
@@ -682,6 +766,10 @@ export function createServer(appConfigOrRuntime: AppConfig | ServerRuntime, deps
       syncLiveMonitor,
       syncCoordinator,
       heroPipeline,
+      invalidateCatalogCaches: (reason) => {
+        clearV1CatalogCaches(v1ApiCaches);
+        logger.info('Invalidated v1 catalog API caches', { namespace: 'cache', reason });
+      },
     }),
   );
 

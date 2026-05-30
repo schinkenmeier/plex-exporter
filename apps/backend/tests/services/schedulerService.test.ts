@@ -43,11 +43,15 @@ describe('SchedulerService', () => {
     const tautulliSyncService = {
       syncAll: vi.fn(async () => createStats()),
     } as unknown as TautulliSyncService;
+    const invalidateCatalogCaches = vi.fn();
 
     const scheduler = new SchedulerService(
       { enabled: true, timezone: 'UTC' },
       syncScheduleRepo,
       tautulliSyncService,
+      undefined,
+      undefined,
+      invalidateCatalogCaches,
     );
 
     scheduler.start();
@@ -67,5 +71,6 @@ describe('SchedulerService', () => {
       expect.any(String),
       null,
     );
+    expect(invalidateCatalogCaches).toHaveBeenCalledWith('scheduled-tautulli-sync');
   });
 });

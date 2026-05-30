@@ -84,11 +84,18 @@ export interface AdminConfigSnapshot {
     updatedAt: number | null;
     fromEnv: boolean;
     fromDatabase: boolean;
+    envOverride: boolean;
+    saved: SavedTmdbConfigStatus;
   };
   resend: {
     enabled: boolean;
     apiKey: string;
     fromEmail: string;
+    source: ResendSettingsResponse['source'];
+    fromEnv: boolean;
+    fromDatabase: boolean;
+    envOverride: boolean;
+    saved?: ResendSettingsResponse['saved'];
   };
 }
 
@@ -196,6 +203,13 @@ export interface TmdbStatus {
   updatedAt: number | null;
   fromEnv: boolean;
   fromDatabase: boolean;
+  envOverride: boolean;
+  saved: SavedTmdbConfigStatus;
+}
+
+export interface SavedTmdbConfigStatus {
+  tokenPreview: string | null;
+  updatedAt: number | null;
 }
 
 export interface TmdbSaveResponse {
@@ -216,10 +230,16 @@ export interface ResendSettingsResponse {
   enabled: boolean;
   fromDatabase: boolean;
   fromEnv: boolean;
-  source: 'database' | 'environment';
+  envOverride: boolean;
+  source: 'database' | 'environment' | 'unset';
   apiKeyPreview: string | null;
   fromEmail: string | null;
   updatedAt: number | null;
+  saved?: {
+    apiKeyPreview: string | null;
+    fromEmail: string | null;
+    updatedAt: number | null;
+  };
 }
 
 export interface WatchlistAdminEmailResponse {
@@ -392,6 +412,39 @@ export class ApiError extends Error {
   }
 }
 
+export function extractAdminApiErrorMessage(data: unknown, fallback = 'Request failed'): string {
+  if (!data || typeof data !== 'object') {
+    return fallback;
+  }
+
+  const payload = data as {
+    message?: unknown;
+    error?: unknown;
+    details?: unknown;
+  };
+
+  if (typeof payload.message === 'string' && payload.message.trim()) {
+    return payload.message;
+  }
+
+  if (typeof payload.error === 'string' && payload.error.trim()) {
+    return payload.error;
+  }
+
+  if (payload.error && typeof payload.error === 'object') {
+    const nested = payload.error as { message?: unknown };
+    if (typeof nested.message === 'string' && nested.message.trim()) {
+      return nested.message;
+    }
+  }
+
+  if (typeof payload.details === 'string' && payload.details.trim()) {
+    return payload.details;
+  }
+
+  return fallback;
+}
+
 export class AdminApiClient {
   constructor(private readonly baseUrl: string = ADMIN_API_BASE) {}
 
@@ -421,7 +474,7 @@ export class AdminApiClient {
     const data = text ? (JSON.parse(text) as T) : (null as T);
 
     if (!response.ok) {
-      const message = (data as { message?: string } | null)?.message ?? response.statusText;
+      const message = extractAdminApiErrorMessage(data, response.statusText);
       throw new ApiError(message || 'Request failed', response.status);
     }
 
@@ -601,9 +654,7 @@ class WelcomeEmailApiClient {
     const data = text ? (JSON.parse(text) as T) : (null as T);
 
     if (!response.ok) {
-      const message = (data as { message?: string; error?: string } | null)?.message ??
-        (data as { error?: string } | null)?.error ??
-        response.statusText;
+      const message = extractAdminApiErrorMessage(data, response.statusText);
       throw new Error(message || 'Request failed');
     }
 

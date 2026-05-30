@@ -5,12 +5,13 @@ export interface RateLimiterFactoryOptions {
   createStore?: (options: { limiterName: RateLimiterName; windowMs: number }) => Store | undefined;
 }
 
-export type RateLimiterName = 'api' | 'search' | 'hero';
+export type RateLimiterName = 'api' | 'search' | 'hero' | 'publicMail';
 
 export interface RateLimiterSet {
   apiLimiter: RequestHandler;
   searchLimiter: RequestHandler;
   heroLimiter: RequestHandler;
+  publicMailLimiter: RequestHandler;
 }
 
 const createHandler =
@@ -61,6 +62,13 @@ export const createRateLimiters = (options: RateLimiterFactoryOptions = {}): Rat
       'Hero pipeline rate limit exceeded. This endpoint is resource-intensive.',
       createStore,
     ),
+    publicMailLimiter: buildLimiter(
+      'publicMail',
+      15 * 60 * 1000,
+      10,
+      'Mail request rate limit exceeded. Please try again later.',
+      createStore,
+    ),
   };
 };
 
@@ -69,3 +77,4 @@ const defaultLimiters = createRateLimiters();
 export const apiLimiter = defaultLimiters.apiLimiter;
 export const searchLimiter = defaultLimiters.searchLimiter;
 export const heroLimiter = defaultLimiters.heroLimiter;
+export const publicMailLimiter = defaultLimiters.publicMailLimiter;

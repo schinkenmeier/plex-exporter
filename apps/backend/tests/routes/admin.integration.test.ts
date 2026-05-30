@@ -13,6 +13,7 @@ import SettingsRepository from '../../src/repositories/settingsRepository.js';
 import { TautulliConfigRepository } from '../../src/repositories/tautulliConfigRepository.js';
 import type { AppConfig } from '../../src/config/index.js';
 import type { TmdbManager } from '../../src/services/tmdbManager.js';
+import type { MailSender } from '../../src/services/resendService.js';
 import type { HeroPipelineService } from '../../src/services/heroPipeline.js';
 import { createTestDatabase, type TestDatabaseHandle } from '../helpers/testDatabase.js';
 
@@ -24,6 +25,8 @@ describe('Admin router integration', () => {
   let settingsRepository: SettingsRepository;
   let tautulliConfigRepository: TautulliConfigRepository;
   let refreshTautulliIntegration: ReturnType<typeof vi.fn>;
+  let activeResendService: MailSender | null;
+  let refreshResendIntegration: ReturnType<typeof vi.fn>;
   let app: express.Express;
   let tmdbManager: TmdbManager;
 
@@ -32,6 +35,22 @@ describe('Admin router integration', () => {
     settingsRepository = new SettingsRepository(dbHandle.drizzle);
     tautulliConfigRepository = new TautulliConfigRepository(dbHandle.drizzle);
     refreshTautulliIntegration = vi.fn();
+    activeResendService = null;
+    refreshResendIntegration = vi.fn(() => {
+      const apiKey = settingsRepository.get('resend.apiKey')?.value;
+      const fromEmail = settingsRepository.get('resend.fromEmail')?.value;
+      activeResendService = apiKey && fromEmail
+        ? {
+            sendMail: vi.fn(async payload => ({
+              id: `sent-${Array.isArray(payload.to) ? payload.to[0] : payload.to}`,
+              from: fromEmail,
+              to: Array.isArray(payload.to) ? payload.to : [payload.to],
+              created_at: new Date().toISOString(),
+            })),
+          }
+        : null;
+      return activeResendService;
+    });
 
     const testConfig: AppConfig = {
       runtime: { env: 'test' },
@@ -63,6 +82,11 @@ describe('Admin router integration', () => {
       tokenPreview: null,
       fromEnv: false,
       fromDatabase: false,
+      envOverride: false,
+      saved: {
+        tokenPreview: null,
+        updatedAt: null,
+      },
     };
 
     tmdbManager = {
@@ -77,6 +101,11 @@ describe('Admin router integration', () => {
             tokenPreview: `${token.slice(0, 4)}…`,
             fromEnv: false,
             fromDatabase: true,
+            envOverride: false,
+            saved: {
+              tokenPreview: `${token.slice(0, 4)}…`,
+              updatedAt: Date.now(),
+            },
           };
         } else {
           tmdbStatus = {
@@ -86,6 +115,11 @@ describe('Admin router integration', () => {
             tokenPreview: null,
             fromEnv: false,
             fromDatabase: false,
+            envOverride: false,
+            saved: {
+              tokenPreview: null,
+              updatedAt: null,
+            },
           };
         }
         return null;
@@ -108,6 +142,7 @@ describe('Admin router integration', () => {
         mediaRepository,
         thumbnailRepository,
         resendService: null,
+        getResendService: () => activeResendService,
         tautulliService: null,
         seasonRepository,
         castRepository,
@@ -117,6 +152,7 @@ describe('Admin router integration', () => {
         tmdbManager,
         heroPipeline,
         refreshTautulliIntegration,
+        refreshResendIntegration,
         adminUiDir: adminUiFixture,
       }),
     );
@@ -180,6 +216,141 @@ describe('Admin router integration', () => {
       .send({ token: 'manual-token' });
     expect(testResponse.status).toBe(200);
     expect(tmdbManager.testToken).toHaveBeenCalledWith('manual-token');
+  });
+
+  it('refreshes the active Resend sender when settings are saved and cleared', async () => {
+    const unavailableResponse = await request(app)
+      .post('/admin/api/test/resend')
+      .send({ to: 'before@example.test' });
+    expect(unavailableResponse.status).toBe(503);
+
+    const saveResponse = await request(app)
+      .put('/admin/api/resend/settings')
+      .send({
+        apiKey: 're_db_token',
+        fromEmail: 'plex@example.test',
+      });
+
+    expect(saveResponse.status).toBe(200);
+    expect(refreshResendIntegration).toHaveBeenCalledTimes(1);
+    expect(saveResponse.body.enabled).toBe(true);
+    expect(saveResponse.body.status.source).toBe('database');
+
+    const sendResponse = await request(app)
+      .post('/admin/api/test/resend')
+      .send({ to: 'after@example.test' });
+
+    expect(sendResponse.status).toBe(200);
+    expect(sendResponse.body.from).toBe('plex@example.test');
+    expect(activeResendService?.sendMail).toHaveBeenCalledWith(expect.objectContaining({
+      to: 'after@example.test',
+    }));
+
+    const deleteResponse = await request(app).delete('/admin/api/resend/settings');
+    expect(deleteResponse.status).toBe(200);
+    expect(refreshResendIntegration).toHaveBeenCalledTimes(2);
+    expect(deleteResponse.body.enabled).toBe(false);
+    expect(deleteResponse.body.status.source).toBe('unset');
+
+    const disabledResponse = await request(app)
+      .post('/admin/api/test/resend')
+      .send({ to: 'after-clear@example.test' });
+    expect(disabledResponse.status).toBe(503);
+  });
+
+  it('keeps environment Resend configuration active when database settings are saved or cleared', async () => {
+    const envConfig: AppConfig = {
+      runtime: { env: 'test' },
+      server: { port: 0 },
+      auth: null,
+      database: { sqlitePath: dbHandle.filePath },
+      hero: { policyPath: null },
+      scheduler: { timezone: 'Europe/Berlin' },
+      tautulli: null,
+      tmdb: null,
+      admin: null,
+      resend: {
+        apiKey: 're_env_token',
+        fromEmail: 'env@example.test',
+      },
+    };
+    const mediaRepository = new MediaRepository(dbHandle.drizzle);
+    const thumbnailRepository = new ThumbnailRepository(dbHandle.drizzle);
+    const seasonRepository = new SeasonRepository(dbHandle.drizzle);
+    const castRepository = new CastRepository(dbHandle.drizzle);
+    const heroPipeline: HeroPipelineService = {
+      getPool: vi.fn(),
+      invalidate: vi.fn(),
+      setTmdbService: vi.fn(),
+    };
+    let envResendService: MailSender | null = {
+      sendMail: vi.fn(async payload => ({
+        id: 'env-sent',
+        from: 'env@example.test',
+        to: Array.isArray(payload.to) ? payload.to : [payload.to],
+        created_at: new Date().toISOString(),
+      })),
+    };
+    const refreshEnvResendIntegration = vi.fn(() => {
+      envResendService = envConfig.resend
+        ? {
+            sendMail: vi.fn(async payload => ({
+              id: 'env-sent',
+              from: envConfig.resend?.fromEmail,
+              to: Array.isArray(payload.to) ? payload.to : [payload.to],
+              created_at: new Date().toISOString(),
+            })),
+          }
+        : null;
+      return envResendService;
+    });
+    const envApp = express();
+    envApp.use(express.json());
+    envApp.use(
+      '/admin',
+      createAdminRouter({
+        config: envConfig,
+        mediaRepository,
+        thumbnailRepository,
+        resendService: envResendService,
+        getResendService: () => envResendService,
+        tautulliService: null,
+        seasonRepository,
+        castRepository,
+        drizzleDatabase: dbHandle.drizzle,
+        settingsRepository,
+        tautulliConfigRepository,
+        tmdbManager,
+        heroPipeline,
+        refreshTautulliIntegration,
+        refreshResendIntegration: refreshEnvResendIntegration,
+        adminUiDir: adminUiFixture,
+      }),
+    );
+
+    const saveResponse = await request(envApp)
+      .put('/admin/api/resend/settings')
+      .send({
+        apiKey: 're_db_token',
+        fromEmail: 'db@example.test',
+      });
+
+    expect(saveResponse.status).toBe(200);
+    expect(saveResponse.body.status.source).toBe('environment');
+    expect(saveResponse.body.status.envOverride).toBe(true);
+    expect(saveResponse.body.message).toMatch(/Environment configuration remains active/);
+
+    const sendResponse = await request(envApp)
+      .post('/admin/api/test/resend')
+      .send({ to: 'recipient@example.test' });
+    expect(sendResponse.status).toBe(200);
+    expect(sendResponse.body.from).toBe('env@example.test');
+
+    const deleteResponse = await request(envApp).delete('/admin/api/resend/settings');
+    expect(deleteResponse.status).toBe(200);
+    expect(deleteResponse.body.enabled).toBe(true);
+    expect(deleteResponse.body.status.source).toBe('environment');
+    expect(deleteResponse.body.message).toMatch(/Environment configuration remains active/);
   });
 
   it('exposes status, stats and config endpoints', async () => {

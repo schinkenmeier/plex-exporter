@@ -536,12 +536,15 @@ async function loadTmdbStatus(refs: TmdbRefs, toast: { show: (message: string, v
   refs.status.textContent = 'Lade TMDb-Status...';
   try {
     const status = await adminApiClient.getTmdbStatus();
+    const savedTokenPreview = status.saved?.tokenPreview ?? null;
     refs.status.textContent = status.enabled
-      ? `Token aktiv (${status.tokenPreview ?? '***'}), Quelle: ${status.source}`
+      ? `Token aktiv (${status.tokenPreview ?? '***'}), Quelle: ${status.source}${status.envOverride ? ', DB-Token gespeichert' : ''}`
       : status.fromEnv
         ? 'Token wird über Umgebungsvariable bereitgestellt.'
-        : 'Kein Token gespeichert.';
-    refs.removeButton.disabled = !status.fromDatabase;
+        : savedTokenPreview
+          ? `DB-Token gespeichert (${savedTokenPreview}), aktuell nicht aktiv.`
+          : 'Kein Token gespeichert.';
+    refs.removeButton.disabled = !savedTokenPreview;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'TMDb-Status konnte nicht geladen werden';
     refs.status.textContent = message;
@@ -554,10 +557,10 @@ async function loadResendSettings(refs: ResendRefs, toast: { show: (message: str
   try {
     const data = await adminApiClient.getResendSettings();
     refs.status.textContent = data.enabled
-      ? `Konfiguration aktiv (${data.source === 'database' ? 'aus DB' : 'aus Environment'})`
+      ? `Konfiguration aktiv (${data.source === 'database' ? 'aus DB' : 'aus Environment'}${data.envOverride ? ', DB-Konfiguration gespeichert' : ''})`
       : 'Keine Resend-Konfiguration gefunden.';
     refs.fromEmailInput.value = data.fromEmail ?? '';
-    refs.removeButton.disabled = !data.fromDatabase;
+    refs.removeButton.disabled = !data.saved?.apiKeyPreview && !data.saved?.fromEmail;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Resend-Status konnte nicht geladen werden';
     refs.status.textContent = message;

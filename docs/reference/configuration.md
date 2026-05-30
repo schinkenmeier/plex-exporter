@@ -7,7 +7,7 @@ Das Backend liest Konfiguration aus:
 1. Umgebungsvariablen
 2. gespeicherten SQLite-Werten für ausgewählte Integrationen
 
-Env-Werte haben Vorrang. Das ist besonders relevant für Tautulli, TMDB und Resend: Werte aus der Admin-UI können gespeichert sein, aber durch Env überschrieben werden.
+Env-Werte haben Vorrang. Das ist besonders relevant für Tautulli, TMDB und Resend: Werte aus der Admin-UI können gespeichert sein, aber durch Env überschrieben werden. Status-Antworten melden dann den Env-Override explizit.
 
 ## Backend-Env
 
@@ -50,3 +50,5 @@ Die Hero-Pipeline sucht zusätzlich typische Source-Run-Pfade, wenn kein Overrid
 ## Admin-UI
 
 Die Admin-UI kann Betriebswerte für Tautulli, TMDB, Resend und Watchlist-E-Mail speichern. Tautulli nutzt die Tabelle `tautulli_config` als aktuelle Persistenz; alte `settings`-Einträge sind nur Legacy-Fallback.
+
+Resend-Änderungen aus der Admin-UI werden zur Laufzeit neu angewendet: Speichern aktiviert den Mail-Sender ohne Neustart, Löschen deaktiviert ihn oder fällt auf Env-Konfiguration zurück. TMDB nutzt ebenfalls Env vor Datenbank; ein gespeicherter Token bleibt gespeichert, ist aber nicht aktiv, solange `TMDB_ACCESS_TOKEN` gesetzt ist.

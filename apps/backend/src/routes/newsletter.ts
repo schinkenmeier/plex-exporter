@@ -9,7 +9,7 @@ export const adminNewsletterRouter = Router();
 // Validation schemas
 const subscribeSchema = z.object({
   email: z.string().email(),
-  mediaType: z.enum(['movie', 'tv']).optional(),
+  mediaType: z.enum(['movie', 'tv']).nullish().transform((value) => value ?? undefined),
 });
 
 const unsubscribeSchema = z.object({

@@ -3,11 +3,16 @@
  * Manages newsletter subscriptions with backend API integration
  */
 
-const API_BASE = window.PLEX_EXPORTER_API_BASE || 'http://localhost:4001';
 const STORAGE_KEY = 'newsletter:subscription';
 const LOG_PREFIX = '[newsletter]';
 
 let subscriptionData = null;
+
+function getApiBase() {
+  return typeof window !== 'undefined' && window.PLEX_EXPORTER_API_BASE
+    ? window.PLEX_EXPORTER_API_BASE
+    : '';
+}
 
 /**
  * Load subscription status from localStorage
@@ -54,10 +59,15 @@ export function getSubscription() {
  */
 export async function subscribe(email, mediaType = null) {
   try {
-    const response = await fetch(`${API_BASE}/api/newsletter/subscribe`, {
+    const body = { email };
+    if (mediaType) {
+      body.mediaType = mediaType;
+    }
+
+    const response = await fetch(`${getApiBase()}/api/newsletter/subscribe`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, mediaType }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
@@ -82,7 +92,7 @@ export async function subscribe(email, mediaType = null) {
  */
 export async function unsubscribe(email) {
   try {
-    const response = await fetch(`${API_BASE}/api/newsletter/unsubscribe`, {
+    const response = await fetch(`${getApiBase()}/api/newsletter/unsubscribe`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),
@@ -199,7 +209,7 @@ function createNewsletterModal() {
       e.preventDefault();
       const formData = new FormData(form);
       const email = formData.get('email');
-      const mediaType = formData.get('mediaType') || null;
+      const mediaType = formData.get('mediaType') || undefined;
       await subscribe(email, mediaType);
     });
   }

@@ -29,6 +29,7 @@ export interface AdminRouterOptions {
   mediaRepository: MediaRepository;
   thumbnailRepository: ThumbnailRepository;
   resendService: MailSender | null;
+  getResendService?: () => MailSender | null;
   tautulliService: TautulliClient | null;
   getTautulliService?: () => TautulliClient | null;
   seasonRepository?: SeasonRepository | null;
@@ -39,6 +40,8 @@ export interface AdminRouterOptions {
   tmdbManager: TmdbManager;
   heroPipeline: HeroPipelineService;
   refreshTautulliIntegration?: (input?: { baseUrl: string; apiKey: string }) => void;
+  refreshResendIntegration?: () => MailSender | null;
+  refreshTmdbIntegration?: () => unknown;
   getTautulliConfigStatus?: () => TautulliConfigStatus;
   adminUiDir?: string | null;
 }
@@ -225,6 +228,7 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
     mediaRepository,
     thumbnailRepository,
     resendService,
+    getResendService,
     tautulliService,
     getTautulliService,
     drizzleDatabase,
@@ -235,6 +239,8 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
     tmdbManager,
     heroPipeline,
     refreshTautulliIntegration,
+    refreshResendIntegration,
+    refreshTmdbIntegration,
     getTautulliConfigStatus,
     adminUiDir = null,
   } = options;
@@ -266,6 +272,50 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
       tautulliConfigRepository,
       settingsRepository,
     });
+  };
+  const getActiveResendService = (): MailSender | null =>
+    getResendService ? getResendService() : resendService;
+  const getTmdbStatusResponse = () => {
+    const status = tmdbManager.getStatus();
+    return {
+      enabled: status.hasToken,
+      source: status.source,
+      tokenPreview: status.tokenPreview,
+      updatedAt: status.updatedAt,
+      fromEnv: status.fromEnv,
+      fromDatabase: status.fromDatabase,
+      envOverride: status.envOverride,
+      saved: status.saved,
+    };
+  };
+
+  const getResolvedResendConfigStatus = () => {
+    const apiKey = settingsRepository.get('resend.apiKey');
+    const fromEmail = settingsRepository.get('resend.fromEmail');
+    const hasDbConfig = Boolean(apiKey?.value && fromEmail?.value);
+    const hasEnvConfig = Boolean(config.resend?.apiKey && config.resend?.fromEmail);
+    const activeService = getActiveResendService();
+    const source = hasEnvConfig ? 'environment' : hasDbConfig ? 'database' : 'unset';
+
+    return {
+      enabled: Boolean(activeService),
+      source,
+      fromEnv: hasEnvConfig,
+      fromDatabase: !hasEnvConfig && hasDbConfig,
+      envOverride: hasEnvConfig && hasDbConfig,
+      apiKeyPreview: hasEnvConfig
+        ? maskSensitive(config.resend?.apiKey ?? '')
+        : apiKey?.value
+          ? maskSensitive(apiKey.value)
+          : null,
+      fromEmail: hasEnvConfig ? config.resend?.fromEmail ?? null : fromEmail?.value || null,
+      updatedAt: hasEnvConfig ? null : apiKey?.updatedAt || fromEmail?.updatedAt || null,
+      saved: {
+        apiKeyPreview: apiKey?.value ? maskSensitive(apiKey.value) : null,
+        fromEmail: fromEmail?.value || null,
+        updatedAt: apiKey?.updatedAt || fromEmail?.updatedAt || null,
+      },
+    };
   };
 
   /**
@@ -318,6 +368,7 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
   router.get('/api/config', (_req: Request, res: Response) => {
     const tmdbStatus = tmdbManager.getStatus();
     const tautulliStatus = getResolvedTautulliConfigStatus();
+    const resendStatus = getResolvedResendConfigStatus();
 
     res.json({
       runtime: {
@@ -355,25 +406,24 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
         updatedAt: tmdbStatus.updatedAt,
         fromEnv: tmdbStatus.fromEnv,
         fromDatabase: tmdbStatus.fromDatabase,
+        envOverride: tmdbStatus.envOverride,
+        saved: tmdbStatus.saved,
       },
       resend: {
-        enabled: !!config.resend,
-        apiKey: config.resend?.apiKey ? maskSensitive(config.resend.apiKey) : '[not set]',
-        fromEmail: config.resend?.fromEmail || '[not set]',
+        enabled: resendStatus.enabled,
+        apiKey: resendStatus.apiKeyPreview ?? '[not set]',
+        fromEmail: resendStatus.fromEmail || '[not set]',
+        source: resendStatus.source,
+        fromEnv: resendStatus.fromEnv,
+        fromDatabase: resendStatus.fromDatabase,
+        envOverride: resendStatus.envOverride,
+        saved: resendStatus.saved,
       },
     });
   });
 
   router.get('/api/tmdb', (_req: Request, res: Response) => {
-    const status = tmdbManager.getStatus();
-    res.json({
-      enabled: status.hasToken,
-      source: status.source,
-      tokenPreview: status.tokenPreview,
-      updatedAt: status.updatedAt,
-      fromEnv: status.fromEnv,
-      fromDatabase: status.fromDatabase,
-    });
+    res.json(getTmdbStatusResponse());
   });
 
   router.post('/api/tmdb', (req: Request, res: Response, next: NextFunction) => {
@@ -385,17 +435,10 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
       const record = settingsRepository.set('tmdb.accessToken', rawToken);
       const service = tmdbManager.setDatabaseToken(record.value, { updatedAt: record.updatedAt });
       heroPipeline.setTmdbService(service);
-      const status = tmdbManager.getStatus();
+      refreshTmdbIntegration?.();
       res.json({
         success: true,
-        status: {
-          enabled: status.hasToken,
-          source: status.source,
-          tokenPreview: status.tokenPreview,
-          updatedAt: status.updatedAt,
-          fromEnv: status.fromEnv,
-          fromDatabase: status.fromDatabase,
-        },
+        status: getTmdbStatusResponse(),
       });
     } catch (error) {
       next(error);
@@ -406,17 +449,10 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
     settingsRepository.delete('tmdb.accessToken');
     const service = tmdbManager.setDatabaseToken(null);
     heroPipeline.setTmdbService(service);
-    const status = tmdbManager.getStatus();
+    refreshTmdbIntegration?.();
     res.json({
       success: true,
-      status: {
-        enabled: status.hasToken,
-        source: status.source,
-        tokenPreview: status.tokenPreview,
-        updatedAt: status.updatedAt,
-        fromEnv: status.fromEnv,
-        fromDatabase: status.fromDatabase,
-      },
+      status: getTmdbStatusResponse(),
     });
   });
 
@@ -986,7 +1022,8 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
    * Test Resend email connection
    */
   router.post('/api/test/resend', async (req: Request, res: Response, next: NextFunction) => {
-    if (!resendService) {
+    const activeResendService = getActiveResendService();
+    if (!activeResendService) {
       return res.status(503).json({
         success: false,
         error: 'Resend service is not configured',
@@ -1000,7 +1037,7 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
     }
 
     try {
-      const result = await resendService.sendMail({
+      const result = await activeResendService.sendMail({
         to,
         subject: 'Plex Exporter Admin - Resend Test',
         text: 'This is a test email from the Plex Exporter Admin Panel using Resend.',
@@ -1027,21 +1064,11 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
    */
   router.get('/api/resend/settings', (_req: Request, res: Response) => {
     try {
-      const apiKey = settingsRepository.get('resend.apiKey');
-      const fromEmail = settingsRepository.get('resend.fromEmail');
-
-      const hasDbConfig = !!apiKey?.value && !!fromEmail?.value;
-      const hasEnvConfig = !!(config.resend?.apiKey && config.resend?.fromEmail);
+      const status = getResolvedResendConfigStatus();
 
       res.json({
         success: true,
-        enabled: hasDbConfig || hasEnvConfig,
-        fromDatabase: hasDbConfig,
-        fromEnv: hasEnvConfig && !hasDbConfig,
-        source: hasEnvConfig && !hasDbConfig ? 'environment' : 'database',
-        apiKeyPreview: apiKey?.value ? maskSensitive(apiKey.value) : null,
-        fromEmail: fromEmail?.value || null,
-        updatedAt: apiKey?.updatedAt || fromEmail?.updatedAt || null,
+        ...status,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -1070,12 +1097,18 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
     try {
       settingsRepository.set('resend.apiKey', apiKey);
       settingsRepository.set('resend.fromEmail', fromEmail);
+      const activeService = refreshResendIntegration?.() ?? getActiveResendService();
+      const status = getResolvedResendConfigStatus();
 
       logger.info('Resend settings updated', { fromEmail });
 
       res.json({
         success: true,
-        message: 'Resend settings updated successfully',
+        message: status.envOverride
+          ? 'Resend settings saved. Environment configuration remains active.'
+          : 'Resend settings updated successfully',
+        enabled: Boolean(activeService),
+        status,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -1092,12 +1125,18 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
     try {
       settingsRepository.delete('resend.apiKey');
       settingsRepository.delete('resend.fromEmail');
+      const activeService = refreshResendIntegration?.() ?? getActiveResendService();
+      const status = getResolvedResendConfigStatus();
 
       logger.info('Resend settings cleared');
 
       res.json({
         success: true,
-        message: 'Resend settings cleared successfully',
+        message: status.fromEnv
+          ? 'Resend settings cleared. Environment configuration remains active.'
+          : 'Resend settings cleared successfully',
+        enabled: Boolean(activeService),
+        status,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';

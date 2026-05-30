@@ -20,6 +20,7 @@ describe('Tautulli sync integration', () => {
   let syncLiveMonitor: SyncLiveMonitor;
   let syncCoordinator: SyncCoordinator;
   let heroPipeline: { getPool: ReturnType<typeof vi.fn>; invalidate: ReturnType<typeof vi.fn>; setTmdbService: ReturnType<typeof vi.fn> };
+  let invalidateCatalogCaches: ReturnType<typeof vi.fn>;
   let tautulliConfigRepo: TautulliConfigRepository;
   let settingsRepository: SettingsRepository;
 
@@ -41,6 +42,7 @@ describe('Tautulli sync integration', () => {
       invalidate: vi.fn(() => 1),
       setTmdbService: vi.fn(),
     };
+    invalidateCatalogCaches = vi.fn();
 
     const schedulerMock = {
       isActive: () => false,
@@ -78,6 +80,7 @@ describe('Tautulli sync integration', () => {
         syncLiveMonitor,
         syncCoordinator,
         heroPipeline: heroPipeline as any,
+        invalidateCatalogCaches,
       }),
     );
     app.use(errorHandler);
@@ -330,6 +333,29 @@ describe('Tautulli sync integration', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(heroPipeline.invalidate).toHaveBeenCalledWith('movies', 'manual-tautulli-sync');
+  });
+
+  it('invalidates catalog API caches after a completed manual sync', async () => {
+    syncService.syncAll.mockResolvedValue({
+      totalCreated: 0,
+      totalUpdated: 1,
+      totalDeleted: 0,
+      totalSkipped: 0,
+      totalErrors: 0,
+      results: [],
+      startTime: Date.now() - 10,
+      endTime: Date.now(),
+      duration: 10,
+    });
+
+    const response = await request(app)
+      .post('/admin/api/tautulli/sync/manual')
+      .send({ incremental: true, syncCovers: false, enrichWithTmdb: true });
+
+    expect(response.status).toBe(200);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(invalidateCatalogCaches).toHaveBeenCalledWith('manual-tautulli-sync');
   });
 
   it('rejects new manual syncs after coordinator shutdown begins', async () => {

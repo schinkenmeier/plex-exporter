@@ -265,6 +265,47 @@ describe('TautulliSyncService - season cleanup', () => {
 });
 
 describe('TautulliSyncService - removed media cleanup', () => {
+  it('skips unchanged movies during incremental sync using normalized timestamps', async () => {
+    const metadata = {
+      rating_key: 'movie-1',
+      title: 'Unchanged Movie',
+      media_type: 'movie',
+      updated_at: 1_700_000_000,
+    };
+    const tautulliService = {
+      getMetadata: vi.fn().mockResolvedValue(metadata),
+      getBaseUrl: () => 'http://localhost:8181',
+    };
+    const mediaRepo = {
+      getByPlexId: vi.fn().mockReturnValue({
+        id: 1,
+        plexId: 'movie-1',
+        mediaType: 'movie',
+        title: 'Unchanged Movie',
+        plexUpdatedAt: '2023-11-14T22:13:20.000Z',
+      }),
+      update: vi.fn(),
+      create: vi.fn(),
+    };
+
+    const service = new TautulliSyncService(
+      tautulliService as any,
+      mediaRepo as any,
+      {} as any,
+      {} as any,
+    );
+
+    const result = await (service as any).syncMovies(
+      [{ rating_key: 'movie-1', title: 'Unchanged Movie' }],
+      1,
+      { incremental: true },
+    );
+
+    expect(result).toMatchObject({ created: 0, updated: 0, skipped: 1, errors: [] });
+    expect(mediaRepo.update).not.toHaveBeenCalled();
+    expect(mediaRepo.create).not.toHaveBeenCalled();
+  });
+
   it('does not update a section timestamp when a sync result contains errors', async () => {
     const librarySectionRepo = {
       listEnabled: vi.fn().mockReturnValue([

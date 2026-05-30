@@ -8,7 +8,7 @@ import type { EpisodeRecord, SeasonRecordWithEpisodes } from '../repositories/se
 import type { CastAppearance } from '../repositories/castRepository.js';
 import { HttpError } from '../middleware/errorHandler.js';
 import { createRateLimiters, type RateLimiterSet } from '../middleware/rateLimiter.js';
-import { createShortCache, createMediumCache, createLongCache } from '../services/cacheService.js';
+import { createShortCache, createMediumCache, createLongCache, type CacheService } from '../services/cacheService.js';
 import { cacheMiddleware } from '../middleware/cacheMiddleware.js';
 import { normalizeTimestamp } from '../utils/timestamps.js';
 import type { TmdbService } from '../services/tmdbService.js';
@@ -21,10 +21,70 @@ export interface V1RouterOptions {
   seasonRepository: SeasonRepository;
   castRepository: CastRepository;
   tmdbService?: TmdbService | null;
+  getTmdbService?: () => TmdbService | null;
   rateLimiters?: Pick<RateLimiterSet, 'apiLimiter' | 'searchLimiter'>;
+  caches?: V1ApiCaches;
 }
 
 const defaultRateLimiters = createRateLimiters();
+
+export interface V1ApiCaches {
+  stats: CacheService;
+  list: CacheService;
+  detail: CacheService;
+  tmdb: CacheService;
+}
+
+export const createV1ApiCaches = (): V1ApiCaches => ({
+  stats: createShortCache(), // 1 minute for stats and recent items
+  list: createMediumCache(), // 5 minutes for lists, filters, search
+  detail: createLongCache(), // 15 minutes for details
+  tmdb: createMediumCache(), // 5 minutes for tmdb proxy responses
+});
+
+export const clearV1CatalogCaches = (caches: Pick<V1ApiCaches, 'stats' | 'list' | 'detail'>): void => {
+  caches.stats.clear();
+  caches.list.clear();
+  caches.detail.clear();
+};
+
+const buildRequestUrl = (req: Request | undefined, path: string): string => {
+  if (!req) return path;
+  const protocol = req.protocol;
+  const host = req.get('host');
+  if (protocol && host) {
+    return `${protocol}://${host}${path}`;
+  }
+  return path;
+};
+
+export const normalizeV1MediaUrl = (
+  url: string | null | undefined,
+  req?: Request,
+): string | null | undefined => {
+  if (!url) return url;
+
+  if (url.startsWith('/api/thumbnails/')) {
+    return buildRequestUrl(req, url);
+  }
+
+  if (/^https?:\/\/[^\s]+\/api\/thumbnails\//.test(url)) {
+    return url;
+  }
+
+  const localCoverPrefix = 'covers/';
+  if (url === 'covers' || url.startsWith(localCoverPrefix)) {
+    return buildRequestUrl(req, `/api/thumbnails/${url.split('/').map(encodeURIComponent).join('/')}`);
+  }
+
+  const tautulliMatch = url.match(/\/library\/metadata\/(\d+)\/(thumb|art)\/(\d+)/);
+  if (tautulliMatch) {
+    const [, id, type, timestamp] = tautulliMatch;
+    return buildRequestUrl(req, `/api/thumbnails/tautulli/library/metadata/${id}/${type}/${timestamp}`);
+  }
+
+  return url;
+};
 
 export const createV1Router = ({
   mediaRepository,
@@ -32,17 +92,22 @@ export const createV1Router = ({
   seasonRepository,
   castRepository,
   tmdbService,
+  getTmdbService,
   rateLimiters,
+  caches,
 }: V1RouterOptions): Router => {
   const router = Router();
   const apiLimiterMiddleware = rateLimiters?.apiLimiter ?? defaultRateLimiters.apiLimiter;
   const searchLimiterMiddleware = rateLimiters?.searchLimiter ?? defaultRateLimiters.searchLimiter;
 
   // Create cache instances for different data types
-  const statsCache = createShortCache(); // 1 minute for stats
-  const listCache = createMediumCache(); // 5 minutes for lists
-  const detailCache = createLongCache(); // 15 minutes for details
-  const tmdbCache = createMediumCache(); // 5 minutes for tmdb proxy responses
+  const v1Caches = caches ?? createV1ApiCaches();
+  const statsCache = v1Caches.stats;
+  const listCache = v1Caches.list;
+  const detailCache = v1Caches.detail;
+  const tmdbCache = v1Caches.tmdb;
+  const resolveTmdbService = (): TmdbService | null =>
+    getTmdbService ? getTmdbService() : tmdbService ?? null;
 
   // Zod schemas for query parameter validation
   const filterQuerySchema = z.object({
@@ -83,46 +148,7 @@ export const createV1Router = ({
     if (!thumbnailPath) return null;
     const type = mediaType === 'tv' ? 'series' : 'movies';
     const relativePath = `/api/thumbnails/${type}/${encodeURIComponent(thumbnailPath)}`;
-
-    // Build full URL if request is available
-    if (req) {
-      const protocol = req.protocol;
-      const host = req.get('host');
-      return `${protocol}://${host}${relativePath}`;
-    }
-
-    return relativePath;
-  };
-
-  // Helper function to convert Tautulli URLs to proxy URLs
-  const convertTautulliUrlToProxy = (url: string | null | undefined, req?: Request): string | null | undefined => {
-    if (!url) return url;
-
-    const buildAbsoluteUrl = (path: string): string => {
-      if (!req) return path;
-      const protocol = req.protocol;
-      const host = req.get('host');
-      if (protocol && host) {
-        return `${protocol}://${host}${path}`;
-      }
-      return path;
-    };
-
-    if (url.startsWith('/api/thumbnails/tautulli/')) {
-      return buildAbsoluteUrl(url);
-    }
-
-    if (/^https?:\/\/[^\s]+\/api\/thumbnails\/tautulli\//.test(url)) {
-      return url;
-    }
-
-    const match = url.match(/\/library\/metadata\/(\d+)\/(thumb|art)\/(\d+)/);
-    if (match) {
-      const [, id, type, timestamp] = match;
-      return buildAbsoluteUrl(`/api/thumbnails/tautulli/library/metadata/${id}/${type}/${timestamp}`);
-    }
-
-    return url;
+    return buildRequestUrl(req, relativePath);
   };
 
   // Helper function to map media records to API responses (with bulk thumbnail loading)
@@ -146,8 +172,8 @@ export const createV1Router = ({
         addedAt: normalizedAddedAt ?? null,
         updatedAt: normalizedUpdatedAt ?? null,
         thumbFile: buildThumbnailUrl(thumbnailPath, item.mediaType, req),
-        poster: convertTautulliUrlToProxy(item.poster, req),
-        backdrop: convertTautulliUrlToProxy(item.backdrop, req),
+        poster: normalizeV1MediaUrl(item.poster, req),
+        backdrop: normalizeV1MediaUrl(item.backdrop, req),
       };
 
       if (!includeExtended) return base;
@@ -189,7 +215,7 @@ export const createV1Router = ({
       duration: episode.duration,
       rating: episode.rating,
       airDate: episode.airDate,
-      thumb: convertTautulliUrlToProxy(episode.thumb, req),
+      thumb: normalizeV1MediaUrl(episode.thumb, req),
     }));
 
   const mapSeasonsToResponse = (seasonsWithEpisodes: SeasonRecordWithEpisodes[], req?: Request) =>
@@ -199,7 +225,7 @@ export const createV1Router = ({
       seasonNumber: season.seasonNumber,
       title: season.title,
       summary: season.summary,
-      poster: convertTautulliUrlToProxy(season.poster, req),
+      poster: normalizeV1MediaUrl(season.poster, req),
       episodeCount: season.episodeCount,
       episodes: mapEpisodesToResponse(season.episodes, req),
     }));
@@ -221,7 +247,8 @@ export const createV1Router = ({
    */
   router.get('/tmdb/:type/:id', apiLimiterMiddleware, cacheMiddleware({ cache: tmdbCache }), async (req: Request, res: Response, next: NextFunction) => {
     try {
-      if (!tmdbService || !tmdbService.isEnabled()) {
+      const activeTmdbService = resolveTmdbService();
+      if (!activeTmdbService || !activeTmdbService.isEnabled()) {
         return res.status(503).json({ error: 'TMDB integration not configured' });
       }
 
@@ -240,7 +267,7 @@ export const createV1Router = ({
         ? req.query.language.trim()
         : 'en-US';
 
-      const details = await tmdbService.fetchDetails(type as 'movie' | 'tv', id, { language });
+      const details = await activeTmdbService.fetchDetails(type as 'movie' | 'tv', id, { language });
       if (!details) {
         return next(new HttpError(404, 'TMDB title not found'));
       }
@@ -261,7 +288,8 @@ export const createV1Router = ({
    */
   router.get('/tmdb/tv/:id/season/:seasonNumber', apiLimiterMiddleware, cacheMiddleware({ cache: tmdbCache }), async (req: Request, res: Response, next: NextFunction) => {
     try {
-      if (!tmdbService || !tmdbService.isEnabled()) {
+      const activeTmdbService = resolveTmdbService();
+      if (!activeTmdbService || !activeTmdbService.isEnabled()) {
         return res.status(503).json({ error: 'TMDB integration not configured' });
       }
 
@@ -275,7 +303,7 @@ export const createV1Router = ({
         ? req.query.language.trim()
         : 'en-US';
 
-      const episodes = await tmdbService.fetchSeasonEpisodes(id, seasonNumber, { language });
+      const episodes = await activeTmdbService.fetchSeasonEpisodes(id, seasonNumber, { language });
       res.setHeader('Cache-Control', 'public, max-age=300');
       res.json({ episodes });
     } catch (error) {

@@ -1,4 +1,4 @@
-import express, { type Router } from 'express';
+import express, { type Response, type Router } from 'express';
 import path from 'node:path';
 import { existsSync } from 'node:fs';
 import type TautulliService from '../services/tautulliService.js';
@@ -37,17 +37,21 @@ export const createThumbnailRouter = (options: ThumbnailRouterOptions = {}): Rou
     throw new Error('Could not find exports directory for thumbnail serving');
   };
 
-  let basePath: string;
+  let basePath: string | null = null;
   try {
     basePath = resolveBasePath();
   } catch (err) {
     console.error('[thumbnails] Failed to resolve base path:', err);
-    // Return a router that always returns 503
-    router.use((req, res) => {
-      res.status(503).json({ error: 'Thumbnail service unavailable' });
-    });
-    return router;
   }
+
+  const requireBasePath = (res: Response): string | null => {
+    if (!basePath) {
+      res.status(503).json({ error: 'Thumbnail service unavailable' });
+      return null;
+    }
+
+    return basePath;
+  };
 
   /**
    * Serve movie thumbnails
@@ -55,6 +59,9 @@ export const createThumbnailRouter = (options: ThumbnailRouterOptions = {}): Rou
    * Supports paths like: Movie - Title [ID].images/Title.thumb.jpg
    */
   router.get(/^\/movies\/(.+)$/, (req, res) => {
+    const resolvedBasePath = requireBasePath(res);
+    if (!resolvedBasePath) return;
+
     const filename = (req.params as any)[0]; // Get everything after /movies/
 
     // Security: Prevent directory traversal
@@ -62,11 +69,11 @@ export const createThumbnailRouter = (options: ThumbnailRouterOptions = {}): Rou
       return res.status(400).json({ error: 'Invalid path' });
     }
 
-    const filePath = path.join(basePath, 'movies', filename);
+    const filePath = path.join(resolvedBasePath, 'movies', filename);
 
     // Additional security: Ensure the resolved path is still within the movies directory
     const resolvedPath = path.resolve(filePath);
-    const allowedBasePath = path.resolve(basePath, 'movies');
+    const allowedBasePath = path.resolve(resolvedBasePath, 'movies');
     if (!resolvedPath.startsWith(allowedBasePath)) {
       return res.status(403).json({ error: 'Access denied' });
     }
@@ -88,6 +95,9 @@ export const createThumbnailRouter = (options: ThumbnailRouterOptions = {}): Rou
    * Supports paths like: Series - Title [ID].images/Title.thumb.jpg
    */
   router.get(/^\/series\/(.+)$/, (req, res) => {
+    const resolvedBasePath = requireBasePath(res);
+    if (!resolvedBasePath) return;
+
     const filename = (req.params as any)[0]; // Get everything after /series/
 
     // Security: Prevent directory traversal
@@ -95,11 +105,11 @@ export const createThumbnailRouter = (options: ThumbnailRouterOptions = {}): Rou
       return res.status(400).json({ error: 'Invalid path' });
     }
 
-    const filePath = path.join(basePath, 'series', filename);
+    const filePath = path.join(resolvedBasePath, 'series', filename);
 
     // Additional security: Ensure the resolved path is still within the series directory
     const resolvedPath = path.resolve(filePath);
-    const allowedBasePath = path.resolve(basePath, 'series');
+    const allowedBasePath = path.resolve(resolvedBasePath, 'series');
     if (!resolvedPath.startsWith(allowedBasePath)) {
       return res.status(403).json({ error: 'Access denied' });
     }
@@ -121,13 +131,16 @@ export const createThumbnailRouter = (options: ThumbnailRouterOptions = {}): Rou
    * Supports nested paths like covers/movie/{ratingKey}/poster.jpg
    */
   router.get(/^\/covers\/(.+)$/, (req, res) => {
+    const resolvedBasePath = requireBasePath(res);
+    if (!resolvedBasePath) return;
+
     const relativePath = (req.params as any)[0];
 
     if (!relativePath || relativePath.includes('..') || relativePath.startsWith('/')) {
       return res.status(400).json({ error: 'Invalid path' });
     }
 
-    const coverRoot = path.resolve(basePath, 'covers');
+    const coverRoot = path.resolve(resolvedBasePath, 'covers');
     const resolvedPath = path.resolve(coverRoot, relativePath);
     if (!resolvedPath.startsWith(coverRoot)) {
       return res.status(403).json({ error: 'Access denied' });
@@ -174,6 +187,10 @@ export const createThumbnailRouter = (options: ThumbnailRouterOptions = {}): Rou
         return res.status(503).json({ error: 'Tautulli integration is not configured' });
       }
 
+      if (typeof tautulliService.fetchLibraryImage !== 'function') {
+        return res.status(503).json({ error: 'Tautulli image proxy is not available' });
+      }
+
       const { id, type, timestamp } = req.params;
 
       if (!id || !timestamp || !type || (type !== 'thumb' && type !== 'art')) {
@@ -181,21 +198,14 @@ export const createThumbnailRouter = (options: ThumbnailRouterOptions = {}): Rou
       }
 
       try {
-        const tautulliBaseUrl = tautulliService.getBaseUrl();
-        const imageUrl = `${tautulliBaseUrl}/library/metadata/${id}/${type}/${timestamp}`;
-
-        // Fetch image from Tautulli using the service's http client (which has API key)
-        const response = await (tautulliService as any).httpClient.get(imageUrl, {
-          responseType: 'arraybuffer',
-          timeout: 10000,
-        });
+        const response = await tautulliService.fetchLibraryImage(id, type, timestamp);
 
         // Forward the image with proper headers
-        res.setHeader('Content-Type', response.headers['content-type'] || 'image/jpeg');
+        res.setHeader('Content-Type', response.headers?.['content-type'] || 'image/jpeg');
         res.setHeader('Cache-Control', 'public, max-age=86400'); // 24 hours
         res.setHeader('Access-Control-Allow-Origin', '*'); // Allow CORS for images
         res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin'); // Allow cross-origin embedding
-        res.send(Buffer.from(response.data));
+        res.send(response.data);
       } catch (error) {
         console.error('[Tautulli Proxy] Failed to fetch image:', error);
         res.status(502).json({ error: 'Failed to fetch image from Tautulli' });

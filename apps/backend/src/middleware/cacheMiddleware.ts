@@ -54,8 +54,9 @@ export const cacheMiddleware = (options: CacheMiddlewareOptions) => {
 
     // Override json method to cache the response
     res.json = function (body: any): Response {
-      // Cache the response body
-      cache.set(cacheKey, body, ttl);
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        cache.set(cacheKey, body, ttl);
+      }
 
       // Call original json method
       return originalJson(body);
@@ -70,7 +71,9 @@ export const cacheMiddleware = (options: CacheMiddlewareOptions) => {
  * Uses the full URL path + query parameters
  */
 const defaultKeyGenerator = (req: Request): string => {
-  return createCacheKey(req.path, req.query as Record<string, any>);
+  const protocol = req.protocol || 'http';
+  const host = req.get('host') || 'unknown-host';
+  return `${protocol}://${host}:${createCacheKey(req.path, req.query as Record<string, any>)}`;
 };
 
 /**

@@ -56,6 +56,7 @@ export interface TautulliSyncRouterOptions {
   syncLiveMonitor: SyncLiveMonitor;
   syncCoordinator: SyncCoordinator;
   heroPipeline?: HeroPipelineService | null;
+  invalidateCatalogCaches?: (reason: string) => void;
 }
 
 /**
@@ -77,6 +78,7 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
     syncLiveMonitor,
     syncCoordinator,
     heroPipeline,
+    invalidateCatalogCaches,
   } = options;
 
   const writeSseEvent = (res: Response, eventName: string, payload: unknown): void => {
@@ -533,6 +535,7 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
         }
 
         const completedWithErrors = result.stats.totalErrors > 0;
+        invalidateCatalogCaches?.('manual-tautulli-sync');
         logger.info(completedWithErrors ? 'Manual sync completed with errors' : 'Manual sync completed', {
           stats: result.stats,
           status: completedWithErrors ? 'completed_with_errors' : 'completed',

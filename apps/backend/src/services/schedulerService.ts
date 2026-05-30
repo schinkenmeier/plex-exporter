@@ -23,6 +23,7 @@ export class SchedulerService {
     private readonly tautulliSyncService: TautulliSyncService,
     private readonly syncCoordinator?: SyncCoordinator,
     private readonly heroPipeline?: HeroPipelineService | null,
+    private readonly invalidateCatalogCaches?: (reason: string) => void,
   ) {}
 
   /**
@@ -163,6 +164,7 @@ export class SchedulerService {
               totalErrors: stats.totalErrors,
             });
             invalidateHeroPoolsForSyncStats(this.heroPipeline, stats, 'scheduled-tautulli-sync');
+            this.invalidateCatalogCaches?.('scheduled-tautulli-sync');
             return true;
           }
 
@@ -207,6 +209,7 @@ export class SchedulerService {
             totalErrors: result.stats.totalErrors,
           });
           invalidateHeroPoolsForSyncStats(this.heroPipeline, result.stats, 'scheduled-tautulli-sync');
+          this.invalidateCatalogCaches?.('scheduled-tautulli-sync');
           return true;
         };
 

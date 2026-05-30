@@ -23,7 +23,7 @@ class NewsletterService {
   /**
    * Set mail sender for email functionality
    */
-  setMailSender(sender: MailSender): void {
+  setMailSender(sender: MailSender | null): void {
     this.mailSender = sender;
   }
 

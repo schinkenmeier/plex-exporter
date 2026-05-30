@@ -41,9 +41,8 @@ const createApp = () => {
 
   app.use(express.json());
   app.use('/api/newsletter', publicNewsletterRouter);
-  app.use('/admin', basicAuth, express.Router());
-  app.use('/admin/api/newsletter', adminNewsletterRouter);
-  app.use('/admin/api/welcome-email', welcomeEmailRouter);
+  app.use('/admin/api/newsletter', basicAuth, adminNewsletterRouter);
+  app.use('/admin/api/welcome-email', basicAuth, welcomeEmailRouter);
   app.use(errorHandler);
 
   return app;
@@ -95,6 +94,41 @@ describe('email route security boundary', () => {
     expect(newsletterService.unsubscribe).toHaveBeenCalledWith('user@example.test');
   });
 
+  it('accepts public newsletter subscribe for all media types without storing null', async () => {
+    vi.mocked(newsletterService.subscribe).mockResolvedValue({
+      id: 'sub-1',
+      email: 'user@example.test',
+      mediaType: null,
+      active: true,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+    });
+
+    const response = await request(createApp())
+      .post('/api/newsletter/subscribe')
+      .send({ email: 'user@example.test', mediaType: null });
+
+    expect(response.status).toBe(200);
+    expect(newsletterService.subscribe).toHaveBeenCalledWith('user@example.test', undefined);
+  });
+
+  it.each([
+    ['POST', '/api/newsletter/send'],
+    ['GET', '/api/newsletter/subscriptions'],
+    ['GET', '/api/newsletter/stats'],
+    ['GET', '/api/newsletter/recent-media'],
+    ['GET', '/api/newsletter/digests'],
+  ])('does not expose newsletter admin operation on public path %s %s', async (method, path) => {
+    const response = await sendRequest(createApp(), method, path);
+
+    expect(response.status).toBe(404);
+    expect(newsletterService.sendNewsletter).not.toHaveBeenCalled();
+    expect(newsletterService.getActiveSubscriptions).not.toHaveBeenCalled();
+    expect(newsletterService.getStatistics).not.toHaveBeenCalled();
+    expect(newsletterService.getRecentlyAddedMedia).not.toHaveBeenCalled();
+    expect(newsletterService.getRecentDigests).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['GET', '/admin/api/newsletter/subscriptions'],
     ['POST', '/admin/api/newsletter/send'],
@@ -128,13 +162,25 @@ describe('email route security boundary', () => {
     });
   });
 
-  it('does not expose welcome email operations on the public API path', async () => {
-    const response = await request(createApp())
-      .post('/api/welcome-email')
-      .send({ email: 'user@example.test' });
+  it.each([
+    ['POST', '/api/welcome-email'],
+    ['GET', '/api/welcome-email/check/user%40example.test'],
+    ['GET', '/api/welcome-email/history'],
+    ['DELETE', '/api/welcome-email/history/00000000-0000-4000-8000-000000000000'],
+    ['DELETE', '/api/welcome-email/recipient/user%40example.test'],
+    ['DELETE', '/api/welcome-email/history'],
+    ['GET', '/api/welcome-email/stats'],
+  ])('does not expose welcome email operation on public path %s %s', async (method, path) => {
+    const response = await sendRequest(createApp(), method, path);
 
     expect(response.status).toBe(404);
     expect(welcomeEmailService.sendWelcomeEmail).not.toHaveBeenCalled();
+    expect(welcomeEmailService.hasReceivedWelcomeEmail).not.toHaveBeenCalled();
+    expect(welcomeEmailService.getAllWelcomeEmails).not.toHaveBeenCalled();
+    expect(welcomeEmailService.deleteWelcomeEmailById).not.toHaveBeenCalled();
+    expect(welcomeEmailService.deleteWelcomeEmailsByEmail).not.toHaveBeenCalled();
+    expect(welcomeEmailService.clearWelcomeEmails).not.toHaveBeenCalled();
+    expect(welcomeEmailService.getStatistics).not.toHaveBeenCalled();
   });
 
   it.each([
