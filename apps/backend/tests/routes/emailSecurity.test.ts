@@ -18,6 +18,14 @@ vi.mock('../../src/services/newsletterService.js', () => ({
     getStatistics: vi.fn(),
     getRecentlyAddedMedia: vi.fn(),
     getRecentDigests: vi.fn(),
+    listCampaigns: vi.fn(),
+    getCampaign: vi.fn(),
+    getCampaignRecord: vi.fn(),
+    createCampaign: vi.fn(),
+    updateCampaign: vi.fn(),
+    deleteCampaign: vi.fn(),
+    sendCampaignTest: vi.fn(),
+    sendCampaign: vi.fn(),
   },
 }));
 
@@ -134,6 +142,9 @@ describe('email route security boundary', () => {
     ['GET', '/api/newsletter/stats'],
     ['GET', '/api/newsletter/recent-media'],
     ['GET', '/api/newsletter/digests'],
+    ['GET', '/api/newsletter/campaigns'],
+    ['POST', '/api/newsletter/campaigns'],
+    ['POST', '/api/newsletter/campaigns/campaign-1/send'],
   ])('does not expose newsletter admin operation on public path %s %s', async (method, path) => {
     const response = await sendRequest(createApp(), method, path);
 
@@ -143,6 +154,9 @@ describe('email route security boundary', () => {
     expect(newsletterService.getStatistics).not.toHaveBeenCalled();
     expect(newsletterService.getRecentlyAddedMedia).not.toHaveBeenCalled();
     expect(newsletterService.getRecentDigests).not.toHaveBeenCalled();
+    expect(newsletterService.listCampaigns).not.toHaveBeenCalled();
+    expect(newsletterService.createCampaign).not.toHaveBeenCalled();
+    expect(newsletterService.sendCampaign).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -151,6 +165,9 @@ describe('email route security boundary', () => {
     ['GET', '/admin/api/newsletter/stats'],
     ['GET', '/admin/api/newsletter/recent-media'],
     ['GET', '/admin/api/newsletter/digests'],
+    ['GET', '/admin/api/newsletter/campaigns'],
+    ['POST', '/admin/api/newsletter/campaigns'],
+    ['POST', '/admin/api/newsletter/campaigns/campaign-1/send'],
   ])('requires Basic Auth for %s %s', async (method, path) => {
     const response = await sendRequest(createApp(), method, path);
 

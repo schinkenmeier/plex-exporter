@@ -18,7 +18,7 @@
 - `/admin/api/tautulli/*`: Tautulli-Konfiguration, Library Sections, manueller Sync, Live-Stream, Schedules, Snapshots.
 - `/admin/api/tmdb`, `/admin/api/resend/settings`, `/admin/api/test/*`, `/admin/api/diagnostics/run`: Integrationsstatus, Einzeltests und Batch-Diagnosen. Env-Konfiguration bleibt jeweils aktiv und wird in Statusfeldern wie `source`, `fromEnv`, `fromDatabase` und `envOverride` sichtbar; gespeicherte DB-Werte werden separat über `saved` gemeldet.
 - `/admin/api/watchlist/*`: Watchlist-Settings, Anfrage-Lifecycle, Anfrage-Summary, Reply-Templates und Admin-Antworten.
-- `/admin/api/newsletter/*`, `/admin/api/welcome-email/*`: Mail-Betriebsfunktionen.
+- `/admin/api/newsletter/*`, `/admin/api/welcome-email/*`: Mail-Betriebsfunktionen inklusive Newsletter-Campaign-Drafts, Testversand, Send und Digest-History.
 - `/media/*`: Admin-geschützte Medienverwaltung.
 - `/libraries`: Bearer-Token-geschützt, wenn `API_TOKEN` gesetzt ist.
 
@@ -46,6 +46,7 @@
 - `GET /admin/api/logs` liefert gepufferte Backend-Logs newest-first. Unterstützt werden `level`, `since`, `limit`, `offset` und `q`; `q` sucht in Message und Context. Die Antwort enthält `logs`, `stats` und `pagination`.
 - `POST /admin/api/diagnostics/run` akzeptiert `{ checks: ["database", "tautulli", "tmdb", "resend"] }` und liefert pro Check `key`, `success`, `message`, `durationMs` und `checkedAt`.
 - Watchlist-Anfragen werden beim Public-Submit persistiert und über `/admin/api/watchlist/requests` verwaltet. Dazu gehören `GET /requests/summary`, Statuswechsel mit optionaler Message, Admin-Notizen, Reply-Mail und feste Reply-Templates unter `/reply-templates`.
+- Newsletter-Campaigns liegen unter `/admin/api/newsletter/campaigns`. Unterstützt werden Liste, Detail, Create, Draft-only Patch/Delete, Testversand und Send. Public bleiben nur Subscribe/Unsubscribe.
 - Tautulli-Mutationsrouten für Library Sections und Sync-Schedules liefern bei Erfolg additiv `success: true` plus `section` bzw. `schedule`.
 
 ## Datenfluss

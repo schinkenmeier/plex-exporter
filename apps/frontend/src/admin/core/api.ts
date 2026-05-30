@@ -231,6 +231,78 @@ export interface DiagnosticsRunResponse {
   results: DiagnosticResult[];
 }
 
+export type NewsletterCampaignStatus = 'draft' | 'sending' | 'sent' | 'failed';
+
+export interface NewsletterCampaign {
+  id: string;
+  subject: string;
+  body: string;
+  mediaType: 'movie' | 'tv' | null;
+  mediaItemIds: number[];
+  status: NewsletterCampaignStatus;
+  recipientCount: number;
+  sentCount: number;
+  failedCount: number;
+  lastErrorMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
+  sentAt: string | null;
+}
+
+export interface NewsletterCampaignRecipient {
+  id: string;
+  campaignId: string;
+  subscriptionId: string | null;
+  email: string;
+  status: 'pending' | 'sent' | 'failed';
+  emailId: string | null;
+  errorMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
+  sentAt: string | null;
+}
+
+export interface NewsletterCampaignDetails extends NewsletterCampaign {
+  recipients: NewsletterCampaignRecipient[];
+}
+
+export interface NewsletterCampaignsResponse {
+  success: boolean;
+  data: NewsletterCampaign[];
+  count: number;
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+  };
+}
+
+export interface NewsletterCampaignResponse {
+  success: boolean;
+  data: NewsletterCampaign | NewsletterCampaignDetails;
+}
+
+export interface NewsletterSendResult {
+  sent: number;
+  failed: number;
+  mediaItems: number;
+  recipients: number;
+}
+
+export interface NewsletterSendResponse {
+  success: boolean;
+  message: string;
+  data: NewsletterSendResult;
+}
+
+export interface NewsletterCampaignPayload {
+  subject: string;
+  body: string;
+  mediaType?: 'movie' | 'tv' | null;
+  mediaItemIds?: number[];
+}
+
 export interface TmdbStatus {
   enabled: boolean;
   source: string;
@@ -681,6 +753,49 @@ export class AdminApiClient {
 
   runDiagnostics(checks: DiagnosticCheckKey[]): Promise<DiagnosticsRunResponse> {
     return this.request<DiagnosticsRunResponse>('/diagnostics/run', 'POST', { checks });
+  }
+
+  getNewsletterCampaigns(params: {
+    status?: NewsletterCampaignStatus;
+    limit?: number;
+    offset?: number;
+  } = {}): Promise<NewsletterCampaignsResponse> {
+    return this.request<NewsletterCampaignsResponse>('/newsletter/campaigns', 'GET', undefined, params);
+  }
+
+  getNewsletterCampaign(id: string): Promise<NewsletterCampaignResponse> {
+    return this.request<NewsletterCampaignResponse>(`/newsletter/campaigns/${encodeURIComponent(id)}`, 'GET');
+  }
+
+  createNewsletterCampaign(payload: NewsletterCampaignPayload): Promise<NewsletterCampaignResponse> {
+    return this.request<NewsletterCampaignResponse>('/newsletter/campaigns', 'POST', payload);
+  }
+
+  updateNewsletterCampaign(
+    id: string,
+    payload: Partial<NewsletterCampaignPayload>,
+  ): Promise<NewsletterCampaignResponse> {
+    return this.request<NewsletterCampaignResponse>(
+      `/newsletter/campaigns/${encodeURIComponent(id)}`,
+      'PATCH',
+      payload,
+    );
+  }
+
+  deleteNewsletterCampaign(id: string): Promise<void> {
+    return this.request<void>(`/newsletter/campaigns/${encodeURIComponent(id)}`, 'DELETE');
+  }
+
+  testNewsletterCampaign(id: string, payload: { email?: string; emails?: string[] }): Promise<NewsletterSendResponse> {
+    return this.request<NewsletterSendResponse>(
+      `/newsletter/campaigns/${encodeURIComponent(id)}/test`,
+      'POST',
+      payload,
+    );
+  }
+
+  sendNewsletterCampaign(id: string): Promise<NewsletterSendResponse> {
+    return this.request<NewsletterSendResponse>(`/newsletter/campaigns/${encodeURIComponent(id)}/send`, 'POST');
   }
 
   getWatchlistAdminEmail(): Promise<WatchlistAdminEmailResponse> {

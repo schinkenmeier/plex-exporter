@@ -26,7 +26,7 @@ Dieses Dokument beschreibt, welche Backend-Funktionen für das redesigned Admin 
 | Diagnostics | DB, Tautulli, TMDb, Resend Einzeltests plus Batch-Endpoint vorhanden | Gut abgedeckt |
 | Admin Profile | Minimalprofil aus Admin-Config/Auth-Context vorhanden | Gut für Single-Admin abgedeckt |
 | Welcome-Mail | Send, Check, History, Delete, Stats vorhanden | Gut abgedeckt |
-| Newsletter | Subscribe/Unsubscribe, Send Digest, Stats, Recent Media, Digest History vorhanden | Fachlich noch unfertig |
+| Newsletter | Subscribe/Unsubscribe, Campaign Draft/Test/Send, Recipient-Status, Send Digest, Stats, Recent Media, Digest History vorhanden | Produktiv nutzbare Basis, spaetere Verfeinerungen offen |
 | Datenbank-Explorer | Tables, Query, Filter, Sort, Pagination vorhanden | Stark abgedeckt |
 
 ## Phase 1: API-Kontrakt und Admin-Client vervollstaendigen
@@ -510,6 +510,16 @@ Tests:
 - Send mit teilweisen Mailfehlern und korrekten Recipient-Statuses.
 - Security-Test: Campaign-Routen nur unter `/admin/api/newsletter/*`, nicht public.
 - Legacy `POST /admin/api/newsletter/send` funktioniert weiter.
+
+Status: Abgeschlossen am 2026-05-30.
+
+Kurznotiz:
+
+- `014_newsletter_campaigns` fuehrt `newsletter_campaigns` und `newsletter_campaign_recipients` ein; Schema und `NewsletterCampaignRepository` bilden Drafts, Status, Zähler und Empfängerstatus ab.
+- `newsletterService` unterstützt Campaign-CRUD, Testversand und finalen Send inklusive Empfängerstatus, Campaign-Zählern und Legacy-Digest-Eintrag.
+- Admin-API unter `/admin/api/newsletter/campaigns*` ist umgesetzt; Public Subscribe/Unsubscribe und Legacy `POST /admin/api/newsletter/send` bleiben kompatibel.
+- Empfängerlogik ist korrigiert: aktive Subscriptions mit `media_type = NULL` erhalten Movie-/TV-Kampagnen mit.
+- AdminApiClient-Typen/Methoden sind ergänzt; abgedeckt durch Repository-, Service-, Route-, Security- und AdminApiClient-Tests sowie komplette Backend-Suite.
 
 ### Sprint D: Spaetere Vertiefungen
 

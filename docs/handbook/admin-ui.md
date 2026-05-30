@@ -13,6 +13,7 @@ Die Admin-UI liegt unter `/admin`. Sie ist nur nutzbar, wenn `ADMIN_USERNAME` un
 - Tautulli: Verbindung, Library Sections, manueller Sync, Live-Status, Zeitpläne, Snapshots.
 - Diagnostics: Tests für Datenbank und Integrationen.
 - Watchlist Requests: eingegangene Watchlist-Anfragen, Status, Historie, Notizen und Antworten.
+- Newsletter Campaigns: redaktionelle Newsletter-Drafts, Medienauswahl, Testversand, Versand und Empfängerstatus.
 
 ## Betriebsfunktionen
 
@@ -21,6 +22,7 @@ Die Admin-UI liegt unter `/admin`. Sie ist nur nutzbar, wenn `ADMIN_USERNAME` un
 - Das Admin-Profil unter `/admin/api/profile` liefert aktuell ein Single-Admin-Profil aus der Admin-Konfiguration und der aktiven Auth-Methode.
 - Watchlist-Anfragen bleiben als Request-Paket modelliert. Statuswerte sind `new`, `in_progress`, `parked`, `done` und `rejected`; Statuswechsel können eine Kommentar-Message in der Historie speichern.
 - Reply-Templates für Watchlist-Antworten sind derzeit feste Backend-Defaults. Editierbare Templates sind noch nicht Teil des produktiven Backends.
+- Newsletter-Campaigns nutzen `draft`, `sending`, `sent` und `failed`. Nur Drafts können geändert oder gelöscht werden; der Legacy-Shortcut `POST /admin/api/newsletter/send` bleibt parallel erhalten.
 
 ## Konfigurationslogik
 

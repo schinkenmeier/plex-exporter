@@ -14,6 +14,13 @@ const sectionTypes = ['movie', 'show'] as const;
 const watchlistRequestStatuses = ['new', 'in_progress', 'parked', 'done', 'rejected'] as const;
 const watchlistRequestEventTypes = ['created', 'status_changed', 'reply_sent', 'note_updated'] as const;
 const watchlistRequestActors = ['system', 'admin'] as const;
+export const newsletterCampaignStatuses = [
+  'draft',
+  'sending',
+  'sent',
+  'failed',
+] as const;
+export const newsletterCampaignRecipientStatuses = ['pending', 'sent', 'failed'] as const;
 
 export const users = sqliteTable('users', {
   id: text('id')
@@ -388,6 +395,94 @@ export const insertNewsletterDigestSchema = createInsertSchema(newsletterDigests
 });
 export type InsertNewsletterDigest = z.infer<typeof insertNewsletterDigestSchema>;
 export type NewsletterDigest = typeof newsletterDigests.$inferSelect;
+
+export const newsletterCampaigns = sqliteTable('newsletter_campaigns', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  subject: text('subject').notNull(),
+  body: text('body').notNull(),
+  mediaType: text('media_type', { enum: mediaTypes }),
+  mediaItemIds: text('media_item_ids', { mode: 'json' })
+    .$type<number[]>()
+    .notNull()
+    .default(sql`'[]'`),
+  status: text('status', { enum: newsletterCampaignStatuses }).notNull().default('draft'),
+  recipientCount: integer('recipient_count').notNull().default(0),
+  sentCount: integer('sent_count').notNull().default(0),
+  failedCount: integer('failed_count').notNull().default(0),
+  lastErrorMessage: text('last_error_message'),
+  sentAt: text('sent_at'),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const insertNewsletterCampaignSchema = createInsertSchema(newsletterCampaigns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertNewsletterCampaign = z.infer<typeof insertNewsletterCampaignSchema>;
+export type NewsletterCampaign = typeof newsletterCampaigns.$inferSelect;
+
+export const newsletterCampaignRecipients = sqliteTable('newsletter_campaign_recipients', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  campaignId: text('campaign_id')
+    .notNull()
+    .references(() => newsletterCampaigns.id, { onDelete: 'cascade' }),
+  email: text('email').notNull(),
+  subscriptionId: text('subscription_id').references(() => newsletterSubscriptions.id, {
+    onDelete: 'set null',
+  }),
+  status: text('status', { enum: newsletterCampaignRecipientStatuses })
+    .notNull()
+    .default('pending'),
+  emailId: text('email_id'),
+  errorMessage: text('error_message'),
+  sentAt: text('sent_at'),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const insertNewsletterCampaignRecipientSchema = createInsertSchema(
+  newsletterCampaignRecipients,
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertNewsletterCampaignRecipient = z.infer<
+  typeof insertNewsletterCampaignRecipientSchema
+>;
+export type NewsletterCampaignRecipient = typeof newsletterCampaignRecipients.$inferSelect;
+
+export const newsletterCampaignsRelations = relations(newsletterCampaigns, ({ many }) => ({
+  recipients: many(newsletterCampaignRecipients),
+}));
+
+export const newsletterCampaignRecipientsRelations = relations(
+  newsletterCampaignRecipients,
+  ({ one }) => ({
+    campaign: one(newsletterCampaigns, {
+      fields: [newsletterCampaignRecipients.campaignId],
+      references: [newsletterCampaigns.id],
+    }),
+    subscription: one(newsletterSubscriptions, {
+      fields: [newsletterCampaignRecipients.subscriptionId],
+      references: [newsletterSubscriptions.id],
+    }),
+  }),
+);
 
 export const welcomeEmails = sqliteTable('welcome_emails', {
   id: text('id')
