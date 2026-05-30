@@ -51,6 +51,23 @@ export interface AdminRouterOptions {
 
 export type { TautulliConfigStatus, TautulliConfigSource } from '../services/tautulliConfigStatus.js';
 
+const buildAdminInitials = (name: string): string => {
+  const normalized = name.trim();
+  if (normalized.toLowerCase() === 'admin') {
+    return 'AD';
+  }
+
+  const parts = normalized.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) {
+    return 'AD';
+  }
+
+  return parts
+    .slice(0, 2)
+    .map(part => part[0].toUpperCase())
+    .join('');
+};
+
 export const createAdminRouter = (options: AdminRouterOptions): Router => {
   const router = Router();
   const {
@@ -105,6 +122,16 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
       authenticated: true,
       method: res.locals.adminAuthMethod ?? null,
       methods: adminAuthMethods,
+    });
+  });
+
+  router.get('/api/profile', (_req: Request, res: Response) => {
+    const name = config.admin?.username?.trim() || 'Admin';
+    res.json({
+      name,
+      role: 'Administrator',
+      authMethod: res.locals.adminAuthMethod ?? null,
+      initials: buildAdminInitials(name),
     });
   });
 

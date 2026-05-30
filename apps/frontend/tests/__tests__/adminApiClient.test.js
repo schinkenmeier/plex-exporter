@@ -101,4 +101,35 @@ describe('admin API client errors', () => {
       },
     );
   });
+
+  it('builds Sprint B admin endpoint requests', async () => {
+    const { AdminApiClient } = apiModule;
+    const calls = [];
+    globalThis.fetch = async (url, options) => {
+      calls.push({ url: String(url), options });
+      return {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        text: async () => JSON.stringify({ success: true, results: [] }),
+      };
+    };
+
+    const client = new AdminApiClient('/admin/api');
+
+    await client.getLogs({ level: 'error', limit: 25, offset: 50, q: 'diagnostics' });
+    await client.getProfile();
+    await client.runDiagnostics(['database', 'resend']);
+
+    assert.equal(
+      calls[0].url,
+      'https://admin.example.test/admin/api/logs?limit=25&offset=50&level=error&q=diagnostics',
+    );
+    assert.equal(calls[0].options.method, 'GET');
+    assert.equal(calls[1].url, 'https://admin.example.test/admin/api/profile');
+    assert.equal(calls[1].options.method, 'GET');
+    assert.equal(calls[2].url, 'https://admin.example.test/admin/api/diagnostics/run');
+    assert.equal(calls[2].options.method, 'POST');
+    assert.deepEqual(JSON.parse(calls[2].options.body), { checks: ['database', 'resend'] });
+  });
 });

@@ -411,6 +411,129 @@ describe('Admin router integration', () => {
     }));
   });
 
+  it('exposes the minimal admin profile from the current auth context', async () => {
+    const profileConfig: AppConfig = {
+      runtime: { env: 'test', adminUiMode: 'embedded' },
+      server: { port: 0 },
+      auth: null,
+      database: { sqlitePath: dbHandle.filePath },
+      hero: { policyPath: null },
+      scheduler: { timezone: 'Europe/Berlin' },
+      tautulli: null,
+      tmdb: null,
+      admin: {
+        username: 'Admin',
+        password: 'secret',
+        apiToken: null,
+      },
+      resend: null,
+    };
+    const mediaRepository = new MediaRepository(dbHandle.drizzle);
+    const thumbnailRepository = new ThumbnailRepository(dbHandle.drizzle);
+    const seasonRepository = new SeasonRepository(dbHandle.drizzle);
+    const castRepository = new CastRepository(dbHandle.drizzle);
+    const heroPipeline: HeroPipelineService = {
+      getPool: vi.fn(),
+      invalidate: vi.fn(),
+      setTmdbService: vi.fn(),
+    };
+    const profileApp = express();
+    profileApp.use(express.json());
+    profileApp.use((_req, res, next) => {
+      res.locals.adminAuthMethod = 'basic';
+      next();
+    });
+    profileApp.use(
+      '/admin',
+      createAdminRouter({
+        config: profileConfig,
+        mediaRepository,
+        thumbnailRepository,
+        resendService: null,
+        tautulliService: null,
+        seasonRepository,
+        castRepository,
+        drizzleDatabase: dbHandle.drizzle,
+        settingsRepository,
+        tautulliConfigRepository,
+        watchlistRequestRepository,
+        tmdbManager,
+        heroPipeline,
+        refreshTautulliIntegration,
+        adminUiDir: adminUiFixture,
+        adminAuthMethods: ['basic'],
+      }),
+    );
+    profileApp.use(errorHandler);
+
+    const response = await request(profileApp).get('/admin/api/profile');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      name: 'Admin',
+      role: 'Administrator',
+      authMethod: 'basic',
+      initials: 'AD',
+    });
+  });
+
+  it('runs diagnostics as a batch and returns per-check results', async () => {
+    const response = await request(app)
+      .post('/admin/api/diagnostics/run')
+      .send({ checks: ['database', 'tautulli', 'tmdb', 'resend'] });
+
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(response.body.results).toHaveLength(4);
+    expect(response.body.results).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: 'database',
+        success: true,
+        message: expect.stringContaining('Database connection successful'),
+        durationMs: expect.any(Number),
+        checkedAt: expect.any(String),
+      }),
+      expect.objectContaining({
+        key: 'tautulli',
+        success: false,
+        message: 'Tautulli service is not configured',
+        durationMs: expect.any(Number),
+        checkedAt: expect.any(String),
+      }),
+      expect.objectContaining({
+        key: 'tmdb',
+        success: true,
+        message: 'tested [stored]',
+        durationMs: expect.any(Number),
+        checkedAt: expect.any(String),
+      }),
+      expect.objectContaining({
+        key: 'resend',
+        success: false,
+        message: 'Resend service is not configured',
+        durationMs: expect.any(Number),
+        checkedAt: expect.any(String),
+      }),
+    ]));
+    expect(tmdbManager.testToken).toHaveBeenCalledWith();
+  });
+
+  it('rejects unsupported diagnostic checks', async () => {
+    const response = await request(app)
+      .post('/admin/api/diagnostics/run')
+      .send({ checks: ['database', 'unknown', 42] });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toEqual(expect.objectContaining({
+      message: 'Unsupported diagnostic check requested.',
+      statusCode: 400,
+      details: {
+        supportedChecks: ['database', 'tautulli', 'tmdb', 'resend'],
+        invalidChecks: ['unknown', 42],
+      },
+    }));
+  });
+
   it('exposes and clears buffered logs', async () => {
     logBuffer.add({
       timestamp: '2026-01-01T00:00:00.000Z',
@@ -421,13 +544,39 @@ describe('Admin router integration', () => {
       timestamp: '2026-01-01T00:00:01.000Z',
       level: 'error',
       message: 'second admin log',
+      context: { requestId: 'req-2', scope: 'diagnostics' },
+    });
+    logBuffer.add({
+      timestamp: '2026-01-01T00:00:02.000Z',
+      level: 'warn',
+      message: 'third admin log',
+      context: { requestId: 'req-3', scope: 'watchlist' },
     });
 
-    const filteredResponse = await request(app).get('/admin/api/logs?level=error&limit=10');
+    const filteredResponse = await request(app).get('/admin/api/logs?level=error&limit=10&q=diagnostics');
     expect(filteredResponse.status).toBe(200);
     expect(filteredResponse.body.logs).toHaveLength(1);
     expect(filteredResponse.body.logs[0].message).toBe('second admin log');
-    expect(filteredResponse.body.stats.total).toBe(2);
+    expect(filteredResponse.body.stats.total).toBe(3);
+    expect(filteredResponse.body.pagination).toEqual({
+      total: 1,
+      limit: 10,
+      offset: 0,
+      hasMore: false,
+      sort: 'newest-first',
+    });
+
+    const pagedResponse = await request(app).get('/admin/api/logs?limit=1&offset=1');
+    expect(pagedResponse.status).toBe(200);
+    expect(pagedResponse.body.logs).toHaveLength(1);
+    expect(pagedResponse.body.logs[0].message).toBe('second admin log');
+    expect(pagedResponse.body.pagination).toEqual({
+      total: 3,
+      limit: 1,
+      offset: 1,
+      hasMore: true,
+      sort: 'newest-first',
+    });
 
     const clearResponse = await request(app).delete('/admin/api/logs');
     expect(clearResponse.status).toBe(200);

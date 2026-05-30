@@ -435,6 +435,15 @@ Explizit verschoben:
 
 - `GET /admin/api/logs/stream` erst spaeter, falls echtes Live-Streaming benoetigt wird. Fuer den Start reicht Polling.
 
+Status: Abgeschlossen am 2026-05-30.
+
+Kurznotiz:
+
+- Logs unter `GET /admin/api/logs` unterstuetzen jetzt `q`, `offset`, Pagination-Metadaten und liefern die Treffer explizit `newest-first`.
+- `POST /admin/api/diagnostics/run` fuehrt ausgewaehlte Checks fuer `database`, `tautulli`, `tmdb` und `resend` als Batch aus und liefert pro Check Status, Message, Laufzeit und Zeitstempel.
+- `GET /admin/api/profile` liefert minimale Admin-Metadaten fuer das redesigned UI; der AdminApiClient spiegelt Profile, Diagnostics und die erweiterten Log-Parameter.
+- Abgedeckt durch Admin-Integrationstests und AdminApiClient-Test; verifiziert mit Backend-/Frontend-Typecheck, Frontend-Testlauf und kompletter Backend-Test-Suite.
+
 ### Sprint C: Newsletter Campaigns als groesserer Domain-Block
 
 Ziel: Newsletter vom Platzhalter-/Digest-Flow zu einer echten Admin-Funktion ausbauen.

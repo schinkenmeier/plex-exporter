@@ -11,6 +11,24 @@ import type { HeroPipelineService } from '../../services/heroPipeline.js';
 import { isValidEmail } from './helpers.js';
 import { getActiveResendService, getResolvedResendConfigStatus } from './configStatus.js';
 
+const DIAGNOSTIC_CHECKS = ['database', 'tautulli', 'tmdb', 'resend'] as const;
+
+type DiagnosticCheck = typeof DIAGNOSTIC_CHECKS[number];
+
+interface DiagnosticResult {
+  key: DiagnosticCheck;
+  success: boolean;
+  message: string;
+  durationMs: number;
+  checkedAt: string;
+}
+
+const getElapsedMs = (start: bigint): number =>
+  Math.round(Number(process.hrtime.bigint() - start) / 10_000) / 100;
+
+const isDiagnosticCheck = (value: unknown): value is DiagnosticCheck =>
+  typeof value === 'string' && DIAGNOSTIC_CHECKS.includes(value as DiagnosticCheck);
+
 export interface AdminIntegrationsRouterOptions {
   config: AppConfig;
   mediaRepository: MediaRepository;
@@ -44,6 +62,9 @@ export const createAdminIntegrationsRouter = (options: AdminIntegrationsRouterOp
   const resolveActiveResendService = (): MailSender | null =>
     getActiveResendService({ resendService, getResendService });
 
+  const resolveActiveTautulliService = (): TautulliClient | null =>
+    getTautulliService ? getTautulliService() : tautulliService;
+
   const getTmdbStatusResponse = () => {
     const status = tmdbManager.getStatus();
     return {
@@ -56,6 +77,72 @@ export const createAdminIntegrationsRouter = (options: AdminIntegrationsRouterOp
       envOverride: status.envOverride,
       saved: status.saved,
     };
+  };
+
+  const runDiagnosticCheck = async (key: DiagnosticCheck): Promise<DiagnosticResult> => {
+    const start = process.hrtime.bigint();
+    const checkedAt = new Date().toISOString();
+
+    try {
+      switch (key) {
+        case 'database': {
+          const recordCount = mediaRepository.count();
+          return {
+            key,
+            success: true,
+            message: `Database connection successful (${recordCount} records)`,
+            durationMs: getElapsedMs(start),
+            checkedAt,
+          };
+        }
+        case 'tautulli': {
+          const activeTautulliService = resolveActiveTautulliService();
+          if (!activeTautulliService) {
+            throw new Error('Tautulli service is not configured');
+          }
+          const libraries = await activeTautulliService.getLibraries();
+          return {
+            key,
+            success: true,
+            message: `Successfully connected to Tautulli (${libraries.length} libraries)`,
+            durationMs: getElapsedMs(start),
+            checkedAt,
+          };
+        }
+        case 'tmdb': {
+          const result = await tmdbManager.testToken();
+          return {
+            key,
+            success: true,
+            message: result.message,
+            durationMs: getElapsedMs(start),
+            checkedAt,
+          };
+        }
+        case 'resend': {
+          const activeResendService = resolveActiveResendService();
+          if (!activeResendService) {
+            throw new Error('Resend service is not configured');
+          }
+          return {
+            key,
+            success: true,
+            message: 'Resend service is configured',
+            durationMs: getElapsedMs(start),
+            checkedAt,
+          };
+        }
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return {
+        key,
+        success: false,
+        message,
+        durationMs: getElapsedMs(start),
+        checkedAt,
+      };
+    }
   };
 
   router.get('/tmdb', (_req: Request, res: Response) => {
@@ -192,6 +279,35 @@ export const createAdminIntegrationsRouter = (options: AdminIntegrationsRouterOp
       const message = error instanceof Error ? error.message : 'Unknown error';
       logger.error('Resend test failed', { error: message });
       next(new HttpError(502, 'Resend test failed', { details: message }));
+    }
+  });
+
+  router.post('/diagnostics/run', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const checks = req.body?.checks;
+      if (!Array.isArray(checks) || checks.length === 0) {
+        throw new HttpError(400, 'checks must be a non-empty array.');
+      }
+
+      const invalidChecks = checks.filter(check => !isDiagnosticCheck(check));
+      if (invalidChecks.length > 0) {
+        throw new HttpError(400, 'Unsupported diagnostic check requested.', {
+          details: {
+            supportedChecks: [...DIAGNOSTIC_CHECKS],
+            invalidChecks,
+          },
+        });
+      }
+
+      const uniqueChecks = [...new Set(checks.filter(isDiagnosticCheck))];
+      const results = await Promise.all(uniqueChecks.map(check => runDiagnosticCheck(check)));
+
+      res.json({
+        success: true,
+        results,
+      });
+    } catch (error) {
+      next(error);
     }
   });
 

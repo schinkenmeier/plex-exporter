@@ -105,6 +105,13 @@ export interface AdminAuthStatus {
   methods: Array<'basic' | 'bearer'>;
 }
 
+export interface AdminProfile {
+  name: string;
+  role: string;
+  authMethod: 'basic' | 'bearer' | null;
+  initials: string;
+}
+
 export interface TableSummary {
   name: string;
   rowCount: number | null;
@@ -200,6 +207,28 @@ export interface LogsResponse {
     byLevel: Record<LogLevel, number>;
     maxSize: number;
   };
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+    sort: 'newest-first';
+  };
+}
+
+export type DiagnosticCheckKey = 'database' | 'tautulli' | 'tmdb' | 'resend';
+
+export interface DiagnosticResult {
+  key: DiagnosticCheckKey;
+  success: boolean;
+  message: string;
+  durationMs: number;
+  checkedAt: string;
+}
+
+export interface DiagnosticsRunResponse {
+  success: boolean;
+  results: DiagnosticResult[];
 }
 
 export interface TmdbStatus {
@@ -579,6 +608,10 @@ export class AdminApiClient {
     return this.request<AdminAuthStatus>('/auth/status', 'GET');
   }
 
+  getProfile(): Promise<AdminProfile> {
+    return this.request<AdminProfile>('/profile', 'GET');
+  }
+
   getStats(): Promise<AdminStatsResponse> {
     return this.request<AdminStatsResponse>('/stats', 'GET');
   }
@@ -595,15 +628,17 @@ export class AdminApiClient {
     return this.request<DatabaseQueryResponse>('/db/query', 'POST', payload);
   }
 
-  getLogs(params: { limit?: number; level?: LogLevel; since?: string } = {}): Promise<LogsResponse> {
+  getLogs(params: { limit?: number; offset?: number; level?: LogLevel; since?: string; q?: string } = {}): Promise<LogsResponse> {
     return this.request<LogsResponse>(
       '/logs',
       'GET',
       undefined,
       {
         limit: params.limit,
+        offset: params.offset,
         level: params.level,
         since: params.since,
+        q: params.q,
       },
     );
   }
@@ -642,6 +677,10 @@ export class AdminApiClient {
 
   testResend(to: string): Promise<TestResponse> {
     return this.request<TestResponse>('/test/resend', 'POST', { to });
+  }
+
+  runDiagnostics(checks: DiagnosticCheckKey[]): Promise<DiagnosticsRunResponse> {
+    return this.request<DiagnosticsRunResponse>('/diagnostics/run', 'POST', { checks });
   }
 
   getWatchlistAdminEmail(): Promise<WatchlistAdminEmailResponse> {
