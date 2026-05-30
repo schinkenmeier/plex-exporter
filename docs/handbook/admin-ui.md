@@ -23,6 +23,9 @@ Die Admin-UI liegt unter `/admin`. Sie ist nur nutzbar, wenn `ADMIN_USERNAME` un
 - Watchlist-Anfragen bleiben als Request-Paket modelliert. Statuswerte sind `new`, `in_progress`, `parked`, `done` und `rejected`; Statuswechsel können eine Kommentar-Message in der Historie speichern.
 - Reply-Templates für Watchlist-Antworten sind derzeit feste Backend-Defaults. Editierbare Templates sind noch nicht Teil des produktiven Backends.
 - Newsletter-Campaigns nutzen `draft`, `sending`, `sent` und `failed`. Nur Drafts können geändert oder gelöscht werden; der Legacy-Shortcut `POST /admin/api/newsletter/send` bleibt parallel erhalten.
+- Campaigns können redaktionellen `subject`/`body`, optionalen Medienfilter und eine explizite Medienauswahl speichern. Testversand geht an frei angegebene Admin-Adressen und verändert den Draft nicht.
+- Der finale Campaign-Versand schreibt Empfängerstatus (`pending`, `sent`, `failed`), Zähler (`recipientCount`, `sentCount`, `failedCount`) und die letzte Fehlermeldung. Subscriptions ohne Medienfilter erhalten Movie-/TV-Kampagnen mit.
+- `newsletter_digests` bleibt als Legacy-Historie und für den bestehenden Shortcut lesbar; die genauere Versandhistorie liegt bei Campaigns in `newsletter_campaign_recipients`.
 
 ## Konfigurationslogik
 

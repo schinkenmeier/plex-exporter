@@ -49,4 +49,4 @@ Im Container ist die Datenwurzel `/app/data`. Auf dem Host sieht die Struktur un
 - Mail-Flows: `newsletter_subscriptions`, `newsletter_digests`, `newsletter_campaigns`, `newsletter_campaign_recipients`, `welcome_emails`.
 - Watchlist-Anfragen: `watchlist_requests` speichert das Request-Paket inklusive `items[]`; `watchlist_request_events` speichert Historie wie Erstellung, Statuswechsel, Notizen und Antworten.
 
-Newsletter-Campaigns speichern Drafts, Test-/Send-fähige Inhalte, Medienauswahl und Empfängerstatus. `newsletter_digests` bleibt als Legacy-History für den bisherigen Digest-/Shortcut-Flow lesbar.
+Newsletter-Campaigns speichern Drafts, Test-/Send-fähige Inhalte, Medienauswahl und Versandzähler. `newsletter_campaign_recipients` hält pro Campaign E-Mail-Adresse, optionalen Subscription-Bezug, Empfängerstatus, Resend-ID, Fehlermeldung und `sent_at`. `newsletter_digests` bleibt als Legacy-History für den bisherigen Digest-/Shortcut-Flow lesbar.

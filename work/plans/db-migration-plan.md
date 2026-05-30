@@ -34,7 +34,7 @@
    - Bestehende Tabellen (`media_metadata`, `thumbnails`, `tautulli_snapshots`) bewerten:
      - entweder weiterverwenden und in neues Schema integrieren (z. B. `media_items` ←→ `media_metadata` Datenübernahme),
      - oder Legacy-Tabellen nach erfolgreicher Migration entfernen.
-   - Reihenfolge beachten (Foreign Keys): `users` → `media_items` → `seasons` → `episodes` → `cast_members` → `media_cast` → `import_jobs`/`email_campaigns`/`import_schedules`.
+   - Reihenfolge beachten (Foreign Keys): `users` → `media_items` → `seasons` → `episodes` → `cast_members` → `media_cast` → `import_jobs`/`newsletter_campaigns`/`newsletter_campaign_recipients`/`import_schedules`.
 
 4. **Repository-Refactor**
    - Schrittweise Ablösung der bisherigen Repositories hin zu Drizzle-Abfragen.

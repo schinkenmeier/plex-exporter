@@ -147,28 +147,26 @@ Empfehlung:
 
 ## Phase 3: Newsletter von Platzhalter zu Produktfunktion
 
-Das ist die groesste fachliche Luecke.
+Status: Sprint C erledigt. Newsletter ist keine reine Platzhalterfunktion mehr; Campaign-Drafts, Testversand, finaler Versand und Empfaengerstatus sind backendseitig vorhanden.
 
 Aktuell:
 
 - Public subscribe/unsubscribe.
-- Admin subscriptions.
-- Admin send newsletter auf Basis recent media.
-- Digest-Tabelle speichert nur `mediaType`, `mediaItemIds`, `recipientCount`.
+- Admin send newsletter auf Basis recent media bleibt als Legacy-Shortcut.
+- Newsletter-Campaigns speichern redaktionellen Betreff/Text, optionalen Medienfilter, explizite Medienauswahl, Status und Versandzaehler.
+- Campaign-Recipients speichern Empfaengeradresse, optionalen Subscription-Bezug, Status, Resend-ID, Fehlermeldung und Versandzeitpunkt.
+- Digest-Tabelle bleibt als Legacy-Historie lesbar und wird beim Campaign-Send weiterhin kompatibel beschrieben.
 
-Probleme:
+Noch offen oder bewusst vertagt:
 
-- Kein Betreff/Text aus Admin-UI.
-- Keine Drafts.
-- Kein Testversand.
-- Kein Versandprotokoll pro Empfaenger.
 - Kein Unsubscribe-Token/Link.
 - Digest `mediaType` erzwingt aktuell `movie`, wenn "all" gesendet wird.
-- HTML wird im Service per String gebaut und ist noch englisch/roh.
+- HTML wird weiterhin im Service per String gebaut; editierbare Mail-Templates sind Sprint D.
+- Erweitertes Subscription-Management per Admin-API ist noch nicht umgesetzt.
 
 ### 3.1 Newsletter Campaigns einfuehren
 
-Neue Tabelle `newsletter_campaigns`:
+Umgesetzt mit Migration `014_newsletter_campaigns`: Tabelle `newsletter_campaigns`:
 
 - `id`
 - `subject`
@@ -183,7 +181,7 @@ Neue Tabelle `newsletter_campaigns`:
 - `updated_at`
 - `sent_at`
 
-Neue Tabelle `newsletter_campaign_recipients`:
+Tabelle `newsletter_campaign_recipients`:
 
 - `id`
 - `campaign_id`
@@ -195,7 +193,7 @@ Neue Tabelle `newsletter_campaign_recipients`:
 
 ### 3.2 Newsletter Admin API
 
-Neue/erweiterte Endpunkte:
+Umgesetzte Endpunkte:
 
 - `GET /admin/api/newsletter/campaigns`
 - `GET /admin/api/newsletter/campaigns/:id`
@@ -209,7 +207,7 @@ Bestehende Endpunkte koennen parallel bleiben.
 
 ### 3.3 Subscription Management
 
-Ergaenzen:
+Vertagt:
 
 - `GET /admin/api/newsletter/subscriptions?active=true|false&mediaType=movie|tv`
 - `PATCH /admin/api/newsletter/subscriptions/:id`

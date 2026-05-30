@@ -40,6 +40,7 @@
 - Tautulli
 - Diagnostics
 - Watchlist Requests
+- Newsletter Campaigns
 
 ## Admin-API-Hinweise
 
@@ -47,6 +48,10 @@
 - `POST /admin/api/diagnostics/run` akzeptiert `{ checks: ["database", "tautulli", "tmdb", "resend"] }` und liefert pro Check `key`, `success`, `message`, `durationMs` und `checkedAt`.
 - Watchlist-Anfragen werden beim Public-Submit persistiert und über `/admin/api/watchlist/requests` verwaltet. Dazu gehören `GET /requests/summary`, Statuswechsel mit optionaler Message, Admin-Notizen, Reply-Mail und feste Reply-Templates unter `/reply-templates`.
 - Newsletter-Campaigns liegen unter `/admin/api/newsletter/campaigns`. Unterstützt werden Liste, Detail, Create, Draft-only Patch/Delete, Testversand und Send. Public bleiben nur Subscribe/Unsubscribe.
+- Newsletter-Campaign-Statuswerte sind `draft`, `sending`, `sent` und `failed`; Empfängerstatuswerte sind `pending`, `sent` und `failed`.
+- `POST /admin/api/newsletter/campaigns` erwartet `subject`, `body`, optional `mediaType` (`movie`, `tv` oder `null`) und optional `mediaItemIds`. `PATCH` akzeptiert dieselben Felder partiell, aber nur solange die Campaign `draft` ist.
+- `POST /admin/api/newsletter/campaigns/:id/test` akzeptiert `email` oder `emails[]` und verändert den Campaign-Status nicht. `POST /admin/api/newsletter/campaigns/:id/send` löst den Versand an aktive Subscriptions aus, schreibt Recipient-Status und Campaign-Zähler und erzeugt weiterhin einen Legacy-Digest-Eintrag.
+- `GET /admin/api/newsletter/campaigns` unterstützt `status`, `limit` und `offset` und liefert eine Pagination-Struktur mit `total`, `limit`, `offset` und `hasMore`.
 - Tautulli-Mutationsrouten für Library Sections und Sync-Schedules liefern bei Erfolg additiv `success: true` plus `section` bzw. `schedule`.
 
 ## Datenfluss

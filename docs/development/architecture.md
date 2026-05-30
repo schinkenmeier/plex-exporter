@@ -38,6 +38,8 @@ Die Admin-API wird in `apps/backend/src/routes/admin.ts` als Shell zusammengeset
 - `watchlistRequests.ts`: `/admin/api/watchlist/requests*`, Anfrage-Summary, Statuswechsel, Notizen, Reply-Mail und Reply-Templates.
 - `configStatus.ts`: gemeinsame Resolver für Tautulli-/Resend-Konfigurationsstatus, kein Express-Router.
 
+Newsletter-Flows liegen in `apps/backend/src/routes/newsletter.ts`. Der Router stellt public nur Subscribe/Unsubscribe bereit und mountet admin-geschützt Campaign-Drafts, Testversand, finalen Versand, Statistiken, Recent Media und Digest-History unter `/admin/api/newsletter/*`.
+
 `admin.ts` stellt außerdem `/admin/api/auth/status` und `/admin/api/profile` direkt bereit. Das Profil ist aktuell ein Single-Admin-Profil aus Config und aktiver Auth-Methode, kein eigenes User-Modell.
 
 Die Pfade bleiben bewusst kompatibel zum Frontend-Client; neue Endpunkte sollten deshalb in den spezifischsten Domain-Router statt als konkurrierende Route unter dem gemeinsamen `/admin/api`-Präfix. Admin-Routen sollen Fehler über `next(new HttpError(...))` an den zentralen Error-Handler geben, damit API-Clients den einheitlichen Envelope bekommen.
