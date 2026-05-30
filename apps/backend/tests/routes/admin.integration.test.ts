@@ -15,6 +15,7 @@ import type { AppConfig } from '../../src/config/index.js';
 import type { TmdbManager } from '../../src/services/tmdbManager.js';
 import type { MailSender } from '../../src/services/resendService.js';
 import type { HeroPipelineService } from '../../src/services/heroPipeline.js';
+import { logBuffer } from '../../src/services/logBuffer.js';
 import { createTestDatabase, type TestDatabaseHandle } from '../helpers/testDatabase.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -159,6 +160,7 @@ describe('Admin router integration', () => {
   });
 
   afterEach(() => {
+    logBuffer.clear();
     dbHandle.cleanup();
     vi.restoreAllMocks();
   });
@@ -365,6 +367,105 @@ describe('Admin router integration', () => {
     const configResponse = await request(app).get('/admin/api/config');
     expect(configResponse.status).toBe(200);
     expect(configResponse.body).toHaveProperty('runtime');
+    expect(configResponse.body).toHaveProperty('tautulli');
+    expect(configResponse.body.tautulli).toEqual(expect.objectContaining({
+      enabled: false,
+      source: 'unset',
+      activeSource: 'unset',
+      fromEnv: false,
+      envOverride: false,
+      saved: expect.any(Object),
+    }));
+    expect(configResponse.body.tmdb).toEqual(expect.objectContaining({
+      enabled: false,
+      fromEnv: false,
+      fromDatabase: false,
+      envOverride: false,
+      saved: expect.any(Object),
+    }));
+    expect(configResponse.body.resend).toEqual(expect.objectContaining({
+      enabled: false,
+      source: 'unset',
+      fromEnv: false,
+      fromDatabase: false,
+      envOverride: false,
+      saved: expect.any(Object),
+    }));
+  });
+
+  it('exposes and clears buffered logs', async () => {
+    logBuffer.add({
+      timestamp: '2026-01-01T00:00:00.000Z',
+      level: 'info',
+      message: 'first admin log',
+    });
+    logBuffer.add({
+      timestamp: '2026-01-01T00:00:01.000Z',
+      level: 'error',
+      message: 'second admin log',
+    });
+
+    const filteredResponse = await request(app).get('/admin/api/logs?level=error&limit=10');
+    expect(filteredResponse.status).toBe(200);
+    expect(filteredResponse.body.logs).toHaveLength(1);
+    expect(filteredResponse.body.logs[0].message).toBe('second admin log');
+    expect(filteredResponse.body.stats.total).toBe(2);
+
+    const clearResponse = await request(app).delete('/admin/api/logs');
+    expect(clearResponse.status).toBe(200);
+    expect(clearResponse.body).toEqual({ success: true, message: 'System logs cleared' });
+
+    const emptyResponse = await request(app).get('/admin/api/logs');
+    expect(emptyResponse.status).toBe(200);
+    expect(emptyResponse.body.logs).toEqual([]);
+    expect(emptyResponse.body.stats.total).toBe(0);
+  });
+
+  it('stores and clears the watchlist admin email', async () => {
+    const initialResponse = await request(app).get('/admin/api/watchlist/admin-email');
+    expect(initialResponse.status).toBe(200);
+    expect(initialResponse.body).toEqual({
+      success: true,
+      adminEmail: null,
+      updatedAt: null,
+    });
+
+    const saveResponse = await request(app)
+      .put('/admin/api/watchlist/admin-email')
+      .send({ adminEmail: 'watchlist-admin@example.test' });
+    expect(saveResponse.status).toBe(200);
+    expect(saveResponse.body).toEqual({
+      success: true,
+      message: 'Watchlist admin email updated successfully',
+    });
+
+    const configuredResponse = await request(app).get('/admin/api/watchlist/admin-email');
+    expect(configuredResponse.status).toBe(200);
+    expect(configuredResponse.body.adminEmail).toBe('watchlist-admin@example.test');
+    expect(configuredResponse.body.updatedAt).toEqual(expect.any(Number));
+
+    const clearResponse = await request(app).delete('/admin/api/watchlist/admin-email');
+    expect(clearResponse.status).toBe(200);
+    expect(clearResponse.body).toEqual({
+      success: true,
+      message: 'Watchlist admin email cleared successfully',
+    });
+
+    const clearedResponse = await request(app).get('/admin/api/watchlist/admin-email');
+    expect(clearedResponse.status).toBe(200);
+    expect(clearedResponse.body.adminEmail).toBeNull();
+    expect(clearedResponse.body.updatedAt).toBeNull();
+  });
+
+  it('tests database connectivity through the admin test endpoint', async () => {
+    const response = await request(app).post('/admin/api/test/database');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      success: true,
+      message: 'Database connection successful',
+      recordCount: 0,
+    });
   });
 
   it('delegates legacy Tautulli settings endpoint to canonical config table', async () => {
