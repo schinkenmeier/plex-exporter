@@ -428,6 +428,7 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
       librarySectionRepo.setEnabled(id, enabled);
 
       res.json({
+        success: true,
         message: `Library section ${enabled ? 'enabled' : 'disabled'}`,
         section: librarySectionRepo.getById(id),
       });
@@ -643,6 +644,7 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
       }
 
       res.json({
+        success: true,
         message: `Schedule ${enabled ? 'enabled' : 'disabled'}`,
         schedule: syncScheduleRepo.getById(id),
       });
@@ -679,7 +681,9 @@ export const createTautulliSyncRouter = (options: TautulliSyncRouterOptions): Ro
       }
 
       res.json({
+        success: true,
         message: 'Schedule deleted',
+        schedule,
       });
     } catch (error) {
       if (error instanceof HttpError) {

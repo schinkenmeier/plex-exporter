@@ -382,4 +382,80 @@ describe('Tautulli sync integration', () => {
     expect(listResponse.body.schedules.length).toBe(1);
     expect(listResponse.body.schedules[0].cronExpression).toBe('0 6 * * *');
   });
+
+  it('returns success and the updated section when toggling a library section', async () => {
+    const createResponse = await request(app)
+      .post('/admin/api/tautulli/library-sections')
+      .send({
+        sections: [
+          {
+            sectionId: 1,
+            sectionName: 'Movies',
+            sectionType: 'movie',
+            enabled: true,
+          },
+        ],
+      });
+
+    expect(createResponse.status).toBe(200);
+    const sectionId = createResponse.body.sections[0].id;
+
+    const response = await request(app)
+      .put(`/admin/api/tautulli/library-sections/${sectionId}/enabled`)
+      .send({ enabled: false });
+
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(response.body.message).toBe('Library section disabled');
+    expect(response.body.section).toEqual(expect.objectContaining({
+      id: sectionId,
+      sectionId: 1,
+      enabled: false,
+    }));
+  });
+
+  it('returns success and the updated schedule when toggling a sync schedule', async () => {
+    const createResponse = await request(app)
+      .post('/admin/api/tautulli/sync/schedules')
+      .send({ jobType: 'tautulli_sync', cronExpression: '0 6 * * *', enabled: true });
+
+    expect(createResponse.status).toBe(200);
+    const scheduleId = createResponse.body.schedule.id;
+
+    const response = await request(app)
+      .put(`/admin/api/tautulli/sync/schedules/${scheduleId}/enabled`)
+      .send({ enabled: false });
+
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(response.body.message).toBe('Schedule disabled');
+    expect(response.body.schedule).toEqual(expect.objectContaining({
+      id: scheduleId,
+      jobType: 'tautulli_sync',
+      enabled: false,
+    }));
+  });
+
+  it('returns success and the deleted schedule when deleting a sync schedule', async () => {
+    const createResponse = await request(app)
+      .post('/admin/api/tautulli/sync/schedules')
+      .send({ jobType: 'tautulli_sync', cronExpression: '0 6 * * *', enabled: true });
+
+    expect(createResponse.status).toBe(200);
+    const schedule = createResponse.body.schedule;
+
+    const response = await request(app).delete(`/admin/api/tautulli/sync/schedules/${schedule.id}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(response.body.message).toBe('Schedule deleted');
+    expect(response.body.schedule).toEqual(expect.objectContaining({
+      id: schedule.id,
+      jobType: 'tautulli_sync',
+      cronExpression: '0 6 * * *',
+    }));
+
+    const listResponse = await request(app).get('/admin/api/tautulli/sync/schedules');
+    expect(listResponse.body.schedules).toEqual([]);
+  });
 });

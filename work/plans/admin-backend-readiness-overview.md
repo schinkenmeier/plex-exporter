@@ -396,6 +396,15 @@ Verifikation:
 - gezielte Backend-Tests fuer Admin/Tautulli
 - betroffene Frontend-AdminApiClient-Tests
 
+Status: Abgeschlossen am 2026-05-30.
+
+Kurznotiz:
+
+- Tautulli-Mutationsendpunkte liefern nun kompatibel `success: true` plus `section` bzw. `schedule`; der AdminApiClient spiegelt die fehlenden Enable-/Delete-Methoden.
+- Watchlist Requests haben einen Summary-Endpunkt, feste Reply-Templates und optionale Status-Kommentare, die als Event-Message in der Historie landen.
+- Abgedeckt durch neue/erweiterte Admin- und Tautulli-Integrationstests sowie AdminApiClient-Typen.
+- Verifiziert mit Backend-/Frontend-Typecheck, gezielten Admin/Tautulli-Tests, Frontend-Testlauf und kompletter Backend-Test-Suite.
+
 ### Sprint B: Logs, Diagnostics und Admin Profile
 
 Ziel: Das redesigned Admin UI bekommt stabilere Query- und Meta-Endpunkte, ohne direkt Live-SSE fuer Logs einzufuehren.

@@ -489,11 +489,46 @@ describe('Admin router integration', () => {
       ],
       message: 'Danke',
     });
+    const parkedRequest = watchlistRequestRepository.create({
+      requesterEmail: 'second@example.test',
+      items: [{ title: 'Parked Show', type: 'tv', year: 2025 }],
+    });
+    watchlistRequestRepository.updateStatus(parkedRequest.id, 'parked');
+    const rejectedRequest = watchlistRequestRepository.create({
+      requesterEmail: 'user@example.test',
+      items: [{ title: 'Rejected Movie', type: 'movie', year: 2024 }],
+    });
+    watchlistRequestRepository.updateStatus(rejectedRequest.id, 'rejected');
+
+    const templatesResponse = await request(app).get('/admin/api/watchlist/reply-templates');
+    expect(templatesResponse.status).toBe(200);
+    expect(templatesResponse.body.templates.map((template: { key: string }) => template.key)).toEqual([
+      'accept',
+      'park',
+      'reject',
+      'done',
+    ]);
+
+    const summaryResponse = await request(app).get('/admin/api/watchlist/requests/summary');
+    expect(summaryResponse.status).toBe(200);
+    expect(summaryResponse.body).toEqual(expect.objectContaining({
+      success: true,
+      counts: expect.objectContaining({
+        total: 3,
+        new: 1,
+        in_progress: 0,
+        parked: 1,
+        done: 0,
+        rejected: 1,
+      }),
+      requesterCount: 2,
+      oldestOpenRequestAt: expect.any(String),
+    }));
 
     const listResponse = await request(app).get('/admin/api/watchlist/requests');
     expect(listResponse.status).toBe(200);
-    expect(listResponse.body.requests).toHaveLength(1);
-    expect(listResponse.body.requests[0]).toEqual(expect.objectContaining({
+    expect(listResponse.body.requests).toHaveLength(3);
+    expect(listResponse.body.requests).toContainEqual(expect.objectContaining({
       id: requestRecord.id,
       requesterEmail: 'user@example.test',
       status: 'new',
@@ -503,9 +538,14 @@ describe('Admin router integration', () => {
     expect(filteredResponse.status).toBe(200);
     expect(filteredResponse.body.requests).toEqual([]);
 
+    const emptyStatusMessageResponse = await request(app)
+      .patch(`/admin/api/watchlist/requests/${requestRecord.id}/status`)
+      .send({ status: 'in_progress', message: '   ' });
+    expect(emptyStatusMessageResponse.status).toBe(400);
+
     const statusResponse = await request(app)
       .patch(`/admin/api/watchlist/requests/${requestRecord.id}/status`)
-      .send({ status: 'in_progress' });
+      .send({ status: 'in_progress', message: 'Ich schaue danach.' });
     expect(statusResponse.status).toBe(200);
     expect(statusResponse.body.request.status).toBe('in_progress');
 
@@ -547,6 +587,10 @@ describe('Admin router integration', () => {
     expect(detailsResponse.body.events.map((event: { type: string }) => event.type)).toEqual(
       expect.arrayContaining(['created', 'status_changed', 'note_updated', 'reply_sent']),
     );
+    expect(detailsResponse.body.events).toContainEqual(expect.objectContaining({
+      type: 'status_changed',
+      message: 'Ich schaue danach.',
+    }));
   });
 
   it('tests database connectivity through the admin test endpoint', async () => {

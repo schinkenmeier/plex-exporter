@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { desc, eq, sql } from 'drizzle-orm';
+import { desc, eq, notInArray, sql } from 'drizzle-orm';
 import type { DrizzleDatabase } from '../db/index.js';
 import { watchlistRequestEvents, watchlistRequests } from '../db/schema.js';
 import type { WatchlistItem } from '../services/watchlistEmailService.js';
 
 export const WATCHLIST_REQUEST_STATUSES = ['new', 'in_progress', 'parked', 'done', 'rejected'] as const;
 export type WatchlistRequestStatus = typeof WATCHLIST_REQUEST_STATUSES[number];
+const TERMINAL_WATCHLIST_REQUEST_STATUSES: WatchlistRequestStatus[] = ['done', 'rejected'];
 
 export interface WatchlistRequestRecord {
   id: string;
@@ -40,8 +41,14 @@ export interface WatchlistRequestListOptions {
   offset?: number;
 }
 
+export interface WatchlistRequestSummary {
+  counts: Record<WatchlistRequestStatus | 'total', number>;
+  requesterCount: number;
+  oldestOpenRequestAt: string | null;
+}
+
 const isTerminalStatus = (status: WatchlistRequestStatus): boolean =>
-  status === 'done' || status === 'rejected';
+  TERMINAL_WATCHLIST_REQUEST_STATUSES.includes(status);
 
 const mapRequestRow = (row: typeof watchlistRequests.$inferSelect): WatchlistRequestRecord => ({
   id: row.id,
@@ -125,7 +132,50 @@ export class WatchlistRequestRepository {
     const condition = options.status ? eq(watchlistRequests.status, options.status) : undefined;
     const baseSelect = this.db.select({ count: sql<number>`count(*)` }).from(watchlistRequests);
     const result = condition ? baseSelect.where(condition).get() : baseSelect.get();
-    return result?.count ?? 0;
+    return Number(result?.count ?? 0);
+  }
+
+  getSummary(): WatchlistRequestSummary {
+    const counts = WATCHLIST_REQUEST_STATUSES.reduce(
+      (acc, status) => ({ ...acc, [status]: 0 }),
+      { total: 0 } as Record<WatchlistRequestStatus | 'total', number>,
+    );
+
+    const statusRows = this.db
+      .select({
+        status: watchlistRequests.status,
+        count: sql<number>`count(*)`,
+      })
+      .from(watchlistRequests)
+      .groupBy(watchlistRequests.status)
+      .all();
+
+    for (const row of statusRows) {
+      const count = Number(row.count);
+      counts[row.status] = count;
+      counts.total += count;
+    }
+
+    const requesterRow = this.db
+      .select({
+        count: sql<number>`count(DISTINCT ${watchlistRequests.requesterEmail})`,
+      })
+      .from(watchlistRequests)
+      .get();
+
+    const oldestOpenRow = this.db
+      .select({
+        oldestOpenRequestAt: sql<string | null>`min(${watchlistRequests.createdAt})`,
+      })
+      .from(watchlistRequests)
+      .where(notInArray(watchlistRequests.status, TERMINAL_WATCHLIST_REQUEST_STATUSES))
+      .get();
+
+    return {
+      counts,
+      requesterCount: Number(requesterRow?.count ?? 0),
+      oldestOpenRequestAt: oldestOpenRow?.oldestOpenRequestAt ?? null,
+    };
   }
 
   getById(id: string): WatchlistRequestRecord | null {
@@ -171,7 +221,11 @@ export class WatchlistRequestRepository {
     return this.getById(id);
   }
 
-  updateStatus(id: string, status: WatchlistRequestStatus): WatchlistRequestRecord | null {
+  updateStatus(
+    id: string,
+    status: WatchlistRequestStatus,
+    message?: string | null,
+  ): WatchlistRequestRecord | null {
     const existing = this.getById(id);
     if (!existing) return null;
     if (existing.status === status) return existing;
@@ -192,6 +246,7 @@ export class WatchlistRequestRepository {
       actor: 'admin',
       fromStatus: existing.status,
       toStatus: status,
+      message: message ?? null,
     });
 
     return this.getById(id);

@@ -308,6 +308,24 @@ export interface WatchlistRequestDetailsResponse {
   events: WatchlistRequestEvent[];
 }
 
+export interface WatchlistRequestSummaryResponse {
+  success: boolean;
+  counts: Record<WatchlistRequestStatus | 'total', number>;
+  requesterCount: number;
+  oldestOpenRequestAt: string | null;
+}
+
+export interface WatchlistReplyTemplate {
+  key: 'accept' | 'park' | 'reject' | 'done';
+  label: string;
+  message: string;
+}
+
+export interface WatchlistReplyTemplatesResponse {
+  success: boolean;
+  templates: WatchlistReplyTemplate[];
+}
+
 export type TautulliConfigSource = 'env' | 'tautulli_config' | 'legacy_settings' | 'unset';
 export type SavedTautulliConfigSource = Exclude<TautulliConfigSource, 'env'>;
 
@@ -347,6 +365,12 @@ export interface LibrarySectionsResponse {
   sections: LibrarySection[];
 }
 
+export interface LibrarySectionMutationResponse {
+  success: true;
+  message: string;
+  section: LibrarySection;
+}
+
 export interface SnapshotSettingsResponse {
   maxSnapshots: number;
   storedLimit: number | null;
@@ -367,6 +391,12 @@ export interface SyncSchedule {
 
 export interface SyncSchedulesResponse {
   schedules: SyncSchedule[];
+}
+
+export interface SyncScheduleMutationResponse {
+  success: true;
+  message: string;
+  schedule: SyncSchedule;
 }
 
 export interface ManualSyncOptions {
@@ -639,15 +669,22 @@ export class AdminApiClient {
     );
   }
 
+  getWatchlistRequestSummary(): Promise<WatchlistRequestSummaryResponse> {
+    return this.request<WatchlistRequestSummaryResponse>('/watchlist/requests/summary', 'GET');
+  }
+
   getWatchlistRequest(id: string): Promise<WatchlistRequestDetailsResponse> {
     return this.request<WatchlistRequestDetailsResponse>(`/watchlist/requests/${encodeURIComponent(id)}`, 'GET');
   }
 
-  updateWatchlistRequestStatus(id: string, status: WatchlistRequestStatus): Promise<{
+  updateWatchlistRequestStatus(id: string, status: WatchlistRequestStatus, message?: string | null): Promise<{
     success: boolean;
     request: WatchlistRequestRecord;
   }> {
-    return this.request(`/watchlist/requests/${encodeURIComponent(id)}/status`, 'PATCH', { status });
+    return this.request(`/watchlist/requests/${encodeURIComponent(id)}/status`, 'PATCH', {
+      status,
+      ...(message ? { message } : {}),
+    });
   }
 
   updateWatchlistRequestNote(id: string, adminNote: string | null): Promise<{
@@ -666,6 +703,10 @@ export class AdminApiClient {
     emailId: string;
   }> {
     return this.request(`/watchlist/requests/${encodeURIComponent(id)}/reply`, 'POST', payload);
+  }
+
+  getWatchlistReplyTemplates(): Promise<WatchlistReplyTemplatesResponse> {
+    return this.request<WatchlistReplyTemplatesResponse>('/watchlist/reply-templates', 'GET');
   }
 
   testTautulli(): Promise<TestResponse> {
@@ -700,6 +741,14 @@ export class AdminApiClient {
     return this.request('/tautulli/library-sections', 'POST', { sections });
   }
 
+  setLibrarySectionEnabled(id: string | number, enabled: boolean): Promise<LibrarySectionMutationResponse> {
+    return this.request(
+      `/tautulli/library-sections/${encodeURIComponent(String(id))}/enabled`,
+      'PUT',
+      { enabled },
+    );
+  }
+
   startManualSync(options: ManualSyncOptions): Promise<{ message: string; options: ManualSyncOptions }> {
     return this.request('/tautulli/sync/manual', 'POST', options);
   }
@@ -718,6 +767,18 @@ export class AdminApiClient {
 
   saveSyncSchedule(payload: { jobType: string; cronExpression: string; enabled: boolean }): Promise<TestResponse> {
     return this.request('/tautulli/sync/schedules', 'POST', payload);
+  }
+
+  setSyncScheduleEnabled(id: string, enabled: boolean): Promise<SyncScheduleMutationResponse> {
+    return this.request(
+      `/tautulli/sync/schedules/${encodeURIComponent(id)}/enabled`,
+      'PUT',
+      { enabled },
+    );
+  }
+
+  deleteSyncSchedule(id: string): Promise<SyncScheduleMutationResponse> {
+    return this.request(`/tautulli/sync/schedules/${encodeURIComponent(id)}`, 'DELETE');
   }
 
   getSnapshotSettings(): Promise<SnapshotSettingsResponse> {

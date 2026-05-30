@@ -23,6 +23,7 @@ const listQuerySchema = z.object({
 
 const updateStatusSchema = z.object({
   status: statusSchema,
+  message: z.string().trim().min(1).max(5000).nullable().optional(),
 });
 
 const updateNoteSchema = z.object({
@@ -35,10 +36,36 @@ const replySchema = z.object({
   status: statusSchema.optional(),
 });
 
+const replyTemplates = [
+  { key: 'accept', label: 'Annehmen', message: 'Kann ich machen.' },
+  { key: 'park', label: 'Parken', message: 'Ich parke das erstmal.' },
+  { key: 'reject', label: 'Ablehnen', message: 'Kann ich leider nicht machen.' },
+  { key: 'done', label: 'Erledigt', message: 'Ist erledigt.' },
+] as const;
+
 export const createAdminWatchlistRequestsRouter = ({
   watchlistRequestRepository,
 }: AdminWatchlistRequestsRouterOptions): Router => {
   const router = Router();
+
+  router.get('/reply-templates', (_req: Request, res: Response) => {
+    res.json({
+      success: true,
+      templates: replyTemplates,
+    });
+  });
+
+  router.get('/requests/summary', (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      res.json({
+        success: true,
+        ...watchlistRequestRepository.getSummary(),
+      });
+    } catch (error) {
+      logger.error('Failed to build watchlist request summary', { error });
+      next(new HttpError(500, 'Failed to build watchlist request summary'));
+    }
+  });
 
   router.get('/requests', (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -94,8 +121,8 @@ export const createAdminWatchlistRequestsRouter = ({
   router.patch('/requests/:id/status', (req: Request, res: Response, next: NextFunction) => {
     const requestId = String(req.params.id);
     try {
-      const { status } = updateStatusSchema.parse(req.body);
-      const updated = watchlistRequestRepository.updateStatus(requestId, status);
+      const { status, message } = updateStatusSchema.parse(req.body);
+      const updated = watchlistRequestRepository.updateStatus(requestId, status, message ?? null);
       if (!updated) {
         return next(new HttpError(404, 'Watchlist request not found'));
       }
