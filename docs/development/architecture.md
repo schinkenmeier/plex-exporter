@@ -44,3 +44,4 @@ Details stehen in [../reference/interfaces.md](../reference/interfaces.md).
 - TMDB kann zusätzliche Metadaten für Detail- und Hero-Daten liefern.
 - Resend aktiviert Newsletter-, Watchlist- und Welcome-Mail-Flows.
 - Admin-UI-Werte können in SQLite gespeichert werden; Env-Werte haben Vorrang.
+- Runtime-Änderungen aus der Admin-UI werden in den betroffenen Services neu verdrahtet. TMDB aktualisiert V1-TMDB-Routen, Hero-Pipeline, Sync-Enrichment und den TMDB-Cache; Resend aktualisiert die Mail-Sender.

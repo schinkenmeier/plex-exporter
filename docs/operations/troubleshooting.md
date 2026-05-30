@@ -39,8 +39,8 @@ Node `24.x` verwenden.
 ## Bilder oder Thumbnails fehlen
 
 - `/api/thumbnails/*` extern erreichbar machen.
-- Daten-Mount und `exports`-Pfad prüfen.
-- Bei Tautulli-Bildern URL/API-Key und Netzwerkzugriff prüfen.
+- Bei lokalen Cover-, Movie- und Series-Dateien Daten-Mount und `exports`-Pfad prüfen.
+- Bei Tautulli-Bildern URL/API-Key und Netzwerkzugriff prüfen. Der Tautulli-Proxy unter `/api/thumbnails/tautulli/*` braucht keinen lokalen `exports`-Pfad.
 
 ## Frontend lädt HTML statt JSON
 
@@ -52,6 +52,7 @@ Node `24.x` verwenden.
 
 - `ADMIN_USERNAME` und `ADMIN_PASSWORD` müssen gemeinsam gesetzt sein.
 - Env-Werte haben Vorrang vor DB-gespeicherten Admin-/Integrationswerten.
+- Bei Tautulli, TMDB und Resend zeigen Status-Antworten aktive Quelle und gespeicherte Werte getrennt an; `saved` kann gesetzt sein, auch wenn Env aktiv ist.
 - `/libraries` ist separat über `API_TOKEN` geschützt, wenn gesetzt.
 
 ## Weiterführend

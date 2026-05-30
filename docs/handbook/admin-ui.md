@@ -18,6 +18,9 @@ Die Admin-UI liegt unter `/admin`. Sie ist nur nutzbar, wenn `ADMIN_USERNAME` un
 - Env-Werte haben Vorrang vor DB-Werten.
 - Tautulli kann per Env oder Admin-UI konfiguriert werden; gespeichert wird aktuell in `tautulli_config`.
 - TMDB und Resend können ebenfalls aus Env oder gespeicherten Werten kommen.
+- Statusanzeigen trennen aktive Quelle und gespeicherte Werte. Bei Env-Override bleibt der gespeicherte DB-Wert sichtbar und kann gelöscht werden.
+- Tautulli-, TMDB- und Resend-Änderungen werden ohne Backend-Neustart angewendet.
+- TMDB-Änderungen aktualisieren auch `/api/v1/tmdb/*`, Hero-Daten und Sync-Enrichment; Resend-Änderungen aktualisieren die Mail-Flows.
 
 ## Siehe auch
 

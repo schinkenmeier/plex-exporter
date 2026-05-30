@@ -20,7 +20,13 @@ Tautulli ist die Hauptquelle für Bibliotheksdaten. Der Sync persistiert Filme, 
 
 Cover und exportnahe Artefakte liegen je nach Modus unter einem `exports`-Pfad. Im Container ist das typischerweise `/app/data/exports`, auf dem Host entsprechend unter `BACKEND_DATA_PATH`.
 
+Die V1-API normalisiert lokale Cover-Pfade und Tautulli-Bildpfade auf `/api/thumbnails/*`. Tautulli-Bilder werden über den Tautulli-Proxy ausgeliefert und brauchen keinen lokalen `exports`-Pfad; lokale Cover-, Movie- und Series-Dateien brauchen ihn weiterhin.
+
 Die genaue Matrix steht in [../reference/runtime-paths.md](../reference/runtime-paths.md) und [../reference/data-layout.md](../reference/data-layout.md).
+
+## API-Caches
+
+`/api/v1/*` cached Listen, Details, Stats und TMDB-Proxy-Antworten kurzzeitig. Nach manuellen oder geplanten Tautulli-Syncs werden die Katalog-Caches invalidiert. Fehlerantworten werden nicht gecached.
 
 ## Legacy-/Tooling-Pfad
 

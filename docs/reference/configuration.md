@@ -51,4 +51,6 @@ Die Hero-Pipeline sucht zusätzlich typische Source-Run-Pfade, wenn kein Overrid
 
 Die Admin-UI kann Betriebswerte für Tautulli, TMDB, Resend und Watchlist-E-Mail speichern. Tautulli nutzt die Tabelle `tautulli_config` als aktuelle Persistenz; alte `settings`-Einträge sind nur Legacy-Fallback.
 
-Resend-Änderungen aus der Admin-UI werden zur Laufzeit neu angewendet: Speichern aktiviert den Mail-Sender ohne Neustart, Löschen deaktiviert ihn oder fällt auf Env-Konfiguration zurück. TMDB nutzt ebenfalls Env vor Datenbank; ein gespeicherter Token bleibt gespeichert, ist aber nicht aktiv, solange `TMDB_ACCESS_TOKEN` gesetzt ist.
+Tautulli-, TMDB- und Resend-Änderungen aus der Admin-UI werden zur Laufzeit neu angewendet. Speichern aktiviert die jeweilige Integration ohne Neustart; Löschen deaktiviert sie oder fällt auf Env-Konfiguration zurück. TMDB aktualisiert dabei auch die Hero-Pipeline, den Tautulli-Sync und den TMDB-Cache der `/api/v1/*`-Routen.
+
+TMDB und Resend nutzen Env vor Datenbank. Ein gespeicherter DB-Wert bleibt gespeichert, ist aber nicht aktiv, solange die passende Env-Konfiguration gesetzt ist. Status-Antworten trennen deshalb aktive Quelle und gespeicherten Wert: Felder wie `source`, `fromEnv`, `envOverride` beschreiben die aktive Konfiguration, `saved` beschreibt vorhandene DB-Werte.
