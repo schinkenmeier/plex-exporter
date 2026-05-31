@@ -33,6 +33,7 @@ export interface V1ApiCaches {
   list: CacheService;
   detail: CacheService;
   tmdb: CacheService;
+  facets: CacheService;
 }
 
 export const createV1ApiCaches = (): V1ApiCaches => ({
@@ -40,12 +41,14 @@ export const createV1ApiCaches = (): V1ApiCaches => ({
   list: createMediumCache(), // 5 minutes for lists, filters, search
   detail: createLongCache(), // 15 minutes for details
   tmdb: createMediumCache(), // 5 minutes for tmdb proxy responses
+  facets: createShortCache(), // 1 minute for global filter facets
 });
 
-export const clearV1CatalogCaches = (caches: Pick<V1ApiCaches, 'stats' | 'list' | 'detail'>): void => {
+export const clearV1CatalogCaches = (caches: Pick<V1ApiCaches, 'stats' | 'list' | 'detail'> & Partial<Pick<V1ApiCaches, 'facets'>>): void => {
   caches.stats.clear();
   caches.list.clear();
   caches.detail.clear();
+  caches.facets?.clear();
 };
 
 const buildRequestUrl = (req: Request | undefined, path: string): string => {
@@ -106,6 +109,7 @@ export const createV1Router = ({
   const listCache = v1Caches.list;
   const detailCache = v1Caches.detail;
   const tmdbCache = v1Caches.tmdb;
+  const facetsCache = v1Caches.facets;
   const resolveTmdbService = (): TmdbService | null =>
     getTmdbService ? getTmdbService() : tmdbService ?? null;
 
@@ -118,11 +122,13 @@ export const createV1Router = ({
     search: z.string().min(1).max(200).optional(),
     genres: z.string().optional(),
     collection: z.string().optional(),
+    studio: z.string().max(200).optional(),
+    language: z.string().max(100).optional(),
     onlyNew: z.string().optional(),
     newDays: z.coerce.number().int().min(1).max(365).optional(),
     limit: z.coerce.number().int().min(1).max(500).default(50),
     offset: z.coerce.number().int().min(0).default(0),
-    sortBy: z.enum(['title', 'year', 'added', 'updated']).default('title'),
+    sortBy: z.enum(['title', 'year', 'added', 'updated', 'rating']).default('title'),
     sortOrder: z.enum(['asc', 'desc']).default('asc'),
   });
 
@@ -141,6 +147,45 @@ export const createV1Router = ({
     if (value == null) return false;
     const normalized = String(value).trim().toLowerCase();
     return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
+  };
+
+  const buildFacets = (items: any[]) => {
+    const genres = new Set<string>();
+    const years = new Set<number>();
+    const collections = new Set<string>();
+    const studios = new Set<string>();
+    const languages = new Set<string>();
+
+    for (const item of items) {
+      if (Array.isArray(item.genres)) {
+        item.genres.forEach((entry: unknown) => {
+          if (typeof entry === 'string' && entry.trim()) genres.add(entry.trim());
+        });
+      }
+      if (Number.isFinite(item.year)) years.add(Number(item.year));
+      if (Array.isArray(item.collections)) {
+        item.collections.forEach((entry: unknown) => {
+          if (typeof entry === 'string' && entry.trim()) collections.add(entry.trim());
+        });
+      }
+      if (typeof item.studio === 'string' && item.studio.trim()) studios.add(item.studio.trim());
+      if (Array.isArray(item.languages)) {
+        item.languages.forEach((entry: unknown) => {
+          if (typeof entry === 'string' && entry.trim()) languages.add(entry.trim());
+        });
+      }
+      if (typeof item.originalLanguage === 'string' && item.originalLanguage.trim()) {
+        languages.add(item.originalLanguage.trim());
+      }
+    }
+
+    return {
+      genres: Array.from(genres).sort((a, b) => a.localeCompare(b, 'de')),
+      years: Array.from(years).sort((a, b) => a - b),
+      collections: Array.from(collections).sort((a, b) => a.localeCompare(b, 'de')),
+      studios: Array.from(studios).sort((a, b) => a.localeCompare(b, 'de')),
+      languages: Array.from(languages).sort((a, b) => a.localeCompare(b, 'de')),
+    };
   };
 
   // Helper function to build thumbnail URL with full backend URL
@@ -183,8 +228,11 @@ export const createV1Router = ({
         // Extended metadata
         genres: item.genres,
         directors: item.directors,
+        writers: item.writers,
+        languages: item.languages,
         countries: item.countries,
         collections: item.collections,
+        originalLanguage: item.originalLanguage,
         rating: item.rating,
         audienceRating: item.audienceRating,
         contentRating: item.contentRating,
@@ -196,6 +244,10 @@ export const createV1Router = ({
         tmdbId: item.tmdbId,
         tmdbRating: item.tmdbRating,
         tmdbVoteCount: item.tmdbVoteCount,
+        trailerYoutubeId: item.trailerYoutubeId,
+        trailerSite: item.trailerSite,
+        trailerName: item.trailerName,
+        trailerUrl: item.trailerUrl,
       };
     });
   };
@@ -436,12 +488,17 @@ export const createV1Router = ({
    */
   router.get('/stats', apiLimiterMiddleware, cacheMiddleware({ cache: statsCache }), (req: Request, res: Response, next: NextFunction) => {
     try {
-      const stats = mediaRepository.getCountsByType();
+      const stats = mediaRepository.getCatalogStats({ newDays: 30 });
 
       const response = {
         totalMovies: stats.totalMovies,
         totalSeries: stats.totalSeries,
         totalItems: stats.totalItems,
+        totalRuntime: stats.totalRuntime,
+        totalEpisodes: stats.totalEpisodes,
+        newItems: stats.newItems,
+        movies: stats.movies,
+        series: stats.series,
       };
 
       res.setHeader('Cache-Control', 'public, max-age=60'); // 1 min cache
@@ -456,7 +513,7 @@ export const createV1Router = ({
    * Filter media with query parameters
    * Query params: type, year, yearFrom, yearTo, search, limit, offset, sortBy, sortOrder
    */
-  router.get('/filter', apiLimiterMiddleware, cacheMiddleware({ cache: listCache }), (req: Request, res: Response, next: NextFunction) => {
+  router.get('/filter', apiLimiterMiddleware, cacheMiddleware({ cache: listCache }), async (req: Request, res: Response, next: NextFunction) => {
     try {
       // Validate query parameters
       const validatedQuery = filterQuerySchema.parse(req.query);
@@ -504,6 +561,14 @@ export const createV1Router = ({
         filterOptions.collection = validatedQuery.collection.trim();
       }
 
+      if (validatedQuery.studio && validatedQuery.studio.trim()) {
+        filterOptions.studio = validatedQuery.studio.trim();
+      }
+
+      if (validatedQuery.language && validatedQuery.language.trim()) {
+        filterOptions.language = validatedQuery.language.trim();
+      }
+
       if (parseBooleanFlag(validatedQuery.onlyNew)) {
         filterOptions.onlyNew = true;
         if (validatedQuery.newDays != null) {
@@ -522,6 +587,7 @@ export const createV1Router = ({
 
       const response = {
         items: results,
+        facets: await facetsCache.getOrCompute('global', () => buildFacets(mediaRepository.listAll())),
         pagination: {
           total,
           limit: filterOptions.limit,

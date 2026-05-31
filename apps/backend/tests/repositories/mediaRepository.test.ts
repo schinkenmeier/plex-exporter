@@ -45,4 +45,69 @@ describe('MediaRepository', () => {
     expect(items[0].plexId).toBe('recent');
     expect(total).toBe(1);
   });
+
+  it('persists user-ui metadata and keeps filter/count parity', () => {
+    repository.create({
+      plexId: 'movie-rich',
+      title: 'Rich Movie',
+      mediaType: 'movie',
+      summary: 'A searchable summary.',
+      studio: 'Studio One',
+      genres: ['Drama'],
+      directors: ['Director One'],
+      writers: ['Writer One'],
+      languages: ['German', 'English'],
+      originalLanguage: 'de',
+      rating: 9.1,
+      trailerYoutubeId: 'abc123',
+      trailerSite: 'YouTube',
+      trailerName: 'Official Trailer',
+      trailerUrl: 'https://www.youtube-nocookie.com/embed/abc123',
+    });
+    repository.create({
+      plexId: 'movie-other',
+      title: 'Other Movie',
+      mediaType: 'movie',
+      studio: 'Studio Two',
+      languages: ['French'],
+      originalLanguage: 'fr',
+      rating: 6.2,
+    });
+
+    const filters = {
+      mediaType: 'movie' as const,
+      studio: 'Studio One',
+      language: 'German',
+      search: 'Writer One',
+      sortBy: 'rating' as const,
+      sortOrder: 'desc' as const,
+    };
+    const items = repository.filter(filters);
+
+    expect(items).toHaveLength(1);
+    expect(repository.count(filters)).toBe(1);
+    expect(items[0]).toMatchObject({
+      plexId: 'movie-rich',
+      writers: ['Writer One'],
+      languages: ['German', 'English'],
+      originalLanguage: 'de',
+      trailerYoutubeId: 'abc123',
+      trailerSite: 'YouTube',
+      trailerName: 'Official Trailer',
+      trailerUrl: 'https://www.youtube-nocookie.com/embed/abc123',
+    });
+  });
+
+  it('sorts by rating descending', () => {
+    repository.create({ plexId: 'low', title: 'Low Rating', mediaType: 'movie', rating: 3 });
+    repository.create({ plexId: 'high', title: 'High Rating', mediaType: 'movie', rating: 9 });
+
+    const items = repository.filter({
+      mediaType: 'movie',
+      sortBy: 'rating',
+      sortOrder: 'desc',
+    });
+
+    expect(items.map((item) => item.plexId)).toEqual(['high', 'low']);
+  });
 });

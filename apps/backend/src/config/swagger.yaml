@@ -101,6 +101,21 @@ components:
                 type: string
               nullable: true
               example: ["Sam Mendes"]
+            writers:
+              type: array
+              items:
+                type: string
+              nullable: true
+            languages:
+              type: array
+              items:
+                type: string
+              nullable: true
+              description: TMDB spoken languages metadata, not guaranteed Plex audio tracks
+            originalLanguage:
+              type: string
+              nullable: true
+              description: TMDB original language code
             countries:
               type: array
               items:
@@ -138,6 +153,18 @@ components:
               type: string
               format: date
               nullable: true
+            trailerYoutubeId:
+              type: string
+              nullable: true
+            trailerSite:
+              type: string
+              nullable: true
+            trailerName:
+              type: string
+              nullable: true
+            trailerUrl:
+              type: string
+              nullable: true
 
     Stats:
       type: object
@@ -151,6 +178,19 @@ components:
         totalItems:
           type: integer
           description: Total number of media items
+        totalRuntime:
+          type: integer
+          description: Total runtime in milliseconds
+        totalEpisodes:
+          type: integer
+          description: Total stored episode count
+        newItems:
+          type: integer
+          description: Items added in the default new-item window
+        movies:
+          type: object
+        series:
+          type: object
 
     Pagination:
       type: object
@@ -184,6 +224,30 @@ components:
             $ref: '#/components/schemas/MediaExtended'
         pagination:
           $ref: '#/components/schemas/Pagination'
+
+    MediaFacets:
+      type: object
+      properties:
+        genres:
+          type: array
+          items:
+            type: string
+        years:
+          type: array
+          items:
+            type: integer
+        collections:
+          type: array
+          items:
+            type: string
+        studios:
+          type: array
+          items:
+            type: string
+        languages:
+          type: array
+          items:
+            type: string
 
     HeroItem:
       type: object
@@ -367,7 +431,7 @@ components:
       description: Field to sort by
       schema:
         type: string
-        enum: [title, year, added, updated]
+        enum: [title, year, added, updated, rating]
         default: title
 
     SortOrder:
@@ -546,11 +610,23 @@ paths:
         - $ref: '#/components/parameters/YearTo'
         - name: search
           in: query
-          description: Text search in title/summary
+          description: Text search in title, summary, studio, genres, collections, directors, writers and language metadata
           schema:
             type: string
             minLength: 1
             maxLength: 200
+        - name: studio
+          in: query
+          description: Exact studio filter
+          schema:
+            type: string
+            maxLength: 200
+        - name: language
+          in: query
+          description: Exact TMDB language label/code filter
+          schema:
+            type: string
+            maxLength: 100
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Offset'
         - $ref: '#/components/parameters/SortBy'
@@ -572,6 +648,9 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/MediaExtended'
+                  facets:
+                    $ref: '#/components/schemas/MediaFacets'
+                    description: Global, filter-independent facets for the full catalog.
                   pagination:
                     $ref: '#/components/schemas/Pagination'
         '400':
@@ -582,7 +661,7 @@ paths:
   /api/v1/search:
     get:
       summary: Search media
-      description: Search media by title or summary text
+      description: Search media by title, summary and extended metadata text
       tags:
         - Search
       parameters:

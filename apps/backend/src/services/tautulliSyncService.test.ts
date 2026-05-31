@@ -560,9 +560,15 @@ describe('TautulliSyncService - TMDb enrichment', () => {
     voteAverage: 7.5,
     voteCount: 200,
     genres: [],
+    languages: ['German'],
+    originalLanguage: 'de',
     certification: null,
     backdrops: ['https://image.tmdb.org/t/p/original/backdrop.jpg'],
     poster: 'https://image.tmdb.org/t/p/w780/poster.jpg',
+    trailerYoutubeId: 'trailer-id',
+    trailerSite: 'YouTube',
+    trailerName: 'Official Trailer',
+    trailerUrl: 'https://www.youtube-nocookie.com/embed/trailer-id',
   };
 
   const createService = (tmdbOverrides: Partial<TmdbService> = {}) => {
@@ -608,6 +614,12 @@ describe('TautulliSyncService - TMDb enrichment', () => {
       backdrop: baseDetails.backdrops[0],
       tmdbRating: baseDetails.voteAverage,
       tmdbVoteCount: baseDetails.voteCount,
+      languages: ['German'],
+      originalLanguage: 'de',
+      trailerYoutubeId: 'trailer-id',
+      trailerSite: 'YouTube',
+      trailerName: 'Official Trailer',
+      trailerUrl: 'https://www.youtube-nocookie.com/embed/trailer-id',
       tmdbEnriched: true,
     });
   });

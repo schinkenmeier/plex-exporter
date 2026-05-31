@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, like, or, sql } from 'drizzle-orm';
 import type { DrizzleDatabase } from '../db/index.js';
-import { mediaItems } from '../db/schema.js';
+import { episodes, mediaItems } from '../db/schema.js';
 
 type MediaRow = typeof mediaItems.$inferSelect;
 type MediaInsert = typeof mediaItems.$inferInsert;
@@ -50,8 +50,10 @@ const mapRowToRecord = (row: MediaRow): MediaRecord => ({
   genres: row.genres ?? null,
   directors: row.directors ?? null,
   writers: row.writers ?? null,
+  languages: row.languages ?? null,
   countries: row.countries ?? null,
   collections: row.collections ?? null,
+  originalLanguage: row.originalLanguage ?? null,
   rating: row.rating ?? null,
   audienceRating: row.audienceRating ?? null,
   contentRating: row.contentRating ?? null,
@@ -67,6 +69,10 @@ const mapRowToRecord = (row: MediaRow): MediaRecord => ({
   tmdbVoteCount: row.tmdbVoteCount ?? null,
   tmdbEnriched: row.tmdbEnriched ?? false,
   imdbId: row.imdbId ?? null,
+  trailerYoutubeId: row.trailerYoutubeId ?? null,
+  trailerSite: row.trailerSite ?? null,
+  trailerName: row.trailerName ?? null,
+  trailerUrl: row.trailerUrl ?? null,
 });
 
 const prepareInsert = (input: MediaCreateInput): MediaInsert => ({
@@ -86,8 +92,10 @@ const prepareInsert = (input: MediaCreateInput): MediaInsert => ({
   genres: input.genres ?? null,
   directors: input.directors ?? null,
   writers: input.writers ?? null,
+  languages: input.languages ?? null,
   countries: input.countries ?? null,
   collections: input.collections ?? null,
+  originalLanguage: input.originalLanguage ?? null,
   rating: input.rating ?? null,
   audienceRating: input.audienceRating ?? null,
   contentRating: input.contentRating ?? null,
@@ -101,6 +109,10 @@ const prepareInsert = (input: MediaCreateInput): MediaInsert => ({
   tmdbVoteCount: input.tmdbVoteCount ?? null,
   tmdbEnriched: input.tmdbEnriched ?? false,
   imdbId: input.imdbId ?? null,
+  trailerYoutubeId: input.trailerYoutubeId ?? null,
+  trailerSite: input.trailerSite ?? null,
+  trailerName: input.trailerName ?? null,
+  trailerUrl: input.trailerUrl ?? null,
 });
 
 const buildSortExpressions = (
@@ -123,10 +135,95 @@ const buildSortExpressions = (
         sortOrder === 'desc' ? desc(mediaItems.updatedAt) : asc(mediaItems.updatedAt),
         asc(mediaItems.title),
       ];
+    case 'rating':
+      return [
+        sortOrder === 'desc' ? desc(mediaItems.rating) : asc(mediaItems.rating),
+        asc(mediaItems.title),
+      ];
     case 'title':
     default:
       return [sortOrder === 'desc' ? desc(mediaItems.title) : asc(mediaItems.title)];
   }
+};
+
+const buildFilterConditions = (options: MediaFilterOptions = {}) => {
+  const conditions = [];
+
+  if (options.mediaType) {
+    conditions.push(eq(mediaItems.type, options.mediaType));
+  }
+  if (options.librarySectionId !== undefined && options.librarySectionId !== null) {
+    conditions.push(eq(mediaItems.librarySectionId, options.librarySectionId));
+  }
+  if (options.year !== undefined && options.year !== null) {
+    conditions.push(eq(mediaItems.year, options.year));
+  }
+  if (options.yearFrom !== undefined && options.yearFrom !== null) {
+    conditions.push(sql`${mediaItems.year} >= ${options.yearFrom}`);
+  }
+  if (options.yearTo !== undefined && options.yearTo !== null) {
+    conditions.push(sql`${mediaItems.year} <= ${options.yearTo}`);
+  }
+  if (options.search) {
+    const searchValue = `%${options.search}%`;
+    conditions.push(
+      or(
+        like(mediaItems.title, searchValue),
+        like(mediaItems.summary, searchValue),
+        like(mediaItems.studio, searchValue),
+        like(mediaItems.originalLanguage, searchValue),
+        sql`coalesce(${mediaItems.genres}, '') LIKE ${searchValue}`,
+        sql`coalesce(${mediaItems.collections}, '') LIKE ${searchValue}`,
+        sql`coalesce(${mediaItems.directors}, '') LIKE ${searchValue}`,
+        sql`coalesce(${mediaItems.writers}, '') LIKE ${searchValue}`,
+        sql`coalesce(${mediaItems.languages}, '') LIKE ${searchValue}`,
+      ),
+    );
+  }
+  if (options.studio) {
+    const trimmed = options.studio.trim();
+    if (trimmed) {
+      conditions.push(eq(mediaItems.studio, trimmed));
+    }
+  }
+  if (options.language) {
+    const trimmed = options.language.trim();
+    if (trimmed) {
+      const pattern = `%\"${escapeJsonLike(trimmed)}\"%`;
+      conditions.push(
+        or(
+          eq(mediaItems.originalLanguage, trimmed),
+          sql`coalesce(${mediaItems.languages}, '') LIKE ${pattern}`,
+        ),
+      );
+    }
+  }
+  if (options.genres && options.genres.length) {
+    for (const genreRaw of options.genres) {
+      const trimmed = typeof genreRaw === 'string' ? genreRaw.trim() : '';
+      if (!trimmed) continue;
+      const pattern = `%\"${escapeJsonLike(trimmed)}\"%`;
+      conditions.push(sql`coalesce(${mediaItems.genres}, '') LIKE ${pattern}`);
+    }
+  }
+  if (options.collection) {
+    const trimmed = options.collection.trim();
+    if (trimmed) {
+      const pattern = `%\"${escapeJsonLike(trimmed)}\"%`;
+      conditions.push(sql`coalesce(${mediaItems.collections}, '') LIKE ${pattern}`);
+    }
+  }
+  if (options.onlyNew) {
+    const windowDays =
+      options.newDays != null && Number.isFinite(options.newDays) && options.newDays > 0
+        ? Math.floor(options.newDays)
+        : 30;
+    conditions.push(
+      sql`julianday(${normalizedAddedAtExpression}) >= julianday('now') - ${windowDays}`,
+    );
+  }
+
+  return conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0] : and(...conditions);
 };
 
 export interface MediaRecord {
@@ -146,8 +243,10 @@ export interface MediaRecord {
   genres: string[] | null;
   directors: string[] | null;
   writers: string[] | null;
+  languages: string[] | null;
   countries: string[] | null;
   collections: string[] | null;
+  originalLanguage: string | null;
   rating: number | null;
   audienceRating: number | null;
   contentRating: string | null;
@@ -163,6 +262,10 @@ export interface MediaRecord {
   tmdbVoteCount: number | null;
   tmdbEnriched: boolean;
   imdbId: string | null;
+  trailerYoutubeId: string | null;
+  trailerSite: string | null;
+  trailerName: string | null;
+  trailerUrl: string | null;
 }
 
 export interface MediaCreateInput {
@@ -182,8 +285,10 @@ export interface MediaCreateInput {
   genres?: string[] | null;
   directors?: string[] | null;
   writers?: string[] | null;
+  languages?: string[] | null;
   countries?: string[] | null;
   collections?: string[] | null;
+  originalLanguage?: string | null;
   rating?: number | null;
   audienceRating?: number | null;
   contentRating?: string | null;
@@ -197,6 +302,10 @@ export interface MediaCreateInput {
   tmdbVoteCount?: number | null;
   tmdbEnriched?: boolean;
   imdbId?: string | null;
+  trailerYoutubeId?: string | null;
+  trailerSite?: string | null;
+  trailerName?: string | null;
+  trailerUrl?: string | null;
 }
 
 export interface MediaUpdateInput extends Partial<MediaCreateInput> {}
@@ -210,11 +319,13 @@ export interface MediaFilterOptions {
   search?: string | null;
   genres?: string[] | null;
   collection?: string | null;
+  studio?: string | null;
+  language?: string | null;
   onlyNew?: boolean | null;
   newDays?: number | null;
   limit?: number;
   offset?: number;
-  sortBy?: 'title' | 'year' | 'added' | 'updated';
+  sortBy?: 'title' | 'year' | 'added' | 'updated' | 'rating';
   sortOrder?: 'asc' | 'desc';
 }
 
@@ -297,6 +408,58 @@ export class MediaRepository {
     };
   }
 
+  getCatalogStats(options: { newDays?: number } = {}): {
+    totalMovies: number;
+    totalSeries: number;
+    totalItems: number;
+    totalRuntime: number;
+    totalEpisodes: number;
+    newItems: number;
+    movies: { total: number; runtime: number; newItems: number };
+    series: { total: number; runtime: number; episodes: number; newItems: number };
+  } {
+    const windowDays =
+      options.newDays != null && Number.isFinite(options.newDays) && options.newDays > 0
+        ? Math.floor(options.newDays)
+        : 30;
+    const mediaRows = this.db
+      .select({
+        type: mediaItems.type,
+        count: sql<number>`count(*)`,
+        runtime: sql<number>`coalesce(sum(coalesce(${mediaItems.duration}, 0)), 0)`,
+        newItems: sql<number>`sum(CASE WHEN julianday(${normalizedAddedAtExpression}) >= julianday('now') - ${windowDays} THEN 1 ELSE 0 END)`,
+      })
+      .from(mediaItems)
+      .groupBy(mediaItems.type)
+      .all();
+
+    const episodeRow = this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(episodes)
+      .get();
+
+    const movies = { total: 0, runtime: 0, newItems: 0 };
+    const series = { total: 0, runtime: 0, episodes: Number(episodeRow?.count ?? 0), newItems: 0 };
+
+    for (const row of mediaRows) {
+      const target = row.type === 'movie' ? movies : series;
+      target.total = Number(row.count ?? 0);
+      target.runtime = Number(row.runtime ?? 0);
+      target.newItems = Number(row.newItems ?? 0);
+    }
+
+    return {
+      totalMovies: movies.total,
+      totalSeries: series.total,
+      totalItems: movies.total + series.total,
+      totalRuntime: movies.runtime + series.runtime,
+      totalEpisodes: series.episodes,
+      newItems: movies.newItems + series.newItems,
+      movies,
+      series,
+    };
+  }
+
   update(id: number, input: MediaUpdateInput): MediaRecord | null {
     const existing = this.getById(id);
     if (!existing) {
@@ -321,8 +484,10 @@ export class MediaRepository {
     if (input.genres !== undefined) changes.genres = input.genres ?? null;
     if (input.directors !== undefined) changes.directors = input.directors ?? null;
     if (input.writers !== undefined) changes.writers = input.writers ?? null;
+    if (input.languages !== undefined) changes.languages = input.languages ?? null;
     if (input.countries !== undefined) changes.countries = input.countries ?? null;
     if (input.collections !== undefined) changes.collections = input.collections ?? null;
+    if (input.originalLanguage !== undefined) changes.originalLanguage = input.originalLanguage ?? null;
     if (input.rating !== undefined) changes.rating = input.rating ?? null;
     if (input.audienceRating !== undefined) changes.audienceRating = input.audienceRating ?? null;
     if (input.contentRating !== undefined) changes.contentRating = input.contentRating ?? null;
@@ -338,6 +503,10 @@ export class MediaRepository {
     if (input.tmdbVoteCount !== undefined) changes.tmdbVoteCount = input.tmdbVoteCount ?? null;
     if (input.tmdbEnriched !== undefined) changes.tmdbEnriched = input.tmdbEnriched ?? false;
     if (input.imdbId !== undefined) changes.imdbId = input.imdbId ?? null;
+    if (input.trailerYoutubeId !== undefined) changes.trailerYoutubeId = input.trailerYoutubeId ?? null;
+    if (input.trailerSite !== undefined) changes.trailerSite = input.trailerSite ?? null;
+    if (input.trailerName !== undefined) changes.trailerName = input.trailerName ?? null;
+    if (input.trailerUrl !== undefined) changes.trailerUrl = input.trailerUrl ?? null;
 
     if (Object.keys(changes).length === 0) {
       return existing;
@@ -372,56 +541,7 @@ export class MediaRepository {
   }
 
   filter(options: MediaFilterOptions = {}): MediaRecord[] {
-    const conditions = [];
-
-    if (options.mediaType) {
-      conditions.push(eq(mediaItems.type, options.mediaType));
-    }
-    if (options.librarySectionId !== undefined && options.librarySectionId !== null) {
-      conditions.push(eq(mediaItems.librarySectionId, options.librarySectionId));
-    }
-    if (options.year !== undefined && options.year !== null) {
-      conditions.push(eq(mediaItems.year, options.year));
-    }
-    if (options.yearFrom !== undefined && options.yearFrom !== null) {
-      conditions.push(sql`${mediaItems.year} >= ${options.yearFrom}`);
-    }
-    if (options.yearTo !== undefined && options.yearTo !== null) {
-      conditions.push(sql`${mediaItems.year} <= ${options.yearTo}`);
-    }
-    if (options.search) {
-      const searchValue = `%${options.search}%`;
-      conditions.push(
-        or(like(mediaItems.title, searchValue), like(mediaItems.summary, searchValue)),
-      );
-    }
-    if (options.genres && options.genres.length) {
-      for (const genreRaw of options.genres) {
-        const trimmed = typeof genreRaw === 'string' ? genreRaw.trim() : '';
-        if (!trimmed) continue;
-        const pattern = `%\"${escapeJsonLike(trimmed)}\"%`;
-        conditions.push(sql`coalesce(${mediaItems.genres}, '') LIKE ${pattern}`);
-      }
-    }
-    if (options.collection) {
-      const trimmed = options.collection.trim();
-      if (trimmed) {
-        const pattern = `%\"${escapeJsonLike(trimmed)}\"%`;
-        conditions.push(sql`coalesce(${mediaItems.collections}, '') LIKE ${pattern}`);
-      }
-    }
-    if (options.onlyNew) {
-      const windowDays =
-        options.newDays != null && Number.isFinite(options.newDays) && options.newDays > 0
-          ? Math.floor(options.newDays)
-          : 30;
-      conditions.push(
-        sql`julianday(${normalizedAddedAtExpression}) >= julianday('now') - ${windowDays}`,
-      );
-    }
-
-    const condition =
-      conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0] : and(...conditions);
+    const condition = buildFilterConditions(options);
 
     const sortOrder = options.sortOrder === 'desc' ? 'desc' : 'asc';
     const orderExpressions = buildSortExpressions(options.sortBy, sortOrder);
@@ -442,53 +562,7 @@ export class MediaRepository {
   }
 
   count(options: MediaFilterOptions = {}): number {
-    const conditions = [];
-
-    if (options.mediaType) {
-      conditions.push(eq(mediaItems.type, options.mediaType));
-    }
-    if (options.year !== undefined && options.year !== null) {
-      conditions.push(eq(mediaItems.year, options.year));
-    }
-    if (options.yearFrom !== undefined && options.yearFrom !== null) {
-      conditions.push(sql`${mediaItems.year} >= ${options.yearFrom}`);
-    }
-    if (options.yearTo !== undefined && options.yearTo !== null) {
-      conditions.push(sql`${mediaItems.year} <= ${options.yearTo}`);
-    }
-    if (options.search) {
-      const searchValue = `%${options.search}%`;
-      conditions.push(
-        or(like(mediaItems.title, searchValue), like(mediaItems.summary, searchValue)),
-      );
-    }
-    if (options.genres && options.genres.length) {
-      for (const genreRaw of options.genres) {
-        const trimmed = typeof genreRaw === 'string' ? genreRaw.trim() : '';
-        if (!trimmed) continue;
-        const pattern = `%\"${escapeJsonLike(trimmed)}\"%`;
-        conditions.push(sql`coalesce(${mediaItems.genres}, '') LIKE ${pattern}`);
-      }
-    }
-    if (options.collection) {
-      const trimmed = options.collection.trim();
-      if (trimmed) {
-        const pattern = `%\"${escapeJsonLike(trimmed)}\"%`;
-        conditions.push(sql`coalesce(${mediaItems.collections}, '') LIKE ${pattern}`);
-      }
-    }
-    if (options.onlyNew) {
-      const windowDays =
-        options.newDays != null && Number.isFinite(options.newDays) && options.newDays > 0
-          ? Math.floor(options.newDays)
-          : 30;
-      conditions.push(
-        sql`julianday(${normalizedAddedAtExpression}) >= julianday('now') - ${windowDays}`,
-      );
-    }
-
-    const condition =
-      conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0] : and(...conditions);
+    const condition = buildFilterConditions(options);
 
     const baseSelect = this.db.select({ count: sql<number>`count(*)` }).from(mediaItems);
     const result = condition ? baseSelect.where(condition).get() : baseSelect.get();

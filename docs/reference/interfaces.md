@@ -87,6 +87,14 @@ Bildfelder wie `poster`, `backdrop`, Season-`poster` und Episode-`thumb` werden 
 - Wenn ein Request-Host vorhanden ist, liefert `/api/v1/*` diese API-Thumbnail-Pfade als absolute Backend-URLs.
 - Der Tautulli-Thumbnail-Proxy braucht keinen lokalen `exports`-Pfad. Nur lokale Cover-/Movie-/Series-Dateien hängen vom `exports`-Pfad ab.
 
+## Library-API für das User-UI-Redesign
+
+Die Public-Media-Antworten liefern additiv `writers`, `languages`, `originalLanguage`, `trailerYoutubeId`, `trailerSite`, `trailerName` und `trailerUrl`. `languages` und Trailer stammen aus TMDB-Enrichment und beschreiben Metadaten, nicht garantiert die tatsächlich vorhandenen Plex-Audio- oder Untertitelspuren.
+
+`GET /api/v1/filter` unterstützt zusätzlich `studio`, `language` und `sortBy=rating`. Die Suche umfasst neben Titel und Summary auch Studio, Genres, Collections, Directors, Writers und Sprachfelder. Die Filterantwort enthält globale, filterunabhängige und kurz gecachte `facets` mit `genres`, `years`, `collections`, `studios` und `languages`.
+
+`GET /api/v1/stats` behält `totalMovies`, `totalSeries` und `totalItems` bei und ergänzt `totalRuntime`, `totalEpisodes`, `newItems`, `movies` und `series` für die geplante Library-Statistikleiste.
+
 ## API-Caches
 
 Nach einem erfolgreichen manuellen oder geplanten Tautulli-Sync werden die `/api/v1/*`-Katalog-, Detail-, Filter-, Such-, Recent- und Stats-Caches invalidiert. Cache-Keys enthalten Protocol und Host, damit absolute Medien-URLs nicht zwischen Hosts geteilt werden.

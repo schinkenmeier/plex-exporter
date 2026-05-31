@@ -42,6 +42,10 @@ export interface GenericMediaItem {
   studio?: unknown;
   genres?: unknown;
   collections?: unknown;
+  directors?: unknown;
+  writers?: unknown;
+  languages?: unknown;
+  originalLanguage?: unknown;
   roles?: unknown;
   year?: unknown;
   originallyAvailableAt?: unknown;
@@ -50,12 +54,14 @@ export interface GenericMediaItem {
   addedAt?: unknown;
 }
 
-export type SortKey = 'title-asc' | 'title-desc' | 'year-asc' | 'year-desc' | 'added-desc';
+export type SortKey = 'title-asc' | 'title-desc' | 'year-asc' | 'year-desc' | 'added-desc' | 'rating-desc';
 
 export interface MediaFacets {
   genres: string[];
   years: number[];
   collections: string[];
+  studios: string[];
+  languages: string[];
 }
 
 export interface MediaFilterOptions {
@@ -65,6 +71,8 @@ export interface MediaFilterOptions {
   yearTo?: number | null;
   genres?: string[];
   collection?: string;
+  studio?: string;
+  language?: string;
   sort?: SortKey;
   newDays?: number;
 }

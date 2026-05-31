@@ -13,6 +13,7 @@ import { tautulliConfigMigration } from './011_tautulli_config.js';
 import { addImdbIdMigration } from './012_add_imdb_id.js';
 import { watchlistRequestsMigration } from './013_watchlist_requests.js';
 import { newsletterCampaignsMigration } from './014_newsletter_campaigns.js';
+import { userUiMediaMetadataMigration } from './015_user_ui_media_metadata.js';
 import type { Migration } from './types.js';
 
 const migrations: Migration[] = [
@@ -30,6 +31,7 @@ const migrations: Migration[] = [
   addImdbIdMigration,
   watchlistRequestsMigration,
   newsletterCampaignsMigration,
+  userUiMediaMetadataMigration,
 ];
 
 export const runMigrations = (db: SqliteDatabase) => {

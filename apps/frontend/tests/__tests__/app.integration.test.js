@@ -15,6 +15,9 @@ const MOVIES_FIXTURE = [
     summary: 'Action-packed adventure.',
     tagline: 'Action hero tagline',
     genres: ['Action', 'Thriller'],
+    studio: 'Action Studio',
+    languages: ['German'],
+    originalLanguage: 'de',
     collections: [{ tag: 'Favorites' }],
     roles: [{ tag: 'Lead' }],
     thumb: 'action.jpg',
@@ -32,6 +35,9 @@ const MOVIES_FIXTURE = [
     addedAt: '2024-02-10T12:00:00Z',
     summary: 'Dramatic storytelling.',
     genres: ['Drama'],
+    studio: 'Drama Studio',
+    languages: ['English'],
+    originalLanguage: 'en',
     collections: [],
     roles: [{ tag: 'Protagonist' }],
     thumb: 'drama.jpg',
@@ -49,6 +55,9 @@ const SHOWS_FIXTURE = [
     addedAt: '2024-03-01T12:00:00Z',
     summary: 'Exploring the universe.',
     genres: ['Sci-Fi'],
+    studio: 'Space Studio',
+    languages: ['French'],
+    originalLanguage: 'fr',
     collections: [{ tag: 'Favorites' }],
     seasons: [],
     thumb: 'space.jpg',
@@ -103,6 +112,11 @@ const REMOTE_SHOW_DETAILS = {
 const seriesDetailRequests = [];
 
 const FACETS_FIXTURE = computeFacets(REMOTE_MOVIES, REMOTE_SHOWS);
+
+test('shared facets include studios and languages for user-ui filters', () => {
+  assert.deepEqual(FACETS_FIXTURE.studios, ['Action Studio', 'Drama Studio', 'Space Studio']);
+  assert.deepEqual(new Set(FACETS_FIXTURE.languages), new Set(['de', 'en', 'fr', 'English', 'French', 'German']));
+});
 
 function parseSearchRequest(url){
   try{

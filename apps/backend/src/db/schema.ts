@@ -61,8 +61,10 @@ export const mediaItems = sqliteTable('media_items', {
   genres: text('genres', { mode: 'json' }).$type<string[] | null>(),
   directors: text('directors', { mode: 'json' }).$type<string[] | null>(),
   writers: text('writers', { mode: 'json' }).$type<string[] | null>(),
+  languages: text('languages', { mode: 'json' }).$type<string[] | null>(),
   countries: text('countries', { mode: 'json' }).$type<string[] | null>(),
   collections: text('collections', { mode: 'json' }).$type<string[] | null>(),
+  originalLanguage: text('original_language'),
   audienceRating: real('audience_rating'),
   addedAt: text('added_at'),
   originallyAvailableAt: text('originally_available_at'),
@@ -83,6 +85,10 @@ export const mediaItems = sqliteTable('media_items', {
     .notNull()
     .default(false),
   imdbId: text('imdb_id'),
+  trailerYoutubeId: text('trailer_youtube_id'),
+  trailerSite: text('trailer_site'),
+  trailerName: text('trailer_name'),
+  trailerUrl: text('trailer_url'),
 });
 
 export const insertMediaItemSchema = createInsertSchema(mediaItems).omit({

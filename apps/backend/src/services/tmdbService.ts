@@ -35,9 +35,15 @@ export interface TmdbHeroDetails {
   voteAverage: number | null;
   voteCount: number | null;
   genres: string[];
+  languages: string[];
+  originalLanguage: string | null;
   certification: string | null;
   backdrops: string[];
   poster: string | null;
+  trailerYoutubeId: string | null;
+  trailerSite: string | null;
+  trailerName: string | null;
+  trailerUrl: string | null;
   seasons?: Array<{
     id: number | null;
     seasonNumber: number | null;
@@ -159,6 +165,76 @@ const collectGenres = (payload: any): string[] => {
   return result;
 };
 
+const collectLanguages = (payload: any): string[] => {
+  if (!Array.isArray(payload?.spoken_languages)) return [];
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const entry of payload.spoken_languages) {
+    const code = typeof entry?.iso_639_1 === 'string' ? entry.iso_639_1.trim() : '';
+    const name = typeof entry?.english_name === 'string' && entry.english_name.trim()
+      ? entry.english_name.trim()
+      : typeof entry?.name === 'string'
+        ? entry.name.trim()
+        : '';
+    const value = name || code;
+    if (!value) continue;
+    const key = value.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(value);
+  }
+  return result;
+};
+
+const collectTrailer = (
+  payload: any,
+  language: string,
+): {
+  trailerYoutubeId: string | null;
+  trailerSite: string | null;
+  trailerName: string | null;
+  trailerUrl: string | null;
+} => {
+  const videos = Array.isArray(payload?.videos?.results) ? payload.videos.results : [];
+  const requestedLanguage = language.split('-')[0]?.toLowerCase() || '';
+  const score = (entry: any): number => {
+    let value = 0;
+    const site = typeof entry?.site === 'string' ? entry.site.toLowerCase() : '';
+    const type = typeof entry?.type === 'string' ? entry.type.toLowerCase() : '';
+    const iso = typeof entry?.iso_639_1 === 'string' ? entry.iso_639_1.toLowerCase() : '';
+    if (site === 'youtube') value += 1000;
+    if (entry?.official === true) value += 250;
+    if (type === 'trailer') value += 180;
+    if (type === 'teaser') value += 80;
+    if (requestedLanguage && iso === requestedLanguage) value += 70;
+    if (iso === 'en') value += 30;
+    value += Math.min(10, (Number(entry?.size) || 0) / 100);
+    return value;
+  };
+
+  const sorted = videos
+    .filter((entry: any) => typeof entry?.key === 'string' && entry.key.trim())
+    .sort((a: any, b: any) => score(b) - score(a));
+  const selected = sorted[0];
+  if (!selected) {
+    return {
+      trailerYoutubeId: null,
+      trailerSite: null,
+      trailerName: null,
+      trailerUrl: null,
+    };
+  }
+  const site = typeof selected.site === 'string' ? selected.site.trim() : null;
+  const key = selected.key.trim();
+  const youtubeId = site?.toLowerCase() === 'youtube' ? key : null;
+  return {
+    trailerYoutubeId: youtubeId,
+    trailerSite: site,
+    trailerName: typeof selected.name === 'string' && selected.name.trim() ? selected.name.trim() : null,
+    trailerUrl: youtubeId ? `https://www.youtube-nocookie.com/embed/${encodeURIComponent(youtubeId)}` : null,
+  };
+};
+
 const buildImageUrl = (path: string, size: string): string | null => {
   if (typeof path !== 'string' || !path.trim()) return null;
   const normalized = path.startsWith('/') ? path : `/${path}`;
@@ -244,9 +320,14 @@ const mapDetails = (
     voteAverage: Number.isFinite(payload.vote_average) ? Number(payload.vote_average) : null,
     voteCount: Number.isFinite(payload.vote_count) ? Number(payload.vote_count) : null,
     genres: collectGenres(payload),
+    languages: collectLanguages(payload),
+    originalLanguage: typeof payload.original_language === 'string' && payload.original_language.trim()
+      ? payload.original_language.trim()
+      : null,
     certification: selectCertification(payload, type, language),
     backdrops: collectBackdrops(payload),
     poster: resolvePoster(payload),
+    ...collectTrailer(payload, language),
     seasons: type === 'tv' ? collectSeasons(payload) : undefined,
   };
   return details;
@@ -360,7 +441,7 @@ export const createTmdbService = ({ accessToken, cacheTtlMs, maxCacheEntries }: 
     try {
       const response = await axios.get(`${API_BASE_URL}/${normalizedType}/${identifier}`, {
         params: {
-          append_to_response: 'images,release_dates,content_ratings',
+          append_to_response: 'images,release_dates,content_ratings,videos',
           language,
         },
         headers: {

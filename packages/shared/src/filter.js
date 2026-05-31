@@ -1,6 +1,6 @@
 import { collectionTags, getGenreNames, humanYear, isMediaNew, normalizeText } from './media.js';
 
-const SORT_KEYS = ['title-asc', 'title-desc', 'year-desc', 'year-asc', 'added-desc'];
+const SORT_KEYS = ['title-asc', 'title-desc', 'year-desc', 'year-asc', 'added-desc', 'rating-desc'];
 export const DEFAULT_PAGE_SIZE = 48;
 export const MAX_PAGE_SIZE = 200;
 
@@ -15,7 +15,17 @@ const toSearchString = (item) => {
   if (item && item.originalTitle) parts.push(String(item.originalTitle));
   if (item && item.summary) parts.push(String(item.summary));
   if (item && item.studio) parts.push(String(item.studio));
+  if (item && item.originalLanguage) parts.push(String(item.originalLanguage));
   getGenreNames(item && item.genres).forEach((genre) => parts.push(genre));
+  if (Array.isArray(item && item.directors)) {
+    item.directors.forEach((entry) => parts.push(String(entry ?? '')));
+  }
+  if (Array.isArray(item && item.writers)) {
+    item.writers.forEach((entry) => parts.push(String(entry ?? '')));
+  }
+  if (Array.isArray(item && item.languages)) {
+    item.languages.forEach((entry) => parts.push(String(entry ?? '')));
+  }
   const roles = Array.isArray(item && item.roles) ? item.roles : [];
   for (const role of roles) {
     if (!role || typeof role !== 'object') continue;
@@ -34,6 +44,8 @@ const matchesFilters = (item, filters, now) => {
     yearTo = null,
     genres = [],
     collection = '',
+    studio = '',
+    language = '',
     newDays,
   } = filters || {};
 
@@ -72,6 +84,20 @@ const matchesFilters = (item, filters, now) => {
     }
   }
 
+  if (studio && String(item?.studio ?? '') !== studio) {
+    return false;
+  }
+
+  if (language) {
+    const languages = new Set([
+      ...(Array.isArray(item?.languages) ? item.languages : []),
+      item?.originalLanguage,
+    ].map((entry) => String(entry ?? '').trim()).filter(Boolean));
+    if (!languages.has(language)) {
+      return false;
+    }
+  }
+
   return true;
 };
 
@@ -96,6 +122,11 @@ const compareBySortKey = (a, b, sortKey) => {
         return Number.isFinite(date.getTime()) ? date.getTime() : 0;
       };
       const diff = getTime(b) - getTime(a);
+      if (diff !== 0) return diff;
+      return String(a?.title ?? '').localeCompare(String(b?.title ?? ''), 'de');
+    }
+    case 'rating-desc': {
+      const diff = (Number(b?.rating) || 0) - (Number(a?.rating) || 0);
       if (diff !== 0) return diff;
       return String(a?.title ?? '').localeCompare(String(b?.title ?? ''), 'de');
     }
@@ -163,6 +194,8 @@ export const computeFacets = (movies, shows) => {
   const genres = new Set();
   const years = new Set();
   const collections = new Set();
+  const studios = new Set();
+  const languages = new Set();
 
   const add = (list) => {
     if (!Array.isArray(list)) return;
@@ -173,6 +206,18 @@ export const computeFacets = (movies, shows) => {
         years.add(year);
       }
       collectionTags(item).forEach((tag) => collections.add(tag));
+      if (item && typeof item.studio === 'string' && item.studio.trim()) {
+        studios.add(item.studio.trim());
+      }
+      if (Array.isArray(item && item.languages)) {
+        item.languages.forEach((entry) => {
+          const value = String(entry ?? '').trim();
+          if (value) languages.add(value);
+        });
+      }
+      if (item && typeof item.originalLanguage === 'string' && item.originalLanguage.trim()) {
+        languages.add(item.originalLanguage.trim());
+      }
     }
   };
 
@@ -183,6 +228,8 @@ export const computeFacets = (movies, shows) => {
     genres: Array.from(genres).sort((a, b) => String(a ?? '').localeCompare(String(b ?? ''), 'de')),
     years: Array.from(years).sort((a, b) => a - b),
     collections: Array.from(collections).sort((a, b) => String(a ?? '').localeCompare(String(b ?? ''), 'de')),
+    studios: Array.from(studios).sort((a, b) => String(a ?? '').localeCompare(String(b ?? ''), 'de')),
+    languages: Array.from(languages).sort((a, b) => String(a ?? '').localeCompare(String(b ?? ''), 'de')),
   };
 };
 

@@ -331,12 +331,20 @@ export class TautulliSyncService {
 
         // Skip if incremental and not changed
         const normalizedMetadataUpdatedAt = normalizeTimestamp(metadata.updated_at);
+        const needsUserUiTmdbBackfill =
+          options.enrichWithTmdb &&
+          this.tmdbService &&
+          existing?.tmdbEnriched &&
+          (!existing.languages?.length ||
+            !existing.originalLanguage ||
+            !existing.trailerYoutubeId);
         if (
           options.incremental &&
           existing &&
           existing.plexUpdatedAt &&
           normalizedMetadataUpdatedAt &&
-          existing.plexUpdatedAt === normalizedMetadataUpdatedAt
+          existing.plexUpdatedAt === normalizedMetadataUpdatedAt &&
+          !needsUserUiTmdbBackfill
         ) {
           skipped++;
           continue;
@@ -387,6 +395,12 @@ export class TautulliSyncService {
               if (tmdbData.tmdbId !== undefined) mediaData.tmdbId = tmdbData.tmdbId;
               if (tmdbData.tmdbRating !== undefined) mediaData.tmdbRating = tmdbData.tmdbRating;
               if (tmdbData.tmdbVoteCount !== undefined) mediaData.tmdbVoteCount = tmdbData.tmdbVoteCount;
+              if (tmdbData.languages !== undefined) mediaData.languages = tmdbData.languages;
+              if (tmdbData.originalLanguage !== undefined) mediaData.originalLanguage = tmdbData.originalLanguage;
+              if (tmdbData.trailerYoutubeId !== undefined) mediaData.trailerYoutubeId = tmdbData.trailerYoutubeId;
+              if (tmdbData.trailerSite !== undefined) mediaData.trailerSite = tmdbData.trailerSite;
+              if (tmdbData.trailerName !== undefined) mediaData.trailerName = tmdbData.trailerName;
+              if (tmdbData.trailerUrl !== undefined) mediaData.trailerUrl = tmdbData.trailerUrl;
             }
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
@@ -483,12 +497,20 @@ export class TautulliSyncService {
 
         // Skip if incremental and not changed
         const normalizedMetadataUpdatedAt = normalizeTimestamp(metadata.updated_at);
+        const needsUserUiTmdbBackfill =
+          options.enrichWithTmdb &&
+          this.tmdbService &&
+          existing?.tmdbEnriched &&
+          (!existing.languages?.length ||
+            !existing.originalLanguage ||
+            !existing.trailerYoutubeId);
         if (
           options.incremental &&
           existing &&
           existing.plexUpdatedAt &&
           normalizedMetadataUpdatedAt &&
-          existing.plexUpdatedAt === normalizedMetadataUpdatedAt
+          existing.plexUpdatedAt === normalizedMetadataUpdatedAt &&
+          !needsUserUiTmdbBackfill
         ) {
           skipped++;
           continue;
@@ -539,6 +561,12 @@ export class TautulliSyncService {
               if (tmdbData.tmdbId !== undefined) mediaData.tmdbId = tmdbData.tmdbId;
               if (tmdbData.tmdbRating !== undefined) mediaData.tmdbRating = tmdbData.tmdbRating;
               if (tmdbData.tmdbVoteCount !== undefined) mediaData.tmdbVoteCount = tmdbData.tmdbVoteCount;
+              if (tmdbData.languages !== undefined) mediaData.languages = tmdbData.languages;
+              if (tmdbData.originalLanguage !== undefined) mediaData.originalLanguage = tmdbData.originalLanguage;
+              if (tmdbData.trailerYoutubeId !== undefined) mediaData.trailerYoutubeId = tmdbData.trailerYoutubeId;
+              if (tmdbData.trailerSite !== undefined) mediaData.trailerSite = tmdbData.trailerSite;
+              if (tmdbData.trailerName !== undefined) mediaData.trailerName = tmdbData.trailerName;
+              if (tmdbData.trailerUrl !== undefined) mediaData.trailerUrl = tmdbData.trailerUrl;
             }
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
@@ -911,6 +939,12 @@ export class TautulliSyncService {
     imdbId?: string;
     tmdbRating?: number;
     tmdbVoteCount?: number;
+    languages?: string[];
+    originalLanguage?: string;
+    trailerYoutubeId?: string;
+    trailerSite?: string;
+    trailerName?: string;
+    trailerUrl?: string;
     addedAt?: string;
   } {
     const posterUrl = this.convertTautulliThumbnailUrl(metadata.thumb);
@@ -1171,6 +1205,12 @@ export class TautulliSyncService {
     backdrop?: string;
     tmdbRating?: number;
     tmdbVoteCount?: number;
+    languages?: string[];
+    originalLanguage?: string;
+    trailerYoutubeId?: string;
+    trailerSite?: string;
+    trailerName?: string;
+    trailerUrl?: string;
     tmdbEnriched: boolean;
   } | null> {
     if (!this.tmdbService) {
@@ -1275,6 +1315,12 @@ export class TautulliSyncService {
       backdrop: primaryBackdrop,
       tmdbRating: details.voteAverage ?? undefined,
       tmdbVoteCount: details.voteCount ?? undefined,
+      languages: details.languages?.length ? details.languages : undefined,
+      originalLanguage: details.originalLanguage ?? undefined,
+      trailerYoutubeId: details.trailerYoutubeId ?? undefined,
+      trailerSite: details.trailerSite ?? undefined,
+      trailerName: details.trailerName ?? undefined,
+      trailerUrl: details.trailerUrl ?? undefined,
       tmdbEnriched: true,
     };
   }

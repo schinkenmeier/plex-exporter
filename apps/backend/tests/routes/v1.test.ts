@@ -100,6 +100,13 @@ describe('v1 routes', () => {
       mediaType: 'movie',
       genres: ['Drama'],
       directors: ['Director A'],
+      writers: ['Writer A'],
+      languages: ['German'],
+      originalLanguage: 'de',
+      trailerYoutubeId: 'trailer-a',
+      trailerSite: 'YouTube',
+      trailerName: 'Trailer A',
+      trailerUrl: 'https://www.youtube-nocookie.com/embed/trailer-a',
     });
     thumbnailRepository.create({ mediaId: movie.id, path: '/thumbs/movie-2-a.jpg' });
     thumbnailRepository.create({ mediaId: movie.id, path: '/thumbs/movie-2-b.jpg' });
@@ -112,22 +119,43 @@ describe('v1 routes', () => {
       title: 'Detailed Movie',
       genres: ['Drama'],
       directors: ['Director A'],
+      writers: ['Writer A'],
+      languages: ['German'],
+      originalLanguage: 'de',
+      trailerYoutubeId: 'trailer-a',
+      trailerSite: 'YouTube',
+      trailerName: 'Trailer A',
+      trailerUrl: 'https://www.youtube-nocookie.com/embed/trailer-a',
       thumbnails: ['/thumbs/movie-2-a.jpg', '/thumbs/movie-2-b.jpg'],
       cast: [],
     });
   });
 
   it('reports media statistics based on injected repositories', async () => {
-    mediaRepository.create({ plexId: 'movie-3', title: 'Stat Movie', mediaType: 'movie' });
+    mediaRepository.create({ plexId: 'movie-3', title: 'Stat Movie', mediaType: 'movie', duration: 60000 });
     mediaRepository.create({ plexId: 'show-2', title: 'Stat Show', mediaType: 'tv' });
 
     const response = await request(app).get('/api/v1/stats');
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({
+    expect(response.body).toMatchObject({
       totalMovies: 1,
       totalSeries: 1,
       totalItems: 2,
+      totalRuntime: 60000,
+      totalEpisodes: 0,
+      newItems: expect.any(Number),
+      movies: {
+        total: 1,
+        runtime: 60000,
+        newItems: expect.any(Number),
+      },
+      series: {
+        total: 1,
+        runtime: 0,
+        episodes: 0,
+        newItems: expect.any(Number),
+      },
     });
   });
 
@@ -168,10 +196,26 @@ describe('v1 routes', () => {
   });
 
   it('returns filter results using the canonical items and pagination envelope', async () => {
-    mediaRepository.create({ plexId: 'movie-filter-1', title: 'Filter Movie', mediaType: 'movie' });
-    mediaRepository.create({ plexId: 'show-filter-1', title: 'Filter Show', mediaType: 'tv' });
+    mediaRepository.create({
+      plexId: 'movie-filter-1',
+      title: 'Filter Movie',
+      mediaType: 'movie',
+      studio: 'Filter Studio',
+      languages: ['German'],
+      originalLanguage: 'de',
+      rating: 9,
+    });
+    mediaRepository.create({
+      plexId: 'show-filter-1',
+      title: 'Filter Show',
+      mediaType: 'tv',
+      studio: 'Other Studio',
+      languages: ['English'],
+      originalLanguage: 'en',
+      rating: 7,
+    });
 
-    const response = await request(app).get('/api/v1/filter?type=movie&limit=10&offset=0');
+    const response = await request(app).get('/api/v1/filter?type=movie&studio=Filter%20Studio&language=German&sortBy=rating&sortOrder=desc&limit=10&offset=0');
 
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
@@ -188,15 +232,22 @@ describe('v1 routes', () => {
         title: 'Filter Movie',
       }),
     ]);
+    expect(response.body.facets.studios).toEqual(expect.arrayContaining(['Filter Studio', 'Other Studio']));
+    expect(response.body.facets.languages).toEqual(expect.arrayContaining(['German', 'English', 'de', 'en']));
   });
 
   it('keeps search response compatibility while exposing items and pagination', async () => {
-    mediaRepository.create({ plexId: 'movie-search-1', title: 'Searchable Movie', mediaType: 'movie' });
+    mediaRepository.create({
+      plexId: 'movie-search-1',
+      title: 'Searchable Movie',
+      mediaType: 'movie',
+      writers: ['Metadata Writer'],
+    });
 
-    const response = await request(app).get('/api/v1/search?q=Searchable&limit=5');
+    const response = await request(app).get('/api/v1/search?q=Metadata%20Writer&limit=5');
 
     expect(response.status).toBe(200);
-    expect(response.body.query).toBe('Searchable');
+    expect(response.body.query).toBe('Metadata Writer');
     expect(response.body.total).toBe(1);
     expect(response.body.results).toEqual(response.body.items);
     expect(response.body.pagination).toEqual({
@@ -369,7 +420,16 @@ describe('v1 routes', () => {
     const document = yaml.parse(fs.readFileSync(swaggerPath, 'utf8'));
 
     const statsProperties = document.components.schemas.Stats.properties;
-    expect(Object.keys(statsProperties)).toEqual(['totalMovies', 'totalSeries', 'totalItems']);
+    expect(Object.keys(statsProperties)).toEqual([
+      'totalMovies',
+      'totalSeries',
+      'totalItems',
+      'totalRuntime',
+      'totalEpisodes',
+      'newItems',
+      'movies',
+      'series',
+    ]);
 
     const filterProperties =
       document.paths['/api/v1/filter'].get.responses['200'].content['application/json'].schema.properties;

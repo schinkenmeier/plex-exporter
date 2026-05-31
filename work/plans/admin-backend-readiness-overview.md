@@ -29,6 +29,19 @@ Dieses Dokument beschreibt, welche Backend-Funktionen für das redesigned Admin 
 | Newsletter | Subscribe/Unsubscribe, Campaign Draft/Test/Send, Recipient-Status, Send Digest, Stats, Recent Media, Digest History vorhanden | Produktiv nutzbare Basis, spaetere Verfeinerungen offen |
 | Datenbank-Explorer | Tables, Query, Filter, Sort, Pagination vorhanden | Stark abgedeckt |
 | Portal/Library-Routing | `/` als Portal, `/library` als öffentliche Medienansicht, `/admin` unverändert geschützt | Frontend-Routing vorbereitet |
+| User Library API | Public Filter/Search/Stats um Studio, Sprache, Rating-Sort, Writer, Facets, TMDB-Sprachen und Trailer erweitert | Backend für User-UI-Redesign vorbereitet |
+
+## User-UI Backend Readiness
+
+Status: Erledigt. `new_user-ui/` ist als lokale Designreferenz in `.gitignore` ausgeklammert. Die Public Library API liefert jetzt die Felder und Filter, die der neue User-UI-Entwurf als Backend-Basis benötigt.
+
+Umsetzung:
+
+- `/api/v1/*` liefert Writer, TMDB-Sprachen und Trailer-Felder additiv aus.
+- `/api/v1/filter` unterstützt Studio-/Sprachfilter, Rating-Sortierung und Facets für Studios und Sprachen.
+- Suche umfasst neben Titel/Summary auch Studio, Genres, Collections, Directors, Writers und Sprach-Metadaten.
+- `/api/v1/stats` enthält zusätzliche Runtime-, Episode- und New-Item-Aggregate.
+- Sprache und Trailer sind TMDB-Metadaten. Echte Plex-Audio-/Subtitle-Spuren bleiben ein separater späterer Ausbau.
 
 ## Phase 1: API-Kontrakt und Admin-Client vervollstaendigen
 

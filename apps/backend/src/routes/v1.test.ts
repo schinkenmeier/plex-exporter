@@ -41,15 +41,22 @@ describe('V1 API Routes', () => {
       plexUpdatedAt: null,
       genres: ['Action', 'Drama'],
       directors: ['Test Director'],
+      writers: ['Test Writer'],
+      languages: ['German', 'English'],
+      originalLanguage: 'de',
       countries: ['USA'],
-      collections: null,
-      rating: null,
+      collections: ['Test Collection'],
+      rating: 8.8,
       audienceRating: 8.5,
       contentRating: 'PG-13',
       studio: 'Test Studio',
       tagline: 'A test tagline',
       duration: 7200000,
       originallyAvailableAt: '2020-01-01',
+      trailerYoutubeId: 'movieTrailer',
+      trailerSite: 'YouTube',
+      trailerName: 'Movie Trailer',
+      trailerUrl: 'https://www.youtube-nocookie.com/embed/movieTrailer',
     });
 
     const series = mediaRepository.create({
@@ -63,15 +70,22 @@ describe('V1 API Routes', () => {
       plexUpdatedAt: null,
       genres: ['Comedy'],
       directors: null,
+      writers: ['Series Writer'],
+      languages: ['English'],
+      originalLanguage: 'en',
       countries: ['UK'],
       collections: null,
-      rating: null,
+      rating: 7.3,
       audienceRating: 9.0,
       contentRating: 'TV-MA',
       studio: null,
       tagline: null,
       duration: null,
       originallyAvailableAt: null,
+      trailerYoutubeId: 'seriesTrailer',
+      trailerSite: 'YouTube',
+      trailerName: 'Series Trailer',
+      trailerUrl: 'https://www.youtube-nocookie.com/embed/seriesTrailer',
     });
 
     const [season1] = drizzleDb
@@ -181,6 +195,20 @@ describe('V1 API Routes', () => {
         totalMovies: 1,
         totalSeries: 1,
         totalItems: 2,
+        totalRuntime: 7200000,
+        totalEpisodes: 2,
+        newItems: expect.any(Number),
+        movies: {
+          total: 1,
+          runtime: 7200000,
+          newItems: expect.any(Number),
+        },
+        series: {
+          total: 1,
+          runtime: 0,
+          episodes: 2,
+          newItems: expect.any(Number),
+        },
       });
     });
 
@@ -212,6 +240,10 @@ describe('V1 API Routes', () => {
 
       expect(response.body[0].genres).toEqual(['Action', 'Drama']);
       expect(response.body[0].directors).toEqual(['Test Director']);
+      expect(response.body[0].writers).toEqual(['Test Writer']);
+      expect(response.body[0].languages).toEqual(['German', 'English']);
+      expect(response.body[0].originalLanguage).toBe('de');
+      expect(response.body[0].trailerYoutubeId).toBe('movieTrailer');
       expect(response.body[0].audienceRating).toBe(8.5);
     });
   });
@@ -358,6 +390,31 @@ describe('V1 API Routes', () => {
         response.body.items[response.body.items.length - 1].year
       );
     });
+
+    it('should filter by studio and language and expose facets', async () => {
+      const response = await request(app)
+        .get('/api/v1/filter')
+        .query({ studio: 'Test Studio', language: 'German' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.pagination.total).toBe(1);
+      expect(response.body.items[0]).toMatchObject({
+        ratingKey: '1',
+        studio: 'Test Studio',
+        languages: ['German', 'English'],
+      });
+      expect(response.body.facets.studios).toContain('Test Studio');
+      expect(response.body.facets.languages).toEqual(expect.arrayContaining(['German', 'English', 'en']));
+    });
+
+    it('should sort by rating descending', async () => {
+      const response = await request(app)
+        .get('/api/v1/filter')
+        .query({ sortBy: 'rating', sortOrder: 'desc' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.items[0].rating).toBeGreaterThanOrEqual(response.body.items[1].rating);
+    });
   });
 
   describe('GET /api/v1/search', () => {
@@ -370,6 +427,16 @@ describe('V1 API Routes', () => {
       expect(response.body.query).toBe('Test Movie');
       expect(response.body.total).toBeGreaterThan(0);
       expect(response.body.results[0].title).toContain('Test Movie');
+    });
+
+    it('should search extended metadata fields', async () => {
+      const response = await request(app)
+        .get('/api/v1/search')
+        .query({ q: 'Test Writer' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.total).toBe(1);
+      expect(response.body.results[0].ratingKey).toBe('1');
     });
 
     it('should search with type filter', async () => {
