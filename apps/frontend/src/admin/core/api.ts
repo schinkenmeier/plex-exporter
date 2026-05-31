@@ -114,81 +114,120 @@ export interface AdminProfile {
 
 export interface TableSummary {
   name: string;
+  label: string;
+  category: string;
+  description: string;
   rowCount: number | null;
 }
 
 export interface DatabaseTablesResponse {
-  tables: TableSummary[];
+  success: true;
+  data: {
+    tables: TableSummary[];
+  };
 }
 
+export type DatabaseColumnSensitivity = 'public_catalog' | 'internal_id' | 'private_text' | 'pii' | 'secret';
+
 export interface DatabaseFilterEquals {
+  type: 'equals';
   column: string;
-  value: string | number | boolean;
+  value: string | number | boolean | null;
 }
 
 export interface DatabaseFilterNull {
+  type: 'null';
   column: string;
-  mode: 'null' | 'notNull';
+  value: boolean;
 }
 
 export interface DatabaseFilterDateRange {
+  type: 'range';
   column: string;
-  from?: string;
-  to?: string;
+  from?: string | number;
+  to?: string | number;
 }
 
 export interface DatabaseQueryRequest {
-  table: string;
-  limit?: number;
-  offset?: number;
-  orderBy?: string | null;
-  direction?: 'ASC' | 'DESC';
   columns?: string[];
-  filters?: {
-    equals?: DatabaseFilterEquals[];
-    nulls?: DatabaseFilterNull[];
-    dateRange?: DatabaseFilterDateRange | null;
+  pagination?: {
+    limit?: number;
+    offset?: number;
   };
-  search?: string;
-  primaryKeyValue?: string | number | null;
+  sort?: {
+    column: string;
+    direction: 'asc' | 'desc';
+  } | null;
+  search?: {
+    term: string;
+    columns?: string[];
+  } | null;
+  filters?: Array<DatabaseFilterEquals | DatabaseFilterNull | DatabaseFilterDateRange>;
 }
 
 export interface DatabaseColumnInfo {
   name: string;
   type: string;
-  notNull: boolean;
+  nullable: boolean;
   primaryKey: boolean;
   defaultValue: unknown;
+  sensitivity: DatabaseColumnSensitivity;
+  capabilities: {
+    selectable: boolean;
+    sortable: boolean;
+    searchable: boolean;
+    filterable: boolean;
+    rangeFilterable: boolean;
+    enumSafe: boolean;
+  };
+}
+
+export interface DatabaseCellMeta {
+  sensitivity: DatabaseColumnSensitivity;
+  masked: boolean;
+  truncated: boolean;
+  type: 'null' | 'string' | 'number' | 'boolean' | 'json' | 'blob';
+}
+
+export interface DatabaseSchemaResponse {
+  success: true;
+  data: {
+    table: TableSummary;
+    columns: DatabaseColumnInfo[];
+    primaryKey: string[];
+  };
+}
+
+export interface DatabaseFilterOptionsResponse {
+  success: true;
+  data: {
+    table: string;
+    filters: Record<string, Array<{ value: string | number | boolean | null; count: number }>>;
+  };
 }
 
 export interface DatabaseQueryResponse {
-  table: string;
-  columns: DatabaseColumnInfo[];
-  schema: DatabaseColumnInfo[];
-  rows: Record<string, unknown>[];
-  pagination: {
+  success: true;
+  data: {
+    table: string;
+    columns: DatabaseColumnInfo[];
+    rows: Array<{
+      values: Record<string, unknown>;
+      cells: Record<string, DatabaseCellMeta>;
+    }>;
+  };
+  page: {
     limit: number;
     offset: number;
     total: number;
     hasMore: boolean;
   };
-  search: string | null;
-  orderBy: string | null;
-  direction: 'ASC' | 'DESC';
-  searchableColumns: string[];
-  filterOptions: {
-    primaryKey: string | null;
-    dateColumns: string[];
-    enumValues: Record<string, Array<{ value: string; count: number }>>;
-    nullableColumns: string[];
+  applied: {
+    columns: string[];
+    sort: { column: string; direction: 'asc' | 'desc' } | null;
+    search: { term: string; columns: string[] } | null;
+    filters: Array<DatabaseFilterEquals | DatabaseFilterNull | DatabaseFilterDateRange>;
   };
-  appliedFilters: {
-    equals: Array<{ column: string; value: string | number }>;
-    dateRange: DatabaseFilterDateRange | null;
-    nulls: DatabaseFilterNull[];
-    primaryKeyValue: string | null;
-  };
-  selectedColumns: string[];
 }
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
@@ -693,11 +732,29 @@ export class AdminApiClient {
   }
 
   getDatabaseTables(): Promise<DatabaseTablesResponse> {
-    return this.request<DatabaseTablesResponse>('/db/tables', 'GET');
+    return this.request<DatabaseTablesResponse>('/database/tables', 'GET');
   }
 
-  queryDatabase(payload: DatabaseQueryRequest): Promise<DatabaseQueryResponse> {
-    return this.request<DatabaseQueryResponse>('/db/query', 'POST', payload);
+  getDatabaseSchema(table: string): Promise<DatabaseSchemaResponse> {
+    return this.request<DatabaseSchemaResponse>(
+      `/database/tables/${encodeURIComponent(table)}/schema`,
+      'GET',
+    );
+  }
+
+  getDatabaseFilterOptions(table: string): Promise<DatabaseFilterOptionsResponse> {
+    return this.request<DatabaseFilterOptionsResponse>(
+      `/database/tables/${encodeURIComponent(table)}/filter-options`,
+      'GET',
+    );
+  }
+
+  queryDatabase(table: string, payload: DatabaseQueryRequest): Promise<DatabaseQueryResponse> {
+    return this.request<DatabaseQueryResponse>(
+      `/database/tables/${encodeURIComponent(table)}/rows/query`,
+      'POST',
+      payload,
+    );
   }
 
   getLogs(params: { limit?: number; offset?: number; level?: LogLevel; since?: string; q?: string } = {}): Promise<LogsResponse> {

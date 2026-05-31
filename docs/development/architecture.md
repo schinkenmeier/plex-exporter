@@ -30,7 +30,7 @@ Die Admin-API wird in `apps/backend/src/routes/admin.ts` als Shell zusammengeset
 - `systemStatus.ts`: `/admin/api/status`.
 - `runtimeConfig.ts`: `/admin/api/config`.
 - `stats.ts`: `/admin/api/stats`.
-- `dbExplorer.ts`: `/admin/api/db/*`.
+- `dbExplorer.ts`: `/admin/api/database/*` für den read-only Datenbank-Explorer; die alten `/admin/api/db/*` Endpunkte liefern nur noch `410 Gone`.
 - `logs.ts`: `/admin/api/logs` mit Level-/Zeit-/Freitextfilter, `offset`/`limit` und newest-first Pagination.
 - `integrations.ts`: `/admin/api/tmdb`, `/admin/api/resend/settings`, `/admin/api/test/*`, `/admin/api/diagnostics/run`.
 - `legacyTautulliSettings.ts`: `/admin/api/tautulli/settings`.
@@ -43,6 +43,8 @@ Newsletter-Flows liegen in `apps/backend/src/routes/newsletter.ts`. Der Router s
 `admin.ts` stellt außerdem `/admin/api/auth/status` und `/admin/api/profile` direkt bereit. Das Profil ist aktuell ein Single-Admin-Profil aus Config und aktiver Auth-Methode, kein eigenes User-Modell.
 
 Die Pfade bleiben bewusst kompatibel zum Frontend-Client; neue Endpunkte sollten deshalb in den spezifischsten Domain-Router statt als konkurrierende Route unter dem gemeinsamen `/admin/api`-Präfix. Admin-Routen sollen Fehler über `next(new HttpError(...))` an den zentralen Error-Handler geben, damit API-Clients den einheitlichen Envelope bekommen.
+
+Der Datenbank-Explorer ist bewusst kein freier SQL-Browser. Tabellen und Spalten werden über eine Backend-Allowlist klassifiziert. Nur freigegebene Tabellen erscheinen unter `/admin/api/database/tables`; unbekannte oder nicht freigegebene Tabellen liefern `404`, damit keine Tabellen-Discovery entsteht. Schema-, Filteroptions- und Rows-Endpunkte sind getrennt. Die Tabellenliste berechnet Row Counts pro freigegebener Tabelle; das ist für die kleine Allowlist akzeptiert und sollte neu bewertet werden, falls die Allowlist deutlich wächst.
 
 Details stehen in [../reference/interfaces.md](../reference/interfaces.md).
 

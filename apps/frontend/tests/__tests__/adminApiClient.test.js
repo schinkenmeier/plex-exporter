@@ -119,6 +119,14 @@ describe('admin API client errors', () => {
 
     await client.getLogs({ level: 'error', limit: 25, offset: 50, q: 'diagnostics' });
     await client.getProfile();
+    await client.getDatabaseTables();
+    await client.getDatabaseSchema('media_items');
+    await client.getDatabaseFilterOptions('media_items');
+    await client.queryDatabase('media_items', {
+      columns: ['id', 'title'],
+      pagination: { limit: 10, offset: 0 },
+      sort: { column: 'id', direction: 'asc' },
+    });
     await client.runDiagnostics(['database', 'resend']);
     await client.createNewsletterCampaign({
       subject: 'Weekly',
@@ -136,20 +144,33 @@ describe('admin API client errors', () => {
     assert.equal(calls[0].options.method, 'GET');
     assert.equal(calls[1].url, 'https://admin.example.test/admin/api/profile');
     assert.equal(calls[1].options.method, 'GET');
-    assert.equal(calls[2].url, 'https://admin.example.test/admin/api/diagnostics/run');
-    assert.equal(calls[2].options.method, 'POST');
-    assert.deepEqual(JSON.parse(calls[2].options.body), { checks: ['database', 'resend'] });
-    assert.equal(calls[3].url, 'https://admin.example.test/admin/api/newsletter/campaigns');
-    assert.equal(calls[3].options.method, 'POST');
-    assert.deepEqual(JSON.parse(calls[3].options.body), {
+    assert.equal(calls[2].url, 'https://admin.example.test/admin/api/database/tables');
+    assert.equal(calls[2].options.method, 'GET');
+    assert.equal(calls[3].url, 'https://admin.example.test/admin/api/database/tables/media_items/schema');
+    assert.equal(calls[3].options.method, 'GET');
+    assert.equal(calls[4].url, 'https://admin.example.test/admin/api/database/tables/media_items/filter-options');
+    assert.equal(calls[4].options.method, 'GET');
+    assert.equal(calls[5].url, 'https://admin.example.test/admin/api/database/tables/media_items/rows/query');
+    assert.equal(calls[5].options.method, 'POST');
+    assert.deepEqual(JSON.parse(calls[5].options.body), {
+      columns: ['id', 'title'],
+      pagination: { limit: 10, offset: 0 },
+      sort: { column: 'id', direction: 'asc' },
+    });
+    assert.equal(calls[6].url, 'https://admin.example.test/admin/api/diagnostics/run');
+    assert.equal(calls[6].options.method, 'POST');
+    assert.deepEqual(JSON.parse(calls[6].options.body), { checks: ['database', 'resend'] });
+    assert.equal(calls[7].url, 'https://admin.example.test/admin/api/newsletter/campaigns');
+    assert.equal(calls[7].options.method, 'POST');
+    assert.deepEqual(JSON.parse(calls[7].options.body), {
       subject: 'Weekly',
       body: 'Neue Titel',
       mediaType: 'movie',
       mediaItemIds: [1, 2],
     });
-    assert.equal(calls[4].url, 'https://admin.example.test/admin/api/newsletter/campaigns/campaign-1');
-    assert.equal(calls[4].options.method, 'PATCH');
-    assert.equal(calls[5].url, 'https://admin.example.test/admin/api/newsletter/campaigns/campaign-1/send');
-    assert.equal(calls[5].options.method, 'POST');
+    assert.equal(calls[8].url, 'https://admin.example.test/admin/api/newsletter/campaigns/campaign-1');
+    assert.equal(calls[8].options.method, 'PATCH');
+    assert.equal(calls[9].url, 'https://admin.example.test/admin/api/newsletter/campaigns/campaign-1/send');
+    assert.equal(calls[9].options.method, 'POST');
   });
 });

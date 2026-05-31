@@ -15,7 +15,10 @@ import type { DrizzleDatabase } from '../db/index.js';
 import type { TmdbManager } from '../services/tmdbManager.js';
 import type { HeroPipelineService } from '../services/heroPipeline.js';
 import type { TautulliConfigStatus } from '../services/tautulliConfigStatus.js';
-import { createAdminDbExplorerRouter } from './admin/dbExplorer.js';
+import {
+  createAdminDatabaseExplorerRouter,
+  createLegacyAdminDbExplorerRouter,
+} from './admin/dbExplorer.js';
 import { createAdminIntegrationsRouter } from './admin/integrations.js';
 import { createAdminLegacyTautulliSettingsRouter } from './admin/legacyTautulliSettings.js';
 import { createAdminLogsRouter } from './admin/logs.js';
@@ -156,7 +159,8 @@ export const createAdminRouter = (options: AdminRouterOptions): Router => {
     }),
   );
 
-  router.use('/api/db', createAdminDbExplorerRouter({ drizzleDatabase }));
+  router.use('/api/database', createAdminDatabaseExplorerRouter({ drizzleDatabase }));
+  router.use('/api/db', createLegacyAdminDbExplorerRouter());
   router.use(
     '/api',
     createAdminIntegrationsRouter({

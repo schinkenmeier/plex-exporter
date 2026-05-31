@@ -2,9 +2,10 @@ import type { AdminViewModule } from '../index.ts';
 import {
   adminApiClient,
   type DatabaseColumnInfo,
+  type DatabaseFilterDateRange,
+  type DatabaseFilterEquals,
+  type DatabaseFilterNull,
   type DatabaseQueryRequest,
-  type DatabaseQueryResponse,
-  type DatabaseTablesResponse,
 } from '../../core/api.ts';
 
 const DB_PAGE_SIZE = 25;
@@ -14,6 +15,7 @@ interface DatabaseState {
   loadingTables: boolean;
   tablesError: string | null;
   activeTable: string | null;
+  schemaColumns: DatabaseColumnInfo[];
   columns: DatabaseColumnInfo[];
   rows: Record<string, unknown>[];
   pagination: {
@@ -25,8 +27,16 @@ interface DatabaseState {
   orderBy: string | null;
   direction: 'ASC' | 'DESC';
   search: string;
-  filterOptions: DatabaseQueryResponse['filterOptions'];
-  filters: DatabaseQueryRequest['filters'] & {
+  filterOptions: {
+    primaryKey: string | null;
+    dateColumns: string[];
+    enumValues: Record<string, Array<{ value: string | number | boolean | null; count: number }>>;
+    nullableColumns: string[];
+  };
+  filters: {
+    equals?: Array<Omit<DatabaseFilterEquals, 'type'>>;
+    nulls?: Array<{ column: string; mode: 'null' | 'notNull' }>;
+    dateRange?: Omit<DatabaseFilterDateRange, 'type'> | null;
     primaryKeyValue?: string | null;
   };
   selectedColumns: string[];
@@ -77,6 +87,7 @@ export const databaseView: AdminViewModule = {
       loadingTables: false,
       tablesError: null,
       activeTable: null,
+      schemaColumns: [],
       columns: [],
       rows: [],
       pagination: { limit: DB_PAGE_SIZE, offset: 0, total: 0, hasMore: false },
@@ -98,7 +109,7 @@ export const databaseView: AdminViewModule = {
       try {
         if (!state.tables.length || force) {
           const data = await adminApiClient.getDatabaseTables();
-          state.tables = data.tables;
+          state.tables = data.data.tables;
         }
         state.tablesError = null;
       } catch (error) {
@@ -144,6 +155,8 @@ export const databaseView: AdminViewModule = {
       state.pagination.offset = 0;
       state.filters = { equals: [], nulls: [], dateRange: null, primaryKeyValue: null };
       state.selectedColumns = [];
+      state.schemaColumns = [];
+      state.columns = [];
       state.orderBy = null;
       state.direction = 'ASC';
       state.search = '';
@@ -153,7 +166,28 @@ export const databaseView: AdminViewModule = {
       elements.dateFrom.value = '';
       elements.dateTo.value = '';
       renderTableList();
+      await loadSchemaAndFilterOptions(tableName);
       await loadRows();
+    };
+
+    const loadSchemaAndFilterOptions = async (tableName: string) => {
+      const [schemaResponse, filterOptionsResponse] = await Promise.all([
+        adminApiClient.getDatabaseSchema(tableName),
+        adminApiClient.getDatabaseFilterOptions(tableName),
+      ]);
+      const schemaColumns = schemaResponse.data.columns.filter(column => column.capabilities.selectable);
+      state.schemaColumns = schemaColumns;
+      state.columns = schemaColumns;
+      state.filterOptions = {
+        primaryKey: schemaResponse.data.primaryKey[0] ?? null,
+        dateColumns: schemaColumns
+          .filter(column => column.capabilities.rangeFilterable)
+          .map(column => column.name),
+        enumValues: filterOptionsResponse.data.filters,
+        nullableColumns: schemaColumns
+          .filter(column => column.nullable)
+          .map(column => column.name),
+      };
     };
 
     const loadRows = async () => {
@@ -162,32 +196,55 @@ export const databaseView: AdminViewModule = {
       renderContent();
       try {
         const payload: DatabaseQueryRequest = {
-          table: state.activeTable,
-          limit: state.pagination.limit,
-          offset: state.pagination.offset,
-          direction: state.direction,
-          orderBy: state.orderBy ?? undefined,
-          columns: state.selectedColumns.length ? state.selectedColumns : undefined,
-          filters: {
-            equals: state.filters.equals,
-            nulls: state.filters.nulls,
-            dateRange: state.filters.dateRange ?? undefined,
+          pagination: {
+            limit: state.pagination.limit,
+            offset: state.pagination.offset,
           },
-          search: state.search || undefined,
-          primaryKeyValue: state.filters.primaryKeyValue || undefined,
+          sort: state.orderBy
+            ? { column: state.orderBy, direction: state.direction === 'DESC' ? 'desc' : 'asc' }
+            : null,
+          columns: state.selectedColumns.length ? state.selectedColumns : undefined,
+          filters: [
+            ...(state.filters.equals ?? []).map(filter => ({
+              type: 'equals' as const,
+              column: filter.column,
+              value: filter.value,
+            })),
+            ...(state.filters.nulls ?? []).map(filter => ({
+              type: 'null' as const,
+              column: filter.column,
+              value: filter.mode === 'null',
+            })),
+            ...(state.filters.dateRange
+              ? [{
+                  type: 'range' as const,
+                  column: state.filters.dateRange.column,
+                  from: state.filters.dateRange.from,
+                  to: state.filters.dateRange.to,
+                }]
+              : []),
+            ...(state.filters.primaryKeyValue && state.filterOptions.primaryKey
+              ? [{
+                  type: 'equals' as const,
+                  column: state.filterOptions.primaryKey,
+                  value: state.filters.primaryKeyValue,
+                }]
+              : []),
+          ],
+          search: state.search ? { term: state.search } : null,
         };
 
-        const response = await adminApiClient.queryDatabase(payload);
-        state.columns = response.columns;
-        state.rows = response.rows;
-        state.pagination = response.pagination;
-        state.filterOptions = response.filterOptions;
+        const response = await adminApiClient.queryDatabase(state.activeTable, payload);
+        state.columns = response.data.columns;
+        state.rows = response.data.rows.map(row => row.values);
+        state.pagination = response.page;
         state.rowsError = null;
-        state.selectedColumns = response.selectedColumns;
-        state.orderBy = response.orderBy;
-        state.direction = response.direction;
-        state.search = response.search ?? '';
-        state.searchableColumns = response.searchableColumns ?? [];
+        state.selectedColumns = response.applied.columns;
+        state.orderBy = response.applied.sort?.column ?? null;
+        state.direction = response.applied.sort?.direction === 'desc' ? 'DESC' : 'ASC';
+        state.search = response.applied.search?.term ?? '';
+        state.searchableColumns = response.applied.search?.columns
+          ?? state.schemaColumns.filter(column => column.capabilities.searchable).map(column => column.name);
       } catch (error) {
         state.rowsError = error instanceof Error ? error.message : 'Tabellenzeilen konnten nicht geladen werden.';
         toast.show(state.rowsError, 'error');
@@ -221,12 +278,12 @@ export const databaseView: AdminViewModule = {
     };
 
     const renderColumns = () => {
-      if (!state.columns.length) {
+      if (!state.schemaColumns.length) {
         elements.columnList.innerHTML = '<div class="admin-muted-text">Keine Spalten verfügbar.</div>';
         return;
       }
-      const allSelected = state.selectedColumns.length === 0 || state.selectedColumns.length === state.columns.length;
-      elements.columnList.innerHTML = state.columns
+      const allSelected = state.selectedColumns.length === 0 || state.selectedColumns.length === state.schemaColumns.length;
+      elements.columnList.innerHTML = state.schemaColumns
         .map(column => {
           const checked = allSelected || state.selectedColumns.includes(column.name);
           return `
@@ -357,7 +414,7 @@ export const databaseView: AdminViewModule = {
     elements.columnList.addEventListener('change', event => {
       const input = event.target as HTMLInputElement;
       if (!input || !input.value) return;
-      const current = new Set(state.selectedColumns.length ? state.selectedColumns : state.columns.map(col => col.name));
+      const current = new Set(state.selectedColumns.length ? state.selectedColumns : state.schemaColumns.map(col => col.name));
       if (input.checked) {
         current.add(input.value);
       } else {

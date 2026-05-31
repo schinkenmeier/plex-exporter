@@ -14,7 +14,7 @@ Tautulli ist die Hauptquelle für Bibliotheksdaten. Der Sync persistiert Filme, 
 2. Verbindung in der Admin-UI testen.
 3. Library Sections auswählen.
 4. Manuellen Sync starten oder Zeitplan anlegen.
-5. Ergebnis im Katalog, in `/api/v1/*` oder in der Admin-Datenbankansicht prüfen.
+5. Ergebnis im Katalog, in `/api/v1/*` oder in der Admin-Datenbankansicht prüfen. Die Datenbankansicht ist read-only und zeigt nur freigegebene Tabellen.
 
 ## Bilder und Exporte
 

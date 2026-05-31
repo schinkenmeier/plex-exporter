@@ -173,39 +173,87 @@ describe('Admin router integration', () => {
     vi.restoreAllMocks();
   });
 
-  it('lists tables and pages database query results', async () => {
+  it('exposes the read-only database explorer contract with allowlisted tables only', async () => {
     dbHandle.sqlite.exec(`
-      CREATE TABLE sample_table (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        created_at TEXT NOT NULL
-      );
-      INSERT INTO sample_table (name, created_at) VALUES
-        ('Alpha', '2024-01-01T00:00:00Z'),
-        ('Beta', '2024-01-02T00:00:00Z'),
-        ('Gamma', '2024-01-03T00:00:00Z');
+      INSERT INTO media_items (tautulli_id, type, title, year, summary, guid, created_at, updated_at)
+      VALUES
+        ('secret-tautulli-1', 'movie', 'Alpha', 2024, 'A private long summary', 'plex://guid-alpha', '2024-01-01T00:00:00Z', '2024-01-01T00:00:00Z'),
+        ('secret-tautulli-2', 'movie', 'Beta', 2025, 'Another private summary', 'plex://guid-beta', '2024-01-02T00:00:00Z', '2024-01-02T00:00:00Z'),
+        ('secret-tautulli-3', 'tv', 'Gamma', 2026, 'Third private summary', 'plex://guid-gamma', '2024-01-03T00:00:00Z', '2024-01-03T00:00:00Z');
     `);
 
-    const tables = await request(app).get('/admin/api/db/tables');
+    const tables = await request(app).get('/admin/api/database/tables');
 
     expect(tables.status).toBe(200);
-    expect(tables.body.tables.some((table: { name: string }) => table.name === 'sample_table')).toBe(true);
+    expect(tables.body.success).toBe(true);
+    expect(tables.body.data.tables.some((table: { name: string }) => table.name === 'media_items')).toBe(true);
+    expect(tables.body.data.tables.some((table: { name: string }) => table.name === 'schema_migrations')).toBe(false);
+    expect(tables.body.data.tables.some((table: { name: string }) => table.name === 'users')).toBe(false);
+
+    const denied = await request(app).get('/admin/api/database/tables/users/schema');
+    expect(denied.status).toBe(404);
+
+    const schema = await request(app).get('/admin/api/database/tables/media_items/schema');
+    expect(schema.status).toBe(200);
+    expect(schema.body.data.columns).toContainEqual(expect.objectContaining({
+      name: 'summary',
+      sensitivity: 'private_text',
+      capabilities: expect.objectContaining({
+        searchable: false,
+        enumSafe: false,
+      }),
+    }));
+    expect(schema.body.data.columns).toContainEqual(expect.objectContaining({
+      name: 'created_at',
+      capabilities: expect.objectContaining({
+        rangeFilterable: true,
+      }),
+    }));
 
     const firstPage = await request(app)
-      .post('/admin/api/db/query')
-      .send({ table: 'sample_table', limit: 2, offset: 0, orderBy: 'id', direction: 'ASC' });
+      .post('/admin/api/database/tables/media_items/rows/query')
+      .send({
+        columns: ['id', 'title', 'summary', 'created_at'],
+        pagination: { limit: 2, offset: 0 },
+        sort: { column: 'id', direction: 'asc' },
+      });
 
     expect(firstPage.status).toBe(200);
-    expect(firstPage.body.rows).toHaveLength(2);
-    expect(firstPage.body.pagination.hasMore).toBe(true);
+    expect(firstPage.body.data.rows).toHaveLength(2);
+    expect(firstPage.body.page.hasMore).toBe(true);
+    expect(firstPage.body.data.rows[0].values.summary).toBe('[redacted text]');
+    expect(firstPage.body.data.rows[0].cells.summary).toEqual(expect.objectContaining({
+      sensitivity: 'private_text',
+      masked: true,
+    }));
 
     const searchResponse = await request(app)
-      .post('/admin/api/db/query')
-      .send({ table: 'sample_table', search: 'Gamma', limit: 10 });
+      .post('/admin/api/database/tables/media_items/rows/query')
+      .send({
+        columns: ['id', 'title', 'type'],
+        search: { term: 'Gamma', columns: ['title'] },
+        filters: [{ type: 'equals', column: 'type', value: 'tv' }],
+        pagination: { limit: 10 },
+      });
 
     expect(searchResponse.status).toBe(200);
-    expect(searchResponse.body.rows).toHaveLength(1);
-    expect(searchResponse.body.rows[0].name).toBe('Gamma');
+    expect(searchResponse.body.data.rows).toHaveLength(1);
+    expect(searchResponse.body.data.rows[0].values.title).toBe('Gamma');
+
+    const unsafeColumn = await request(app)
+      .post('/admin/api/database/tables/media_items/rows/query')
+      .send({ search: { term: 'private', columns: ['summary'] } });
+    expect(unsafeColumn.status).toBe(400);
+
+    const legacyResponse = await request(app).get('/admin/api/db/tables');
+    expect(legacyResponse.status).toBe(410);
+    expect(legacyResponse.body.replacement).toBe('/admin/api/database');
+
+    const legacyQueryResponse = await request(app)
+      .post('/admin/api/db/query')
+      .send({ table: 'media_items' });
+    expect(legacyQueryResponse.status).toBe(410);
+    expect(legacyQueryResponse.body.replacement).toBe('/admin/api/database');
   });
 
   it('stores a TMDb token and executes token tests', async () => {

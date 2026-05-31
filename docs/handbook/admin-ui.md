@@ -9,7 +9,7 @@ Die Admin-UI liegt unter `/admin`. Das Portal auf `/` verlinkt den Admin-Bereich
 - Dashboard: Laufzeit-, System- und Datenbankstatus.
 - Config: maskierte Laufzeitkonfiguration und gespeicherte Integrationswerte.
 - Logs: gepufferte Backend-Logs.
-- Database: SQLite-Tabellenansicht mit begrenzten Abfragen.
+- Database: Read-only SQLite-Explorer mit freigegebenen Tabellen, Schemaansicht, begrenzten Abfragen und maskierten sensiblen Feldern.
 - Tautulli: Verbindung, Library Sections, manueller Sync, Live-Status, Zeitpläne, Snapshots.
 - Diagnostics: Tests für Datenbank und Integrationen.
 - Watchlist Requests: eingegangene Watchlist-Anfragen, Status, Historie, Notizen und Antworten.
@@ -19,6 +19,9 @@ Die Admin-UI liegt unter `/admin`. Das Portal auf `/` verlinkt den Admin-Bereich
 
 - Logs werden newest-first angezeigt und können nach Level, Zeitraum, Freitext (`q`) sowie per `limit`/`offset` paginiert abgefragt werden.
 - Diagnostics können einzeln über die historischen Test-Endpunkte oder gesammelt über `POST /admin/api/diagnostics/run` für Datenbank, Tautulli, TMDB und Resend ausgeführt werden.
+- Der Datenbank-Explorer nutzt `/admin/api/database/*`. Er zeigt nur explizit freigegebene Tabellen und liefert Schema, Filteroptionen und Zeilenabfragen getrennt aus.
+- Nicht freigegebene Tabellen, interne Tabellen und Tabellen mit Secrets oder personenbezogenen Daten erscheinen nicht. Sensible Spalten werden nach Backend-Policy klassifiziert; es gibt keinen Reveal-Mechanismus für Rohwerte.
+- Die alten Endpunkte `/admin/api/db/tables` und `/admin/api/db/query` sind abgelöst und antworten mit `410 Gone` plus Hinweis auf `/admin/api/database`.
 - Das Admin-Profil unter `/admin/api/profile` liefert aktuell ein Single-Admin-Profil aus der Admin-Konfiguration und der aktiven Auth-Methode.
 - Watchlist-Anfragen bleiben als Request-Paket modelliert. Statuswerte sind `new`, `in_progress`, `parked`, `done` und `rejected`; Statuswechsel können eine Kommentar-Message in der Historie speichern.
 - Reply-Templates für Watchlist-Antworten sind derzeit feste Backend-Defaults. Editierbare Templates sind noch nicht Teil des produktiven Backends.

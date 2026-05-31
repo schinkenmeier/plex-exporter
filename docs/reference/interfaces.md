@@ -15,7 +15,7 @@
 ## Geschützte Flächen
 
 - `/admin`: Admin-UI.
-- `/admin/api/status`, `/admin/api/config`, `/admin/api/stats`, `/admin/api/profile`, `/admin/api/logs`, `/admin/api/db/*`.
+- `/admin/api/status`, `/admin/api/config`, `/admin/api/stats`, `/admin/api/profile`, `/admin/api/logs`, `/admin/api/database/*`.
 - `/admin/api/tautulli/*`: Tautulli-Konfiguration, Library Sections, manueller Sync, Live-Stream, Schedules, Snapshots.
 - `/admin/api/tmdb`, `/admin/api/resend/settings`, `/admin/api/test/*`, `/admin/api/diagnostics/run`: Integrationsstatus, Einzeltests und Batch-Diagnosen. Env-Konfiguration bleibt jeweils aktiv und wird in Statusfeldern wie `source`, `fromEnv`, `fromDatabase` und `envOverride` sichtbar; gespeicherte DB-Werte werden separat über `saved` gemeldet.
 - `/admin/api/watchlist/*`: Watchlist-Settings, Anfrage-Lifecycle, Anfrage-Summary, Reply-Templates und Admin-Antworten.
@@ -47,6 +47,13 @@
 ## Admin-API-Hinweise
 
 - `GET /admin/api/logs` liefert gepufferte Backend-Logs newest-first. Unterstützt werden `level`, `since`, `limit`, `offset` und `q`; `q` sucht in Message und Context. Die Antwort enthält `logs`, `stats` und `pagination`.
+- Der Datenbank-Explorer liegt unter `/admin/api/database/*`:
+  - `GET /admin/api/database/tables` liefert `{ success: true, data: { tables } }` für allowlisted Tabellen mit `name`, `label`, `category`, `description` und `rowCount`.
+  - `GET /admin/api/database/tables/:table/schema` liefert Tabellenmetadaten, Spalten, Primary-Key-Spalten, Sensitivity und Capabilities (`selectable`, `sortable`, `searchable`, `filterable`, `rangeFilterable`, `enumSafe`).
+  - `POST /admin/api/database/tables/:table/rows/query` akzeptiert `columns`, `pagination`, `sort`, `search` und `filters[]` (`equals`, `null`, `range`) und liefert Rows mit Zellmetadaten, Pagination und angewendeten Parametern.
+  - `GET /admin/api/database/tables/:table/filter-options` liefert nur enum-sichere Filterwerte.
+- Der Explorer ist read-only und nutzt eine strenge Allowlist. Nicht freigegebene oder unbekannte Tabellen liefern `404`; gesperrte Spalten in Query, Sort, Search oder Filter liefern `400`. Sensible Werte werden nicht roh ausgeliefert, und es gibt keinen Reveal-Endpoint.
+- Die alten `/admin/api/db/tables` und `/admin/api/db/query` Endpunkte antworten mit `410 Gone` und `replacement: "/admin/api/database"`.
 - `POST /admin/api/diagnostics/run` akzeptiert `{ checks: ["database", "tautulli", "tmdb", "resend"] }` und liefert pro Check `key`, `success`, `message`, `durationMs` und `checkedAt`.
 - Watchlist-Anfragen werden beim Public-Submit persistiert und über `/admin/api/watchlist/requests` verwaltet. Dazu gehören `GET /requests/summary`, Statuswechsel mit optionaler Message, Admin-Notizen, Reply-Mail und feste Reply-Templates unter `/reply-templates`.
 - Newsletter-Campaigns liegen unter `/admin/api/newsletter/campaigns`. Unterstützt werden Liste, Detail, Create, Draft-only Patch/Delete, Testversand und Send. Public bleiben nur Subscribe/Unsubscribe.

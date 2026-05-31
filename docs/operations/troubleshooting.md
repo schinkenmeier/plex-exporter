@@ -34,7 +34,7 @@ Node `24.x` verwenden.
 - Tautulli-Konfiguration und Verbindung prüfen.
 - Ausgewählte Library Sections prüfen.
 - Letzten manuellen oder geplanten Sync prüfen.
-- SQLite-Datei und Tabellen über Admin-Datenbankansicht prüfen.
+- SQLite-Datei und freigegebene Tabellen über die Admin-Datenbankansicht prüfen. Der Explorer zeigt nur allowlisted Tabellen; interne Tabellen, Secrets und personenbezogene Daten sind bewusst ausgeblendet.
 
 ## Bilder oder Thumbnails fehlen
 
