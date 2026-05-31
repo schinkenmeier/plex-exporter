@@ -1,6 +1,6 @@
 # Admin Backend Readiness Overview
 
-Stand: 2026-05-30
+Stand: 2026-05-31
 
 ## Ziel
 
@@ -326,7 +326,7 @@ Empfohlene Testgruppen:
 
 ### P1: Nächste sinnvolle Backend-Arbeiten
 
-1. Newsletter Campaign Datenmodell + Draft/Test/Send API.
+Aktuell kein zwingender Backend-Block für den Start der neuen Admin-UI. Neue Backend-Arbeiten sollten aus konkreten UI-Anforderungen entstehen.
 
 ### P2: Komfort und Realtime
 
@@ -348,11 +348,14 @@ Empfohlene Testgruppen:
 
 ## Empfohlener nächster Schritt
 
-Nächster größerer Block ist Sprint C:
+Die Backend-Vorbereitung aus Sprint A bis C ist abgeschlossen. Der nächste sinnvolle Schritt ist der Abgleich des neuen Admin-UI-Templates gegen die vorhandenen AdminApiClient-Methoden und die dokumentierten Endpunkte.
 
-1. Newsletter Campaign Datenmodell + Migration.
-2. Draft/Test/Send API mit Empfaenger-Historie.
-3. Bestehenden Digest-/Send-Flow als Legacy-Shortcut kompatibel halten.
+Dabei sollte das Frontend zuerst die vorhandenen APIs nutzen:
+
+1. Dashboard, Config, Logs, Diagnostics, Tautulli, Database und Profile direkt gegen die bestehenden Admin-Endpunkte verdrahten.
+2. Watchlist Requests als Paket-Anfragen mit Summary, Status, Historie, Notizen, Reply-Mail und festen Reply-Templates darstellen.
+3. Newsletter Campaigns mit Draft-Liste, Detail, Create/Edit, Testversand, Send und Recipient-Status einbauen.
+4. Sprint-D-Themen nur aufnehmen, wenn das neue UI sie wirklich erzwingt.
 
 ## Konkretisierte Ausführungsplanung
 
