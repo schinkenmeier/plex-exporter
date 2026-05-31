@@ -1,10 +1,11 @@
 # Überblick
 
-Plex Exporter stellt einen webbasierten Plex-Katalog mit Admin-Oberfläche bereit. Die laufende Anwendung besteht aus statischem Frontend, Backend-API, SQLite-Datenbank und optionalen Integrationen.
+Plex Exporter stellt ein webbasiertes Portal für eine Plex-Library mit Admin-Oberfläche bereit. Die laufende Anwendung besteht aus statischem Frontend, Backend-API, SQLite-Datenbank und optionalen Integrationen.
 
 ## Sichtbare Flächen
 
-- `/`: öffentlicher Katalog im Caddy-/Frontend-Betrieb.
+- `/`: Portal/Landingpage.
+- `/library`: öffentliche Medien-Library im Caddy-/Frontend-Betrieb.
 - `/admin`: geschützte Admin-UI.
 - `/health`: Backend-Healthcheck.
 - `/api/v1/*`: Katalogdaten für das Frontend.
@@ -28,6 +29,7 @@ Plex Exporter stellt einen webbasierten Plex-Katalog mit Admin-Oberfläche berei
 ## Weiter
 
 - Erste Schritte: [getting-started.md](getting-started.md)
+- Landing und Library Routing: [landing-library-routing.md](landing-library-routing.md)
 - Daten und Sync: [data-and-sync.md](data-and-sync.md)
 - Admin-UI: [admin-ui.md](admin-ui.md)
 - Architektur: [../development/architecture.md](../development/architecture.md)

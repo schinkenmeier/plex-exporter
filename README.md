@@ -1,6 +1,6 @@
 # Plex Exporter
 
-Plex Exporter ist ein Webkatalog für Plex-Bibliotheken. Das Projekt besteht aus einem statischen Frontend, einem Express-/TypeScript-Backend, SQLite-Persistenz, Tautulli-Synchronisation, optionaler TMDB-Anreicherung, Admin-UI und Docker/Caddy-Deployment.
+Plex Exporter ist ein Webportal für Plex-Bibliotheken. Das Projekt besteht aus einer Landingpage, einer öffentlichen Library, einem Express-/TypeScript-Backend, SQLite-Persistenz, Tautulli-Synchronisation, optionaler TMDB-Anreicherung, Admin-UI und Docker/Caddy-Deployment.
 
 ## Schnelle Orientierung
 
@@ -14,7 +14,7 @@ Plex Exporter ist ein Webkatalog für Plex-Bibliotheken. Das Projekt besteht aus
 
 ## Was läuft wo?
 
-- `apps/frontend/`: öffentlicher Katalog, Admin-UI-Client, esbuild-Build, statische Assets.
+- `apps/frontend/`: Landingpage, öffentliche Library, Admin-UI-Client, esbuild-Build, statische Assets.
 - `apps/backend/`: Backend-API, Admin-Routen, Scheduler, Tautulli-Sync, SQLite/Drizzle-Repositories.
 - `packages/shared/`: gemeinsame Modelle, Filter- und Paging-Helfer.
 - `tools/`: Doku-Checks, Serien-Splitter, Bundle-Analyse, Debug-Hilfen.
@@ -39,13 +39,14 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Der Root-Compose-Stack startet `backend`, `caddy` und optional per Profil `tautulli-mock`. Caddy liefert das Frontend aus und proxyt `/api/*`, `/admin*` und `/health` zum Backend.
+Der Root-Compose-Stack startet `backend`, `caddy` und optional per Profil `tautulli-mock`. Caddy liefert `/` als Portal und `/library` als öffentliche Library aus und proxyt `/api/*`, `/admin*` und `/health` zum Backend.
 
 ## Wichtige Realitäten
 
 - Runtime: Node `>=24 <25`, npm Workspaces.
 - Daten: SQLite über `better-sqlite3` und Drizzle; im Container typischerweise `/app/data/sqlite/plex-exporter.sqlite`.
 - Integrationen: Tautulli für Bibliotheksdaten, TMDB für Metadaten, Resend für E-Mail-Funktionen.
+- Einstieg: `/` ist das Portal, `/library` die öffentliche Medienansicht und `/admin` der geschützte Admin-Bereich.
 - Auth: `/admin`, Admin-APIs und `/media` nutzen Basic Auth, wenn `ADMIN_USERNAME` und `ADMIN_PASSWORD` gesetzt sind; optional akzeptieren sie `ADMIN_API_TOKEN` als Bearer-Token. `API_TOKEN` schützt die `/libraries`-Route.
 - Lokale `better-sqlite3`-ABI-Probleme nach Node-Wechseln werden mit `npm ci` oder notfalls `npm rebuild better-sqlite3 --workspace @plex-exporter/backend` behoben.
 

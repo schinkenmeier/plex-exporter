@@ -43,6 +43,11 @@
 		}
 	}
 
+	handle /library* {
+		try_files {path} /library.html
+		file_server
+	}
+
 	# Serve JSON config files directly (before SPA fallback)
 	handle /config/*.json {
 		file_server

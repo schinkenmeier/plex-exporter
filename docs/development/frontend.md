@@ -1,7 +1,8 @@
 # Entwicklung: Frontend
 
 ## Einstiegspunkte
-- `src/main.js`: öffentlicher Katalog
+- `public/index.html`: Portal/Landingpage für `/`
+- `public/library.html` + `src/main.js`: öffentliche Library für `/library`
 - `src/admin/main.ts`: Admin-App
 - `scripts/build.mjs`: Build, Bundle-Limits und Config-Kopie
 

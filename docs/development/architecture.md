@@ -13,7 +13,7 @@ Plex Exporter ist kein reiner JSON-Exporter mehr. Der produktive Katalog wird au
 
 ## Bausteine
 
-- `apps/frontend`: öffentlicher Katalog (`src/main.js`), Admin-App (`src/admin/main.ts`), Build (`scripts/build.mjs`), statische Dateien in `public/`.
+- `apps/frontend`: Portal (`public/index.html`), öffentliche Library (`public/library.html` mit `src/main.js`), Admin-App (`src/admin/main.ts`), Build (`scripts/build.mjs`), statische Dateien in `public/`.
 - `apps/backend`: Prozessstart (`src/server.ts`), Runtime-Zusammenbau (`src/createServer.ts`), Env-Parsing (`src/config/index.ts`), Routen, Services, Repositories und Migrationen.
 - `packages/shared`: gemeinsame Modelle und Filter-/Paging-Helfer für Frontend und Backend.
 - `tools`: Doku-/Text-Checks, Serien-Splitter, Bundle-Analyse, Debug-Hilfen.
@@ -49,6 +49,7 @@ Details stehen in [../reference/interfaces.md](../reference/interfaces.md).
 ## Frontend-Auslieferung
 
 - Im Docker-Compose-Betrieb liefert Caddy `apps/frontend/public` aus und proxyt Backend-Pfade.
+- `/` ist das Portal. `/library` fällt explizit auf `library.html` zurück, damit direkte Aufrufe von `/library` und `/library/` den öffentlichen Medienbereich laden.
 - Das Backend liefert `/admin`, statische Admin-Dateien und `/dist` aus `apps/frontend/public`.
 - Darum muss vor einem lokalen Backend-Start der Frontend-Build laufen.
 

@@ -28,6 +28,7 @@ Dieses Dokument beschreibt, welche Backend-Funktionen für das redesigned Admin 
 | Welcome-Mail | Send, Check, History, Delete, Stats vorhanden | Gut abgedeckt |
 | Newsletter | Subscribe/Unsubscribe, Campaign Draft/Test/Send, Recipient-Status, Send Digest, Stats, Recent Media, Digest History vorhanden | Produktiv nutzbare Basis, spaetere Verfeinerungen offen |
 | Datenbank-Explorer | Tables, Query, Filter, Sort, Pagination vorhanden | Stark abgedeckt |
+| Portal/Library-Routing | `/` als Portal, `/library` als öffentliche Medienansicht, `/admin` unverändert geschützt | Frontend-Routing vorbereitet |
 
 ## Phase 1: API-Kontrakt und Admin-Client vervollstaendigen
 
@@ -323,6 +324,7 @@ Empfohlene Testgruppen:
 - Log Query mit `q`, `offset`, Pagination und newest-first.
 - Diagnostics Batch Endpoint.
 - Admin Profile Endpoint.
+- Portal/Library-Routing: `/` ist Landingpage, `/library` ist die öffentliche Medienansicht, `/admin` bleibt geschützter Maschinenraum.
 
 ### P1: Nächste sinnvolle Backend-Arbeiten
 

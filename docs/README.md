@@ -7,6 +7,7 @@ Diese Doku beschreibt den aktuellen Stand des Repos. Sie ist als schneller Einst
 | Frage | Dokument |
 | --- | --- |
 | Was ist das Tool? | [handbook/overview.md](handbook/overview.md) |
+| Welche Frontend-Einstiege gelten? | [handbook/landing-library-routing.md](handbook/landing-library-routing.md) |
 | Wie starte ich lokal? | [development/local-setup.md](development/local-setup.md) |
 | Wie läuft Betrieb oder Deployment? | [operations/docker-compose.md](operations/docker-compose.md), [operations/unraid.md](operations/unraid.md) |
 | Wie fließen Daten durch das System? | [development/architecture.md](development/architecture.md) |
@@ -25,7 +26,7 @@ Diese Doku beschreibt den aktuellen Stand des Repos. Sie ist als schneller Einst
 
 ## Kanonische Themen
 
-- Überblick und Bedienung: [handbook/overview.md](handbook/overview.md), [handbook/admin-ui.md](handbook/admin-ui.md), [handbook/data-and-sync.md](handbook/data-and-sync.md)
+- Überblick und Bedienung: [handbook/overview.md](handbook/overview.md), [handbook/landing-library-routing.md](handbook/landing-library-routing.md), [handbook/admin-ui.md](handbook/admin-ui.md), [handbook/data-and-sync.md](handbook/data-and-sync.md)
 - Entwicklung: [development/local-setup.md](development/local-setup.md), [development/architecture.md](development/architecture.md), [development/testing.md](development/testing.md)
 - Betrieb: [operations/docker-compose.md](operations/docker-compose.md), [operations/persistence.md](operations/persistence.md), [operations/cloudflare.md](operations/cloudflare.md), [operations/backups-and-updates.md](operations/backups-and-updates.md)
 - Referenz: [reference/configuration.md](reference/configuration.md), [reference/environment-variables.md](reference/environment-variables.md), [reference/runtime-paths.md](reference/runtime-paths.md), [reference/interfaces.md](reference/interfaces.md), [reference/data-layout.md](reference/data-layout.md)

@@ -1,10 +1,11 @@
 # Frontend Workspace
 
-Statisches Frontend für den öffentlichen Katalog und Client-Code für die Admin-UI.
+Statisches Frontend für Portal, öffentliche Library und Client-Code für die Admin-UI.
 
 ## Bereiche
 
-- `src/main.js`: öffentlicher Katalog.
+- `public/index.html`: Portal/Landingpage für `/`.
+- `public/library.html` und `src/main.js`: öffentliche Library für `/library`.
 - `src/admin/main.ts`: Admin-App.
 - `src/core/` und `src/features/`: Katalog-Bootstrap, State, Grid, Filter, Hero, Modal, Watchlist, Newsletter.
 - `public/`: HTML, Assets, Hero-Policy, Runtime-Config, Build-Ziel.

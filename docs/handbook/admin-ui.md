@@ -2,7 +2,7 @@
 
 ## Zugriff
 
-Die Admin-UI liegt unter `/admin`. Sie ist nur nutzbar, wenn `ADMIN_USERNAME` und `ADMIN_PASSWORD` gemeinsam gesetzt sind; sonst antwortet das Backend mit `503`.
+Die Admin-UI liegt unter `/admin`. Das Portal auf `/` verlinkt den Admin-Bereich als Maschinenraum, authentifiziert aber nicht selbst. Die Admin-UI ist nur nutzbar, wenn `ADMIN_USERNAME` und `ADMIN_PASSWORD` gemeinsam gesetzt sind; sonst antwortet das Backend mit `503`.
 
 ## Bereiche
 

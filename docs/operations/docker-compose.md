@@ -21,7 +21,7 @@ Relevante Root-Variablen stehen in [../reference/environment-variables.md](../re
 
 ## Routing
 
-Caddy liefert `/` aus dem Frontend-Image und proxyt:
+Caddy liefert `/` als Portal und `/library` als öffentliche Library aus dem Frontend-Image und proxyt:
 
 - `/api/*`
 - `/admin*`
@@ -41,5 +41,5 @@ Details stehen in [persistence.md](persistence.md) und [../reference/runtime-pat
 ## Unterschiede zum Source-Run
 
 - Container bauen Node-24-Abhängigkeiten selbst; lokale `node_modules` sind irrelevant.
-- Backend und Frontend laufen getrennt: Caddy liefert den Katalog, Backend liefert API/Admin.
+- Backend und Frontend laufen getrennt: Caddy liefert Portal und Library, Backend liefert API/Admin.
 - Der Backend-Container enthält bereits den Frontend- und Backend-Build.

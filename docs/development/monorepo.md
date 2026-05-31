@@ -7,7 +7,7 @@
 - `tools`
 
 ## Rollen
-- `apps/frontend`: Katalog-Frontend und Admin-UI-Build
+- `apps/frontend`: Portal, öffentliche Library und Admin-UI-Build
 - `apps/backend`: API, Admin-Routen, Scheduler, Repositories und Services
 - `packages/shared`: gemeinsame Typen und Filter-/Paging-Helfer
 - `tools`: Hilfsskripte, Mock-Server, Browser-Debugging

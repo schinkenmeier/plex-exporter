@@ -45,6 +45,7 @@ COPY --from=builder /app/apps/frontend/public /srv/frontend
 # Verify frontend files are copied
 RUN ls -la /srv/frontend && \
     test -f /srv/frontend/index.html && \
+    test -f /srv/frontend/library.html && \
     test -f /srv/frontend/dist/main.js && \
     echo "Frontend files copied successfully"
 

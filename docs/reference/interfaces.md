@@ -2,7 +2,8 @@
 
 ## Öffentliche Flächen
 
-- `/`: Katalog-Frontend im Caddy-/Frontend-Container.
+- `/`: Portal/Landingpage mit Einstieg in Library und Admin-Bereich.
+- `/library`: öffentliche Medien-Library im Caddy-/Frontend-Container.
 - `/health`: Backend-Healthcheck.
 - `/api/v1/movies`, `/api/v1/series`, `/api/v1/filter`, `/api/v1/search`, `/api/v1/recent`, `/api/v1/stats`.
 - `/api/v1/tmdb/*`: TMDB-Proxy/Detaildaten, wenn konfiguriert.
@@ -30,6 +31,7 @@
 - `/libraries` nutzt `Authorization: Bearer <API_TOKEN>`, wenn `API_TOKEN` gesetzt ist.
 - Öffentliche Katalog-APIs haben Rate Limits und Cache Header, aber keine Benutzerkonten.
 - Öffentliche Mail-Flächen wie Newsletter-Subscribe/Unsubscribe und Watchlist-Senden haben ein eigenes, engeres Public-Mail-Rate-Limit.
+- Das Portal auf `/` authentifiziert nicht und ruft keine Auth-API auf. Es verlinkt nur auf `/library` und `/admin`.
 
 ## Admin-UI-Bereiche
 
